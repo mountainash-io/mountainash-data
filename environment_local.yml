@@ -1,0 +1,54 @@
+# environment.yaml
+name: mash_data_p312
+dependencies:
+  - python>=3.12.0
+  - ipython
+  - pip
+  - pip:
+    - ipykernel
+    - pytest
+    - pytest_check
+    - radon
+    - coverage
+    - ruff
+    - hatch
+    - psycopg2-binary
+    - ibis-framework[duckdb,examples,polars,pandas,sqlite] >= 9.0.0
+    - pandas
+    - polars
+    - pyarrow
+    # - appmap
+    # - ipykernel
+    # - pathlib
+    # - pandas
+    # - polars
+    # - pydantic>=2
+    # - lxml
+    # - simplejson
+    # - jsonschema
+    # - autopep8
+    # - pydantic-settings
+    - universal_pathlib
+    # - ruff
+    # - faker
+    # - duckdb
+    # - pysqlite3
+    # - boltons
+    # - rstr
+    # - flake8
+    # - flake8-bugbear
+    # - scipy
+    # - sphinx
+    # - sphinx-rtd-theme
+    # - pytest_check
+    #This package
+    - -e .
+    #Other Mountain Ash Packages
+    - -e ../mountainash-constants
+    - -e ../mountainash-settings
+    - -e ../mountainash-auth-settings
+    - -e ../mountainash-utils
+    - -e ../mountainash-utils-ssh
+    - -e ../mountainash-utils-files
+    - -e ../mountainash-utils-dataclasses
+    - -e ../mountainash-utils-dataframes
