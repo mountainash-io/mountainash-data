@@ -1,6 +1,8 @@
 from typing import Optional
 import ibis
 
+import ibis.expr.types as ir
+
 from .base_ibis_connection import BaseIbisConnection
 from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
@@ -29,9 +31,20 @@ class DuckDB_IbisConnection(BaseIbisConnection):
     def connect_ibis(self, connection_string: str) -> ibis.BaseBackend:
         """Connect to the database using the provided connection string."""
 
-        db_connection = ibis.duckdb.connect(connection_string)
+        ibis_backend = ibis.duckdb.connect(connection_string)
 
-        if db_connection is None:
+        if ibis_backend is None:
             raise ValueError("DuckDB_IbisConnection: Connection could not be established")
     
-        return db_connection
+        return ibis_backend
+
+    def sql_ibis(self, sql: str) -> ir.Table:
+        pass
+
+        if self.ibis_backend is None:
+            self.connect()
+
+        if self.ibis_backend is None:
+            raise ValueError("Connection could not be established")
+
+        return self.ibis_backend.sql(sql)    

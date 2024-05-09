@@ -27,11 +27,11 @@ class Postgres_IbisConnection(BaseIbisConnection):
     def connect_ibis(self, connection_string: str) -> ibis.BaseBackend:
         """Connect to the database using the provided connection string."""
 
-        # db_connection = ibis.postgres.connect(user="ngods", password="ngods", host="192.168.215.2", port="5432")
-        db_connection = ibis.connect(resource=connection_string)
+        # ibis_backend = ibis.postgres.connect(user="ngods", password="ngods", host="192.168.215.2", port="5432")
+        ibis_backend = ibis.connect(resource=connection_string)
 
 
-        if db_connection is None:
+        if ibis_backend is None:
             raise ValueError("Postgres_IbisConnection: Connection could not be established")
     
-        return db_connection
+        return ibis_backend

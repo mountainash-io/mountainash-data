@@ -4,6 +4,7 @@ import pyarrow as pa
 import ibis
 from typing import Union, Any,  Dict, List, Optional, Sequence
 
+import uuid
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
 from mountainash_utils_dataclasses import DataclassUtils
 import ibis.expr.types as ir
@@ -15,9 +16,9 @@ import ibis.expr.types as ir
 class DataFrameUtils:
 
 
-    @staticmethod
-    def get_supported_dataframe_frameworks() -> set:
-        return DataclassUtils.get_enum_values_set(enumclass=CONST_DATAFRAME_FRAMEWORK)
+    # @staticmethod
+    # def get_supported_dataframe_frameworks() -> set:
+    #     return DataclassUtils.get_enum_values_set(enumclass=CONST_DATAFRAME_FRAMEWORK)
 
     @classmethod
     def create_dataframe(
@@ -149,9 +150,42 @@ class DataFrameUtils:
         else:
             raise TypeError("Unsupported dataframe type")
 
+
+    @staticmethod
+    def create_temp_table_ibis(
+                          df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
+                          tablename_prefix: Optional[str] = None,
+                          ibis_backend: Optional[ibis.BaseBackend] = None,
+                          overwrite: Optional[bool] = True,
+            ) -> ir.Table:
+
+        if not isinstance(df_dataframe, pa.Table):
+            df_dataframe = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
+
+        if overwrite is None:
+            overwrite = True
+        
+        tablename = DataFrameUtils.generate_tablename(prefix=tablename_prefix)
+
+        #Some ibis backends are Temp tables by default
+        if ibis_backend is not None:
+            if ibis_backend.supports_temporary_tables:   
+                new_table =  ibis_backend.create_table(name = tablename, obj=df_dataframe, overwrite=overwrite, temp=True)
+            else:
+                new_table =  ibis_backend.create_table(name = tablename, obj=df_dataframe, overwrite=overwrite)
+        else:
+            #Otherwise create a memory table on the default backend.
+            new_table  = ibis.memtable(data=df_dataframe, 
+                                columns=DataFrameUtils.get_column_names(df_dataframe), 
+                                name=tablename) 
+        return new_table
+
+
     @staticmethod
     def cast_dataframe_to_ibis(
-        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]) -> ir.Table:
+        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table],
+        ibis_backend: Optional[ibis.BaseBackend] = None,
+        tablename_prefix: Optional[str] = None) -> ir.Table:
         """Converts the input dataframe to a Polars DataFrame.
 
         Supported input types are:
@@ -171,17 +205,28 @@ class DataFrameUtils:
         Example:
             polars_df = DataframeUtils.cast_dataframe_to_polars(pandas_df)
         """
+
+ 
+
         if isinstance(df_dataframe, pl.DataFrame):
             df = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
-            return ibis.memtable(data=df, columns=DataFrameUtils.get_column_names(df_dataframe)) 
+            return ibis.memtable(data=df_dataframe, 
+                                 columns=DataFrameUtils.get_column_names(df_dataframe), 
+                                 name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
         elif isinstance(df_dataframe, pl.LazyFrame):
             df = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
-            return ibis.memtable(data=df_dataframe.collect(), columns=DataFrameUtils.get_column_names(df_dataframe)) 
+            return ibis.memtable(data=df_dataframe.collect(), 
+                                 columns=DataFrameUtils.get_column_names(df_dataframe), 
+                                 name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
         elif isinstance(df_dataframe, pd.DataFrame):
             df = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
-            return ibis.memtable(data=df_dataframe, columns=DataFrameUtils.get_column_names(df_dataframe)) 
+            return ibis.memtable(data=df_dataframe, 
+                                 columns=DataFrameUtils.get_column_names(df_dataframe), 
+                                 name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
         elif isinstance(df_dataframe, ir.Table):
-            return df_dataframe
+            return ibis.memtable(data=df_dataframe, 
+                                 columns=DataFrameUtils.get_column_names(df_dataframe), 
+                                 name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
         else:
             raise TypeError("Unsupported dataframe type")
 
@@ -219,7 +264,7 @@ class DataFrameUtils:
         elif isinstance(df_dataframe, ir.Table):
             return df_dataframe.to_pyarrow()
         else:
-            raise TypeError("Unsupported dataframe type")
+            raise TypeError(f"Unsupported dataframe type: {type(df_dataframe)}")
 
 
 
@@ -394,3 +439,13 @@ class DataFrameUtils:
         else:
             raise ValueError("Unsupported DataFrame type")  
         
+
+    @staticmethod            
+    def generate_tablename(prefix: Optional[str] = None) -> str:
+
+        if prefix:
+            temp_tablename = f"{prefix}_{str(object=uuid.uuid4())}"
+        else:   
+            temp_tablename = str(object=uuid.uuid4())
+
+        return temp_tablename        

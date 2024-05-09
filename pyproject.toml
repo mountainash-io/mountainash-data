@@ -25,7 +25,10 @@ classifiers = [
 dependencies = [
   "universal_pathlib",
   # ibis-framework[duckdb,examples,polars,pandas,sqlite,postgres] >= 9.0.0
-
+  "ibis-framework[polars,pandas,sqlite] >= 9.0.0",
+  "pandas",
+  "polars",
+  "pyarrow"
 ]
 
 
@@ -51,6 +54,15 @@ dependencies = [
   "coverage[toml]>=6.5",
   "pytest",
   "pytest_check",
+
+  "mountainash_settings @ {root:uri}/tmp/mountainash-settings",
+  "mountainash_constants @ {root:uri}/tmp/mountainash-constants",
+  "mountainash_data @ {root:uri}/tmp/mountainash-data",
+  "mountainash_auth_settings @ {root:uri}/tmp/mountainash-auth-settings",
+  "mountainash_utils @ {root:uri}/tmp/mountainash-utils",
+  "mountainash_utils_ssh @ {root:uri}/tmp/mountainash-utils-ssh",
+  "mountainash_utils_files @ {root:uri}/tmp/mountainash-utils-files",
+  "mountainash_utils_dataclasses @ {root:uri}/tmp/mountainash-utils-dataclasses",
 ]
 [tool.hatch.envs.test_github.scripts]
 test = "pytest"
@@ -78,6 +90,17 @@ dependencies = [
   "coverage[toml]>=6.5",
   "pytest",
   "pytest_check",
+
+  "mountainash_settings @ {root:uri}/../mountainash-settings",
+  "mountainash_constants @ {root:uri}/../mountainash-constants",
+  "mountainash_data @ {root:uri}/../mountainash-data",
+  "mountainash_auth_settings @ {root:uri}/../mountainash-auth-settings",
+  "mountainash_utils @ {root:uri}/../mountainash-utils",
+  "mountainash_utils-ssh @ {root:uri}/../mountainash-utils-ssh",
+  "mountainash_utils-files @ {root:uri}/../mountainash-utils-files",
+  "mountainash_utils_dataclasses @ {root:uri}/../mountainash-utils-dataclasses",
+
+
 ]
 [tool.hatch.envs.test.scripts]
 test = "pytest"

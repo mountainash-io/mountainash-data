@@ -27,9 +27,9 @@ class Redshift_IbisConnection(BaseIbisConnection):
     def connect_ibis(self, connection_string: str) -> ibis.BaseBackend:
         """Connect to the database using the provided connection string."""
 
-        db_connection = ibis.postgres.connect(connection_string)
+        ibis_backend = ibis.postgres.connect(connection_string)
 
-        if db_connection is None:
+        if ibis_backend is None:
             raise ValueError("Redshift_IbisConnection: Connection could not be established")
     
-        return db_connection
+        return ibis_backend

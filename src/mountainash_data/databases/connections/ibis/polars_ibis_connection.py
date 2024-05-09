@@ -22,16 +22,15 @@ class Polars_IbisConnection(BaseIbisConnection):
         self.database_abstraction_layer: str =   CONST_DB_ABSTRACTION_LAYER.IBIS.value
 
         
-
         self.template_connection_string:    Optional[str] = "polars://"
 
 
     def connect_ibis(self, connection_string: str) -> ibis.BaseBackend:
         """Connect to the database using the provided connection string."""
 
-        db_connection = ibis.polars.connect(connection_string)
+        ibis_backend = ibis.polars.connect(connection_string)
 
-        if db_connection is None:
+        if ibis_backend is None:
             raise ValueError("Polars_IbisConnection: Connection could not be established")
     
-        return db_connection
+        return ibis_backend

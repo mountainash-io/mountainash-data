@@ -51,4 +51,4 @@ dependencies:
     - -e ../mountainash-utils-ssh
     - -e ../mountainash-utils-files
     - -e ../mountainash-utils-dataclasses
-    - -e ../mountainash-utils-dataframes
+    - -e ../mountainash-data

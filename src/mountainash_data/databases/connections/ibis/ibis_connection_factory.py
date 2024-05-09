@@ -1,20 +1,20 @@
 
-# from ..db_connection_factory import DBConnectionFactory
+# from ..ibis_backend_factory import DBConnectionFactory
 
 # class IbisConnectionFactory(DBConnectionFactory):
 
 
-#     def init_db_connection(self, 
+#     def init_ibis_backend(self, 
                            
 #                            database_abstraction_layer: str,
 
 #                                    **kwargs):
 
 #         #TODO: resolve whether using a connection string (with prefix), or individual connection parameters
-#         db_connections_string = get_auth_settings(self.auth_settings_parameters).CONNECTION_STRING
+#         ibis_backends_string = get_auth_settings(self.auth_settings_parameters).CONNECTION_STRING
 
-#         if db_connections_string is not None:
-#             self.init_db_connection_from_string(db_connections_string)
+#         if ibis_backends_string is not None:
+#             self.init_ibis_backend_from_string(ibis_backends_string)
 
 
 
@@ -24,7 +24,7 @@
 
 #         if db_backend == CONST_DB_BACKEND.DUCKDB.value:
 #             raise NotImplementedError
-#             # self.init_duckdb_connection(**kwargs)
+#             # self.init_duckibis_backend(**kwargs)
 #         elif db_backend == CONST_DB_BACKEND.SQLITE.value:
 #             raise NotImplementedError
 #             # self.init_sqlite_connection(, **kwargs)
