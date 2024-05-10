@@ -263,6 +263,31 @@ class BaseDataFrame(ABC):
         return df_cols
 
     @abstractmethod
+    def distinct(self) -> "BaseDataFrame":
+        pass
+
+    def _distinct_ibis(self) -> ir.Table:
+        new_df: Any = self.ibis_df.distinct()
+        return new_df
+
+    @abstractmethod
+    def rename(self, **kwargs) -> "BaseDataFrame":
+        pass
+
+    def _rename_ibis(self,  **kwargs) -> ir.Table:
+        new_df: Any = self.ibis_df.rename( **kwargs)
+        return new_df
+
+    @abstractmethod
+    def try_cast(self, **kwargs) -> "BaseDataFrame":
+        pass
+
+    def _try_cast_ibis(self,  **kwargs) -> ir.Table:
+        new_df: Any = self.ibis_df.try_cast( **kwargs)
+        return new_df
+
+
+    @abstractmethod
     def mutate(self,  **kwargs) -> "BaseDataFrame":
         pass
 

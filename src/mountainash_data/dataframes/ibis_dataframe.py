@@ -66,18 +66,35 @@ class IbisDataFrame(BaseDataFrame):
 
     def drop(self, columns: Any) -> "IbisDataFrame":
 
-        new_df: ir.Table = self._drop_ibis(columns).alias(self.generate_tablename(prefix="drop"))
+        new_df: ir.Table = self._drop_ibis(columns).alias(alias=self.generate_tablename(prefix="drop"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
     def _drop_native(self, columns: Any) -> ir.Table:
         return self._drop_ibis(columns=columns)
 
+    def distinct(self) -> "BaseDataFrame":
+
+        new_df: ir.Table = self._distinct_ibis().alias(alias=self.generate_tablename(prefix="distinct"))
+ 
+        return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def rename(self, **kwargs) -> "BaseDataFrame":
+
+        new_df: ir.Table = self._rename_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="rename"))
+ 
+        return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+    
+    def try_cast(self, **kwargs) -> "BaseDataFrame":
+
+        new_df: ir.Table = self._try_cast_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="try_cast"))
+ 
+        return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
 # Add Columns       
     def mutate(self, **kwargs) -> "IbisDataFrame":
 
-        new_df: ir.Table = self._mutate_ibis( **kwargs).alias(self.generate_tablename(prefix="mutate"))
+        new_df: ir.Table = self._mutate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="mutate"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
@@ -88,7 +105,7 @@ class IbisDataFrame(BaseDataFrame):
 # Reshape
     def aggregate(self,  **kwargs) -> "IbisDataFrame":
 
-        new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(self.generate_tablename(prefix="aggregate"))
+        new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="aggregate"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
@@ -99,7 +116,7 @@ class IbisDataFrame(BaseDataFrame):
 
     def pivot_wider(self,  **kwargs) -> "IbisDataFrame":
 
-        new_df: ir.Table = self._pivot_wider_ibis( **kwargs).alias(self.generate_tablename(prefix="pivot_wider"))
+        new_df: ir.Table = self._pivot_wider_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_wider"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
@@ -108,7 +125,7 @@ class IbisDataFrame(BaseDataFrame):
 
     def pivot_longer(self, **kwargs) -> "IbisDataFrame":
 
-        new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(self.generate_tablename(prefix="pivot_longer"))
+        new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_longer"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
