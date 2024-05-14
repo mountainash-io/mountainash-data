@@ -1,0 +1,88 @@
+name: Pytest
+
+on: 
+  push:
+    paths:
+      - 'src/mountainash_data/**'    
+  workflow_dispatch:
+
+jobs:
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [ "3.12"] #, "3.8", "3.9", "3.10","3.11",]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Checkout private repositories - mountainash-constants
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-constants
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-constants        
+          fetch-depth: 1
+  
+      - name: Checkout private repositories - mountainash-settings
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-settings
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-settings        
+          fetch-depth: 1
+  
+      - name: Checkout private repositories - mountainash-auth-settings
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-auth-settings
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-auth-settings        
+          fetch-depth: 1
+
+      - name: Checkout private repositories - mountainash-utils
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-utils
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-utils        
+          fetch-depth: 1
+
+      - name: Checkout private repositories - mountainash-utils-dataclasses
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-utils-dataclasses
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-utils-dataclasses   
+          fetch-depth: 1
+            
+      - name: Checkout private repositories - mountainash-utils-files
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-utils-files
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-utils-files   
+          fetch-depth: 1
+            
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Create virtual environment
+        run: hatch env create test_github
+
+      - name: Run tests
+        run: hatch run test_github:test
