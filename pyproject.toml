@@ -56,14 +56,14 @@ dependencies = [
   "pytest",
   "pytest_check",
 
-  "mountainash_settings @ {root:uri}/tmp/mountainash-settings",
-  "mountainash_constants @ {root:uri}/tmp/mountainash-constants",
-  # "mountainash_data @ {root:uri}/tmp/mountainash-data",
-  "mountainash_auth_settings @ {root:uri}/tmp/mountainash-auth-settings",
-  # "mountainash_utils @ {root:uri}/tmp/mountainash-utils",
-  "mountainash_utils_ssh @ {root:uri}/tmp/mountainash-utils-ssh",
-  "mountainash_utils_files @ {root:uri}/tmp/mountainash-utils-files",
-  "mountainash_utils_dataclasses @ {root:uri}/tmp/mountainash-utils-dataclasses",
+  "mountainash_settings @ {root:uri}/temp/mountainash-settings",
+  "mountainash_constants @ {root:uri}/temp/mountainash-constants",
+  # "mountainash_data @ {root:uri}/temp/mountainash-data",
+  "mountainash_auth_settings @ {root:uri}/temp/mountainash-auth-settings",
+  # "mountainash_utils @ {root:uri}/temp/mountainash-utils",
+  "mountainash_utils_ssh @ {root:uri}/temp/mountainash-utils-ssh",
+  "mountainash_utils_files @ {root:uri}/temp/mountainash-utils-files",
+  "mountainash_utils_dataclasses @ {root:uri}/temp/mountainash-utils-dataclasses",
 ]
 [tool.hatch.envs.test_github.scripts]
 test = "pytest"
