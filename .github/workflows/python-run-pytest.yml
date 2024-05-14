@@ -69,6 +69,16 @@ jobs:
           path: temp/mountainash-utils-dataclasses   
           fetch-depth: 1
             
+      - name: Checkout private repositories - mountainash-utils-ssh
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/mountainash-utils-ssh
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: temp/mountainash-utils-ssh   
+          fetch-depth: 1
+
+
       - name: Checkout private repositories - mountainash-utils-files
         uses: actions/checkout@v4
         with:
