@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from abc import ABC, abstractmethod
 # import ibis
 # from upath import UPath
@@ -103,7 +103,7 @@ class BaseDBConnection(ABC):
         print(url)
 
         database, *schema = url.path[1:].split("/", 1)
-        query_params = parse_qs(url.query)
+        # query_params = parse_qs(url.query)
         connect_args = {
             "user": url.username,
             "password": url.password or "",

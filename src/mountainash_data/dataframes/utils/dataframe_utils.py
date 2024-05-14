@@ -6,7 +6,7 @@ from typing import Union, Any,  Dict, List, Optional, Sequence
 
 import uuid
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
-from mountainash_utils_dataclasses import DataclassUtils
+# from mountainash_utils_dataclasses import DataclassUtils
 import ibis.expr.types as ir
 
 # from multipledispatch import dispatch
@@ -210,17 +210,17 @@ class DataFrameUtils:
  
 
         if isinstance(df_dataframe, pl.DataFrame):
-            df = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
+            df_dataframe = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
             return ibis.memtable(data=df_dataframe, 
                                  columns=DataFrameUtils.get_column_names(df_dataframe), 
                                  name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
         elif isinstance(df_dataframe, pl.LazyFrame):
-            df = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
-            return ibis.memtable(data=df_dataframe.collect(), 
+            df_dataframe = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
+            return ibis.memtable(data=df_dataframe, 
                                  columns=DataFrameUtils.get_column_names(df_dataframe), 
                                  name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
         elif isinstance(df_dataframe, pd.DataFrame):
-            df = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
+            df_dataframe = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
             return ibis.memtable(data=df_dataframe, 
                                  columns=DataFrameUtils.get_column_names(df_dataframe), 
                                  name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))

@@ -1,10 +1,9 @@
 
-from typing import List, Union, Dict, Any, Optional, Tuple, Sequence
+from typing import List, Union, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
 import pandas as pd
 import polars as pl
 import pyarrow as pa
-import uuid
 
 import ibis.expr.types as ir
 # from ibis.common.deferred import Deferred
@@ -13,7 +12,6 @@ import ibis
 import ibis.expr.types as ir
 
 from .utils.dataframe_utils import DataFrameUtils
-from functools import lru_cache 
 
 # @lru_cache
 # def get_ibis_connection(backend_type: str,

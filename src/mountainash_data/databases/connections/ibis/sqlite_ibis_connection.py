@@ -1,6 +1,5 @@
 from typing import Optional
 import ibis
-import ibis.expr.types.relations as ir 
 
 from .base_ibis_connection import BaseIbisConnection
 
