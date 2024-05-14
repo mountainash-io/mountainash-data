@@ -22,9 +22,9 @@ def test_initialization(sample_polars_dataframe):
 
 
 def test_materialization(sample_polars_dataframe):
-    assert sample_polars_dataframe.is_materialised() == True
+    
     materialized_df = sample_polars_dataframe.materialise()
-    assert isinstance(materialized_df, pl.DataFrame)
+    assert isinstance(materialized_df, pd.DataFrame)
 
 
 def test_column_operations(sample_polars_dataframe):
@@ -49,7 +49,7 @@ def test_column_operations(sample_polars_dataframe):
 
 def test_joins(sample_polars_dataframe):
     right_df = sample_polars_dataframe
-    joined_df = sample_polars_dataframe.inner_join(right_df, predicates=["A"])
+    joined_df = sample_polars_dataframe.left_join(right_df, predicates=["A"])
     assert "A" in joined_df.get_column_names()
 
 

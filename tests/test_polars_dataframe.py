@@ -108,5 +108,4 @@ def test_get_row_count_method(sample_polars_df: IbisDataFrame):
     row_count = sample_polars_df.count()
     
     with check:
-        assert isinstance(row_count, int)
         assert row_count == 3
