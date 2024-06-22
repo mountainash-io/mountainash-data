@@ -10,21 +10,32 @@ from mountainash_data import IbisDataFrame, DataFrameFactory
 
 # Fixture to initialize a sample IbisDataFrame object for testing
 @pytest.fixture
+def sample_pandas_dataframe():
+    # Create a sample Polars DataFrame for testing
+    data = {'A': [1, 2, 3], 'B': [4, 5, 6]}
+    pdf = pd.DataFrame(data)
+    return IbisDataFrame(df=pdf, ibis_backend_schema="pandas")
+
+@pytest.fixture
 def sample_polars_dataframe():
     # Create a sample Polars DataFrame for testing
     data = {'A': [1, 2, 3], 'B': [4, 5, 6]}
     pdf = pd.DataFrame(data)
-    return IbisDataFrame(df=pdf)
+    return IbisDataFrame(df=pdf, ibis_backend_schema="polars")
 
 
 def test_initialization(sample_polars_dataframe):
     assert isinstance(sample_polars_dataframe, IbisDataFrame)
 
 
-def test_materialization(sample_polars_dataframe):
-    
+def test_materialization_polars(sample_polars_dataframe):
     materialized_df = sample_polars_dataframe.materialise()
+    assert isinstance(materialized_df, pl.DataFrame)
+
+def test_materialization_pandas(sample_pandas_dataframe):
+    materialized_df = sample_pandas_dataframe.materialise()
     assert isinstance(materialized_df, pd.DataFrame)
+
 
 
 def test_column_operations(sample_polars_dataframe):

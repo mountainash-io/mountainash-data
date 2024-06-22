@@ -40,15 +40,22 @@ class IbisDataFrame(BaseDataFrame):
 
 
 
+
+
+
 #Materialisation Status
     def is_materialised(self) -> bool:
         return isinstance(self.ibis_df, ir.Table)
 
 
-    def materialise(self) -> pd.DataFrame:
+    def materialise(self) -> Union[pd.DataFrame, pl.DataFrame]:
 
         if isinstance(self.ibis_df, ir.Table):
-            return self.ibis_df.execute()
+
+            if self.ibis_backend_schema == "polars":
+                return self.ibis_df.to_polars()
+            else:
+                return self.ibis_df.execute()
         else:
             raise ValueError("Dataframe could not be not materialised")
 
@@ -206,13 +213,14 @@ class IbisDataFrame(BaseDataFrame):
     def inner_join(self,             
                    right: "BaseDataFrame", 
                    predicates: Any,
-                   execute_on: Optional["str"] = None) -> "IbisDataFrame":
+                   execute_on: Optional["str"] = None,
+                   **kwargs) -> "IbisDataFrame":
 
         # left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
         # new_df: ir.Table = left_table.inner_join(right_table, predicates).alias(self.generate_tablename(prefix="inner_join"))
 
 
-        new_df: ir.Table = self._inner_join_ibis(right=right, predicates=predicates, execute_on=execute_on).alias(self.generate_tablename(prefix="inner_join"))
+        new_df: ir.Table = self._inner_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="inner_join"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
@@ -228,12 +236,13 @@ class IbisDataFrame(BaseDataFrame):
     def left_join(self,             
                    right: "BaseDataFrame", 
                    predicates: Any,
-                   execute_on: Optional["str"] = None) -> "IbisDataFrame":
+                   execute_on: Optional["str"] = None,
+                   **kwargs) -> "IbisDataFrame":
 
         # left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
         # new_df: ir.Table = left_table.left_join(right_table, predicates).alias(self.generate_tablename(prefix="left_join"))
 
-        new_df: ir.Table = self._left_join_ibis(right=right, predicates=predicates, execute_on=execute_on).alias(self.generate_tablename(prefix="left_join"))
+        new_df: ir.Table = self._left_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="left_join"))
 
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
@@ -248,12 +257,13 @@ class IbisDataFrame(BaseDataFrame):
     def outer_join(self,             
                    right: "BaseDataFrame", 
                    predicates: Any,
-                   execute_on: Optional["str"] = None) -> "IbisDataFrame":
+                   execute_on: Optional["str"] = None,
+                   **kwargs) -> "IbisDataFrame":
 
         # left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
         # new_df: ir.Table = left_table.outer_join(right_table, predicates).alias(self.generate_tablename(prefix="outer_join"))
 
-        new_df: ir.Table = self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on).alias(self.generate_tablename(prefix="outer_join"))
+        new_df: ir.Table = self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="outer_join"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
@@ -272,7 +282,7 @@ class IbisDataFrame(BaseDataFrame):
     def filter(self, ibis_expr: Any) -> "IbisDataFrame":
         """Filter rows based on the given expression."""
 
-        new_df: ir.Table = self.ibis_df.filter(ibis_expr).alias(self.generate_tablename(prefix="filter"))
+        new_df: ir.Table = self._filter_ibis(ibis_expr).alias(self.generate_tablename(prefix="filter"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
@@ -284,12 +294,26 @@ class IbisDataFrame(BaseDataFrame):
     def head(self, n: int) -> "IbisDataFrame":
         """Take the first n rows."""
 
-        new_df = self.ibis_df.head(n).alias(self.generate_tablename(prefix="head"))
+        new_df = self._head_ibis(n).alias(self.generate_tablename(prefix="head"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
                 
+    def union(self, **kwargs) -> "IbisDataFrame":
+        """Take the first n rows."""
 
+        new_df = self._union_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="union"))
+
+        return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+
+    def order_by(self, **kwargs) -> "IbisDataFrame":
+        """Take the first n rows."""
+
+        new_df = self._order_by_ibis(**kwargs).alias(self.generate_tablename(prefix="order_by"))
+
+        return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+               
 
 #Column Metadata
     def get_column_names(self) -> list:

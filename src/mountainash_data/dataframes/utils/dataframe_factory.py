@@ -116,7 +116,7 @@ class DataFrameFactory:
 
     @classmethod
     def create_ibis_dataframe_object_from_dictionary(cls, 
-            data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
+            data_dict: Dict[str, Union[Sequence[Any],List[Any]]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]] = None,
             ibis_backend: Optional[ibis.BaseBackend] = None,
             ibis_backend_schema: Optional[str] = None,

@@ -146,8 +146,8 @@ class DataFrameUtils:
         elif isinstance(df_dataframe, pd.DataFrame):
             return pl.from_pandas(data=df_dataframe)
         elif isinstance(df_dataframe, ir.Table):
-            return pl.from_pandas(data=df_dataframe.to_pandas())
-            # return df_dataframe.to_polars()
+            # return pl.from_pandas(data=df_dataframe.to_pandas())
+            return df_dataframe.to_polars()
         else:
             raise TypeError("Unsupported dataframe type")
 

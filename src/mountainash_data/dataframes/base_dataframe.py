@@ -28,33 +28,33 @@ from .utils.dataframe_utils import DataFrameUtils
 #     else:
 #         raise ValueError(f"Backend type {backend_type} not supported")
 
-class IbisTableLineageWrapper:  
+# class IbisTableLineageWrapper:  
 
 
-    def __init__(self,
-                 ibis_backend:      ibis.BaseBackend, 
-                 ibis_tablename:    str, 
-                 ibis_table:        ir.Table):
+#     def __init__(self,
+#                  ibis_backend:      ibis.BaseBackend, 
+#                  ibis_tablename:    str, 
+#                  ibis_table:        ir.Table):
 
-        self.ibis_backend:          ibis.BaseBackend = ibis_backend
-        self.ibis_tablename:        str =           ibis_tablename
-        self.ibis_table:            ir.Table =      ibis_table
-        self.openlineage_events:    List[Any] =    []
-        self.substrait_events:      List[Any] =     []
+#         self.ibis_backend:          ibis.BaseBackend = ibis_backend
+#         self.ibis_tablename:        str =           ibis_tablename
+#         self.ibis_table:            ir.Table =      ibis_table
+#         self.openlineage_events:    List[Any] =    []
+#         self.substrait_events:      List[Any] =     []
 
-        #also add polars operations here
+#         #also add polars operations here
 
-    def __del__(self):
+#     def __del__(self):
 
-        if self.ibis_backend:
+#         if self.ibis_backend:
 
-            existing_tables = self.ibis_backend.list_tables()
+#             existing_tables = self.ibis_backend.list_tables()
 
-            if self.ibis_tablename in existing_tables:
+#             if self.ibis_tablename in existing_tables:
                 
-                self.ibis_backend.drop_table(name=self.ibis_tablename)
+#                 self.ibis_backend.drop_table(name=self.ibis_tablename)
 
-                print(f"Backend temp table {self.ibis_tablename} closed.")
+#                 print(f"Backend temp table {self.ibis_tablename} closed.")
 
 
 class BaseDataFrame(ABC):
@@ -114,7 +114,7 @@ class BaseDataFrame(ABC):
 
         #TODO: Check that we have a valid schema
         if default_ibis_schema not in ["duckdb", "polars", "pandas", "sqlite"]:
-            raise ValueError(f"Invalid deafault ibis schema: {default_ibis_schema}")
+            raise ValueError(f"Invalid default ibis schema: {default_ibis_schema}")
 
         self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
 
@@ -161,6 +161,13 @@ class BaseDataFrame(ABC):
                                                         ibis_backend=ibis_backend,
                                                         overwrite=overwrite)
         return ibis_df
+
+
+    def convert_backend_schema(self, new_backend_schema:str) -> "BaseDataFrame":
+
+        #TODO: verify that the new backend schema is valid
+
+        return IbisDataFrame(df=self.ibis_df, ibis_backend_schema=new_backend_schema)
 
 
     # ==============
@@ -243,9 +250,22 @@ class BaseDataFrame(ABC):
         obj_df = self.select(ibis_expr=column)
         obj_dict = DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=obj_df.ibis_df)
 
-        print(f"get_column_as_list: {obj_dict}")
-
         return obj_dict[column]
+
+
+    def get_columns_as_dict(
+            self,
+            key_column:str,
+            value_column:str
+        ) -> Dict[Any,Any]:
+        
+        obj_df = self.select([key_column, value_column])
+        obj_dict = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.ibis_df)
+
+        #create a dictionary of key: value
+        obj_dict = {x[key_column]: x[value_column] for x in obj_dict}
+
+        return obj_dict
 
 
     @abstractmethod
@@ -374,6 +394,25 @@ class BaseDataFrame(ABC):
             raise ValueError("n must be greater than or equal to 0")
 
         return self.ibis_df.head(n=n) 
+
+
+    @abstractmethod
+    def union(self, **kwargs) -> "BaseDataFrame":
+        pass
+
+    def _union_ibis(self, **kwargs) -> ir.Table:
+
+        print(kwargs)
+        return ibis.union(self.ibis_df, **kwargs) 
+
+
+    @abstractmethod
+    def order_by(self, **kwargs) -> "BaseDataFrame":
+        pass
+
+    def _order_by_ibis(self, **kwargs) -> ir.Table:
+        return self.ibis_df.order_by(**kwargs) 
+
 
     # def _head_native(self, n: int) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
     #     """Take the first n rows."""
