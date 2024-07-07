@@ -39,6 +39,11 @@ class IbisDataFrame(BaseDataFrame):
         return df
 
 
+    def convert_backend_schema(self, new_backend_schema:str) -> "IbisDataFrame":
+
+        #TODO: verify that the new backend schema is valid
+
+        return IbisDataFrame(df=self.ibis_df, ibis_backend_schema=new_backend_schema)
 
 
 
@@ -68,18 +73,12 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    # def _select_native(self, columns: Any) -> ir.Table:
-    #     return self._select_native(columns=columns)
-
     def drop(self, columns: Any) -> "IbisDataFrame":
 
         new_df: ir.Table = self._drop_ibis(columns).alias(alias=self.generate_tablename(prefix="drop"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
-    # def _drop_native(self, columns: Any) -> ir.Table:
-    #     return self._drop_ibis(columns=columns)
-
     def distinct(self) -> "BaseDataFrame":
 
         new_df: ir.Table = self._distinct_ibis().alias(alias=self.generate_tablename(prefix="distinct"))
@@ -105,9 +104,6 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
-    # def _mutate_native(self,  **kwargs) -> ir.Table:
-    #     return self._mutate_ibis( **kwargs)
-
 
 # Reshape
     def aggregate(self,  **kwargs) -> "IbisDataFrame":
@@ -115,11 +111,7 @@ class IbisDataFrame(BaseDataFrame):
         new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="aggregate"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
-       
-    # def _aggregate_native(self, **kwargs) -> ir.Table:
-    #     return self._aggregate_ibis(**kwargs)
-
-
+      
 
     def pivot_wider(self,  **kwargs) -> "IbisDataFrame":
 
@@ -127,28 +119,12 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
-    # def _pivot_wider_native(self, **kwargs) -> ir.Table:
-    #     return self._pivot_wider_ibis(**kwargs)
-
     def pivot_longer(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_longer"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    # def _pivot_longer_native(self, **kwargs) -> ir.Table:
-    #     return self._pivot_longer_ibis(**kwargs)
-
-   
-
-
-#Joins
-    # def _resolve_join_backend_native(self, 
-    #                                right:       "BaseDataFrame",
-    #                                execute_on:  Optional[str] = None
-    #                                ) -> Tuple[ir.Table, ir.Table]:
-        
-    #     return self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
 
     def _resolve_join_backend_ibis(self, 
                                    right: "BaseDataFrame",
@@ -175,10 +151,6 @@ class IbisDataFrame(BaseDataFrame):
 
                 #create temp table on left (self) backend
                 left_table = self.ibis_df
-
-                # right_source_table = right.to_arrow()
-                # right_table = self.ibis_backend.create_table(name=self.generate_tablename(prefix="right_table"), obj=right_source_table, overwrite=True)
-
                 right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="left_table", overwrite=True)
 
 
@@ -189,19 +161,11 @@ class IbisDataFrame(BaseDataFrame):
                     raise ValueError("Right must be an IbisDataFrame to execute on right")
 
                 right_table = right.ibis_df
-
-                # left_source_table = self.to_arrow()
-                # left_table = right.ibis_backend.create_table(name=self.generate_tablename(prefix="left_table"), obj=left_source_table, overwrite=True)
-
                 left_table = self.create_temp_table_ibis(df_dataframe=self.native_df, tablename_prefix="left_table", overwrite=True)
 
 
             else:
                 #We have differing backends, and we are running locally. Bring both into local memory
-                # left_table = ibis.memtable(data=self.to_arrow(), columns=self.get_column_names(), name=self.generate_tablename(prefix="left_table"))
-                # right_table = ibis.memtable(data=right.to_arrow(), columns=right.get_column_names(), name=right.generate_tablename(prefix="right_table"))
-
-
                 left_table = self.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", overwrite=True)
                 right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", overwrite=True)
 
@@ -216,21 +180,9 @@ class IbisDataFrame(BaseDataFrame):
                    execute_on: Optional["str"] = None,
                    **kwargs) -> "IbisDataFrame":
 
-        # left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
-        # new_df: ir.Table = left_table.inner_join(right_table, predicates).alias(self.generate_tablename(prefix="inner_join"))
-
-
         new_df: ir.Table = self._inner_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="inner_join"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
-
-    # def _inner_join_native(self, 
-    #                         right: "BaseDataFrame", 
-    #                         predicates: Any,
-    #                         execute_on: Optional["str"] = None
-    #                        ) -> ir.Table:
-    #     return self._inner_join_ibis(right=right, predicates=predicates, execute_on=execute_on)
-
 
 
     def left_join(self,             
@@ -239,20 +191,11 @@ class IbisDataFrame(BaseDataFrame):
                    execute_on: Optional["str"] = None,
                    **kwargs) -> "IbisDataFrame":
 
-        # left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
-        # new_df: ir.Table = left_table.left_join(right_table, predicates).alias(self.generate_tablename(prefix="left_join"))
-
         new_df: ir.Table = self._left_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="left_join"))
 
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    # def _left_join_native(self, 
-    #                         right: "BaseDataFrame", 
-    #                         predicates: Any,
-    #                         execute_on: Optional["str"] = None
-    #                        ) -> ir.Table:
-    #     return self._left_join_ibis(right=right, predicates=predicates, execute_on=execute_on)
 
     def outer_join(self,             
                    right: "BaseDataFrame", 
@@ -260,24 +203,11 @@ class IbisDataFrame(BaseDataFrame):
                    execute_on: Optional["str"] = None,
                    **kwargs) -> "IbisDataFrame":
 
-        # left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
-        # new_df: ir.Table = left_table.outer_join(right_table, predicates).alias(self.generate_tablename(prefix="outer_join"))
-
         new_df: ir.Table = self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="outer_join"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    # def _outer_join_native(self, 
-    #                         right: "BaseDataFrame", 
-    #                         predicates: Any,
-    #                         execute_on: Optional["str"] = None
-    #                        ) -> ir.Table:
-    #     return self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on)
-
-
-
 # Row Selection
-
 
     def filter(self, ibis_expr: Any) -> "IbisDataFrame":
         """Filter rows based on the given expression."""
@@ -286,9 +216,6 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    # def _filter_native(self, ibis_expr: Any) -> ir.Table:
-    #     return self._filter_ibis(ibis_expr=ibis_expr)
-                
 
 
     def head(self, n: int) -> "IbisDataFrame":
@@ -335,45 +262,15 @@ class IbisDataFrame(BaseDataFrame):
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
 
-    # def _sql_native(self, query:str) -> ir.Table:
-    #     return self._sql_ibis(query=query)
-
-
-
-
     
     def as_dict(self) -> Dict[str, List[Any]] | Any:
         return self._as_dict_ibis()
 
-    # def _as_dict_native(self) -> Dict[str, List[Any]] | Any:
-    #     return self._as_dict_ibis()
-
     def as_list(self) -> Dict[str, List[Any]] | Any:
         return self._as_list_ibis()
-
-    # def _as_list_native(self) -> Dict[str, List[Any]] | Any:
-    #     return self._as_list_ibis()
 
     def get_first_row_as_dict(self,
         ) -> Dict[Any,Any]:
         return self._get_first_row_as_dict_ibis()
 
-    # def _get_first_row_as_dict_native(self,
-    #     ) -> Dict[Any,Any]:
-    #     return self._get_first_row_as_dict_ibis()
 
-
-
-    # def create_filter_expression(self, column_name: str, operator: str, value: Any):
-    #     if operator == '>':
-    #         return pl.col(column_name) > value
-    #     elif operator == '<':
-    #         return pl.col(column_name) < value
-    #     elif operator == '==':
-    #         return pl.col(column_name) == value
-    #     elif operator == '!=':
-    #         return pl.col(column_name) != value
-    #     elif operator == 'isin':
-    #         return pl.col(column_name).is_in(value)
-    #     else:
-    #         raise Exception(f"Operator {operator} not supported")

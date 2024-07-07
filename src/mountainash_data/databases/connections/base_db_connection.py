@@ -31,7 +31,7 @@ class BaseDBConnection(ABC):
                 raise ValueError("SSH Auth settings are required for SSH connection")  
 
             #Just create the object, do not connect 
-            self.ssh_client = SSH_Helper(ssh_auth_settings_parameters)
+            self.ssh_client = SSH_Helper(auth_settings_parameters=ssh_auth_settings_parameters)
 
 
     @abstractmethod

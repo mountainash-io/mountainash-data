@@ -13,23 +13,7 @@ import ibis.expr.types as ir
 
 from .utils.dataframe_utils import DataFrameUtils
 
-# @lru_cache
-# def get_ibis_connection(backend_type: str,
-#                         connection_namespace: Optional[str] = "default"
-#                         ):
-    
-
-#     if backend_type == "pandas":
-#         return ibis.pandas.connect()
-#     elif backend_type == "polars":
-#         return ibis.polars.connect()
-#     elif backend_type == "duckdb":
-#         return ibis.duckdb.connect()
-#     else:
-#         raise ValueError(f"Backend type {backend_type} not supported")
-
 # class IbisTableLineageWrapper:  
-
 
 #     def __init__(self,
 #                  ibis_backend:      ibis.BaseBackend, 
@@ -70,7 +54,7 @@ class BaseDataFrame(ABC):
                 #lineage_history: Optional[List[Any]] = None,
                  ) -> None:
         
-        #default ibis schema
+        #default ibis schema. Schema is the type of backend, eg "polars", "duckdb", "postgres"
         self.default_ibis_backend_schema: Optional[str] = None
         self.init_default_ibis_backend_schema()        
         
@@ -162,12 +146,9 @@ class BaseDataFrame(ABC):
                                                         overwrite=overwrite)
         return ibis_df
 
-
+    @abstractmethod
     def convert_backend_schema(self, new_backend_schema:str) -> "BaseDataFrame":
-
-        #TODO: verify that the new backend schema is valid
-
-        return IbisDataFrame(df=self.ibis_df, ibis_backend_schema=new_backend_schema)
+        pass
 
 
     # ==============
@@ -186,20 +167,12 @@ class BaseDataFrame(ABC):
     def collect(self) -> Union[pd.DataFrame, pl.DataFrame]:
         return self.materialise()
 
-    # def to_arrow_native(self) -> pa.Table:
-    #     return DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=self.native_df)
-
     def to_arrow(self) -> pa.Table:
         return DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=self.ibis_df)
-
-    # def to_pandas_native(self) -> pd.DataFrame:
-    #     return DataFrameUtils.cast_dataframe_to_pandas(df_dataframe=self.native_df)
 
     def to_pandas(self) -> pd.DataFrame:
         return DataFrameUtils.cast_dataframe_to_pandas(df_dataframe=self.ibis_df)
 
-    # def to_polars_native(self) -> pl.DataFrame:
-    #     return DataFrameUtils.cast_dataframe_to_polars(df_dataframe=self.native_df)
 
     def to_polars(self) -> pl.DataFrame:
         return DataFrameUtils.cast_dataframe_to_polars(df_dataframe=self.ibis_df)
@@ -237,10 +210,6 @@ class BaseDataFrame(ABC):
         df_cols: Any = self.ibis_df.select(ibis_expr)
         return df_cols
 
-    # def _select_native(self, columns: Any) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     new_df = DataFrameUtils.select(df=self.native_df, columns=columns)
-    #     return new_df
-
 
     def get_column_as_list(
             self,
@@ -271,10 +240,6 @@ class BaseDataFrame(ABC):
     @abstractmethod
     def drop(self, columns: Any) -> "BaseDataFrame":
         pass
-
-    # def _drop_native(self, columns: Any) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     new_df = DataFrameUtils.drop(df=self.native_df, columns=columns)
-    #     return new_df
 
     def _drop_ibis(self, columns: Any) -> ir.Table:
         df_cols: Any = self.ibis_df.drop(columns)
@@ -309,10 +274,6 @@ class BaseDataFrame(ABC):
     def mutate(self,  **kwargs) -> "BaseDataFrame":
         pass
 
-    # @abstractmethod
-    # def _mutate_native(self, **kwargs) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
-
     def _mutate_ibis(self,  **kwargs) -> ir.Table:
         df_cols: Any = self.ibis_df.mutate( **kwargs)
         return df_cols
@@ -320,10 +281,6 @@ class BaseDataFrame(ABC):
     @abstractmethod
     def aggregate(self, **kwargs) -> "BaseDataFrame":
         pass
-
-    # @abstractmethod
-    # def _aggregate_native(self, **kwargs) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
 
     def _aggregate_ibis(self, **kwargs) -> ir.Table:
 
@@ -334,10 +291,6 @@ class BaseDataFrame(ABC):
     def pivot_wider(self, **kwargs) -> "BaseDataFrame":
         pass
 
-    # @abstractmethod
-    # def _pivot_wider_native(self, **kwargs) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
-
     def _pivot_wider_ibis(self, **kwargs) -> ir.Table:
         df_cols: Any = self.ibis_df.pivot_wider(**kwargs)
         return df_cols
@@ -346,9 +299,6 @@ class BaseDataFrame(ABC):
     def pivot_longer(self, **kwargs) -> "BaseDataFrame":
         pass
 
-    # @abstractmethod
-    # def _pivot_longer_native(self, **kwargs) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
 
     def _pivot_longer_ibis(self, **kwargs) -> ir.Table:
         df_cols: Any = self.ibis_df.pivot_longer(**kwargs)
@@ -364,9 +314,6 @@ class BaseDataFrame(ABC):
     def _get_column_names_ibis(self) -> List[str]:
         return DataFrameUtils.get_column_names(df=self.ibis_df)
 
-    # def _get_column_names_native(self) -> List[str]:
-    #     return DataFrameUtils.get_column_names(df=self.native_df)
-
 
     # ==============
     ### Rows
@@ -374,10 +321,6 @@ class BaseDataFrame(ABC):
     @abstractmethod
     def filter(self, ibis_expr: Any) -> "BaseDataFrame":
         pass
-
-    # @abstractmethod
-    # def _filter_native(self, ibis_expr: Any) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
 
     def _filter_ibis(self, ibis_expr: Any) -> ir.Table:
         filtered_df = self.ibis_df.filter(ibis_expr)
@@ -414,14 +357,6 @@ class BaseDataFrame(ABC):
         return self.ibis_df.order_by(**kwargs) 
 
 
-    # def _head_native(self, n: int) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     """Take the first n rows."""
-    #     if n < 0:
-    #         raise ValueError("n must be greater than or equal to 0")
-
-    #     return DataFrameUtils.head(df=self.native_df, n=n) 
-
-
     # ==============
     ### Aggregate
 
@@ -433,9 +368,6 @@ class BaseDataFrame(ABC):
 
         return DataFrameUtils.count(self.ibis_df) 
 
-    # def _count_native(self) -> int:
-    #     return DataFrameUtils.count(self.native_df) 
-
 
     # ==============
     ### Formatting as raw data
@@ -444,9 +376,6 @@ class BaseDataFrame(ABC):
     def as_dict(self) -> Dict[str, List[Any]] | Any:
         pass
 
-    # def _as_dict_native(self) -> Dict[str, List[Any]] | Any:
-    #     return DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=self.native_df)
-
     def _as_dict_ibis(self) -> Dict[str, List[Any]] | Any:
 
         return DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=self.ibis_df)
@@ -454,9 +383,6 @@ class BaseDataFrame(ABC):
     @abstractmethod
     def as_list(self) -> Dict[str, List[Any]] | Any:
         pass
-
-    # def _as_list_native(self) -> Dict[str, List[Any]] | Any:
-    #     return DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=self.native_df)
 
     def _as_list_ibis(self) -> Dict[str, List[Any]] | Any:
         
@@ -480,23 +406,7 @@ class BaseDataFrame(ABC):
             return obj_list[0]  
         else:
             return {}
-
-    # def _get_first_row_as_dict_native(
-    #         self,
-    #     ) -> Dict[Any,Any]:
-        
-    #     obj_df = self.head(n=1)
-    #     obj_list = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.native_df)
-
-    #     if len(obj_list) > 0:
-    #         return obj_list[0]  
-    #     else:
-    #         return {}
-
-
-    # # ==============
-    # # Create Tables
-        
+      
 
 
     # ==============
@@ -520,14 +430,6 @@ class BaseDataFrame(ABC):
             ) -> "BaseDataFrame":
         pass
 
-    # @abstractmethod
-    # def _inner_join_native(self, 
-    #          right: "BaseDataFrame", 
-    #          predicates: Any,
-    #          execute_on: Optional["str"] = None
-    #         ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
-
     def _inner_join_ibis(self, 
              right: "BaseDataFrame", 
              predicates: Any,
@@ -547,14 +449,6 @@ class BaseDataFrame(ABC):
              **kwargs
             ) -> "BaseDataFrame":
         pass
-
-    # @abstractmethod
-    # def _left_join_native(self, 
-    #          right: "BaseDataFrame", 
-    #          predicates: Any,
-    #          execute_on: Optional["str"] = None
-    #         ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
 
     def _left_join_ibis(self, 
              right: "BaseDataFrame", 
@@ -577,14 +471,6 @@ class BaseDataFrame(ABC):
             ) -> "BaseDataFrame":
         pass
 
-    # @abstractmethod
-    # def _outer_join_native(self, 
-    #          right: "BaseDataFrame", 
-    #          predicates: Any,
-    #          execute_on: Optional["str"] = None
-    #         ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
-
     def _outer_join_ibis(self, 
              right: "BaseDataFrame", 
              predicates: Any,
@@ -603,9 +489,6 @@ class BaseDataFrame(ABC):
     def sql(self, query: str) -> "BaseDataFrame":
         pass
 
-    # @abstractmethod
-    # def _sql_native(self, query: str) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
-    #     pass
 
     def _sql_ibis(self, query:str) -> ir.Table:
 
