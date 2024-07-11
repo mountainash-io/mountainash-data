@@ -29,7 +29,7 @@ dependencies = [
   "polars==0.20.31",
   "universal_pathlib==0.2.2",
   "numpy==1.26.0",
-  "pyarrow==15.0.2",
+  "pyarrow==16.1.0",
   "openlineage-python==1.17.1"
 ]
 
