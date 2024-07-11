@@ -123,6 +123,7 @@ class DataFrameFactory:
             tablename_prefix: Optional[str] = None) -> IbisDataFrame:
 
         df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
+        #df = DataFrameUtils.create_pyarrow_table(data_dict=data_dict, column_dict=column_dict)
 
         obj_df =  cls.create_dataframe_object(df=df, 
                                               ibis_backend = ibis_backend,

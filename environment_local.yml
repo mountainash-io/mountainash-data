@@ -13,7 +13,8 @@ dependencies:
     - ruff
     - hatch
     - psycopg2-binary
-    - ibis-framework[duckdb,examples,polars,pandas,sqlite] >= 9.0.0
+    - duckdb
+    - ibis-framework[polars,pandas,sqlite, duckdb] == 9.1.0
     - pandas
     - polars
     - pyarrow

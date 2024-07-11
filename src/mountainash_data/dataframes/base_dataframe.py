@@ -242,8 +242,16 @@ class BaseDataFrame(ABC):
         pass
 
     def _drop_ibis(self, columns: Any) -> ir.Table:
-        df_cols: Any = self.ibis_df.drop(columns)
-        return df_cols
+
+        #Only drop columns if they exist in the dataframe
+        existing_columns = self.get_column_names()
+        columns = [x for x in columns if x in existing_columns]
+
+        if not columns or len(columns) == 0:
+            return self.ibis_df
+
+        new_df: Any = self.ibis_df.drop(columns)
+        return new_df
 
     @abstractmethod
     def distinct(self) -> "BaseDataFrame":
@@ -344,8 +352,6 @@ class BaseDataFrame(ABC):
         pass
 
     def _union_ibis(self, **kwargs) -> ir.Table:
-
-        print(kwargs)
         return ibis.union(self.ibis_df, **kwargs) 
 
 
@@ -400,7 +406,7 @@ class BaseDataFrame(ABC):
         ) -> Dict[Any,Any]:
         
         obj_df = self.head(n=1)
-        obj_list = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.ibis_df)
+        obj_list = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.materialise())
 
         if len(obj_list) > 0:
             return obj_list[0]  

@@ -8,6 +8,13 @@ import pandas as pd
 from mountainash_data import IbisDataFrame, DataFrameFactory
 
 
+
+#Tests to create:
+# Test all the methods in the IbisDataFrame class
+# Test dropping columns that are not present
+# Test using different ibis backends - polars, pandas, duckdb
+# Functionality that certain backends don't support will need to be controlled for in the code
+
 # Fixture to initialize a sample IbisDataFrame object for testing
 @pytest.fixture
 def sample_pandas_dataframe():
@@ -24,6 +31,8 @@ def sample_polars_dataframe():
     return IbisDataFrame(df=pdf, ibis_backend_schema="polars")
 
 
+
+### Tests
 def test_initialization(sample_polars_dataframe):
     assert isinstance(sample_polars_dataframe, IbisDataFrame)
 

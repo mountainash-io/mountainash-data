@@ -20,6 +20,10 @@ class DataFrameUtils:
     # def get_supported_dataframe_frameworks() -> set:
     #     return DataclassUtils.get_enum_values_set(enumclass=CONST_DATAFRAME_FRAMEWORK)
 
+
+    #--------------------
+    # Casting Dictionary to Dataframe
+
     @classmethod
     def create_dataframe(
             cls,
@@ -47,11 +51,12 @@ class DataFrameUtils:
 
         if column_dict:
 
-            if isinstance(data_dict, dict):
-                return pd.DataFrame(data_dict).rename(columns=column_dict, errors='ignore')
+            df = pd.DataFrame(data_dict)
+            df_cols = DataFrameUtils.get_column_names(df)
+            new_colnames = {col: column_dict.get(col, col) for col in df_cols}
 
-            elif isinstance(data_dict, list):
-                return pd.DataFrame(data_dict).rename(columns=column_dict, errors='ignore')
+            return df.rename(columns=new_colnames, errors='ignore')
+        
         else:
             return pd.DataFrame(data_dict)
 
@@ -62,14 +67,46 @@ class DataFrameUtils:
         
         if column_dict:
 
-            if isinstance(data_dict, dict):
-                return pl.DataFrame(data=data_dict).rename(mapping=column_dict)
 
-            elif isinstance(data_dict, list):
-                return pl.DataFrame(data=data_dict).rename(mapping=column_dict)
+            df = pl.DataFrame(data_dict)
+            df_cols = DataFrameUtils.get_column_names(df)
+            new_colnames = {col: column_dict.get(col, col) for col in df_cols}
+
+            return df.rename(mapping=new_colnames)
+
+            # if isinstance(data_dict, dict):
+            #     return pl.DataFrame(data=data_dict).rename(mapping=column_dict)
+
+            # elif isinstance(data_dict, list):
+            #     return pl.DataFrame(data=data_dict).rename(mapping=column_dict)
         else:
             return pl.DataFrame(data=data_dict)
+            
+    @staticmethod
+    def create_pyarrow_table(
+        data_dict: Dict[str, Union[Sequence, List]] | List[Dict[str, Any]],
+        column_dict: Optional[Dict[str, str]] = None
+    ) -> pa.Table:
         
+        if isinstance(data_dict, dict):
+            # Convert dict of lists/sequences to PyArrow table
+            table = pa.Table.from_pydict(data_dict)
+        elif isinstance(data_dict, list):
+            # Convert list of dicts to PyArrow table
+            table = pa.Table.from_pylist(data_dict)
+        else:
+            raise ValueError("Input must be a dictionary of sequences or a list of dictionaries")
+
+        if column_dict:
+            # Rename columns if column_dict is provided
+            # new_names = [column_dict.get(col, col) for col in table.column_names]
+            df_cols = DataFrameUtils.get_column_names(table)
+            new_colnames = {col: column_dict.get(col, col) for col in df_cols}
+
+            table = table.rename_columns(new_colnames)
+
+        return table
+
     @staticmethod
     def create_ibis_dataframe(
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
@@ -80,9 +117,12 @@ class DataFrameUtils:
 
         return ibis.memtable(data=df, columns=columns)    
 
+    #--------------------
+    # Casting Dataframe to Dataframe
+
     @staticmethod
     def cast_dataframe_to_pandas(
-        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]) -> pd.DataFrame:
+        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]) -> pd.DataFrame:
         """Casts the input dataframe to a Pandas DataFrame.
 
         Supported input types are:
@@ -102,7 +142,10 @@ class DataFrameUtils:
         Example:
             df = DataframeUtils.cast_dataframe_to_pandas(polars_df)
         """
-        if isinstance(df_dataframe, pd.DataFrame):
+
+        if isinstance(df_dataframe, pa.Table):  
+            return pl.DataFrame(data=df_dataframe).to_pandas()          
+        elif isinstance(df_dataframe, pd.DataFrame):
             return df_dataframe
         elif isinstance(df_dataframe, pl.DataFrame):
             return df_dataframe.to_pandas()
@@ -138,9 +181,10 @@ class DataFrameUtils:
         Example:
             polars_df = DataframeUtils.cast_dataframe_to_polars(pandas_df)
         """
-        if isinstance(df_dataframe, pl.DataFrame):
-            return df_dataframe
-            
+        if isinstance(df_dataframe, pa.Table):  
+            return pl.DataFrame(df_dataframe)        
+        elif isinstance(df_dataframe, pl.DataFrame):
+            return df_dataframe            
         elif isinstance(df_dataframe, pl.LazyFrame):
             return df_dataframe.collect()
         elif isinstance(df_dataframe, pd.DataFrame):
@@ -160,8 +204,8 @@ class DataFrameUtils:
                           overwrite: Optional[bool] = True,
             ) -> ir.Table:
 
-        if not isinstance(df_dataframe, pa.Table):
-            df_dataframe = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
+        if not isinstance(df_dataframe, pl.DataFrame):
+            df_dataframe = DataFrameUtils.cast_dataframe_to_polars(df_dataframe=df_dataframe)
 
         if overwrite is None:
             overwrite = True
@@ -184,9 +228,10 @@ class DataFrameUtils:
 
     @staticmethod
     def cast_dataframe_to_ibis(
-        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table],
-        ibis_backend: Optional[ibis.BaseBackend] = None,
+        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
+        ibis_backend: Optional[ibis.BaseBackend|str] = None,
         tablename_prefix: Optional[str] = None) -> ir.Table:
+        
         """Converts the input dataframe to a Polars DataFrame.
 
         Supported input types are:
@@ -206,10 +251,18 @@ class DataFrameUtils:
         Example:
             polars_df = DataframeUtils.cast_dataframe_to_polars(pandas_df)
         """
-        ibis.set_backend(backend="polars")
- 
 
-        if isinstance(df_dataframe, pl.DataFrame):
+        if ibis_backend is None:
+            ibis_backend = "polars"
+        ibis.set_backend(backend=ibis_backend) 
+
+
+        if isinstance(df_dataframe, pa.Table):
+            return ibis.memtable(data=df_dataframe, 
+                                 columns=DataFrameUtils.get_column_names(df_dataframe), 
+                                 name=DataFrameUtils.generate_tablename(prefix=tablename_prefix))
+
+        elif isinstance(df_dataframe, pl.DataFrame):
             df_dataframe = DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=df_dataframe)
             return ibis.memtable(data=df_dataframe, 
                                  columns=DataFrameUtils.get_column_names(df_dataframe), 
@@ -261,7 +314,7 @@ class DataFrameUtils:
         elif isinstance(df_dataframe, pl.LazyFrame):
             return df_dataframe.collect().to_arrow() 
         elif isinstance(df_dataframe, pd.DataFrame):
-            return pa.Table.from_pandas(df_dataframe)
+            return pl.DataFrame(data=df_dataframe).to_arrow()
         elif isinstance(df_dataframe, ir.Table):
             return df_dataframe.to_pyarrow()
         else:
@@ -269,10 +322,11 @@ class DataFrameUtils:
 
 
 
-
+    #--------------------
+    # Casting Dataframe to Dictionary
 
     @staticmethod
-    def cast_dataframe_to_dictonary_of_lists(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]) -> Dict[Any,List[Any]]:
+    def cast_dataframe_to_dictonary_of_lists(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]) -> Dict[Any,List[Any]]:
         """Converts a DataFrame to a dictionary.
         
         Args:
@@ -292,15 +346,20 @@ class DataFrameUtils:
             dict_df = DataframeUtils.cast_dataframe_to_dictonary_of_lists(df, 'list')
         """
 
-        if isinstance(df, pd.DataFrame):
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
 
+
+        #Now convert dataframes
+        if isinstance(df, pd.DataFrame):
             return df.to_dict(orient='list')
             
         elif isinstance(df, pl.DataFrame):
-                return df.to_dict(as_series=False) 
+            return df.to_dict(as_series=False) 
             
         elif isinstance(df, pl.LazyFrame):
-                return df.collect().to_dict(as_series=False) 
+            return df.collect().to_dict(as_series=False) 
 
         elif isinstance(df, ir.Table):
 
@@ -313,9 +372,11 @@ class DataFrameUtils:
         else:
             raise TypeError("Unsupported dataframe type")
         
+    #--------------------
+    # Casting Dataframe to List of Dicts
 
     @staticmethod
-    def cast_dataframe_to_list_of_dictionaries(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]) -> List[Dict[Any,Any]]:
+    def cast_dataframe_to_list_of_dictionaries(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]) -> List[Dict[Any,Any]]:
         """Converts a DataFrame to a dictionary.
         
         Args:
@@ -335,64 +396,104 @@ class DataFrameUtils:
             dict_df = DataframeUtils.cast_dataframe_to_list_of_dictionaries(df, 'list')
         """
 
-        if isinstance(df, pd.DataFrame):
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
 
+        #Now convert dataframes
+        if isinstance(df, pd.DataFrame):
             return df.to_dict(orient='records')
            
         elif isinstance(df, pl.DataFrame):
-                return df.to_dicts() 
+            return df.to_dicts() 
             
         elif isinstance(df, pl.LazyFrame):
-                return df.collect().to_dicts() 
+            return df.collect().to_dicts() 
 
         elif isinstance(df, ir.Table):
-
             return df.execute().to_dict(orient='records')
+        
         else:
             raise TypeError("Unsupported dataframe type")
 
 
 
-    #Columns
+    #--------------------
+    # Dataframe Column Operations
 
     @staticmethod            
-    def drop(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table], 
+    def drop(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
                      columns: List[str]|str
-                     ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
+                     ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]:
+
+
 
         if isinstance(columns, str):
             columns = [columns]
 
-        if isinstance(df, pd.DataFrame):
-            return df.drop(columns=columns, errors='ignore')
+        existing_columns = DataFrameUtils.get_column_names(df)
+        columns_to_drop = [col for col in columns if col in existing_columns]
+
+        #if an empty list, just retrun the original dataframe!
+        if not columns_to_drop or len(columns_to_drop) == 0:
+            return df
+
+        #TODO: Add a warning if columns doesn't exist
+
+
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
+            return df.drop(columns_to_drop).to_arrow()
+
+        elif isinstance(df, pd.DataFrame):
+            return df.drop(columns=columns_to_drop, errors='ignore')
         elif isinstance(df, (pl.DataFrame, pl.LazyFrame)):
-            return df.drop(columns)
+            return df.drop(columns_to_drop)
         elif isinstance(df, (ir.Table)):
-            return df.drop(*columns)
+            return df.drop(*columns_to_drop)
         else:
             raise ValueError("Unsupported DataFrame type")
 
 
     @staticmethod            
-    def select( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table], 
+    def select( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
                         columns: List[str]|str
-                        ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
+                        ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]:
 
         if isinstance(columns, str):
             columns = [columns]
 
-        if isinstance(df, pd.DataFrame):
-            return df[columns]
+        existing_columns = DataFrameUtils.get_column_names(df)
+        columns_to_select = [col for col in columns if col in existing_columns]
+
+        if not columns_to_select or len(columns_to_select) == 0:
+            return df
+
+
+        #TODO: Add a warning if columns doesn't exist
+
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
+            df.select(columns_to_select).to_arrow()
+
+        elif isinstance(df, pd.DataFrame):
+            return df[columns_to_select]
         elif isinstance(df, (pl.DataFrame, pl.LazyFrame)):
-            return df.select(columns)
+            return df.select(columns_to_select)
         elif isinstance(df, (ir.Table)):
-            return df.select(columns)
+            return df.select(columns_to_select)
         else:
             raise ValueError("Unsupported DataFrame type")
         
     # Column Metadata
     @staticmethod        
-    def get_column_names(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table] ) -> List:
+    def get_column_names(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] ) -> List:
+
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
 
         if isinstance(df, pd.DataFrame):
             return df.columns.tolist()
@@ -404,17 +505,22 @@ class DataFrameUtils:
             raise ValueError("Unsupported DataFrame type")
 
 
-    #Rows
+    #--------------------
+    # Dataframe Row Operations
         
     @staticmethod            
-    def head( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table], 
+    def head( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
               n: int
-                        ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]:
+            ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]:
 
         if n < 0:
             raise ValueError("n must be greater than or equal to 0")
 
-        if isinstance(df, pd.DataFrame):
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
+            return df.head(n=n).to_arrow()
+        elif isinstance(df, pd.DataFrame):
             return df.head(n=n)
         elif isinstance(df, (pl.DataFrame, pl.LazyFrame)):
             return df.head(n=n)
@@ -424,8 +530,12 @@ class DataFrameUtils:
             raise ValueError("Unsupported DataFrame type")        
         
     @staticmethod            
-    def count( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table], 
+    def count( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
                         ) -> int:
+
+        if isinstance(df, pa.Table):  
+            #Convert pyarrow to polars!
+            df =  pl.DataFrame(df)
 
         if isinstance(df, pd.DataFrame):
             return df.shape[0]

@@ -23,7 +23,8 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "ibis-framework[polars,pandas,sqlite] >= 9.0.0",
+  "duckdb",
+  "ibis-framework[polars,pandas,sqlite,duckdb] == 9.0.0",
   "pandas==2.2.2",
   "polars==0.20.31",
   "universal_pathlib==0.2.2",
