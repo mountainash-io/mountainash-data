@@ -23,6 +23,7 @@ from .databases.connections.ibis import (
 )
 
 __all__ = (
+    "__version__",
 
     "BaseDataFrame",
     # "PandasDataFrame",

@@ -1,15 +1,12 @@
 
 from typing import List, Union, Dict, Any, Optional, Tuple
 from abc import ABC, abstractmethod
+
 import pandas as pd
 import polars as pl
 import pyarrow as pa
-
 import ibis.expr.types as ir
-# from ibis.common.deferred import Deferred
-# from ibis import _
 import ibis
-import ibis.expr.types as ir
 
 from .utils.dataframe_utils import DataFrameUtils
 
