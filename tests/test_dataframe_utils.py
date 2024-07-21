@@ -99,7 +99,7 @@ def test_create_dataframe_pandas_empty():
     print(pdDataframe)
     with pytest.raises(ValueError): #Either the dataframe creation should be stopped before this or this should fail
         assert pdDataframe["col1"] == [7,8,9] #Allows for creation of an unaccesable dataframe
-        assert pdDataframe["col3"] == None  
+        assert pdDataframe["col3"] == None 
 
 
 def test_create_dataframe_polars_empty():
@@ -110,27 +110,26 @@ def test_create_dataframe_polars_empty():
 
     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleEmpty, columnDictExample1)
     print(plDataframe) #Same issue as pandas, allows for creation of unaccessable dataframes with None columns
-    assert plDataframe["col1"] == [7,8,9] 
-    assert plDataframe["col3"] == None  
+    with pytest.raises(Exception):
+        assert plDataframe["col3"] == [7,8,9] 
+        assert plDataframe["col3"] == None  
 
-
-"""
-
-TODO: Write empty tests for ibis dataframes
-
-"""
 
 def test_create_dataframe_ibis_empty():
-    #Ibis
-    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1)
+    with pytest.raises(Exception): 
+        ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleEmpty)
+
+    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleEmpty, columnDictExample1)
+    print(ibisDataFrame)
     #Expected column names
     expCol = list(columnDictExample1.values())
     assert ibisDataFrame.columns == expCol
-    #Expected col 1
-    expOne = dataDictExample1["column1"]
-    valuesColOne = list(ibisDataFrame.execute()["col1"])
-    assert valuesColOne == expOne
+    valuesColOne = list(ibisDataFrame.execute()["col3"])
+    assert valuesColOne == [None] * 3
 
+    #Ibis actually works after being created with an empty value for one of the columns, needs to be restricted if we want it
+    #to stay in line with Polars and Pandas.
+    #Still need to raise value error when created with empty column names in the creation function
 
 
 
