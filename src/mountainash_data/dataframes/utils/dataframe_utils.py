@@ -582,13 +582,9 @@ class DataFrameUtils:
             
             columnTypes = []
             for i in list(column_dict.values()):
-                columnTypes.append(type(i))
+                if type(i) != str:
+                    raise (TypeError("Column Aliases have to be strings"))
             
-            if str not in columnTypes:
-                raise (TypeError("Column Aliases have to be strings"))
-
-            
-        #Data Validation
 
 
             
