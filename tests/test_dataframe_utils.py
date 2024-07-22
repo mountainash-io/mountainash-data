@@ -357,6 +357,10 @@ def test_cast_dataframe_to_pandas():
     assert isinstance(result, pd.DataFrame)
     assert result.equals(pd.DataFrame({"a": [1, 2, 3]}))
 
+    """
+    TODO Test pa tables and pl lazyframes
+    """
+ 
     # Test using a Pandas DataFrame
     df_pandas = pd.DataFrame({"a": [1, 2, 3]})
     result = DataFrameUtils.cast_dataframe_to_pandas(df_pandas)
@@ -364,6 +368,16 @@ def test_cast_dataframe_to_pandas():
     assert isinstance(result, pd.DataFrame)
     assert result.equals(df_pandas)
 
+@pytest.mark.parametrize(
+    "input_df, expectedDF",
+    [
+        (DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1), DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1)),
+        (DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1), DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1)),
+        (DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1), DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1)),
+    ],
+)
+def test_cast_dataframe_to_pandas_extended(input_df, expectedDF):
+    assert DataFrameUtils.cast_dataframe_to_pandas(input_df).equals(expectedDF)
 
 def test_cast_dataframe_to_polars():
     # Test using a Pandas DataFrame
@@ -373,6 +387,21 @@ def test_cast_dataframe_to_polars():
 
     assert isinstance(result, pl.DataFrame)
     assert result.shape == (3, 1)
+
+    """
+    TODO Test pa tables and pl lazyframes
+    """
+
+@pytest.mark.parametrize(
+    "input_df, expectedDF",
+    [
+        (DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1), DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)),
+        (DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1), DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)),
+        (DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1), DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)),
+    ],
+)
+def test_cast_dataframe_to_pandas_extended(input_df, expectedDF):
+    assert DataFrameUtils.cast_dataframe_to_polars(input_df).equals(expectedDF)
 
 
 @pytest.mark.parametrize(
