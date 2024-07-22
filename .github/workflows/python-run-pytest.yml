@@ -1,9 +1,6 @@
 name: Pytest
 
 on: 
-  push:
-    paths:
-      - 'src/mountainash_data/**'    
   pull_request_target:
     paths:
       - 'src/mountainash_data/**'          
