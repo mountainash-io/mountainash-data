@@ -295,7 +295,7 @@ def test_create_dataframe_polars_uneven():
     #Raises an error however it is a ShapeError and is not in the function 
 
 
-def test_create_dataframe_ibis_dirty():
+def test_create_dataframe_ibis_uneven():
     ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleUneven)
     assert ibisDataFrame.columns == ["col1", "col2", "column3"]
 
@@ -311,6 +311,16 @@ def test_create_dataframe_ibis_dirty():
     with pytest.raises(Exception):
         ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven, columnDictExample1)
     #Raises exact same error as the polars
+
+    dataDictExampleUneven2 = {
+	"column1": [2],
+	"column2": [4.7, 8.9, 0.002],
+	"column3": ["A", "B", "C"]
+    }
+    with pytest.raises(Exception): 
+        ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven2, columnDictExample1)
+    #Intrestingly dataframes can be created with single values (str,int,float) inputed into the creation but lists cannot
+
 
 
 
