@@ -34,20 +34,26 @@ class DataFrameUtils:
 
         if not dataframe_framework:
             raise ValueError("dataframe_framework must be specified")
+        
 
         if dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PANDAS.value:
-            return cls.create_pandas_dataframe(data_dict=data_dict, column_dict=column_dict)
+            return cls.create_pandas_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
-            return cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
+            return cls.create_polars_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.IBIS.value:
-            return cls.create_ibis_dataframe(data_dict=data_dict, column_dict=column_dict)
+            return cls.create_ibis_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
         else:
             raise ValueError(f"Unsupported dataframe framework: {dataframe_framework}")
         
     @staticmethod
     def create_pandas_dataframe(
+            cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> pd.DataFrame:
+
+
+        cls.validate_mapping(data_dict=data_dict, column_dict=column_dict)
+
 
         if column_dict:
 
@@ -62,9 +68,13 @@ class DataFrameUtils:
 
     @staticmethod
     def create_polars_dataframe(
+            cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> pl.DataFrame:
         
+        cls.validate_mapping(data_dict=data_dict, column_dict=column_dict)
+
+
         if column_dict:
 
 
@@ -109,10 +119,11 @@ class DataFrameUtils:
 
     @staticmethod
     def create_ibis_dataframe(
+            cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> ir.Table:
         
-        df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
+        df = DataFrameUtils.create_polars_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
         columns = DataFrameUtils.get_column_names(df)
 
         return ibis.memtable(data=df, columns=columns)    
@@ -559,4 +570,29 @@ class DataFrameUtils:
         else:   
             temp_tablename = str(object=uuid.uuid4())
 
-        return temp_tablename        
+        return temp_tablename   
+
+    @staticmethod
+    def validate_mapping(data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]], column_dict: Optional[Dict[str, str]]=None):
+        
+        #Column Validation
+        if column_dict:
+            if None in column_dict.values():
+                raise (ValueError("Column Aliases cannot be None"))
+            
+            columnTypes = []
+            for i in list(column_dict.values()):
+                columnTypes.append(type(i))
+            
+            if list in columnTypes:
+                raise (TypeError("Column Aliases cannot be a list"))
+        
+            if tuple in columnTypes:
+                raise (TypeError("Column Aliases cannot be a tuple"))
+            
+        #Data Validation
+
+
+            
+
+

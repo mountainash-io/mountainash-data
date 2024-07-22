@@ -56,6 +56,24 @@ columnDictExampleUneven = {
 }
 
 # Def create_dataframe tests
+def test_create_dataframe_fake_dataframes():
+    with pytest.raises(ValueError) as erro:
+        fkDataframe = DataFrameUtils.create_dataframe(None, dataDictExample1, columnDictExample1)
+    assert "dataframe_framework must be specified" in str(erro.value)
+
+    with pytest.raises(ValueError)as erro:
+        fkDataframe = DataFrameUtils.create_dataframe(2, dataDictExample1, columnDictExample1)
+    assert "Unsupported dataframe framework: 2" in str(erro.value)
+
+    with pytest.raises(ValueError)as erro:
+        fkDataframe = DataFrameUtils.create_dataframe("AAAAAA", dataDictExample1, columnDictExample1)
+    assert "Unsupported dataframe framework: AAAAAA" in str(erro.value)
+
+    with pytest.raises(ValueError)as erro:
+        fkDataframe = DataFrameUtils.create_dataframe([CONST_DATAFRAME_FRAMEWORK.PANDAS.value], dataDictExample1, columnDictExample1)
+    assert "Unsupported dataframe framework: ['pandas']" in str(erro.value)
+    
+
 def test_create_dataframe_pandas_simple():
     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1)
     assert isinstance(pdDataframe, pd.DataFrame)
@@ -87,15 +105,17 @@ def test_create_dataframe_ibis_simple():
 
 def test_create_dataframe_pandas_empty():
     #Pandas Empty Column Names
-    pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleEmpty)
-    assert isinstance(pdDataframe, pd.DataFrame)
+    with pytest.raises(ValueError):
+        pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleEmpty)
+    #Should raise a value error because there is a None in the column names
 
-    with pytest.raises(Exception):
-        print(pdDataframe)#Should not be able to be created if this breaks, which it does currently
-        assert pdDataframe[None] == ["A", "B", "C"] 
+    #Testing empty list
+    tempDict = dict(columnDictExampleEmpty)
+    tempDict["column1"] = "col1"
 
-    #Allows for dataframe with an empty list and None to be column names. Crashes when ever attempts to use are made
-
+    with pytest.raises(TypeError):
+        pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, tempDict)
+    #Should raise a type error because there is a list in the column names
 
     #Pandas Empty Data
     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExampleEmpty, columnDictExample1)
@@ -107,9 +127,18 @@ def test_create_dataframe_pandas_empty():
 
 def test_create_dataframe_polars_empty():
     #Polars Empty Column Names
-    with pytest.raises(Exception): #Actual Polars function raises error, may be worthwhile testing in the data utils function and raising specific exception
+    with pytest.raises(ValueError):
         plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleEmpty)
+    #Should raise errors when any of the column values is none
+
+    tempDict = dict(columnDictExampleEmpty)
+    tempDict["column1"] = "col1"
     
+    with pytest.raises(TypeError):
+        plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, tempDict)
+    #Should raise a type error because there is a list in the column names
+
+
     #Polars Empty Data
     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleEmpty, columnDictExample1)
     print(plDataframe) #Same issue as pandas, allows for creation of unaccessable dataframes with None columns
@@ -120,9 +149,18 @@ def test_create_dataframe_polars_empty():
 
 def test_create_dataframe_ibis_empty():
     #Ibis Empty Column Names
-    with pytest.raises(Exception): 
+    with pytest.raises(ValueError): 
         ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleEmpty)
+    #Should raise errors when any of the column values is none
 
+    tempDict = dict(columnDictExampleEmpty)
+    tempDict["column1"] = "col1"
+    
+    with pytest.raises(TypeError):
+        ibisDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, tempDict)
+    #Should raise a type error because there is a list in the column names
+
+    
     #Ibis Empty Data
     ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleEmpty, columnDictExample1)
     print(ibisDataFrame)
@@ -140,14 +178,9 @@ def test_create_dataframe_ibis_empty():
 
 def test_create_dataframe_pandas_dirty():
     #Pandas Dirty Column Names
-    pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleDirty)
-    assert isinstance(pdDataframe, pd.DataFrame)
-    with pytest.raises(Exception):
-        print(pdDataframe) #Allows creation with lists as column values. Crashes
-    assert " " in pdDataframe
-    assert pdDataframe[9][0] == "A"
-    #Empty space strings and integers work as column names
-
+    with pytest.raises(TypeError):
+        pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleDirty)
+    #Should create a type error because there is a list in the column names
 
      #Pandas Dirty Data
     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExampleDirty, columnDictExample1)
@@ -164,18 +197,9 @@ def test_create_dataframe_pandas_dirty():
 
 def test_create_dataframe_polars_dirty():
     #Polars Dirty Column Names
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleDirty)
-
-        assert isinstance(plDataFrame, pl.DataFrame)
-        assert "col1" in plDataFrame
-        assert " " in plDataFrame
-        assert 9 in plDataFrame
-        assert plDataFrame["col1"][2] == "1"
-        assert plDataFrame[" "][0] == 1
-        assert plDataFrame[9][1] == "B"
-
-    #Cannot create dataframe with a list as column name, error raised not in function so not that helpful for debugging later
+    #Should create a type error because there is a list in the column names
 
     #Polars Dirty Data
     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleDirty, columnDictExample1)
@@ -208,9 +232,9 @@ def test_create_dataframe_polars_dirty():
 
 
 def test_create_dataframe_ibis_dirty():
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleDirty)
-    #Cannot create column names with lists, need to move exception raising to function
+    #Should create a type error because there is a list in the column names
 
     ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleDirty, columnDictExample1)
     valuesColOne = list(ibisDataFrame.execute()["col1"])
