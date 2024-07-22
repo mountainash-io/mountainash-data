@@ -238,29 +238,79 @@ def test_create_dataframe_ibis_dirty():
     #Same as Polars
 
 
+def test_create_dataframe_pandas_uneven():
+    #Pandas Uneven Column Names
+    pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleUneven)
+    assert "col1" in pdDataframe
+    assert "column3" in pdDataframe
+    assert not "col3" in pdDataframe
+    assert pdDataframe["col2"][0] == 4
+    assert pdDataframe["column3"][0] == "A"
+
+    columnDictExampleUneven2 = {
+	"column1": "col1",
+	"column2": "col2",
+    "column3": "col3",
+    "column4": "col4"
+    }
+    pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleUneven2)
+    assert "col1" in pdDataframe
+    assert "col2" in pdDataframe
+    assert "col3" in pdDataframe
+    assert not "col4" in pdDataframe
+
+    #If there are not enough column names then the original names will be kept, if there are too many than only the \
+    #correct assiociations will be kept. Works properly
+
+    #Pandas Uneven Data
+    with pytest.raises(ValueError):
+        pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExampleUneven, columnDictExample1)
+    #Creates a value error, does not raise it in the function tho
+    #Should test this before it gets to the actual pandas library code
 
 
+def test_create_dataframe_polars_uneven():
+    #Polars Uneven Column Names
+    plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleUneven)
+    assert "col1" in plDataframe
+    assert "col2" in plDataframe
+    assert "column3" in plDataframe
+
+    columnDictExampleUneven2 = {
+	"column1": "col1",
+	"column2": "col2",
+    "column3": "col3",
+    "column4": "col4"
+    }
+    plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleUneven2)
+    assert "col1" in plDataframe
+    assert "col2" in plDataframe
+    assert "col3" in plDataframe
+    assert not "col4" in plDataframe
+    #Seems to work similar to Pandas
+
+    #Polars Uneven Data
+    with pytest.raises(Exception):
+        plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleUneven, columnDictExample1)
+    #Raises an error however it is a ShapeError and is not in the function 
 
 
+def test_create_dataframe_ibis_dirty():
+    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleUneven)
+    assert ibisDataFrame.columns == ["col1", "col2", "column3"]
 
+    columnDictExampleUneven2 = {
+	"column1": "col1",
+	"column2": "col2",
+    "column3": "col3",
+    "column4": "col4"
+    }
+    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleUneven2)
+    assert ibisDataFrame.columns == ["col1", "col2", "col3"]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    with pytest.raises(Exception):
+        ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven, columnDictExample1)
+    #Raises exact same error as the polars
 
 
 
