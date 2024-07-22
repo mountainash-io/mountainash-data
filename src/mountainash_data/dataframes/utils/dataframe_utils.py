@@ -584,11 +584,9 @@ class DataFrameUtils:
             for i in list(column_dict.values()):
                 columnTypes.append(type(i))
             
-            if list in columnTypes:
-                raise (TypeError("Column Aliases cannot be a list"))
-        
-            if tuple in columnTypes:
-                raise (TypeError("Column Aliases cannot be a tuple"))
+            if str not in columnTypes:
+                raise (TypeError("Column Aliases have to be strings"))
+
             
         #Data Validation
 
