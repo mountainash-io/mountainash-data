@@ -683,5 +683,85 @@ def test_get_columns_names_exceptions(input_df, expected_exception):
         value = DataFrameUtils.get_column_names(input_df)
 
 
+#Select Tests
 
+selectColumn1 = ["col3"]
+selectColumn2 = ["col1", "col2", "col3"]
+selectColumn3 = ["col1", "col3"]
+selectColumn4 = "col3"
+
+def test_select_pandas():
+    valueSEL = DataFrameUtils.select(df_pandas, selectColumn1)
+    valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop1)
+    assert valueSEL.equals(valueDROP)
+
+    valueSEL = DataFrameUtils.select(df_pandas, selectColumn2)
+    valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop2)
+    assert valueSEL.equals(valueDROP)
+
+    valueSEL = DataFrameUtils.select(df_pandas, selectColumn3)
+    valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop4)
+    assert valueSEL.equals(valueDROP)
+
+    valueSEL = DataFrameUtils.select(df_pandas, selectColumn4)
+    valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop1)
+    assert valueSEL.equals(valueDROP)
+
+
+def test_select_polars():
+    valueSEL = DataFrameUtils.select(df_polars, selectColumn1)
+    valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
+    assert valueSEL.equals(valueDROP)
     
+    valueSEL = DataFrameUtils.select(df_polars, selectColumn2)
+    valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop2)
+    assert valueSEL.equals(valueDROP)
+
+    valueSEL = DataFrameUtils.select(df_polars, selectColumn3)
+    valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop4)
+    assert valueSEL.equals(valueDROP)
+
+    valueSEL = DataFrameUtils.select(df_polars, selectColumn4)
+    valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
+    assert valueSEL.equals(valueDROP)
+
+def test_select_ibis():
+    valueSEL = DataFrameUtils.select(df_ibis, selectColumn1)
+    
+    #Expected column names
+    expCol = ["col3"]
+    assert valueSEL.columns == expCol
+    #Expected col values
+    expOne = ["A","B","C"]
+    valuesColOne = list(valueSEL.execute()["col3"])
+    assert valuesColOne == expOne
+
+    valueSEL = DataFrameUtils.select(df_ibis, selectColumn2)
+
+    #Expected column names
+    expCol = ["col1", "col2", "col3"]
+    assert valueSEL.columns == expCol
+    #Expected col values
+    expOne = [4,5,6]
+    valuesColOne = list(valueSEL.execute()["col2"])
+    assert valuesColOne == expOne
+
+    valueSEL = DataFrameUtils.select(df_ibis, selectColumn3)
+
+    #Expected column names
+    expCol = ["col1", "col3"]
+    assert valueSEL.columns == expCol
+    #Expected col values
+    expOne = [1,2,3]
+    valuesColOne = list(valueSEL.execute()["col1"])
+    assert valuesColOne == expOne
+
+    valueSEL = DataFrameUtils.select(df_ibis, selectColumn4)
+
+    #Expected column names
+    expCol = ["col3"]
+    assert valueSEL.columns == expCol
+    #Expected col values
+    expOne = ["A","B","C"]
+    valuesColOne = list(valueSEL.execute()["col3"])
+    assert valuesColOne == expOne
