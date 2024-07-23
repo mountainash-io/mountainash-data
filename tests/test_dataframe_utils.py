@@ -628,11 +628,11 @@ def test_drop_ibis():
 @pytest.mark.parametrize(
     "input_df, columnList, expected_exception",
     [
-        (df_pandas, notSoColumn1, ValueError),
-        (df_pandas, notSoColumn2, ValueError),
-        (df_polars, notSoColumn1, ValueError),
+        (df_pandas, notSoColumn1, ValueError), # This should not raise an error, but should just ignore the invalid column
+        (df_pandas, notSoColumn2, ValueError),  # NR: This catches an issue in the drop function being brittle to non-string column drop requests.  The function should just ignore invalid columns and not raise an error.
+        (df_polars, notSoColumn1, ValueError), # Same as above for all df types
         (df_polars, notSoColumn2, ValueError),
-        (df_ibis, notSoColumn1, ValueError),
+        (df_ibis, notSoColumn1, ValueError), 
         (df_ibis, notSoColumn2, ValueError)
 
     ],
@@ -641,6 +641,9 @@ def test_drop_exceptions_columns(input_df, columnList, expected_exception):
     with pytest.raises(expected_exception):
         value = DataFrameUtils.drop(input_df, columnList)
     #TODO Add validation so that attempts are not made without the list being true
+   
+
+    
 
 @pytest.mark.parametrize(
     "input_df, columnList, expected_exception",
@@ -761,6 +764,10 @@ def test_head_over():
     assert list(value.execute()["col3"]) == ["A", "B", "C"]
 
 def test_head_under():
+
+    #NR: I think It should be OK to call this, but with a warning rather than an exception.
+    # As per 0 case, I would expect an empty dataframe, but with column names and types populated.
+
     with pytest.raises(ValueError):
         value = DataFrameUtils.head(df_pandas, -1)
     with pytest.raises(ValueError):
@@ -768,6 +775,7 @@ def test_head_under():
     with pytest.raises(ValueError):
         value = DataFrameUtils.head(df_polars, -1)
     
+    #NR: It should be OK to call this.  I would expect an empty dataframe, but with column names and types populated.
     with pytest.raises(ValueError):
         value = DataFrameUtils.head(df_pandas, 0)
     with pytest.raises(ValueError):
