@@ -778,3 +778,31 @@ def test_select_ibis():
 def test_select_exceptions(input_df, expected_exception):
     with pytest.raises(expected_exception):
         value = DataFrameUtils.select(input_df, ["col1"])
+
+
+
+#Head Tests
+
+#Count Tests
+@pytest.mark.parametrize(
+    "input_df",
+    [
+        (df_pandas),
+        (df_polars),
+        (df_ibis)
+    ],
+)
+def test_select_exceptions(input_df):
+    assert DataFrameUtils.count(input_df) == 3
+
+@pytest.mark.parametrize(
+    "input_df, expected_exception",
+    [
+        ("AHHH", ValueError),
+        (1234, ValueError),
+        (12.34, ValueError)
+    ],
+)
+def test_count(input_df, expected_exception):
+    with pytest.raises(expected_exception):
+        value = DataFrameUtils.count(input_df)
