@@ -653,3 +653,21 @@ def test_drop_exceptions_columns(input_df, columnList, expected_exception):
 def test_drop_exceptions_dfs(input_df, columnList, expected_exception):
     with pytest.raises(expected_exception):
         value = DataFrameUtils.drop(input_df, columnList)
+
+
+
+
+
+#Get column names (Didn't see this, would have made past task easier, woops)   
+@pytest.mark.parametrize(
+    "input_df, columnList",
+    [
+        (df_pandas, list(df_pandas.columns)),
+        (df_polars, list(df_polars.columns)),
+        (df_ibis, list(df_ibis.columns))
+    ],
+)
+def test_drop_exceptions_dfs(input_df, columnList):
+    assert DataFrameUtils.get_column_names(input_df) == columnList
+
+    
