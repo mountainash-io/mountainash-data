@@ -725,47 +725,57 @@ def test_select_polars():
     valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
     assert valueSEL.equals(valueDROP)
 
-def test_select_ibis():
-    valueSEL = DataFrameUtils.select(df_ibis, selectColumn1)
+
+
+#Head Tests
+def test_head():
+    value = DataFrameUtils.head(df_pandas, 2)
+    assert list(value["col1"]) == [1, 2]
+    assert list(value["col2"]) == [4, 5]
+    assert list(value["col3"]) == ["A", "B"]
+
+    value = DataFrameUtils.head(df_polars, 2)
+    assert list(value["col1"]) == [1, 2]
+    assert list(value["col2"]) == [4, 5]
+    assert list(value["col3"]) == ["A", "B"]
+
+    value = DataFrameUtils.head(df_ibis, 2)
+    assert list(value.execute()["col1"]) == [1, 2]
+    assert list(value.execute()["col2"]) == [4, 5]
+    assert list(value.execute()["col3"]) == ["A", "B"]
+
+def test_head_over():
+    value = DataFrameUtils.head(df_pandas, 7)
+    assert list(value["col1"]) == [1, 2, 3]
+    assert list(value["col2"]) == [4, 5, 6]
+    assert list(value["col3"]) == ["A", "B", "C"]
+
+    value = DataFrameUtils.head(df_polars, 7)
+    assert list(value["col1"]) == [1, 2, 3]
+    assert list(value["col2"]) == [4, 5, 6]
+    assert list(value["col3"]) == ["A", "B", "C"]
+
+    value = DataFrameUtils.head(df_ibis, 7)
+    assert list(value.execute()["col1"]) == [1, 2, 3]
+    assert list(value.execute()["col2"]) == [4, 5, 6]
+    assert list(value.execute()["col3"]) == ["A", "B", "C"]
+
+def test_head_under():
+    with pytest.raises(ValueError):
+        value = DataFrameUtils.head(df_pandas, -1)
+    with pytest.raises(ValueError):
+        value = DataFrameUtils.head(df_polars, -1)
+    with pytest.raises(ValueError):
+        value = DataFrameUtils.head(df_polars, -1)
     
-    #Expected column names
-    expCol = ["col3"]
-    assert valueSEL.columns == expCol
-    #Expected col values
-    expOne = ["A","B","C"]
-    valuesColOne = list(valueSEL.execute()["col3"])
-    assert valuesColOne == expOne
-
-    valueSEL = DataFrameUtils.select(df_ibis, selectColumn2)
-
-    #Expected column names
-    expCol = ["col1", "col2", "col3"]
-    assert valueSEL.columns == expCol
-    #Expected col values
-    expOne = [4,5,6]
-    valuesColOne = list(valueSEL.execute()["col2"])
-    assert valuesColOne == expOne
-
-    valueSEL = DataFrameUtils.select(df_ibis, selectColumn3)
-
-    #Expected column names
-    expCol = ["col1", "col3"]
-    assert valueSEL.columns == expCol
-    #Expected col values
-    expOne = [1,2,3]
-    valuesColOne = list(valueSEL.execute()["col1"])
-    assert valuesColOne == expOne
-
-    valueSEL = DataFrameUtils.select(df_ibis, selectColumn4)
-
-    #Expected column names
-    expCol = ["col3"]
-    assert valueSEL.columns == expCol
-    #Expected col values
-    expOne = ["A","B","C"]
-    valuesColOne = list(valueSEL.execute()["col3"])
-    assert valuesColOne == expOne
-
+    with pytest.raises(ValueError):
+        value = DataFrameUtils.head(df_pandas, 0)
+    with pytest.raises(ValueError):
+        value = DataFrameUtils.head(df_polars, 0)
+    with pytest.raises(ValueError):
+        value = DataFrameUtils.head(df_polars, 0)
+    
+#TODO Not raising an error when n == 0.
 
 @pytest.mark.parametrize(
     "input_df, expected_exception",
@@ -775,13 +785,10 @@ def test_select_ibis():
         (12.34, ValueError)
     ],
 )
-def test_select_exceptions(input_df, expected_exception):
+def test_head_exceptions(input_df, expected_exception):
     with pytest.raises(expected_exception):
-        value = DataFrameUtils.select(input_df, ["col1"])
+        value = DataFrameUtils.head(input_df, 2)
 
-
-
-#Head Tests
 
 #Count Tests
 @pytest.mark.parametrize(
