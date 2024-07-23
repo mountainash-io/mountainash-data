@@ -667,7 +667,21 @@ def test_drop_exceptions_dfs(input_df, columnList, expected_exception):
         (df_ibis, list(df_ibis.columns))
     ],
 )
-def test_drop_exceptions_dfs(input_df, columnList):
+def test_get_column_names(input_df, columnList):
     assert DataFrameUtils.get_column_names(input_df) == columnList
+
+@pytest.mark.parametrize(
+    "input_df, expected_exception",
+    [
+        ("AHHH", ValueError),
+        (1234, ValueError),
+        (12.34, ValueError)
+    ],
+)
+def test_get_columns_names_exceptions(input_df, expected_exception):
+    with pytest.raises(expected_exception):
+        value = DataFrameUtils.get_column_names(input_df)
+
+
 
     
