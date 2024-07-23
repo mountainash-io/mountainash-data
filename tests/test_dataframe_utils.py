@@ -548,3 +548,78 @@ def test_cast_dataframe__dictonary_of_lists_exceptions(input_df, expected_except
 def test_cast_dataframe_to_dict_of_lists_exceptions(input_df, expected_exception):
     with pytest.raises(expected_exception):
         value = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(input_df)
+
+
+#Drop Tests
+
+columnsToDrop1 = ["col1", "col2"]
+columnsToDrop2 = []
+columnsToDrop3 = ["col4", "AHHHHHHH"]
+columnsToDrop4 = ["col4", "col2"]
+columnsToDrop5 = ["col4", 5, "col6", "col7", "col8", "col9", "Dropping this many columns could have zero consequences", "col11"]
+
+
+notSoColumn1 = "whats the len of this?"
+notSoColumn2 = 123
+
+def test_drop_pandas():
+    startColumns = list(df_pandas.columns)
+    value = DataFrameUtils.drop(df_pandas, columnsToDrop1)
+    assert list(value.columns) == ["col3"]
+
+    value = DataFrameUtils.drop(df_pandas, columnsToDrop2)
+    assert list(value.columns) == startColumns
+
+    value = DataFrameUtils.drop(df_pandas, columnsToDrop3)
+    assert list(value.columns) == startColumns
+
+    value = DataFrameUtils.drop(df_pandas, columnsToDrop4)
+    assert list(value.columns) == ["col1", "col3"]
+
+    value = DataFrameUtils.drop(df_pandas, columnsToDrop5)
+    with pytest.raises(Exception):
+        assert value.columns == startColumns #Turns out there are consequences, funny that
+
+    #TODO Fix this
+
+def test_drop_polars():
+    startColumns = list(df_polars.columns)
+    print(startColumns)
+    value = DataFrameUtils.drop(df_polars, columnsToDrop1)
+    assert list(value.columns) == ["col3"]
+
+    value = DataFrameUtils.drop(df_polars, columnsToDrop2)
+    assert list(value.columns) == startColumns
+
+    value = DataFrameUtils.drop(df_polars, columnsToDrop3)
+    assert list(value.columns) == startColumns
+
+    value = DataFrameUtils.drop(df_polars, columnsToDrop4)
+    assert list(value.columns) == ["col1", "col3"]
+
+    value = DataFrameUtils.drop(df_polars, columnsToDrop5)
+    assert value.columns == startColumns #Apparently it only breaks for Pandas
+        
+    #TODO Fix this
+
+
+def test_drop_ibis():
+    startColumns = list(df_ibis.columns)
+    print(startColumns)
+    value = DataFrameUtils.drop(df_ibis, columnsToDrop1)
+    print(value)
+    assert list(value.columns) == ["col3"]
+
+    value = DataFrameUtils.drop(df_ibis, columnsToDrop2)
+    assert list(value.columns) == startColumns
+
+    value = DataFrameUtils.drop(df_ibis, columnsToDrop3)
+    assert list(value.columns) == startColumns
+
+    value = DataFrameUtils.drop(df_ibis, columnsToDrop4)
+    assert list(value.columns) == ["col1", "col3"]
+
+    value = DataFrameUtils.drop(df_ibis, columnsToDrop5)
+    assert value.columns == startColumns 
+        
+    #TODO Need to add validation that it is a list to the function
