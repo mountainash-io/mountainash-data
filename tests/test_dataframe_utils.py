@@ -765,3 +765,16 @@ def test_select_ibis():
     expOne = ["A","B","C"]
     valuesColOne = list(valueSEL.execute()["col3"])
     assert valuesColOne == expOne
+
+
+@pytest.mark.parametrize(
+    "input_df, expected_exception",
+    [
+        ("AHHH", ValueError),
+        (1234, ValueError),
+        (12.34, ValueError)
+    ],
+)
+def test_select_exceptions(input_df, expected_exception):
+    with pytest.raises(expected_exception):
+        value = DataFrameUtils.select(input_df, ["col1"])
