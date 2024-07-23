@@ -623,3 +623,33 @@ def test_drop_ibis():
     assert value.columns == startColumns 
         
     #TODO Need to add validation that it is a list to the function
+    
+
+@pytest.mark.parametrize(
+    "input_df, columnList, expected_exception",
+    [
+        (df_pandas, notSoColumn1, ValueError),
+        (df_pandas, notSoColumn2, ValueError),
+        (df_polars, notSoColumn1, ValueError),
+        (df_polars, notSoColumn2, ValueError),
+        (df_ibis, notSoColumn1, ValueError),
+        (df_ibis, notSoColumn2, ValueError)
+
+    ],
+)
+def test_drop_exceptions_columns(input_df, columnList, expected_exception):
+    with pytest.raises(expected_exception):
+        value = DataFrameUtils.drop(input_df, columnList)
+    #TODO Add validation so that attempts are not made without the list being true
+
+@pytest.mark.parametrize(
+    "input_df, columnList, expected_exception",
+    [
+        ("AHHH", columnsToDrop1, ValueError),
+        (1234, columnsToDrop1, ValueError),
+        (12.34, columnsToDrop1, ValueError)
+    ],
+)
+def test_drop_exceptions_dfs(input_df, columnList, expected_exception):
+    with pytest.raises(expected_exception):
+        value = DataFrameUtils.drop(input_df, columnList)
