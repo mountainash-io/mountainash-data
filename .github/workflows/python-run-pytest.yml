@@ -65,8 +65,6 @@ jobs:
               echo "Successfully checked out $REPO"
             fi
           done
-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
-git ls-remote --heads https://x-access-token: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@github.com/mountainash-io/$REPO.git branch_test | wc -l
       # # mountainash-auth-settings
       # - name: Checkout matching branch - mountainash-auth-settings
       #   id: check_branch_auth_settings
