@@ -44,11 +44,11 @@ jobs:
           path: ${{ matrix.repo.path }}
           fetch-depth: 1
 
-      - name: Upload repositories as artifacts
+      - name: Upload temp directory as artifact
         uses: actions/upload-artifact@v3
         with:
           name: repositories
-          path: ${{ matrix.repo.path }}
+          path: temp/
 
 
   test:
