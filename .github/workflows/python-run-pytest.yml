@@ -31,11 +31,14 @@ jobs:
 
       ###### MtAsh DEPENDENCIES ######
 
+      - name: Set Repo - mountainash-auth-settings
+        env:
+          REPO: mountainash-auth-settings
 
-      - name: Determine Branch and Checkout
+      - name: Determine Branch to Use - ${{ env.REPO }}
         env:
           TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          REPO: mountainash-auth-settings
+          # REPO: mountainash-auth-settings
           TARGET_BRANCH_NAME: ${{ env.BRANCH_NAME }} # or set your branch name here
           DEFAULT_BRANCH_NAME: main # or set your branch name here
         run: |
@@ -51,18 +54,14 @@ jobs:
             BRANCH_TO_USE=$DEFAULT_BRANCH_NAME
           fi
           echo "BRANCH_TO_USE=$BRANCH_TO_USE" >> $GITHUB_ENV
-  
 
-      # mountainash-auth-settings
-      - name: Checkout matching branch - mountainash-auth-settings
-        # id: check_branch_auth_settings
-        # continue-on-error: true
+      - name: Checkout matching branch - ${{ env.REPO }}
         uses: actions/checkout@v4
         with:
-          repository: mountainash-io/mountainash-auth-settings
+          repository: mountainash-io/${{ env.REPO }}
           ref: ${{ env.BRANCH_TO_USE }}
           token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-auth-settings
+          path: temp/${{ env.REPO }}
           fetch-depth: 1
 
 
