@@ -69,7 +69,7 @@ jobs:
           path: temp/
 
       - name: List contents of temp
-        run: ls -la temp/
+        run: ls -laR temp/
 
       - uses: actions/checkout@v4
 
