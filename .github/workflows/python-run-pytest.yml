@@ -42,12 +42,14 @@ jobs:
             echo "TOKEN is set"
           fi
 
+          echo "Using BRANCH_NAME: $BRANCH_NAME"
+
 
       - name: Checkout dependencies
         shell: bash
         env:
           TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          REPOSITORIES: mountainash-auth-settings mountainash-constants mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
+          REPOSITORIES: mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
         run: |
           IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
           for REPO in "${REPO_ARRAY[@]}"; do
