@@ -1,3 +1,11 @@
+name: Pytest Matrix
+
+on: 
+  # pull_request_target:
+  #   paths:
+  #     - 'src/mountainash_data/**'          
+  workflow_dispatch:
+
 jobs:
   clone-repos:
     runs-on: ubuntu-latest
