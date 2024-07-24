@@ -44,6 +44,13 @@ jobs:
           path: ${{ matrix.repo.path }}
           fetch-depth: 1
 
+      - name: Upload repositories as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: repositories
+          path: ${{ matrix.repo.path }}
+
+
   test:
     needs: clone-repos
     runs-on: ${{ matrix.os }}
@@ -54,6 +61,12 @@ jobs:
         python-version: ["3.12"]
 
     steps:
+
+      - name: Download repositories
+        uses: actions/download-artifact@v3
+        with:
+          name: repositories
+
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
