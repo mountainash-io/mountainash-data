@@ -68,6 +68,9 @@ jobs:
           name: repositories
           path: temp/
 
+      - name: List contents of temp
+        run: ls -la temp/
+
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
