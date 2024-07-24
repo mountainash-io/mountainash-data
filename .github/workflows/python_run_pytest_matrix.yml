@@ -1,9 +1,9 @@
 name: PytestMatrix
 
 on: 
-  # pull_request_target:
-  #   paths:
-  #     - 'src/mountainash_data/**'          
+  push:
+    paths:
+      - 'src/mountainash_data/**'          
   workflow_dispatch:
 
 jobs:
