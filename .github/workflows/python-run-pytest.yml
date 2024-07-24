@@ -33,24 +33,24 @@ jobs:
 
 
       - name: Determine Branch and Checkout
-          env:
-            TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-            REPO: mountainash-auth-settings
-            TARGET_BRANCH_NAME: ${{ env.BRANCH_NAME }} # or set your branch name here
-            DEFAULT_BRANCH_NAME: main # or set your branch name here
-          run: |
-            BRANCH_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
-              -H "Authorization: token $TOKEN" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/$USERNAME/$REPO/branches/$TARGET_BRANCH_NAME")
+        env:
+          TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          REPO: mountainash-auth-settings
+          TARGET_BRANCH_NAME: ${{ env.BRANCH_NAME }} # or set your branch name here
+          DEFAULT_BRANCH_NAME: main # or set your branch name here
+        run: |
+          BRANCH_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token $TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$USERNAME/$REPO/branches/$TARGET_BRANCH_NAME")
 
-            # If the branch exists (HTTP status code 200), use the target branch; otherwise, use the default branch
-            if [ $BRANCH_EXISTS -eq 200 ]; then
-              BRANCH_TO_USE=$TARGET_BRANCH_NAME
-            else
-              BRANCH_TO_USE=$DEFAULT_BRANCH_NAME
-            fi
-            echo "BRANCH_TO_USE=$BRANCH_TO_USE" >> $GITHUB_ENV
+          # If the branch exists (HTTP status code 200), use the target branch; otherwise, use the default branch
+          if [ $BRANCH_EXISTS -eq 200 ]; then
+            BRANCH_TO_USE=$TARGET_BRANCH_NAME
+          else
+            BRANCH_TO_USE=$DEFAULT_BRANCH_NAME
+          fi
+          echo "BRANCH_TO_USE=$BRANCH_TO_USE" >> $GITHUB_ENV
   
 
       # mountainash-auth-settings
