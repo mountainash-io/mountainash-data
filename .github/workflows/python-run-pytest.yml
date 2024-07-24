@@ -48,7 +48,7 @@ jobs:
       - name: Checkout dependencies
         shell: bash
         env:
-          TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORIES: mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
         run: |
           IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
