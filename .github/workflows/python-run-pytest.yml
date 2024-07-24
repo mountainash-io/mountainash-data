@@ -34,6 +34,7 @@ jobs:
       - name: Set Repo - mountainash-auth-settings
         env:
           REPO: mountainash-auth-settings
+        run: echo "REPO=$REPO" >> $GITHUB_ENV
 
       - name: Determine Branch to Use - ${{ env.REPO }}
         env:
