@@ -34,7 +34,7 @@ jobs:
       - name: Verify Token is set 
         shell: bash
         env:
-          TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -z "$TOKEN" ]; then
             echo "TOKEN is unset or set to the empty string"
