@@ -31,82 +31,27 @@ jobs:
 
       ###### MtAsh DEPENDENCIES ######
 
-      # - name: Verify Token is set 
-      #   shell: bash
-      #   env:
-      #     TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-      #   run: |
-      #     if [ -z "$TOKEN" ]; then
-      #       echo "TOKEN is unset or set to the empty string"
-      #     else
-      #       echo "TOKEN is set"
-      #     fi
 
-      #     echo "Using BRANCH_NAME: $BRANCH_NAME"
+      - name: Determine Branch and Checkout
+          env:
+            TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+            REPO: mountainash-auth-settings
+            TARGET_BRANCH_NAME: ${{ env.BRANCH_NAME }} # or set your branch name here
+            DEFAULT_BRANCH_NAME: main # or set your branch name here
+          run: |
+            BRANCH_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: token $TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/$USERNAME/$REPO/branches/$TARGET_BRANCH_NAME")
 
-
-      # - name: Determine Branch and Checkout
-      #     env:
-      #       TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-      #       REPOSITORIES: mountainash-data mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
-      #       BRANCH_NAME: ${{ github.head_ref }} # or set your branch name here
-      #     run: |
-      #       IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
-      #       for REPO in "${REPO_ARRAY[@]}"; do
-      #         BRANCH_EXISTS=$(curl -s -o /dev/null -w "%{http_code}" \
-      #           -H "Authorization: token $TOKEN" \
-      #           -H "Accept: application/vnd.github.v3+json" \
-      #           https://api.github.com/repos/mountainash-io/$REPO/branches/$BRANCH_NAME)
-              
-      #         if [ $BRANCH_EXISTS -eq 200 ]; then
-      #           BRANCH=$BRANCH_NAME
-      #         else
-      #           BRANCH="main" # Default to main if branch does not exist
-      #         fi
-              
-      #         echo "Checking out branch $BRANCH of $REPO"
-              
-      #         # Use actions/checkout to checkout the repository at the determined branch
-      #         echo "::set-output name=REPO::$REPO"
-      #         echo "::set-output name=BRANCH::$BRANCH"
-      #       done
-      #     id: checkout_info
+            # If the branch exists (HTTP status code 200), use the target branch; otherwise, use the default branch
+            if [ $BRANCH_EXISTS -eq 200 ]; then
+              BRANCH_TO_USE=$TARGET_BRANCH_NAME
+            else
+              BRANCH_TO_USE=$DEFAULT_BRANCH_NAME
+            fi
+            echo "BRANCH_TO_USE=$BRANCH_TO_USE" >> $GITHUB_ENV
   
-      #   # Use the outputs from the previous step to checkout the repositories
-      #   - uses: actions/checkout@v4
-      #     with:
-      #       repository: mountainash-io/${{ steps.checkout_info.outputs.REPO }}
-      #       token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-      #       ref: ${{ steps.checkout_info.outputs.BRANCH }}
-
-
-      # - name: Checkout dependencies
-      #   shell: bash
-      #   env:
-      #     TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-      #     REPOSITORIES: mountainash-data mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
-      #   run: |
-      #     set -x  # Enable verbose output
-      #     IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
-      #     for REPO in "${REPO_ARRAY[@]}"; do
-      #       echo "Checking out $REPO"
-      #       BRANCH_EXISTS=$(git ls-remote --heads https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git $BRANCH_NAME | wc -l)
-      #       if [ $BRANCH_EXISTS -eq 0 ]; then
-      #         BRANCH="main"
-      #       else
-      #         BRANCH=$BRANCH_NAME
-      #       fi
-      #       echo "Attempting to checkout branch: $BRANCH on repo: $REPO"
-      #        if ! git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO; then
-      #         echo "Failed to checkout $REPO, retrying..."
-      #         sleep 5
-      #         if ! git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO; then
-      #           echo "Failed to checkout $REPO on second attempt"
-      #           continue # Continue with the next repository instead of exiting
-      #         fi
-      #       fi
-      #     done
-
 
       # mountainash-auth-settings
       - name: Checkout matching branch - mountainash-auth-settings
@@ -115,7 +60,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mountainash-io/mountainash-auth-settings
-          ref: ${{ env.BRANCH_NAME  || 'main' }}
+          ref: ${{ env.BRANCH_TO_USE }}
           token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
           path: temp/mountainash-auth-settings
           fetch-depth: 1
