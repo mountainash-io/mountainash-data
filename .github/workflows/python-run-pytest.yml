@@ -34,12 +34,13 @@ jobs:
       - name: Set Repo - mountainash-auth-settings
         env:
           REPO: mountainash-auth-settings
-        run: echo "REPO=$REPO" >> $GITHUB_ENV
+        run: echo "REPO=$REPO" 
+        #>> $GITHUB_ENV
 
       - name: Determine Branch to Use - ${{ env.REPO }}
         env:
           TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          # REPO: mountainash-auth-settings
+          # REPO: ${{ env.REPO }}
           TARGET_BRANCH_NAME: ${{ env.BRANCH_NAME }} # or set your branch name here
           DEFAULT_BRANCH_NAME: main # or set your branch name here
         run: |
