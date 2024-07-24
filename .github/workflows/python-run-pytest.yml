@@ -32,15 +32,15 @@ jobs:
       ###### MtAsh DEPENDENCIES ######
 
       - name: Verify Token
-      shell: bash
-      env:
-        TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-      run: |
-        if [ -z "$TOKEN" ]; then
-          echo "TOKEN is unset or set to the empty string"
-        else
-          echo "TOKEN is set"
-        fi
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "TOKEN is unset or set to the empty string"
+          else
+            echo "TOKEN is set"
+          fi
 
 
       - name: Checkout dependencies
