@@ -49,7 +49,7 @@ jobs:
         shell: bash
         env:
           TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          REPOSITORIES: mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
+          REPOSITORIES: mountainash-data mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
         run: |
           set -x  # Enable verbose output
           IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
