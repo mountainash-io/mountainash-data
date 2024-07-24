@@ -62,11 +62,14 @@ jobs:
               BRANCH=$BRANCH_NAME
             fi
             echo "Attempting to checkout branch: $BRANCH on repo: $REPO"
-            git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO || {
+             if ! git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO; then
               echo "Failed to checkout $REPO, retrying..."
               sleep 5
-              git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO || echo "Failed to checkout $REPO on second attempt"
-            }
+              if ! git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO; then
+                echo "Failed to checkout $REPO on second attempt"
+                continue # Continue with the next repository instead of exiting
+              fi
+            fi
           done
 
 
