@@ -51,6 +51,7 @@ jobs:
           TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
           REPOSITORIES: mountainash-constants mountainash-auth-settings mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
         run: |
+          set -x  # Enable verbose output
           IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
           for REPO in "${REPO_ARRAY[@]}"; do
             echo "Checking out $REPO"
@@ -61,12 +62,11 @@ jobs:
               BRANCH=$BRANCH_NAME
             fi
             echo "Attempting to checkout branch: $BRANCH on repo: $REPO"
-            git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO
-            if [ $? -ne 0 ]; then
-              echo "Failed to checkout $REPO"
-            else
-              echo "Successfully checked out $REPO"
-            fi
+            git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO || {
+              echo "Failed to checkout $REPO, retrying..."
+              sleep 5
+              git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO || echo "Failed to checkout $REPO on second attempt"
+            }
           done
 
 
