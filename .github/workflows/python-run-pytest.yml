@@ -40,7 +40,7 @@ jobs:
           IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
           for REPO in "${REPO_ARRAY[@]}"; do
             echo "Checking out $REPO"
-            BRANCH_EXISTS=$(git ls-remote --heads https://github.com/mountainash-io/$REPO.git $BRANCH_NAME | wc -l)
+            BRANCH_EXISTS=$(git ls-remote --heads https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git $BRANCH_NAME | wc -l)
             if [ $BRANCH_EXISTS -eq 0 ]; then
               BRANCH="main"
             else
