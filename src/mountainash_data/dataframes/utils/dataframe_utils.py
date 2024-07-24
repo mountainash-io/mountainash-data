@@ -37,15 +37,15 @@ class DataFrameUtils:
         
 
         if dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PANDAS.value:
-            return cls.create_pandas_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
+            return cls.create_pandas_dataframe(data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
-            return cls.create_polars_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
+            return cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.IBIS.value:
-            return cls.create_ibis_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
+            return cls.create_ibis_dataframe(data_dict=data_dict, column_dict=column_dict)
         else:
             raise ValueError(f"Unsupported dataframe framework: {dataframe_framework}")
         
-    @staticmethod
+    @classmethod
     def create_pandas_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
@@ -66,14 +66,14 @@ class DataFrameUtils:
         else:
             return pd.DataFrame(data_dict)
 
-    @staticmethod
+    @classmethod
     def create_polars_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> pl.DataFrame:
-        
-        cls.validate_mapping(data_dict=data_dict, column_dict=column_dict)
 
+
+        cls.validate_mapping(data_dict=data_dict, column_dict=column_dict)
 
         if column_dict:
 
@@ -92,8 +92,9 @@ class DataFrameUtils:
         else:
             return pl.DataFrame(data=data_dict)
             
-    @staticmethod
+    @classmethod
     def create_pyarrow_table(
+        cls,
         data_dict: Dict[str, Union[Sequence, List]] | List[Dict[str, Any]],
         column_dict: Optional[Dict[str, str]] = None
     ) -> pa.Table:
@@ -110,20 +111,20 @@ class DataFrameUtils:
         if column_dict:
             # Rename columns if column_dict is provided
             # new_names = [column_dict.get(col, col) for col in table.column_names]
-            df_cols = DataFrameUtils.get_column_names(table)
+            df_cols = cls.get_column_names(table)
             new_colnames = {col: column_dict.get(col, col) for col in df_cols}
 
             table = table.rename_columns(new_colnames)
 
         return table
 
-    @staticmethod
+    @classmethod
     def create_ibis_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> ir.Table:
         
-        df = DataFrameUtils.create_polars_dataframe(cls, data_dict=data_dict, column_dict=column_dict)
+        df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
         columns = DataFrameUtils.get_column_names(df)
 
         return ibis.memtable(data=df, columns=columns)    
@@ -533,7 +534,7 @@ class DataFrameUtils:
             return df.head(n=n).to_arrow()
         elif isinstance(df, pd.DataFrame):
             return df.head(n=n)
-        elif isinstance(df, (pl.DataFrame, pl.LazyFrame)):
+        elif isinstance(df, (pl.DataFrame, pl.LazyFrame)):  
             return df.head(n=n)
         elif isinstance(df, (ir.Table)):
             return df.head(n=n)
