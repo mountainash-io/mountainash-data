@@ -1,0 +1,82 @@
+name: PytestMatrix
+
+on: 
+  push:
+    paths:
+      - 'src/mountainash_data/**'          
+  workflow_dispatch:
+
+jobs:
+  clone-repos:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: [
+          {name: 'mountainash-auth-settings', path: 'temp/mountainash-auth-settings'},
+          {name: 'mountainash-constants', path: 'temp/mountainash-constants'},
+          {name: 'mountainash-settings', path: 'temp/mountainash-settings'},
+          {name: 'mountainash-utils-dataclasses', path: 'temp/mountainash-utils-dataclasses'},
+          {name: 'mountainash-utils-files', path: 'temp/mountainash-utils-files'},
+          {name: 'mountainash-utils-os', path: 'temp/mountainash-utils-os'},
+          {name: 'mountainash-utils-ssh', path: 'temp/mountainash-utils-ssh'}
+        ]
+    steps:
+      - name: Get branch name
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}})" >> $GITHUB_ENV
+
+      - name: Checkout matching branch
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: mountainash-io/${{ matrix.repo.name }} 
+          ref: ${{ env.BRANCH_NAME }}
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: ${{ matrix.repo.path }}
+          fetch-depth: 1
+
+      - name: Checkout main branch if matching branch fails
+        if: failure()
+        uses: actions/checkout@v4
+        with:
+          repository: mountainash-io/${{ matrix.repo.name }}
+          ref: main
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: ${{ matrix.repo.path }}
+          fetch-depth: 1
+
+  test:
+    needs: clone-repos
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.12"]
+
+    steps:
+      # - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Install Hatch and create virtual environment
+      - name: Install Hatch and create virtual environment
+        run: |
+          pip install hatch
+          hatch env create test_github
+
+      # Run Pytest
+      - name: Run tests
+        run: hatch run test_github:test
+
+      # Run Coverage
+      - name: Run Coverage Tests
+        run: hatch run test_github:cov
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: mountainash-io/mountainash-data
