@@ -31,165 +31,189 @@ jobs:
 
       ###### MtAsh DEPENDENCIES ######
 
-      # mountainash-auth-settings
-      - name: Checkout matching branch - mountainash-auth-settings
-        id: check_branch_auth_settings
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-auth-settings
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-auth-settings
-          fetch-depth: 1
-
-      - name: Checkout main branch - mountainash-auth-settings
-        if: steps.check_branch_auth_settings.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-auth-settings
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-auth-settings
-          fetch-depth: 1
-
-      # mountainash-constants
-      - name: Checkout matching branch - mountainash-constants
-        id: check_branch_constants
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-constants
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-constants
-          fetch-depth: 1
-
-      - name: Checkout main branch - mountainash-constants
-        if: steps.check_branch_constants.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-constants
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-constants
-          fetch-depth: 1
+      - name: Checkout dependencies
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          REPOSITORIES: mountainash-auth-settings mountainash-constants mountainash-settings mountainash-utils-dataclasses mountainash-utils-files mountainash-utils-os mountainash-utils-ssh
+        run: |
+          IFS=' ' read -r -a REPO_ARRAY <<< "$REPOSITORIES"
+          for REPO in "${REPO_ARRAY[@]}"; do
+            echo "Checking out $REPO"
+            BRANCH_EXISTS=$(git ls-remote --heads https://github.com/mountainash-io/$REPO.git $BRANCH_NAME | wc -l)
+            if [ $BRANCH_EXISTS -eq 0 ]; then
+              BRANCH="main"
+            else
+              BRANCH=$BRANCH_NAME
+            fi
+            git clone --depth 1 -b $BRANCH https://x-access-token:$TOKEN@github.com/mountainash-io/$REPO.git temp/$REPO
+            if [ $? -ne 0 ]; then
+              echo "Failed to checkout $REPO"
+            else
+              echo "Successfully checked out $REPO"
+            fi
+          done
 
 
-      # mountainash-settings
-      - name: Checkout matching branch - mountainash-settings
-        id: check_branch_settings
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-settings
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-settings
-          fetch-depth: 1
+      # # mountainash-auth-settings
+      # - name: Checkout matching branch - mountainash-auth-settings
+      #   id: check_branch_auth_settings
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-auth-settings
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-auth-settings
+      #     fetch-depth: 1
 
-      - name: Checkout main branch - mountainash-settings
-        if: steps.check_branch_settings.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-settings
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-settings
-          fetch-depth: 1
+      # - name: Checkout main branch - mountainash-auth-settings
+      #   if: steps.check_branch_auth_settings.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-auth-settings
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-auth-settings
+      #     fetch-depth: 1
 
+      # # mountainash-constants
+      # - name: Checkout matching branch - mountainash-constants
+      #   id: check_branch_constants
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-constants
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-constants
+      #     fetch-depth: 1
 
-      ###### MtAsh UTILS DEPENDENCIES ######
-
-      # mountainash-utils-dataclasses
-      - name: Checkout matching branch - mountainash-utils-dataclasses
-        id: check_branch_utils_dataclasses
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-dataclasses
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-dataclasses
-          fetch-depth: 1
-
-      - name: Checkout main branch - mountainash-utils-dataclasses
-        if: steps.check_branch_utils_dataclasses.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-dataclasses
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-dataclasses
-          fetch-depth: 1
+      # - name: Checkout main branch - mountainash-constants
+      #   if: steps.check_branch_constants.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-constants
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-constants
+      #     fetch-depth: 1
 
 
-      # mountainash-utils-files
-      - name: Checkout matching branch - mountainash-utils-files
-        id: check_branch_utils_files
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-files
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-files
-          fetch-depth: 1
+      # # mountainash-settings
+      # - name: Checkout matching branch - mountainash-settings
+      #   id: check_branch_settings
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-settings
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-settings
+      #     fetch-depth: 1
 
-      - name: Checkout main branch - mountainash-utils-files
-        if: steps.check_branch_utils_files.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-files
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-files
-          fetch-depth: 1
-
-      # mountainash-utils-os
-      - name: Checkout matching branch - mountainash-utils-os
-        id: check_branch_utils_os
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-os
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-os
-          fetch-depth: 1
-
-      - name: Checkout main branch - mountainash-utils-os
-        if: steps.check_branch_utils_os.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-os
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-os
-          fetch-depth: 1
+      # - name: Checkout main branch - mountainash-settings
+      #   if: steps.check_branch_settings.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-settings
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-settings
+      #     fetch-depth: 1
 
 
-      # mountainash-utils-ssh
-      - name: Checkout matching branch - mountainash-utils-ssh
-        id: check_branch_utils_ssh
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-ssh
-          ref: ${{ env.BRANCH_NAME }}
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-ssh
-          fetch-depth: 1
+      # ###### MtAsh UTILS DEPENDENCIES ######
 
-      - name: Checkout main branch - mountainash-utils-ssh
-        if: steps.check_branch_utils_ssh.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          repository: mountainash-io/mountainash-utils-ssh
-          ref: main
-          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
-          path: temp/mountainash-utils-ssh
-          fetch-depth: 1
+      # # mountainash-utils-dataclasses
+      # - name: Checkout matching branch - mountainash-utils-dataclasses
+      #   id: check_branch_utils_dataclasses
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-dataclasses
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-dataclasses
+      #     fetch-depth: 1
+
+      # - name: Checkout main branch - mountainash-utils-dataclasses
+      #   if: steps.check_branch_utils_dataclasses.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-dataclasses
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-dataclasses
+      #     fetch-depth: 1
+
+
+      # # mountainash-utils-files
+      # - name: Checkout matching branch - mountainash-utils-files
+      #   id: check_branch_utils_files
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-files
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-files
+      #     fetch-depth: 1
+
+      # - name: Checkout main branch - mountainash-utils-files
+      #   if: steps.check_branch_utils_files.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-files
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-files
+      #     fetch-depth: 1
+
+      # # mountainash-utils-os
+      # - name: Checkout matching branch - mountainash-utils-os
+      #   id: check_branch_utils_os
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-os
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-os
+      #     fetch-depth: 1
+
+      # - name: Checkout main branch - mountainash-utils-os
+      #   if: steps.check_branch_utils_os.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-os
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-os
+      #     fetch-depth: 1
+
+
+      # # mountainash-utils-ssh
+      # - name: Checkout matching branch - mountainash-utils-ssh
+      #   id: check_branch_utils_ssh
+      #   continue-on-error: true
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-ssh
+      #     ref: ${{ env.BRANCH_NAME }}
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-ssh
+      #     fetch-depth: 1
+
+      # - name: Checkout main branch - mountainash-utils-ssh
+      #   if: steps.check_branch_utils_ssh.outcome == 'failure'
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: mountainash-io/mountainash-utils-ssh
+      #     ref: main
+      #     token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+      #     path: temp/mountainash-utils-ssh
+      #     fetch-depth: 1
             
 
       # Install Hatch
