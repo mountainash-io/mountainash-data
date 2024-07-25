@@ -8,6 +8,7 @@ import uuid
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
 # from mountainash_utils_dataclasses import DataclassUtils
 import ibis.expr.types as ir
+import collections
 
 # from multipledispatch import dispatch
 # from pyarrow import Table as irTable  # assuming you are using pyarrow's Table for ir.Table
@@ -16,10 +17,48 @@ import ibis.expr.types as ir
 class DataFrameUtils:
 
 
-    # @staticmethod
-    # def get_supported_dataframe_frameworks() -> set:
-    #     return DataclassUtils.get_enum_values_set(enumclass=CONST_DATAFRAME_FRAMEWORK)
+    @classmethod
+    def validate_column_mapping(cls,
+                                column_dict: Optional[Dict[str, str]]=None) -> bool:
+        """
+        Validates the column mapping for a given data dictionary and column dictionary.
 
+        Args:
+            data_dict (Dict[str, Union[Sequence,List]] | List[Dict[str, Any]]): The data dictionary to validate.
+            column_dict (Optional[Dict[str, str]]): The column dictionary to validate. Defaults to None.
+
+        Raises:
+            ValueError: If source and target column names are not specified or if duplicate column names are found.
+            TypeError: If column names are not strings.
+        """
+
+        # Column Validation
+        if column_dict is not None:
+
+            try:
+                # Cannot have duplicate column names in the keys or the values
+                if len(column_dict) != len(set(column_dict.values())):
+                    duplicate_values = [item for item, count in collections.Counter(column_dict.values()).items() if count > 1]    
+                    raise ValueError(f"Source and target column names must be unique. Duplicate column names: {duplicate_values}")
+
+                if len(column_dict) != len(set(column_dict.keys())):
+                    duplicate_values = [item for item, count in collections.Counter(column_dict.keys()).items() if count > 1]    
+                    raise ValueError(f"Source and target column names must be unique. Duplicate column names: {duplicate_values}")
+
+                if None in column_dict.values():
+                    raise ValueError("Source and target column names must be specified")
+
+                columnTypes = [type(colname) for colname in column_dict.values()]
+                if any(coltype != str for coltype in columnTypes):
+                    raise ValueError("Column names must be strings")
+                
+            except ValueError as e:
+                print(f"Error validating column mapping: {e}")
+                return False
+            except TypeError as e:
+                print(f"Error validating column mapping: {e}")
+                return False
+        return True
 
     #--------------------
     # Casting Dictionary to Dataframe
@@ -51,11 +90,7 @@ class DataFrameUtils:
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> pd.DataFrame:
 
-
-        cls.validate_mapping(data_dict=data_dict, column_dict=column_dict)
-
-
-        if column_dict:
+        if column_dict and cls.validate_column_mapping(column_dict=column_dict):
 
             df = pd.DataFrame(data_dict)
             df_cols = DataFrameUtils.get_column_names(df)
@@ -72,11 +107,7 @@ class DataFrameUtils:
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None) -> pl.DataFrame:
 
-
-        cls.validate_mapping(data_dict=data_dict, column_dict=column_dict)
-
-        if column_dict:
-
+        if column_dict and cls.validate_column_mapping(column_dict=column_dict):
 
             df = pl.DataFrame(data_dict)
             df_cols = DataFrameUtils.get_column_names(df)
@@ -108,7 +139,8 @@ class DataFrameUtils:
         else:
             raise ValueError("Input must be a dictionary of sequences or a list of dictionaries")
 
-        if column_dict:
+        if column_dict and cls.validate_column_mapping(column_dict=column_dict):
+
             # Rename columns if column_dict is provided
             # new_names = [column_dict.get(col, col) for col in table.column_names]
             df_cols = cls.get_column_names(table)
@@ -122,9 +154,16 @@ class DataFrameUtils:
     def create_ibis_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
-            column_dict: Optional[Dict[str, str]]=None) -> ir.Table:
+            column_dict: Optional[Dict[str, str]] = None ) -> ir.Table:
         
-        df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
+
+        if column_dict:        
+            #Raise an error if the column mapping is invalid
+            cls.validate_column_mapping(column_dict=column_dict)
+            df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
+        else:
+            df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict)
+
         columns = DataFrameUtils.get_column_names(df)
 
         return ibis.memtable(data=df, columns=columns)    
@@ -134,7 +173,7 @@ class DataFrameUtils:
 
     @staticmethod
     def cast_dataframe_to_pandas(
-        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]) -> pd.DataFrame:
+        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] ) -> pd.DataFrame:
         """Casts the input dataframe to a Pandas DataFrame.
 
         Supported input types are:
@@ -173,7 +212,7 @@ class DataFrameUtils:
 
     @staticmethod
     def cast_dataframe_to_polars(
-        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]) -> pl.DataFrame:
+        df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] ) -> pl.DataFrame:
         """Converts the input dataframe to a Polars DataFrame.
 
         Supported input types are:
@@ -573,18 +612,6 @@ class DataFrameUtils:
 
         return temp_tablename   
 
-    @staticmethod
-    def validate_mapping(data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]], column_dict: Optional[Dict[str, str]]=None):
-        
-        #Column Validation
-        if column_dict:
-            if None in column_dict.values():
-                raise (ValueError("Column Aliases cannot be None"))
-            
-            columnTypes = []
-            for i in list(column_dict.values()):
-                if type(i) != str:
-                    raise (TypeError("Column Aliases have to be strings"))
             
 
 
