@@ -140,9 +140,15 @@ def test_create_dataframe_simple(dataframe_framework, data_dict, column_dict, df
 )
 def test_create_dataframe_invalid_columns(dataframe_framework, data_dict, column_dict):
 
-    #All column mapping errors should result in a ValueError
-    with pytest.raises(ValueError):
-        DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict, column_dict=column_dict)
+    #TODO: These should no longer fail. The function should just ignore invalid columns and not raise an error.
+    df =  DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict, column_dict=column_dict)
+    with check:
+        assert "col1" not in DataFrameUtils.get_column_names(df)
+        assert "col2" not in DataFrameUtils.get_column_names(df)
+        assert "col3" not in DataFrameUtils.get_column_names(df)
+        assert "column1" in DataFrameUtils.get_column_names(df)
+        assert "column2" in DataFrameUtils.get_column_names(df)
+        assert "column3" in DataFrameUtils.get_column_names(df)
 
 
 @pytest.mark.parametrize(
