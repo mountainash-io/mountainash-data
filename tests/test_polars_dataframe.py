@@ -5,6 +5,8 @@ from ibis import _
 import polars as pl
 
 from mountainash_data import IbisDataFrame
+from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
+from mountainash_data import DataFrameUtils
 
 # Create fixture for initializing IbisDataFrame instance with sample data
 @pytest.fixture
@@ -15,18 +17,53 @@ def sample_polars_df():
     return IbisDataFrame(df)
 
 
+data_dict = {
+    "column1": [1, 2, 3],
+    "column2": [4, 5, 6],
+    "column3": ["A", "B", "C"]
+}
+
+dfPandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict)
+dfPolars = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, data_dict=data_dict)
 
 # Test is_materialised method
 # def test_is_materialised(sample_polars_df):
 #     assert sample_polars_df.is_materialised() == True
 
+#Test creation, same backend schema
+@pytest.mark.parametrize("df, backend, expected", [
+    (dfPandas, "pandas", "pandas"),
+    (dfPolars, "polars", "polars")
+])
+def test_creation_same_backend(df, backend, expected):
+    ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
+    assert ibis_df.is_materialised() == True
+    assert ibis_df.ibis_backend_schema == expected
+    assert ibis_df.materialise().shape == (3, 3)
+    assert list(ibis_df.materialise().columns) == ["column1", "column2", "column3"]
+    assert list(ibis_df.execute()["column1"]) == [1, 2, 3]
 
+#Test creation, different backend schema
+@pytest.mark.parametrize("df, backend, expected", [
+    (dfPandas, "polars", "polars"),
+    (dfPolars, "pandas", "pandas"),
+    (dfPandas, "sqlite", "sqlite"),
+    (dfPolars, "sqlite", "sqlite"),
+    (dfPandas, "duckdb", "duckdb"),
+    (dfPolars, "duckdb", "duckdb")
+])
+def test_creation_same_backend(df, backend, expected):
+    ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
+    assert ibis_df.is_materialised() == True
+    assert ibis_df.ibis_backend_schema == expected
+    assert ibis_df.materialise().shape == (3, 3)
+    assert list(ibis_df.materialise().columns) == ["column1", "column2", "column3"]
+    assert list(ibis_df.execute()["column1"]) == [1, 2, 3]
+    
 
-
-
-# Parameterized test for select_columns method
-@pytest.mark.parametrize("columns, expected_shape", [
-    (["A"], (3, 1)),
+# Parameterized test for select_columns method, with same backend schema
+@pytest.mark.parametrize("columns, expected_shape, baseDF", [
+    (["A"], (3, 1), ),
     (["A", "B"], (3, 2))
 ])
 def test_select_columns(sample_polars_df: IbisDataFrame, columns: list[str], expected_shape):
