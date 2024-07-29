@@ -115,47 +115,70 @@ def test_get_column_as_list(column, expected_values, baseDF):
 
 
 # Test filter method with a specific filter expression
-def test_filter_method(sample_polars_df: IbisDataFrame):
-
+@pytest.mark.parametrize("baseDF", [
+    (dfPandas),
+    (dfPolars),
+])
+def test_filter_method(baseDF):
+    ibis_df = IbisDataFrame(baseDF)
     expr = _.A == 3
-    filtered_df = sample_polars_df.filter(expr)
+    filtered_df = ibis_df.filter(expr)
 
     with check:
         assert isinstance(filtered_df, IbisDataFrame)
-        assert filtered_df.materialise().shape == (1,2)
+        assert filtered_df.materialise().shape == (1,3)
 
 # Parameterized test for head method
-@pytest.mark.parametrize("n, expected_shape", [
-    (0, 0),
-    (1, 1),
-    (2, 2),
-    (3, 3)
+@pytest.mark.parametrize("n, expected_shape, baseDF", [
+    (0, 0, dfPandas),
+    (1, 1, dfPandas),
+    (2, 2, dfPandas),
+    (3, 3, dfPandas),
+    (0, 0, dfPolars),
+    (1, 1, dfPolars),
+    (2, 2, dfPolars),
+    (3, 3, dfPolars)
 ])
-def test_head_method(sample_polars_df: IbisDataFrame, n, expected_shape):
-    result_df = sample_polars_df.head(n)
+def test_head_method(baseDF, n, expected_shape):
+    ibis_df = IbisDataFrame(baseDF)
+    result_df = ibis_df.head(n)
 
     with check:
         assert isinstance(result_df, IbisDataFrame)
         assert result_df.count() == expected_shape
 
 # Test case for as_dict method
-def test_as_dict_method(sample_polars_df: IbisDataFrame):
-    result_dict = sample_polars_df.as_dict()
+@pytest.mark.parametrize("baseDF", [
+    (dfPandas),
+    (dfPolars),
+])
+def test_as_dict_method(baseDF):
+    ibis_df = IbisDataFrame(baseDF)
+    result_dict = ibis_df.as_dict()
     assert isinstance(result_dict, dict)
 
 # Test case for get_first_row_as_dict method
-def test_get_first_row_as_dict_method(sample_polars_df: IbisDataFrame):
+@pytest.mark.parametrize("baseDF", [
+    (dfPandas),
+    (dfPolars),
+])
+def test_get_first_row_as_dict_method(baseDF):
 
-    result_first_row_dict = sample_polars_df.get_first_row_as_dict()
+    ibis_df = IbisDataFrame(baseDF)
+    result_first_row_dict = ibis_df.get_first_row_as_dict()
     print(result_first_row_dict)
     with check:    
         assert isinstance(result_first_row_dict, dict)
-        assert result_first_row_dict == {'A': 1, 'B': 'a'}
+        assert result_first_row_dict == {'A': 1, 'B': 4, 'C': 'A'}
 
 # Test case for get_row_count method
-def test_get_row_count_method(sample_polars_df: IbisDataFrame):
-
-    row_count = sample_polars_df.count()
+@pytest.mark.parametrize("baseDF", [
+    (dfPandas),
+    (dfPolars),
+])
+def test_get_row_count_method(baseDF):
+    ibis_df = IbisDataFrame(baseDF)
+    row_count = ibis_df.count()
     
     with check:
         assert row_count == 3
