@@ -18,9 +18,9 @@ def sample_polars_df():
 
 
 data_dict = {
-    "column1": [1, 2, 3],
-    "column2": [4, 5, 6],
-    "column3": ["A", "B", "C"]
+    "A": [1, 2, 3],
+    "B": [4, 5, 6],
+    "C": ["A", "B", "C"]
 }
 
 dfPandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict)
@@ -57,33 +57,46 @@ def test_creation_same_backend(df, backend, expected):
     assert ibis_df.is_materialised() == True
     assert ibis_df.ibis_backend_schema == expected
     assert ibis_df.materialise().shape == (3, 3)
-    assert list(ibis_df.materialise().columns) == ["column1", "column2", "column3"]
-    assert list(ibis_df.execute()["column1"]) == [1, 2, 3]
+    assert list(ibis_df.materialise().columns) == ["A", "B", "C"]
+    assert list(ibis_df.execute()["A"]) == [1, 2, 3]
+
+#Test creation, incorrect backend schema
+@pytest.mark.parametrize("df, backend", [
+    (dfPandas, "TESTEST"),
+    (dfPolars, "TESTEST"),
+    (dfPolars, 4),
+    (dfPolars, 4)
+])
+def test_creation_incorrec_backend(df, backend):
+    with pytest.raises(ValueError):
+        ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
     
 
 # Parameterized test for select_columns method, with same backend schema
 @pytest.mark.parametrize("columns, expected_shape, baseDF", [
-    (["A"], (3, 1), ),
-    (["A", "B"], (3, 2))
+    (["A"], (3, 1), dfPandas),
+    (["A", "B"], (3, 2), dfPandas),
+    (["A"], (3, 1), dfPolars),
+    (["A", "B"], (3, 2), dfPolars)
 ])
-def test_select_columns(sample_polars_df: IbisDataFrame, columns: list[str], expected_shape):
-
-    selected_df = sample_polars_df.select(columns)
+def test_select_columns(columns: list[str], expected_shape, baseDF):
+    ibis_df = IbisDataFrame(baseDF)
+    selected_df = ibis_df.select(columns)
     assert selected_df.materialise().shape == expected_shape
 
 
 
 
-@pytest.mark.parametrize("column, expected_values", [
-    ("A", [1, 2, 3]),
-    ("B", ['a', 'b', 'c'])
+@pytest.mark.parametrize("column, expected_values, baseDF", [
+    ("A", [1, 2, 3], dfPandas),
+    ("C", ['A', 'B', 'C'], dfPandas),
+    ("A", [1, 2, 3], dfPolars),
+    ("C", ['A', 'B', 'C'], dfPolars)
 ])
-def test_get_column_as_list(sample_polars_df: IbisDataFrame, column, expected_values):
-
-
-    selected_values = sample_polars_df.get_column_as_list(column)
-
-
+def test_get_column_as_list(column, expected_values, baseDF):
+    ibis_df = IbisDataFrame(baseDF)
+    selected_df = ibis_df.select(column)
+    selected_values = selected_df.get_column_as_list(column)
     assert selected_values == expected_values
 
 
