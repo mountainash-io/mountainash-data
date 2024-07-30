@@ -26,6 +26,17 @@ data_dict = {
 dfPandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict)
 dfPolars = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, data_dict=data_dict)
 
+
+# Different Variations of IbisDataFrame
+ibisPandasPandas = IbisDataFrame(dfPandas, ibis_backend_schema="pandas")
+ibisPandasPolars = IbisDataFrame(dfPandas, ibis_backend_schema="polars")
+ibisPandasDuckDB = IbisDataFrame(dfPandas, ibis_backend_schema="duckdb")
+ibisPandasSqlite = IbisDataFrame(dfPandas, ibis_backend_schema="sqlite")
+ibisPolarsPolars = IbisDataFrame(dfPolars, ibis_backend_schema="polars")
+ibisPolarsPandas = IbisDataFrame(dfPolars, ibis_backend_schema="pandas")
+ibisPolarsDuckDB = IbisDataFrame(dfPolars, ibis_backend_schema="duckdb")
+ibisPolarsSqlite = IbisDataFrame(dfPolars, ibis_backend_schema="sqlite")
+
 # Test is_materialised method
 # def test_is_materialised(sample_polars_df):
 #     assert sample_polars_df.is_materialised() == True
@@ -58,43 +69,48 @@ def test_creation_same_backend(df, backend, expected):
     assert ibis_df.ibis_backend_schema == expected
     assert ibis_df.materialise().shape == (3, 3)
     assert list(ibis_df.materialise().columns) == ["A", "B", "C"]
-    assert list(ibis_df.execute()["A"]) == [1, 2, 3]
+    assert list(ibis_df.execute()["A"]) == [1, 2, 3]    
 
-#Test creation, incorrect backend schema
-@pytest.mark.parametrize("df, backend", [
-    (dfPandas, "TESTEST"),
-    (dfPolars, "TESTEST"),
-    (dfPolars, 4),
-    (dfPolars, 4)
+# Parameterized test for select_columns method
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_creation_incorrec_backend(df, backend):
-    with pytest.raises(ValueError):
-        ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
-    
-
-# Parameterized test for select_columns method, with same backend schema
-@pytest.mark.parametrize("columns, expected_shape, baseDF", [
-    (["A"], (3, 1), dfPandas),
-    (["A", "B"], (3, 2), dfPandas),
-    (["A"], (3, 1), dfPolars),
-    (["A", "B"], (3, 2), dfPolars)
+@pytest.mark.parametrize("columns, expected_shape", [
+    (["A"], (3, 1)),
+    (["A", "B"], (3, 2)),
+    (["A"], (3, 1)),
+    (["A", "B"], (3, 2))
 ])
-def test_select_columns(columns: list[str], expected_shape, baseDF):
-    ibis_df = IbisDataFrame(baseDF)
+def test_select_columns(columns: list[str], expected_shape, ibis_df):
     selected_df = ibis_df.select(columns)
     assert selected_df.materialise().shape == expected_shape
 
 
 
-
-@pytest.mark.parametrize("column, expected_values, baseDF", [
-    ("A", [1, 2, 3], dfPandas),
-    ("C", ['A', 'B', 'C'], dfPandas),
-    ("A", [1, 2, 3], dfPolars),
-    ("C", ['A', 'B', 'C'], dfPolars)
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_get_column_as_list(column, expected_values, baseDF):
-    ibis_df = IbisDataFrame(baseDF)
+@pytest.mark.parametrize("column, expected_values", [
+    ("A", [1, 2, 3]),
+    ("C", ['A', 'B', 'C']),
+    ("A", [1, 2, 3]),
+    ("C", ['A', 'B', 'C'])
+])
+def test_get_column_as_list(column, expected_values, ibis_df):
     selected_df = ibis_df.select(column)
     selected_values = selected_df.get_column_as_list(column)
     assert selected_values == expected_values
@@ -115,12 +131,17 @@ def test_get_column_as_list(column, expected_values, baseDF):
 
 
 # Test filter method with a specific filter expression
-@pytest.mark.parametrize("baseDF", [
-    (dfPandas),
-    (dfPolars),
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_filter_method(baseDF):
-    ibis_df = IbisDataFrame(baseDF)
+def test_filter_method(ibis_df):
     expr = _.A == 3
     filtered_df = ibis_df.filter(expr)
 
@@ -129,18 +150,27 @@ def test_filter_method(baseDF):
         assert filtered_df.materialise().shape == (1,3)
 
 # Parameterized test for head method
-@pytest.mark.parametrize("n, expected_shape, baseDF", [
-    (0, 0, dfPandas),
-    (1, 1, dfPandas),
-    (2, 2, dfPandas),
-    (3, 3, dfPandas),
-    (0, 0, dfPolars),
-    (1, 1, dfPolars),
-    (2, 2, dfPolars),
-    (3, 3, dfPolars)
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_head_method(baseDF, n, expected_shape):
-    ibis_df = IbisDataFrame(baseDF)
+@pytest.mark.parametrize("n, expected_shape", [
+    (0, 0),
+    (1, 1),
+    (2, 2),
+    (3, 3),
+    (0, 0),
+    (1, 1),
+    (2, 2),
+    (3, 3)
+])
+def test_head_method(ibis_df, n, expected_shape):
     result_df = ibis_df.head(n)
 
     with check:
@@ -148,23 +178,32 @@ def test_head_method(baseDF, n, expected_shape):
         assert result_df.count() == expected_shape
 
 # Test case for as_dict method
-@pytest.mark.parametrize("baseDF", [
-    (dfPandas),
-    (dfPolars),
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_as_dict_method(baseDF):
-    ibis_df = IbisDataFrame(baseDF)
+def test_as_dict_method(ibis_df):
     result_dict = ibis_df.as_dict()
     assert isinstance(result_dict, dict)
 
 # Test case for get_first_row_as_dict method
-@pytest.mark.parametrize("baseDF", [
-    (dfPandas),
-    (dfPolars),
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_get_first_row_as_dict_method(baseDF):
-
-    ibis_df = IbisDataFrame(baseDF)
+def test_get_first_row_as_dict_method(ibis_df):
     result_first_row_dict = ibis_df.get_first_row_as_dict()
     print(result_first_row_dict)
     with check:    
@@ -172,17 +211,80 @@ def test_get_first_row_as_dict_method(baseDF):
         assert result_first_row_dict == {'A': 1, 'B': 4, 'C': 'A'}
 
 # Test case for get_row_count method
-@pytest.mark.parametrize("baseDF", [
-    (dfPandas),
-    (dfPolars),
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
 ])
-def test_get_row_count_method(baseDF):
-    ibis_df = IbisDataFrame(baseDF)
+def test_get_row_count_method(ibis_df):
+    #ibis_df = IbisDataFrame(baseDF)
     row_count = ibis_df.count()
     
     with check:
         assert row_count == 3
 
-
 #Attempts to Cause Problems:
 
+#Test creation, incorrect backend schema
+@pytest.mark.parametrize("df, backend", [
+    (dfPandas, "TESTEST"),
+    (dfPolars, "TESTEST"),
+    (dfPolars, 4),
+    (dfPolars, 4)
+])
+def test_creation_incorrec_backend(df, backend):
+    with pytest.raises(ValueError):
+        ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
+
+
+
+# Attemots to break SELECT method
+@pytest.mark.parametrize("values", [
+    (dfPandas),
+    (dfPolars),
+    ("TEST"),
+    ([4,"break"]),
+    (4)
+])
+def test_break_select_method_polars(values):
+    ibis_df = IbisDataFrame(dfPolars)
+    with pytest.raises(Exception):
+        selected_df = ibis_df.select(values)            #Doesn't raise exceptions for dfpandas and 4. Should raise something like:
+                                                        #Unknown column. Please provide a valid column name or list of column names.
+@pytest.mark.parametrize("values", [
+    (dfPandas),
+    (dfPolars),
+    ("TEST"),
+    ([4,"break"]),
+    (4)
+])
+def test_break_select_method_pandas(values):        
+    ibis_df = IbisDataFrame(dfPandas)
+    with pytest.raises(Exception):
+        selected_df = ibis_df.select(values)            #Same as above, but for dfPandas backend
+
+# Attemots to break DROP method
+@pytest.mark.parametrize("values", [
+    (dfPandas),
+    (dfPolars),
+    (4)
+])
+def test_break_drop_method_polars(values):
+    ibis_df = IbisDataFrame(dfPolars)
+    with pytest.raises(Exception):
+        selected_df = ibis_df.drop(values)          
+                                                        
+@pytest.mark.parametrize("values", [
+    (dfPandas),
+    (dfPolars),
+    (4)
+])
+def test_break_drop_method_pandas(values):        
+    ibis_df = IbisDataFrame(dfPandas)
+    with pytest.raises(Exception):
+        selected_df = ibis_df.drop(values)  
