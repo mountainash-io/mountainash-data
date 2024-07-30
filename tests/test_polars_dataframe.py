@@ -234,8 +234,6 @@ TODO: Same as above
 
 """
 
-
-
 # Test case for get_row_count method
 @pytest.mark.parametrize("ibis_df", [
     (ibisPandasPandas),
@@ -253,6 +251,39 @@ def test_get_row_count_method(ibis_df):
     
     with check:
         assert row_count == 3
+
+# Test case for rename method
+@pytest.mark.parametrize("ibis_df", [
+    (ibisPandasPandas),
+    (ibisPandasPolars),
+    (ibisPandasDuckDB),
+    (ibisPandasSqlite),
+    (ibisPolarsPolars),
+    (ibisPolarsPandas),
+    (ibisPolarsDuckDB),
+    (ibisPolarsSqlite)
+])
+@pytest.mark.parametrize("rename_map, expected_columns", [
+    ({'new_A': 'A', 'new_B': 'B', 'new_C': 'C'}, ['new_A', 'new_B', 'new_C']),
+    ({'new_A': 'A'}, ['new_A', 'B', 'C']),
+    ({'new_A': 'A', 'new_B': 'D', 'new_C': 'C'}, ['new_A', 'B', 'new_C'])
+])
+def test_rename_method(ibis_df, rename_map, expected_columns):
+    renamed_df = ibis_df.rename(**rename_map)
+    assert list(renamed_df.materialise().columns) == expected_columns
+
+"""
+Problem
+TODO: Same pandas schema issue, also throws an error if the column name is not in the dataframe. Should just ignore the column name if it doesn't exist
+
+"""
+
+
+
+
+
+
+
 
 #Attempts to Cause Problems:
 
