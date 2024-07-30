@@ -465,8 +465,8 @@ def test_inner_join_one(ibis_df, ibis_df_two):
 ])
 def test_inner_join_two(ibis_df, ibis_df_two):
     joined_df = ibis_df_two.inner_join(ibis_df, predicates=["A"])
-    #assert joined_df.materialise().shape == (3, 5)
-    #assert list(joined_df.materialise().columns) == ["A", "D", "E", "B", "C"]
+    assert joined_df.materialise().shape == (3, 5)
+    assert list(joined_df.materialise().columns) == ["A", "D", "E", "B", "C"]
     
     result = joined_df.execute()
     assert list(result["A"]) == [1, 2, 3]
@@ -476,12 +476,6 @@ def test_inner_join_two(ibis_df, ibis_df_two):
 
 
 #Problem Combinations: This ignores the pandas schemas as they all fail no matter the combo. Error actually happens whenever it attempts to execute or materiralise
-"""
-
-
-
-
-"""
 @pytest.mark.parametrize("ibis_df, ibis_df_two", [
     (ibisPandasDuckDB, ibisPandasDuckDB2),
     (ibisPandasDuckDB, ibisPolarsDuckDB2),
