@@ -499,9 +499,6 @@ def test_inner_join_issues_one(ibis_df, ibis_df_two):
         print(joined_df.execute())
 
 
-
-
-
 #Test Outer Join
 @pytest.mark.parametrize("ibis_df", [
     (ibisPandasPandas),
