@@ -94,7 +94,7 @@ class BaseDataFrame(ABC):
             default_ibis_schema = self.default_ibis_backend_schema
 
         #TODO: Check that we have a valid schema
-        if default_ibis_schema not in ["duckdb", "polars", "pandas", "sqlite"]:
+        if default_ibis_schema not in ["duckdb", "polars", "sqlite"]:
             raise ValueError(f"Invalid default ibis schema: {default_ibis_schema}")
 
         self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
@@ -262,7 +262,10 @@ class BaseDataFrame(ABC):
     def rename(self, **kwargs) -> "BaseDataFrame":
         pass
 
-    def _rename_ibis(self,  **kwargs) -> ir.Table:
+    def _rename_ibis(self,  **kwargs) -> ir.Table:      
+
+        #Will need to be addresses in https://github.com/mountainash-io/mountainash-data/issues/22
+        # Needs to pass test_rename_method()  
         new_df: Any = self.ibis_df.rename( **kwargs)
         return new_df
 
