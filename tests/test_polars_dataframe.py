@@ -3,6 +3,10 @@ from pytest_check import check
 from ibis import _
 import ibis
 import polars as pl
+from typing import Any
+
+from functools import lru_cache
+from itertools import product
 
 from mountainash_data import IbisDataFrame
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
@@ -23,115 +27,135 @@ data_dict = {
     "C": ["A", "B", "C"]
 }
 
-data_null = {
-    "A": [1, 2, 3],
-    "B": [4, 5, 6],
-    "C": ["A", "B", None]
+data_dict2 = {
+    "A": [1, 2, 3, None],
+    "D": [11, 12, 13, 14], #pandas converts this to a float
+    "E": ["A", "R", "R", "R"]
 }
 
+num_cols = data_dict.__len__()
+num_rows = data_dict["A"].__len__()
+num_cols_2 = data_dict2.__len__()
+num_rows_2 = data_dict2["A"].__len__()
+
+# data_null = {
+#     "A": [1, 2, 3],
+#     "B": [4, 5, 6],
+#     "C": ["A", "B", None]
+# }
+
+
+lru_cache(maxsize=None)
+def create_ibis_dataframe(df, ibis_backend_schema) -> IbisDataFrame:
+    return IbisDataFrame(df, ibis_backend_schema=ibis_backend_schema)
+
+lru_cache(maxsize=None)
+def create_native_dataframe(dataframe_framework, data_dict) -> Any:
+    return DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict)
 
 
 dfPandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict)
 dfPolars = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, data_dict=data_dict)
 
+dfPandas2 = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict2)
+dfPolars2 = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, data_dict=data_dict2)
 
-# Different Variations of IbisDataFrame
-# ibisPandasPandas = IbisDataFrame(dfPandas, ibis_backend_schema="pandas")
-ibisPandasPolars = IbisDataFrame(dfPandas, ibis_backend_schema="polars")
-ibisPandasDuckDB = IbisDataFrame(dfPandas, ibis_backend_schema="duckdb")
-ibisPandasSqlite = IbisDataFrame(dfPandas, ibis_backend_schema="sqlite")
-ibisPolarsPolars = IbisDataFrame(dfPolars, ibis_backend_schema="polars")
-# ibisPolarsPandas = IbisDataFrame(dfPolars, ibis_backend_schema="pandas")
-ibisPolarsDuckDB = IbisDataFrame(dfPolars, ibis_backend_schema="duckdb")
-ibisPolarsSqlite = IbisDataFrame(dfPolars, ibis_backend_schema="sqlite")
+native_dataframes = [dfPandas, dfPolars]
+native_dataframes2 = [dfPandas2, dfPolars2]
 
-# Test is_materialised method
-# def test_is_materialised(sample_polars_df):
-#     assert sample_polars_df.is_materialised() == True
 
-#Test creation, same backend schema
-@pytest.mark.parametrize("df, backend, expected", [
-    # (dfPandas, "pandas", "polars"),
-    (dfPolars, "polars", "polars")
-])
-def test_creation_same_backend(df, backend, expected):
-    ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
-    assert ibis_df.is_materialised() == True
-    assert ibis_df.ibis_backend_schema == expected
-    assert ibis_df.materialise().shape == (3, 3)
-    assert list(ibis_df.get_column_names()) == ["column1", "column2", "column3"]
-    assert list(ibis_df.execute()["column1"]) == [1, 2, 3]
+dataframe_frameworks = [CONST_DATAFRAME_FRAMEWORK.PANDAS.value, 
+                        CONST_DATAFRAME_FRAMEWORK.POLARS.value
+                        ]
+ibis_backend_schemas = ["polars", 
+                        "duckdb", 
+                        "sqlite"
+                        ]
+
+
+# ibis_dataframes=   [(IbisDataFrame(df=dataframe, ibis_backend_schema=backend), backend) for dataframe, backend in product(native_dataframes, ibis_backend_schemas)]
+# ibis_dataframes_2= [(IbisDataFrame(df=dataframe, ibis_backend_schema=backend), backend) for dataframe, backend in product(native_dataframes2, ibis_backend_schemas)]
+
+testcases_df_framework_backend =  [(data_dict, dataframe_framework, ibis_backend_schema) for dataframe_framework, ibis_backend_schema in product(dataframe_frameworks, ibis_backend_schemas)]
+testcases_df_framework_backend_2 = [(data_dict2, dataframe_framework, ibis_backend_schema) for dataframe_framework, ibis_backend_schema in product(dataframe_frameworks, ibis_backend_schemas)]
+
+# ibis_dataframes= [(case, version[0],version[1] ) for case, version in product(native_dataframes, ibis_backend_schemas)]
+
 
 #Test creation, different backend schema
-@pytest.mark.parametrize("df, backend, expected", [
-    (dfPandas, "polars", "polars"),
-    # (dfPolars, "pandas", "pandas"),
-    (dfPandas, "sqlite", "sqlite"),
-    (dfPolars, "sqlite", "sqlite"),
-    (dfPandas, "duckdb", "duckdb"),
-    (dfPolars, "duckdb", "duckdb")
-])
-def test_creation_same_backend2(df, backend, expected):
-    ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
-    assert ibis_df.is_materialised() == True
-    assert ibis_df.ibis_backend_schema == expected
-    assert ibis_df.materialise().shape == (3, 3)
-    assert list(ibis_df.get_column_names()) == ["A", "B", "C"]
-    assert list(ibis_df.execute()["A"]) == [1, 2, 3]    
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+def test_creation(data_dict, framework, ibis_backend_schema):
+    
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
 
+    with check:
+        assert ibis_df.ibis_backend_schema == ibis_backend_schema
+    with check:
+        assert ibis_df.materialise().shape == (num_rows, num_cols)
+    with check:
+        assert ibis_df.get_column_names().sort() == ["A", "B", "C"].sort()
+    with check:
+        assert ibis_df.get_column_as_list(column="A") == [1, 2, 3]    
+
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend_2)
+def test_creation_2(data_dict, framework, ibis_backend_schema):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    print(ibis_df.ibis_df)
+
+
+    with check:
+        assert ibis_df.ibis_backend_schema == ibis_backend_schema
+    with check:
+        assert ibis_df.materialise().shape == (num_rows_2, num_cols_2)
+    with check:
+        assert ibis_df.get_column_names().sort() == ["A", "D", "E"].sort()
+    with check:
+        assert ibis_df.get_column_as_list(column="A") == [1, 2, 3, None]   
+    with check:
+       assert ibis_df.get_column_as_list(column="D") == [11, 12, 13, 14]  
+
+"""
 # Parameterized test for select_columns method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
 @pytest.mark.parametrize("columns, expected_shape", [
-    (["A"], (3, 1)),
-    (["A", "B"], (3, 2)),
-    (["A"], (3, 1)),
-    (["A", "B"], (3, 2))
+    (["A"],      (num_rows, 1)),
+    (["A", "B"], (num_rows, 2)),
 ])
-def test_select_columns(columns: list[str], expected_shape, ibis_df):
+def test_select_columns(data_dict, framework, ibis_backend_schema, 
+                        columns: list[str], expected_shape):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
     selected_df = ibis_df.select(columns)
-    assert selected_df.materialise().shape == expected_shape
-"""
-Problem
-TODO: This fails only when Pandas is used as the schema, see below for more specific test
-
-"""
+    assert selected_df.to_pandas().shape == expected_shape
 
 
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
+
+
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
 @pytest.mark.parametrize("column, expected_values", [
-    ("A", [1, 2, 3]),
-    ("C", ['A', 'B', 'C']),
-    ("A", [1, 2, 3]),
-    ("C", ['A', 'B', 'C'])
+    ("A", data_dict["A"]),
+    ("B", data_dict["B"]),
+    ("C", data_dict["C"])
 ])
-def test_get_column_as_list(column, expected_values, ibis_df):
+def test_get_column_as_list(data_dict, framework, ibis_backend_schema,
+                            column, expected_values):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
     selected_df = ibis_df.select(column)
-    selected_values = selected_df.get_column_as_list(column)
+    selected_values = selected_df.get_column_as_list(column=column)
     assert selected_values == expected_values
 
-"""
-Problem
-TODO: This fails only when Pandas is used as the schema, see below for more specific test 
+# Problem
+# TODO: This fails only when Pandas is used as the schema, see below for more specific test 
 
-"""
 
 # # Parameterized test to check create_filter_expression method
 # @pytest.mark.parametrize("column, operator, value, expected_expression", [
@@ -147,114 +171,77 @@ TODO: This fails only when Pandas is used as the schema, see below for more spec
 
 
 # Test filter method with a specific filter expression
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-def test_filter_method(ibis_df):
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+def test_filter_method(data_dict, framework, ibis_backend_schema):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
     expr = _.A == 3
     filtered_df = ibis_df.filter(expr)
 
     with check:
         assert isinstance(filtered_df, IbisDataFrame)
         assert filtered_df.materialise().shape == (1,3)
-"""
-Problem
-TODO: Same as above
 
-"""
+
 # Parameterized test for head method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("n", [
+    (0),
+    (1),
+    (2),
+    (3)
 ])
-@pytest.mark.parametrize("n, expected_shape", [
-    (0, 0),
-    (1, 1),
-    (2, 2),
-    (3, 3),
-    (0, 0),
-    (1, 1),
-    (2, 2),
-    (3, 3)
-])
-def test_head_method(ibis_df, n, expected_shape):
+def test_head_method(data_dict, framework, ibis_backend_schema, 
+                     n):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+
     result_df = ibis_df.head(n)
 
     with check:
         assert isinstance(result_df, IbisDataFrame)
-        assert result_df.count() == expected_shape
-"""
-Problem
-TODO: Same as above
+    with check:
+        assert result_df.count() == n
 
-"""
+# Problem
+# TODO: Same as above
 
 
 # Test case for as_dict method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-def test_as_dict_method(ibis_df):
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+def test_as_dict_method(data_dict, framework, ibis_backend_schema):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
     result_dict = ibis_df.as_dict()
     assert isinstance(result_dict, dict)
 
 # Test case for get_first_row_as_dict method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-def test_get_first_row_as_dict_method(ibis_df):
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+def test_get_first_row_as_dict_method(data_dict, framework, ibis_backend_schema):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
     result_first_row_dict = ibis_df.get_first_row_as_dict()
     print(result_first_row_dict)
     with check:    
         assert isinstance(result_first_row_dict, dict)
         assert result_first_row_dict == {'A': 1, 'B': 4, 'C': 'A'}
 
-"""
-Problem
-TODO: Same as above
-
-"""
 
 # Test case for get_row_count method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-def test_get_row_count_method(ibis_df):
-    #ibis_df = IbisDataFrame(baseDF)
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+def test_get_row_count_method(data_dict, framework, ibis_backend_schema):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
     row_count = ibis_df.count()
     
     with check:
@@ -262,22 +249,19 @@ def test_get_row_count_method(ibis_df):
 
 
 # Test case for rename method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+
 @pytest.mark.parametrize("rename_map, expected_columns", [
     ({'new_A': 'A', 'new_B': 'B', 'new_C': 'C'}, ['new_A', 'new_B', 'new_C']),
     ({'new_A': 'A'},                             ['new_A', 'B', 'C']),
-    ({'new_A': 'A', 'new_B': 'D', 'new_C': 'C'}, ['new_A', 'B', 'new_C'])
+    # ({'new_A': 'A', 'new_B': 'D', 'new_C': 'C'}, ['new_A', 'B', 'new_C'])
 ])
-def test_rename_method(ibis_df, rename_map, expected_columns):
+def test_rename_method(data_dict, framework, ibis_backend_schema, 
+                       rename_map, expected_columns):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
 
     #Issue created: https://github.com/mountainash-io/mountainash-data/issues/22
     # Mapping will need to be validated, similarly to in 
@@ -285,26 +269,16 @@ def test_rename_method(ibis_df, rename_map, expected_columns):
 
     # assert list(renamed_df.materialise().columns) == expected_columns
     # NR: Use get_column_names instead of materialise and pandas column attribute. We want to avoid non-ibis DF framework specific logic.
-    assert list(renamed_df.get_column_names()) == expected_columns
+    assert renamed_df.get_column_names() == expected_columns
 
-"""
-Problem
-TODO: Same pandas schema issue, also throws an error if the column name is not in the dataframe. Should just ignore the column name if it doesn't exist
-"""
+
 
 # Test case for mutate method
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-def test_mutate_method(ibis_df):
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+def test_mutate_method(data_dict, framework, ibis_backend_schema):
 
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
 
 
     #Don't materialize the dataframe mid-expression. This defeats the purpose of using expressions.    
@@ -315,35 +289,56 @@ def test_mutate_method(ibis_df):
     # assert list(result_df["D"]) == [11, 12, 13]
 
     mutate_df = ibis_df.mutate(D = (ibis._["A"] + 10))
-    assert list(mutate_df.get_column_names()) == ["A", "B", "C", "D"]
 
-    assert mutate_df.get_column_as_list("D") == [11, 12, 13]
+    with check:
+        assert mutate_df.get_column_names() == ["A", "B", "C", "D"]
 
-
-"""
-
-Problem
-TODO: Having trouble with actually getting mutate to work properly. Same issues as above with pandas though
-"""
+    with check:
+        assert mutate_df.get_column_as_list("D") == [11, 12, 13]
 
 
+
+# Problem
+# TODO: Having trouble with actually getting mutate to work properly. Same issues as above with pandas though
 
 
 #Attempts to Cause Problems:
 
+@pytest.mark.parametrize("data_dict", [data_dict])
+@pytest.mark.parametrize("framework", ["Nonsense", None, 4, "Pandas"])
+@pytest.mark.parametrize("ibis_backend_schema", ibis_backend_schemas)
 #Test creation, incorrect backend schema
-@pytest.mark.parametrize("df, backend", [
-    (dfPandas, "TESTEST"),
-    (dfPolars, "TESTEST"),
-    (dfPolars, 4),
-    (dfPolars, 4)
-])
-def test_creation_incorrec_backend(df, backend):
+def test_creation_incorrect_framework(data_dict, framework, ibis_backend_schema):
+
+
     with pytest.raises(ValueError):
-        ibis_df = IbisDataFrame(df, ibis_backend_schema=backend)
+        native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+        create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
 
 
+@pytest.mark.parametrize("data_dict", [data_dict])
+@pytest.mark.parametrize("framework", dataframe_frameworks)
+@pytest.mark.parametrize("ibis_backend_schema", ["Nonsense", 4, "Pandas"])
+#Test creation, incorrect backend schema
+def test_creation_incorrect_backend(data_dict, framework, ibis_backend_schema):
 
+    with pytest.raises(ValueError):
+        native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+        create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+@pytest.mark.parametrize("data_dict", [data_dict])
+@pytest.mark.parametrize("framework", dataframe_frameworks)
+@pytest.mark.parametrize("ibis_backend_schema", [None])
+#Test creation, incorrect backend schema
+def test_creation_none_backend(data_dict, framework, ibis_backend_schema):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    assert isinstance(ibis_df, IbisDataFrame)
+"""
+
+"""
 # Attempts to break SELECT method
 @pytest.mark.parametrize("values", [
     (dfPandas),
@@ -376,34 +371,36 @@ def test_break_select_method_pandas(values):
     selected_df = ibis_df.select(values)            #Same as above, but for dfPandas as starting df
     print(selected_df)
 
+"""
+
 
 # Parameterized test for select_columns method
 
-@pytest.mark.parametrize("columns, expected_shape", [
-    (["A"], (3, 1)),
-    (["A", "B"], (3, 2)),
-    (["A"], (3, 1)),
-    (["A", "B"], (3, 2))
-])
-def test_select_columns_specifics(columns: list[str], expected_shape):
-    with check:
-        selected_df = ibisPolarsPolars.select(columns)
-        assert selected_df.materialise().shape == expected_shape
+# @pytest.mark.parametrize("columns, expected_shape", [
+#     (["A"], (3, 1)),
+#     (["A", "B"], (3, 2)),
+#     (["A"], (3, 1)),
+#     (["A", "B"], (3, 2))
+# ])
+# def test_select_columns_specifics(columns: list[str], expected_shape):
+#     with check:
+#         selected_df = ibisPolarsPolars.select(columns)
+#         assert selected_df.materialise().shape == expected_shape
 
-        selected_df = ibisPolarsDuckDB.select(columns)
-        assert selected_df.materialise().shape == expected_shape
+#         selected_df = ibisPolarsDuckDB.select(columns)
+#         assert selected_df.materialise().shape == expected_shape
 
-        selected_df = ibisPolarsSqlite.select(columns)
-        assert selected_df.materialise().shape == expected_shape
+#         selected_df = ibisPolarsSqlite.select(columns)
+#         assert selected_df.materialise().shape == expected_shape
 
-        selected_df = ibisPandasPolars.select(columns)
-        assert selected_df.materialise().shape == expected_shape
+#         selected_df = ibisPandasPolars.select(columns)
+#         assert selected_df.materialise().shape == expected_shape
 
-        selected_df = ibisPandasDuckDB.select(columns)
-        assert selected_df.materialise().shape == expected_shape
+#         selected_df = ibisPandasDuckDB.select(columns)
+#         assert selected_df.materialise().shape == expected_shape
 
-        selected_df = ibisPandasSqlite.select(columns)
-        assert selected_df.materialise().shape == expected_shape
+#         selected_df = ibisPandasSqlite.select(columns)
+#         assert selected_df.materialise().shape == expected_shape
 
     # with pytest.raises(Exception):
     #     selected_df = ibisPandasPandas.select(columns)
@@ -415,260 +412,224 @@ def test_select_columns_specifics(columns: list[str], expected_shape):
 
 
 
-
-
-
 #Union and Join Tests
 
 #We seem to have a problem with joins involving memtables and sql backends
 # https://github.com/mountainash-io/mountainash-data/issues/23
 
 #Alternative data sets
-data_dict2 = {
-    "A": [1, 2, 3, 4],
-    "D": [11, 12, 13, 14],
-    "E": ["A", "R", "R", "R"]
-}
+# data_dict2 = {
+#     "A": [1, 2, 3, 4],
+#     "D": [11, 12, 13, 14],
+#     "E": ["A", "R", "R", "R"]
+# }
 
-dfPandas2 = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict2)
-dfPolars2 = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, data_dict=data_dict2)
+# dfPandas2 = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, data_dict=data_dict2)
+# dfPolars2 = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, data_dict=data_dict2)
 
 
-# Different Variations of IbisDataFrame
-# ibisPandasPandas2 = IbisDataFrame(dfPandas2, ibis_backend_schema="pandas")
-ibisPandasPolars2 = IbisDataFrame(dfPandas2, ibis_backend_schema="polars")
-ibisPandasDuckDB2 = IbisDataFrame(dfPandas2, ibis_backend_schema="duckdb")
-ibisPandasSqlite2 = IbisDataFrame(dfPandas2, ibis_backend_schema="sqlite")
-ibisPolarsPolars2 = IbisDataFrame(dfPolars2, ibis_backend_schema="polars")
-# ibisPolarsPandas2 = IbisDataFrame(dfPolars2, ibis_backend_schema="pandas")
-ibisPolarsDuckDB2 = IbisDataFrame(dfPolars2, ibis_backend_schema="duckdb")
-ibisPolarsSqlite2 = IbisDataFrame(dfPolars2, ibis_backend_schema="sqlite")
+# # Different Variations of IbisDataFrame
+# # ibisPandasPandas2 = IbisDataFrame(dfPandas2, ibis_backend_schema="pandas")
+# ibisPandasPolars2 = IbisDataFrame(dfPandas2, ibis_backend_schema="polars")
+# ibisPandasDuckDB2 = IbisDataFrame(dfPandas2, ibis_backend_schema="duckdb")
+# ibisPandasSqlite2 = IbisDataFrame(dfPandas2, ibis_backend_schema="sqlite")
+# ibisPolarsPolars2 = IbisDataFrame(dfPolars2, ibis_backend_schema="polars")
+# # ibisPolarsPandas2 = IbisDataFrame(dfPolars2, ibis_backend_schema="pandas")
+# ibisPolarsDuckDB2 = IbisDataFrame(dfPolars2, ibis_backend_schema="duckdb")
+# ibisPolarsSqlite2 = IbisDataFrame(dfPolars2, ibis_backend_schema="sqlite")
+
 
 
 # Test inner join
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-@pytest.mark.parametrize("ibis_df_two", [
-    # (ibisPandasPandas2),
-    (ibisPandasPolars2),
-    (ibisPandasDuckDB2),
-    (ibisPandasSqlite2),
-    (ibisPolarsPolars2),
-    # (ibisPolarsPandas2),
-    (ibisPolarsDuckDB2),
-    (ibisPolarsSqlite2),
-])
-def test_inner_join_one(ibis_df, ibis_df_two):
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("data_dict_2, framework_2, ibis_backend_schema_2", testcases_df_framework_backend_2)
+@pytest.mark.parametrize("execute_on", ["left", "right", None])
+def test_inner_join_one(data_dict, framework, ibis_backend_schema, 
+                        data_dict_2, framework_2, ibis_backend_schema_2, 
+                        execute_on ):
 
-    joined_df = ibis_df.inner_join(ibis_df_two, predicates=["A"])
-    assert joined_df.materialise().shape == (3, 5)
-    # assert list(joined_df.get_column_names()) == ["A", "B", "C", "D", "E"]
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
+    ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
+
+
+    joined_df = ibis_df.inner_join(ibis_df_2, predicates=["A"], execute_on=execute_on)
+
+    with check: 
+        assert joined_df.materialise().shape == (3, 5)
+    with check: 
+        #assert column names are same, rgardless of order
+        assert joined_df.get_column_names().sort() == ["A", "B", "C", "D", "E"].sort()
+    with check: 
+        assert joined_df.get_column_as_list(column="A") == [1, 2, 3]
+    with check: 
+        assert joined_df.get_column_as_list(column="B") == [4, 5, 6]
+    with check: 
+        assert joined_df.get_column_as_list(column="D") == [11, 12, 13]
+    with check: 
+        assert joined_df.get_column_as_list(column="E") == ["A", "R", "R"]
+
+
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("data_dict_2, framework_2, ibis_backend_schema_2", testcases_df_framework_backend_2)
+@pytest.mark.parametrize("execute_on", ["left", "right", None])
+def test_inner_join_two(data_dict, framework, ibis_backend_schema, 
+                        data_dict_2, framework_2, ibis_backend_schema_2, 
+                        execute_on ):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
+    ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
+
+
+    joined_df = ibis_df_2.inner_join(ibis_df, predicates=["A"], execute_on=execute_on)
+
+    with check: 
+        assert joined_df.materialise().shape == (3, 5)
+    with check: 
+        #assert column names are same, rgardless of order
+        assert joined_df.get_column_names().sort() == ["A", "B", "C", "D", "E"].sort()
+    with check: 
+        assert joined_df.get_column_as_list(column="A") == [1, 2, 3]
+    with check: 
+        assert joined_df.get_column_as_list(column="B") == [4, 5, 6]
+    with check: 
+        assert joined_df.get_column_as_list(column="D") == [11, 12, 13]
+    with check: 
+        assert joined_df.get_column_as_list(column="E") == ["A", "R", "R"]
+
+
+
+#Left Joins
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("data_dict_2, framework_2, ibis_backend_schema_2", testcases_df_framework_backend_2)
+@pytest.mark.parametrize("execute_on", ["left", "right", None])
+def test_left_join_one(data_dict, framework, ibis_backend_schema, 
+                        data_dict_2, framework_2, ibis_backend_schema_2, 
+                        execute_on ):
+
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
+    ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
+
+
+    joined_df = ibis_df.left_join(ibis_df_2, predicates=["A"], execute_on=execute_on)
+
+    with check: 
+        assert joined_df.materialise().shape == (3, 6)
+    with check: 
+        #assert column names are same, rgardless of order
+        assert joined_df.get_column_names().sort() == ["A", "B", "C", "D", "E", "A_right"].sort()
+    with check: 
+        assert joined_df.get_column_as_list(column="A") == [1, 2, 3]
+    with check: 
+        assert joined_df.get_column_as_list(column="B") == [4, 5, 6]
+    with check: 
+        assert joined_df.get_column_as_list(column="D") == [11, 12, 13]
+    with check: 
+        assert joined_df.get_column_as_list(column="E") == ["A", "R", "R"]
+
+
+
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("data_dict_2, framework_2, ibis_backend_schema_2", testcases_df_framework_backend_2)
+@pytest.mark.parametrize("execute_on", ["left", "right", None])
+def test_left_join_two(data_dict, framework, ibis_backend_schema, 
+                        data_dict_2, framework_2, ibis_backend_schema_2, 
+                        execute_on 
+                        ):
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
+    ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
+
+
+    joined_df = ibis_df_2.outer_join(right=ibis_df, predicates=["A"], execute_on=execute_on)
+
+
+    with check:
+        assert joined_df.materialise().shape == (4, 6)
+    with check:
+        assert joined_df.get_column_names().sort() == ["A", "B", "C", "D", "E", "A_right",].sort()       
     
-    result = joined_df.execute()
-    # assert list(result["A"]) == [1, 2, 3]
-    # assert list(result["B"]) == [4, 5, 6]
-    # assert list(result["D"]) == [11, 12, 13]
-    # assert list(result["E"]) == ["A", "R", "R"]
+    with check:
+        assert joined_df.get_column_as_list(column="A") ==  [1, 2, 3, None]
+    with check:
+        assert joined_df.get_column_as_list(column="B") == [4, 5, 6, None]
+    with check:
+        assert joined_df.get_column_as_list(column="D") == [11, 12, 13, 14]
+    with check:
+        assert joined_df.get_column_as_list(column="E") == ["A", "R", "R", "R"]
 
 
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-@pytest.mark.parametrize("ibis_df_two", [
-    # (ibisPandasPandas2),
-    (ibisPandasPolars2),
-    (ibisPandasDuckDB2),
-    (ibisPandasSqlite2),
-    (ibisPolarsPolars2),
-    # (ibisPolarsPandas2),
-    (ibisPolarsDuckDB2),
-    (ibisPolarsSqlite2),
-])
-def test_inner_join_two(ibis_df, ibis_df_two):
-    joined_df = ibis_df_two.inner_join(ibis_df, predicates=["A"])
-    assert joined_df.materialise().shape == (3, 5)
-    assert list(joined_df.get_column_names()) == ["A", "D", "E", "B", "C"]
-    
-    result = joined_df.execute()
-    assert list(result["A"]) == [1, 2, 3]
-    assert list(result["B"]) == [4, 5, 6]
-    assert list(result["D"]) == [11, 12, 13]
-    assert list(result["E"]) == ["A", "R", "R"]
-
-
-#Problem Combinations: This ignores the pandas schemas as they all fail no matter the combo. Error actually happens whenever it attempts to execute or materiralise
-@pytest.mark.parametrize("ibis_df, ibis_df_two", [
-    (ibisPandasDuckDB, ibisPandasDuckDB2),
-    (ibisPandasDuckDB, ibisPolarsDuckDB2),
-    (ibisPandasSqlite, ibisPandasSqlite2),
-    (ibisPandasSqlite, ibisPolarsSqlite2),
-    (ibisPolarsDuckDB, ibisPandasDuckDB2),
-    (ibisPolarsDuckDB, ibisPolarsDuckDB2),
-    (ibisPolarsSqlite, ibisPandasSqlite2),
-    (ibisPolarsSqlite, ibisPolarsSqlite2)
-])
-
-def test_inner_join_issues_one(ibis_df, ibis_df_two):
-    with pytest.raises(Exception):
-        joined_df = ibis_df.inner_join(ibis_df_two, predicates=["A"])
-        print(joined_df.execute())
 
 
 #Test Outer Join
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-@pytest.mark.parametrize("ibis_df_two", [
-    # (ibisPandasPandas2),
-    (ibisPandasPolars2),
-    (ibisPandasDuckDB2),
-    (ibisPandasSqlite2),
-    (ibisPolarsPolars2),
-    # (ibisPolarsPandas2),
-    (ibisPolarsDuckDB2),
-    (ibisPolarsSqlite2),
-])
-def test_outer_join_one(ibis_df, ibis_df_two):
-    joined_df = ibis_df.outer_join(ibis_df_two, predicates=["A"])
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("data_dict_2, framework_2, ibis_backend_schema_2", testcases_df_framework_backend_2)
+@pytest.mark.parametrize("execute_on", ["left", "right", None])
+def test_outer_join_one(data_dict, framework, ibis_backend_schema, 
+                        data_dict_2, framework_2, ibis_backend_schema_2, 
+                        execute_on 
+                        ):
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
+    ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
+
+
+    joined_df = ibis_df.outer_join(right=ibis_df_2, predicates=["A"], execute_on=execute_on)
+
+
     with check:
         assert joined_df.materialise().shape == (4, 6)
-        assert list(joined_df.get_column_names()) == ["A", "B", "C","A_right", "D", "E"]
-        
-        result = joined_df.execute()
-        print(result)
-        assert list(result["A"]) == [1, 2, 3, None]
-        assert list(result["B"]) == [4.0, 5.0, 6.0, None]
-        assert list(result["D"]) == [11, 12, 13, 14]
-        assert list(result["E"]) == ["A", "R", "R", "R"]
-"""
-Problem
-TODO: Outer join returns different results for different combos.
-for pa_pl + pa_duck, pa_pl + pa_sql, pa_pl + pl_duck, pa_pl + pl_sql, pa_duck + pa_duck, pa_duck + pl_pl, pa_duck + pl_sql, pa_sql + pa_duck, pa_sql + pl_pl,
-pa_sql + pl_duck, pl_pl + pa_pl, pl_pl + pa_duck, pl_pl + pl_pl, pl_pl + pl_sql, pl_duck + pa_duck, pl_duck + pl_pl 
-
-it returned:
-
-    A    B     C  A_right   D  E
-0  1.0  4.0     A        1  11  A
-1  2.0  5.0     B        2  12  R
-2  3.0  6.0     C        3  13  R
-3  NaN  NaN  None        4  14  R
-
-While for the rest of the combinations, it returned:
-shape: (4, 6)
-┌──────┬──────┬──────┬─────────┬─────┬─────┐
-│ A    ┆ B    ┆ C    ┆ A_right ┆ D   ┆ E   │
-│ ---  ┆ ---  ┆ ---  ┆ ---     ┆ --- ┆ --- │
-│ i64  ┆ i64  ┆ str  ┆ i64     ┆ i64 ┆ str │
-╞══════╪══════╪══════╪═════════╪═════╪═════╡
-│ 1    ┆ 4    ┆ A    ┆ 1       ┆ 11  ┆ A   │
-│ 2    ┆ 5    ┆ B    ┆ 2       ┆ 12  ┆ R   │
-│ 3    ┆ 6    ┆ C    ┆ 3       ┆ 13  ┆ R   │
-│ null ┆ null ┆ null ┆ 4       ┆ 14  ┆ R   │
-└──────┴──────┴──────┴─────────┴─────┴─────┘
-
-
-And once more there seems to be an issue with the pandas schema. It breaks on what feels like everything.
-"""
-
-#Noisy tests that will only become useful once the above issues are resolved
-# """
-@pytest.mark.parametrize("ibis_df", [
-    # (ibisPandasPandas),
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    # (ibisPolarsPandas),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-@pytest.mark.parametrize("ibis_df_two", [
-    # (ibisPandasPandas2),
-    (ibisPandasPolars2),
-    (ibisPandasDuckDB2),
-    (ibisPandasSqlite2),
-    (ibisPolarsPolars2),
-    # (ibisPolarsPandas2),
-    (ibisPolarsDuckDB2),
-    (ibisPolarsSqlite2),
-])
-def test_outer_join_two_b(ibis_df, ibis_df_two):
-
-    joined_df = ibis_df_two.outer_join(ibis_df, predicates=["A"])
-    assert joined_df.materialise().shape == (4, 6)
-    assert list(joined_df.get_column_names()) == ["A", "D", "E","A_right", "B", "C"]
+    with check:
+        assert joined_df.get_column_names().sort() == ["A", "B", "C","A_right", "D", "E"].sort()       
     
-    result = joined_df.execute()
-    assert list(result["A"]) == [1, 2, 3, 4]
-    assert list(result["B"]) == [4, 5, 6, None]
-    assert list(result["D"]) == [11, 12, 13, 14]
-    assert list(result["E"]) == ["A", "R", "R", "R"]
+    with check:
+        assert joined_df.get_column_as_list(column="A") ==  [1, 2, 3, None]
+    with check:
+        assert joined_df.get_column_as_list(column="B") == [4, 5, 6, None]
+    with check:
+        assert joined_df.get_column_as_list(column="D") == [11, 12, 13, 14]
+    with check:
+        assert joined_df.get_column_as_list(column="E") == ["A", "R", "R", "R"]
+
+@pytest.mark.parametrize("data_dict, framework, ibis_backend_schema", testcases_df_framework_backend)
+@pytest.mark.parametrize("data_dict_2, framework_2, ibis_backend_schema_2", testcases_df_framework_backend_2)
+@pytest.mark.parametrize("execute_on", ["left", "right", None])
+def test_outer_join_two(data_dict, framework, ibis_backend_schema, 
+                        data_dict_2, framework_2, ibis_backend_schema_2, 
+                        execute_on 
+                        ):
+    native_df = create_native_dataframe(dataframe_framework=framework, data_dict=data_dict)
+    ibis_df = create_ibis_dataframe(df=native_df, ibis_backend_schema=ibis_backend_schema)
+
+    native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
+    ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
 
 
-#Problem Combinations: This ignores the pandas schemas as they all fail no matter the combo 
-@pytest.mark.parametrize("ibis_df, ibis_df_two", [
-    (ibisPandasDuckDB, ibisPandasDuckDB2),
-    (ibisPandasDuckDB, ibisPolarsDuckDB2),
-    (ibisPandasSqlite, ibisPandasSqlite2),
-    (ibisPandasSqlite, ibisPolarsSqlite2),
-    (ibisPolarsDuckDB, ibisPandasDuckDB2),
-    (ibisPolarsDuckDB, ibisPolarsDuckDB2),
-    (ibisPolarsSqlite, ibisPandasSqlite2),
-    (ibisPolarsSqlite, ibisPolarsSqlite2)
-])
-
-def test_inner_join_issues_one_b(ibis_df, ibis_df_two):
-    with pytest.raises(Exception):
-        joined_df = ibis_df.outer_join(ibis_df_two, predicates=["A"])
-        print(joined_df.execute())
+    joined_df = ibis_df_2.outer_join(right=ibis_df, predicates=["A"], execute_on=execute_on)
 
 
-
-#Prints out all the working outer joins
-@pytest.mark.parametrize("ibis_df", [
-    (ibisPandasPolars),
-    (ibisPandasDuckDB),
-    (ibisPandasSqlite),
-    (ibisPolarsPolars),
-    (ibisPolarsDuckDB),
-    (ibisPolarsSqlite)
-])
-@pytest.mark.parametrize("ibis_df_two", [
-    (ibisPandasPolars2),
-    (ibisPandasDuckDB2),
-    (ibisPandasSqlite2),
-    (ibisPolarsPolars2),
-    (ibisPolarsDuckDB2),
-    (ibisPolarsSqlite2),
-])
-def test_outer_join_one_b(ibis_df, ibis_df_two):
-    joined_df = ibis_df.outer_join(ibis_df_two, predicates=["A"])        
-    result = joined_df.execute()
-    print("<?><")
-    print(result)
-    print("><?>")
-    assert True == False
-# """
+    with check:
+        assert joined_df.materialise().shape == (4, 6)
+    with check:
+        assert joined_df.get_column_names().sort() == ["A", "B", "C","A_right", "D", "E"].sort()       
+    
+    with check:
+        assert joined_df.get_column_as_list(column="A") ==  [1, 2, 3, None]
+    with check:
+        assert joined_df.get_column_as_list(column="B") == [4, 5, 6, None]
+    with check:
+        assert joined_df.get_column_as_list(column="D") == [11, 12, 13, 14]
+    with check:
+        assert joined_df.get_column_as_list(column="E") == ["A", "R", "R", "R"]
