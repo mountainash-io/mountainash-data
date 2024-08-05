@@ -7,8 +7,8 @@ import polars as pl
 import pyarrow as pa
 import ibis.expr.types as ir
 import ibis
-
-from .utils.dataframe_utils import DataFrameUtils
+from functools import lru_cache
+from .utils.dataframe_utils import DataFrameUtils, init_ibis_connection
 
 # class IbisTableLineageWrapper:  
 
@@ -38,6 +38,10 @@ from .utils.dataframe_utils import DataFrameUtils
 #                 print(f"Backend temp table {self.ibis_tablename} closed.")
 
 
+@lru_cache(maxsize=None)
+def init_default_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
+    return init_ibis_connection(ibis_schema=ibis_schema)
+
 class BaseDataFrame(ABC):
 
     # df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame]
@@ -48,6 +52,7 @@ class BaseDataFrame(ABC):
                  ibis_backend:          Optional[ibis.BaseBackend] = None,
                  ibis_backend_schema:   Optional[str] = None,
                  tablename_prefix:      Optional[str] = None,
+                 create_as_view:        Optional[bool] = False,
                 #lineage_history: Optional[List[Any]] = None,
                  ) -> None:
         
@@ -72,8 +77,8 @@ class BaseDataFrame(ABC):
         # self.ibis_temp_tablename: str = self.init_ibis_temp_tablename()
 
         #Init the dataframe. What Am I doing with a pyarrow table here?
-        self.native_df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, pa.Table] = self.init_native_table(df=df)
-        self.ibis_df: ir.Table = self.init_ibis_table(df=df, tablename_prefix=tablename_prefix)
+        self.native_df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] = self.init_native_table(df=df)
+        self.ibis_df: ir.Table = self.init_ibis_table(df=df, tablename_prefix=tablename_prefix, create_as_view=create_as_view)
 
 
     #==============
@@ -94,16 +99,22 @@ class BaseDataFrame(ABC):
             default_ibis_schema = self.default_ibis_backend_schema
 
         #TODO: Check that we have a valid schema
-        if default_ibis_schema not in ["duckdb", "polars", "pandas", "sqlite"]:
+        if default_ibis_schema not in ["duckdb", "polars", "sqlite"]:
             raise ValueError(f"Invalid default ibis schema: {default_ibis_schema}")
 
-        self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
+        #Using the function to cache the connection.
+        self.ibis_backend = init_default_ibis_connection(ibis_schema=default_ibis_schema)
+        # self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
 
         if not self.ibis_backend:
             raise Exception("Ibis client connection not established")
 
 
-    def init_ibis_table(self, df, tablename_prefix:Optional[str]=None) -> ir.Table:
+    def init_ibis_table(self, 
+                        df : Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
+                        tablename_prefix:Optional[str]=None,
+                        create_as_view:        Optional[bool] = False,
+                 ) -> ir.Table:
         
         if not self.ibis_backend:
             self.init_default_ibis_backend()
@@ -113,11 +124,12 @@ class BaseDataFrame(ABC):
             if df.has_name() and not tablename_prefix:
                 ibis_df = df
             else:
-                ibis_df = df.alias(alias=self.generate_tablename(prefix=tablename_prefix))
+                tablename = self.generate_tablename(prefix=tablename_prefix)
+                ibis_df = df.alias(alias=tablename)
 
         else:
             #we have a new table from pandas or polars
-            ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df, tablename_prefix=tablename_prefix, ibis_backend=self.ibis_backend)
+            ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df, tablename_prefix=tablename_prefix, current_ibis_backend=self.ibis_backend,  target_ibis_backend=self.ibis_backend, create_as_view=create_as_view)
         
         return ibis_df
 
@@ -130,17 +142,24 @@ class BaseDataFrame(ABC):
     def create_temp_table_ibis(self,
                           df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
                           tablename_prefix: Optional[str] = None,
-                          ibis_backend: Optional[ibis.BaseBackend] = None,
+                          current_ibis_backend: Optional[ibis.BaseBackend] = None,
+                          target_ibis_backend: Optional[ibis.BaseBackend] = None,
                           overwrite: Optional[bool] = True,
+                          create_as_view: Optional[bool] = False
             ) -> ir.Table:
-        
-        if ibis_backend is None:
-            ibis_backend = self.ibis_backend
+
+        if current_ibis_backend is None:
+            current_ibis_backend = self.ibis_backend
+
+        if target_ibis_backend is None:
+            target_ibis_backend = self.ibis_backend
 
         ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df_dataframe, 
                                                         tablename_prefix=tablename_prefix, 
-                                                        ibis_backend=ibis_backend,
-                                                        overwrite=overwrite)
+                                                        current_ibis_backend=current_ibis_backend,
+                                                        target_ibis_backend=target_ibis_backend,
+                                                        overwrite=overwrite,
+                                                        create_as_view=create_as_view)
         return ibis_df
 
     @abstractmethod

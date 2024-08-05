@@ -5,8 +5,10 @@ import polars as pl
 import pyarrow as pa
 import ibis as ibis
 import ibis.expr.types as ir
-# import uuid
+import ibis.expr.schema as ibis_schema
 
+# import uuid
+from .utils.dataframe_utils import DataFrameUtils, init_ibis_connection
 from .base_dataframe import BaseDataFrame
 
 class IbisDataFrame(BaseDataFrame):
@@ -16,20 +18,22 @@ class IbisDataFrame(BaseDataFrame):
                  ibis_backend:          Optional[ibis.BaseBackend] = None,
                  ibis_backend_schema:   Optional[str] = None,
                  tablename_prefix:      Optional[str] = None,
+                 create_as_view:        Optional[bool] = False,
                 #lineage_history: Optional[List[Any]] = None,
                  ) -> None:
 
         super().__init__(df=df, 
                          ibis_backend=ibis_backend, 
                          ibis_backend_schema=ibis_backend_schema, 
-                         tablename_prefix=tablename_prefix)
+                         tablename_prefix=tablename_prefix,
+                         create_as_view=create_as_view)
 
 
 
     # =========
     # Initialisation
         
-        # Call a method to set the backend schema after super().__init__
+    # Call a method to set the backend schema after super().__init__
     def init_default_ibis_backend_schema(self):
         self.default_ibis_backend_schema = "polars"
 
@@ -57,10 +61,7 @@ class IbisDataFrame(BaseDataFrame):
 
         if isinstance(self.ibis_df, ir.Table):
 
-            if self.ibis_backend_schema == "polars":
-                return self.ibis_df.to_polars()
-            else:
-                return self.ibis_df.execute()
+            return self.ibis_df.to_polars()
         else:
             raise ValueError("Dataframe could not be not materialised")
 
@@ -116,7 +117,10 @@ class IbisDataFrame(BaseDataFrame):
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
     
-    def _rename_ibis(self,  **kwargs) -> ir.Table:
+    def _rename_ibis(self,  **kwargs) -> ir.Table:      
+
+        #Will need to be addresses in https://github.com/mountainash-io/mountainash-data/issues/22
+        # Needs to pass test_rename_method()  
         new_df: Any = self.ibis_df.rename( **kwargs)
         return new_df
 
@@ -177,43 +181,158 @@ class IbisDataFrame(BaseDataFrame):
                                    execute_on: Optional[str] = None
                                    ) -> Tuple[ir.Table, ir.Table]:
 
+        #TODO: Get schemas, and compare
+        #IF different and diff backend, cast to target backend
+        #IF different and same backend, cast to left backend
+        # Finally, never use Pandas! Always use Ibis or Polars
+
+
         if self.ibis_backend is None:
             raise Exception("Ibis client connection not established")
 
         if execute_on and execute_on not in ["left", "right"]:
             raise ValueError("execute_on must be one of 'left', 'right' or None")
 
+        #Test if we have the same backend object
+        same_backend = False
 
-        #right has the same backed
-        if isinstance(right, IbisDataFrame) and self.ibis_backend == right.ibis_backend:
+        #Resolve table schema
+        left_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(self.ibis_df)
+        right_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(right.ibis_df)
+
+        #find common keys in schemas:
+        common_fields = list(set(left_table_schema.fields.keys()) & set(right_table_schema.fields.keys()))
+
+        #For common keys, check if the types are the same
+        unequal_field_types: Dict[str,Dict[str, Any]] = {field: {"left": left_table_schema[field], "right": right_table_schema[field]} for field in common_fields if left_table_schema.fields[field] != right_table_schema.fields[field]}
+
+
+        #For in-memory dbs don't use equals (==) here as it just compares the connection string!
+        if self.ibis_backend_schema in ["duckdb", "sqlite"] and self.ibis_backend is right.ibis_backend:
+            same_backend = True
+        #For database connections (like databases) it is OK to use == as it compares the connection string, which will be the same database, even if they are distinct connections
+        if self.ibis_backend_schema not in ["duckdb", "sqlite"] and self.ibis_backend == right.ibis_backend:
+            same_backend = True
+
+        
+        if isinstance(right, IbisDataFrame) and same_backend == True: 
+
+            # print(f"A. Same backend SELF to:{self.ibis_backend_schema} from:{type(self.ibis_df)} - RIGHT to:{right.ibis_backend_schema} from:{type(right.ibis_df)}")
 
             left_table = self.ibis_df
             right_table = right.ibis_df
+
+
+            #Cast non matching column types
+            if self.ibis_backend_schema in ("duckdb"):
+                cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
+                print(f"CAST DICT: {cast_dict}")
+                right_table = right_table.try_cast(cast_dict)
+            else:
+
+                for field in unequal_field_types.keys():
+                    target_type = unequal_field_types[field]["left"]
+                    print(f"Casting field: {field} to {target_type}")
+                    right_table = ( right_table 
+                                    .mutate(field = ibis._[field].cast(target_type ) )
+                                    .drop(field)
+                                    .rename({field: "field"})
+                    )
+
+
+            # print(f"A. Same backend POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
+
 
         #right a different backend or not ibis
         else:
 
             if execute_on == "left":
 
-                #create temp table on left (self) backend
+                # print(f"B. Left SELF to:{self.ibis_backend_schema} from:{self.ibis_backend.name}  - RIGHT to:{self.ibis_backend_schema}  from:{right.ibis_backend.name} ")
+
+
                 left_table = self.ibis_df
-                right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="left_table", overwrite=True)
+                right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
+
+                #Cast non matching column types
+                if self.ibis_backend_schema in ("duckdb"):
+                    cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
+                    print(f"CAST DICT: {cast_dict}")
+                    right_table = right_table.try_cast(cast_dict)
+                else:
+
+                    for field in unequal_field_types.keys():
+                        target_type = unequal_field_types[field]["left"]
+                        print(f"Casting field: {field} to {target_type}")
+                        right_table = ( right_table 
+                                        .mutate(field = ibis._[field].cast(target_type ) )
+                                        .drop(field)
+                                        .rename({field: "field"})
+                        )
+
+                # print(f"B. Left POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
 
 
             elif execute_on == "right":
                 #create temp table on right
 
+                # print(f"C. Right SELF to:{right.ibis_backend_schema} from:{self.ibis_backend.name}  - RIGHT to:{right.ibis_backend_schema} from:{right.ibis_backend.name} ")
+
+
                 if not isinstance(right, IbisDataFrame):
                     raise ValueError("Right must be an IbisDataFrame to execute on right")
 
+                left_table = right.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=right.ibis_backend, overwrite=True)
+                # right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", ibis_backend=right.ibis_backend, overwrite=True, create_as_view=True)
                 right_table = right.ibis_df
-                left_table = self.create_temp_table_ibis(df_dataframe=self.native_df, tablename_prefix="left_table", overwrite=True)
 
+                #Cast non matching column types
+                if right.ibis_backend_schema in ("duckdb"):
+                    cast_dict = {field: unequal_field_types[field]["right"] for field in unequal_field_types.keys()}
+                    print(f"CAST DICT: {cast_dict}")
+                    left_table = left_table.try_cast(cast_dict)
+
+                else:
+                    for field in unequal_field_types.keys():
+                        target_type = unequal_field_types[field]["right"]
+
+                        print(f"Casting field: {field} to {target_type}")
+                        left_table = ( left_table 
+                                        .mutate(field = ibis._[field].cast(target_type ) )
+                                        .drop(field)
+                                        .rename({field: "field"})
+                        )
+
+                # print(f"C. Right  POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
 
             else:
+
+                default_ibis_backend = init_ibis_connection(self.default_ibis_backend_schema)
+
+                # print(f"D. Default SELF to:{self.default_ibis_backend_schema} from:{self.ibis_backend.name} - RIGHT to:{self.default_ibis_backend_schema} from:{right.ibis_backend.name}")
+
+
                 #We have differing backends, and we are running locally. Bring both into local memory
-                left_table = self.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", overwrite=True)
-                right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", overwrite=True)
+                left_table =  self.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
+                right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
+
+                #Cast non matching column types
+                if self.default_ibis_backend_schema in ("duckdb", "polars"):
+                    cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
+                    print(f"CAST DICT: {cast_dict}")
+                    right_table = right_table.try_cast(cast_dict)
+                else:
+                    for field in unequal_field_types.keys():
+                        target_type = unequal_field_types[field]["left"]
+                        print(f"Casting field: {field} to {target_type}")
+                        right_table = ( right_table 
+                                        .mutate(field = ibis._[field].cast(target_type ) )
+                                        .drop(field)
+                                        .rename({field: "field"})
+                        )
+
+
+                # print(f"D. Default post: SELF backend:{self.ibis_backend_schema} df:{left_table._find_backend(use_default=True)} - RIGHT backend:{right.ibis_backend_schema} df:{right_table._find_backend(use_default=True)} ")
 
 
         return (left_table, right_table)
@@ -223,7 +342,7 @@ class IbisDataFrame(BaseDataFrame):
     def inner_join(self,             
                    right: "BaseDataFrame", 
                    predicates: Any,
-                   execute_on: Optional["str"] = None,
+                   execute_on: Optional[str] = None,
                    **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._inner_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="inner_join"))
@@ -244,7 +363,7 @@ class IbisDataFrame(BaseDataFrame):
     def left_join(self,             
                    right: "BaseDataFrame", 
                    predicates: Any,
-                   execute_on: Optional["str"] = None,
+                   execute_on: Optional[str] = None,
                    **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._left_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="left_join"))
@@ -267,7 +386,7 @@ class IbisDataFrame(BaseDataFrame):
     def outer_join(self,             
                    right: "BaseDataFrame", 
                    predicates: Any,
-                   execute_on: Optional["str"] = None,
+                   execute_on: Optional[str] = None,
                    **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="outer_join"))
