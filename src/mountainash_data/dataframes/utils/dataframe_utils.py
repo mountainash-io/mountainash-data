@@ -333,16 +333,12 @@ class DataFrameUtils:
             polars_df = DataframeUtils.cast_dataframe_to_polars(pandas_df)
         """
 
-        df_dataframe
-
         if ibis_backend is None:
             ibis_backend = "polars"
 
         if isinstance(ibis_backend, str):
             ibis_backend = init_ibis_connection(ibis_backend)
 
-        #Now we should have a backend instance
-        #ibis.set_backend(backend=ibis_backend) 
 
         # columns = DataFrameUtils.get_column_names(df_dataframe)
         table_schema = DataFrameUtils.get_table_schema(df_dataframe)

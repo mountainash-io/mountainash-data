@@ -215,6 +215,7 @@ def test_create_dataframe_ibis_empty():
     with check:    
         expCol = list(columnDictExample1.values())
         assert ibisDataFrame.columns == expCol
+    with check:    
         valuesColOne = list(ibisDataFrame.execute()["col3"])
         assert valuesColOne == [None] * 3
 
@@ -233,10 +234,11 @@ def test_create_dataframe_pandas_dirty():
     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExampleDirty, columnDictExample1)
     with check:    
         assert pdDataframe["col1"][0] == 4
-        with pytest.raises(Exception):
-            assert pdDataframe["col1"] == 4 #When only one value is inputed Pandas breaks trying to find the entire column
+    with check:    
         assert pdDataframe["col2"][2] == "90" 
+    with check:    
         assert pdDataframe["col3"][1] == 5 
+    with check:    
         assert pdDataframe["col3"][2][1] == 9.7 
 
     #Need to ensure that inputed data is in a list form. Could just put the value in a list and multiple by row number
@@ -253,12 +255,13 @@ def test_create_dataframe_polars_dirty():
     #Same issue as pandas, allows for creation of unaccessable dataframes with None columns
     with check:    
         assert plDataframe["col1"][0] == 4
-        with pytest.raises(Exception):
-            assert plDataframe["col1"] == 4 #Does same as Pandas
-        #Intrestling Polars removes the differing data types, leaves Null for everthing except strings    
+    with check:    
         assert plDataframe["col2"][0] == None
+    with check:    
         assert plDataframe["col2"][2] == "90"
+    with check:    
         assert plDataframe["col3"][2] == None 
+    with check:    
         assert plDataframe["col3"][0] == "A"
 
     #Dirty no strings
@@ -270,8 +273,11 @@ def test_create_dataframe_polars_dirty():
     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, tempDict, columnDictExample1)   
     with check:    
         assert plDataframe["col1"][0] == 4
+    with check:    
         assert plDataframe["col2"][0] == 1
+    with check:    
         assert plDataframe["col2"][1] == 2.4
+    with check:    
         assert plDataframe["col3"][2] == "3.4" 
         #assert plDataframe["col3"][0] == 1.2  #Need to Fix
         """
@@ -295,7 +301,9 @@ def test_create_dataframe_ibis_dirty():
     with check:    
 
         assert valuesColOne == [4] * 3 #Ibis actually works with a single value inputted, creates a list so each row has the value
+    with check:    
         assert valuesColTwo == [None, None, "90"]
+    with check:    
         assert valuesColThree == ["A", None, None]
         #Does the same as Polars, if multiple data type are inputted it defaults to strings
 
@@ -312,7 +320,9 @@ def test_create_dataframe_ibis_dirty():
 
     with check:    
         assert valuesColOne == [4] * 3 
+    with check:    
         assert valuesColTwo == [1, 2.4, 3]
+    with check:    
         assert valuesColThree == [None, None, "3.4"]
         #Same as Polars
 
@@ -322,9 +332,13 @@ def test_create_dataframe_pandas_uneven():
     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleUneven)
     with check:    
         assert "col1" in pdDataframe
+    with check:    
         assert "column3" in pdDataframe
+    with check:    
         assert not "col3" in pdDataframe
+    with check:    
         assert pdDataframe["col2"][0] == 4
+    with check:    
         assert pdDataframe["column3"][0] == "A"
 
     columnDictExampleUneven2 = {
@@ -337,8 +351,11 @@ def test_create_dataframe_pandas_uneven():
     with check:    
         pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleUneven2)
         assert "col1" in pdDataframe
+    with check:    
         assert "col2" in pdDataframe
+    with check:    
         assert "col3" in pdDataframe
+    with check:    
         assert not "col4" in pdDataframe
 
     #If there are not enough column names then the original names will be kept, if there are too many than only the \
@@ -356,7 +373,9 @@ def test_create_dataframe_polars_uneven():
     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleUneven)
     with check:  
         assert "col1" in plDataframe
+    with check:    
         assert "col2" in plDataframe
+    with check:    
         assert "column3" in plDataframe
 
     columnDictExampleUneven2 = {
@@ -368,10 +387,14 @@ def test_create_dataframe_polars_uneven():
     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleUneven2)
     with check:  
         assert "col1" in plDataframe
+    with check:    
         assert "col2" in plDataframe
+    with check:    
         assert "col3" in plDataframe
+    with check:    
         assert not "col4" in plDataframe
         #Seems to work similar to Pandas
+    with check:    
 
         #Polars Uneven Data
         with pytest.raises(Exception):
@@ -394,9 +417,10 @@ def test_create_dataframe_ibis_uneven():
     with check:  
         assert ibisDataFrame.columns == ["col1", "col2", "col3"]
 
+    with check:    
 
-    with pytest.raises(Exception):
-        ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven, columnDictExample1)
+        with pytest.raises(Exception):
+            ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven, columnDictExample1)
     #Raises exact same error as the polars
 
     dataDictExampleUneven2 = {
@@ -424,6 +448,7 @@ def test_cast_dataframe_to_pandas():
 
     with check:  
         assert isinstance(result, pd.DataFrame)
+    with check:    
         assert result.equals(pd.DataFrame({"a": [1, 2, 3]}))
 
     """
@@ -436,6 +461,7 @@ def test_cast_dataframe_to_pandas():
 
     with check:  
         assert isinstance(result, pd.DataFrame)
+    with check:    
         assert result.equals(df_pandas)
 
 @pytest.mark.parametrize(
@@ -457,6 +483,7 @@ def test_cast_dataframe_to_polars():
 
     with check:  
         assert isinstance(result, pl.DataFrame)
+    with check:    
         assert result.shape == (3, 1)
 
     """
@@ -487,6 +514,7 @@ def test_cast_dataframe_to_ibis():
         expCol = ["a"]
         assert result.columns == expCol
         #Expected col values
+    with check:    
         expOne = [1,2,3]
         valuesColOne = list(result.execute()["a"])
         assert valuesColOne == expOne
@@ -506,11 +534,14 @@ def test_cast_dataframe_to_ibis():
 def test_cast_dataframe_to_ibis_extended(input_df, expectedColumns, expectedValues):
     result = DataFrameUtils.cast_dataframe_to_ibis(input_df)
 
-    #Expected column names
-    assert result.columns == expectedColumns
-    #Expected col values
-    valuesColOne = list(result.execute()["col3"])
-    assert valuesColOne == expectedValues
+    with check:    
+
+        #Expected column names
+        assert result.columns == expectedColumns
+        #Expected col values
+    with check:    
+        valuesColOne = list(result.execute()["col3"])
+        assert valuesColOne == expectedValues
 
 
 #Exceptions
@@ -630,15 +661,20 @@ def test_drop_pandas():
         value = DataFrameUtils.drop(df_pandas, columnsToDrop1)
         assert list(value.columns) == ["col3"]
 
+    with check:    
+
         value = DataFrameUtils.drop(df_pandas, columnsToDrop2)
         assert list(value.columns) == startColumns
 
+    with check:    
         value = DataFrameUtils.drop(df_pandas, columnsToDrop3)
         assert list(value.columns) == startColumns
 
+    with check:    
         value = DataFrameUtils.drop(df_pandas, columnsToDrop4)
         assert list(value.columns) == ["col1", "col3"]
 
+    with check:    
         value = DataFrameUtils.drop(df_pandas, columnsToDrop5)
         with pytest.raises(Exception):
             assert value.columns == startColumns #Turns out there are consequences, funny that
@@ -653,15 +689,19 @@ def test_drop_polars():
         value = DataFrameUtils.drop(df_polars, columnsToDrop1)
         assert list(value.columns) == ["col3"]
 
+    with check:    
         value = DataFrameUtils.drop(df_polars, columnsToDrop2)
         assert list(value.columns) == startColumns
 
+    with check:    
         value = DataFrameUtils.drop(df_polars, columnsToDrop3)
         assert list(value.columns) == startColumns
 
+    with check:    
         value = DataFrameUtils.drop(df_polars, columnsToDrop4)
         assert list(value.columns) == ["col1", "col3"]
 
+    with check:    
         value = DataFrameUtils.drop(df_polars, columnsToDrop5)
         assert value.columns == startColumns #Apparently it only breaks for Pandas
         
@@ -677,15 +717,19 @@ def test_drop_ibis():
         print(value)
         assert list(value.columns) == ["col3"]
 
+    with check:    
         value = DataFrameUtils.drop(df_ibis, columnsToDrop2)
         assert list(value.columns) == startColumns
 
+    with check:    
         value = DataFrameUtils.drop(df_ibis, columnsToDrop3)
         assert list(value.columns) == startColumns
 
+    with check:    
         value = DataFrameUtils.drop(df_ibis, columnsToDrop4)
         assert list(value.columns) == ["col1", "col3"]
 
+    with check:    
         value = DataFrameUtils.drop(df_ibis, columnsToDrop5)
         assert value.columns == startColumns 
             
@@ -767,14 +811,17 @@ def test_select_pandas():
         valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop1)
         assert valueSEL.equals(valueDROP)
 
+    with check:    
         valueSEL = DataFrameUtils.select(df_pandas, selectColumn2)
         valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop2)
         assert valueSEL.equals(valueDROP)
 
+    with check:    
         valueSEL = DataFrameUtils.select(df_pandas, selectColumn3)
         valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop4)
         assert valueSEL.equals(valueDROP)
 
+    with check:    
         valueSEL = DataFrameUtils.select(df_pandas, selectColumn4)
         valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop1)
         assert valueSEL.equals(valueDROP)
@@ -787,14 +834,17 @@ def test_select_polars():
         valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
         assert valueSEL.equals(valueDROP)
         
+    with check:    
         valueSEL = DataFrameUtils.select(df_polars, selectColumn2)
         valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop2)
         assert valueSEL.equals(valueDROP)
 
+    with check:    
         valueSEL = DataFrameUtils.select(df_polars, selectColumn3)
         valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop4)
         assert valueSEL.equals(valueDROP)
 
+    with check:    
         valueSEL = DataFrameUtils.select(df_polars, selectColumn4)
         valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
         assert valueSEL.equals(valueDROP)
@@ -807,35 +857,51 @@ def test_head():
     with check:      
         value = DataFrameUtils.head(df_pandas, 2)
         assert list(value["col1"]) == [1, 2]
+    with check:    
         assert list(value["col2"]) == [4, 5]
+    with check:    
         assert list(value["col3"]) == ["A", "B"]
 
+    with check:    
         value = DataFrameUtils.head(df_polars, 2)
         assert list(value["col1"]) == [1, 2]
+    with check:    
         assert list(value["col2"]) == [4, 5]
+    with check:    
         assert list(value["col3"]) == ["A", "B"]
 
+    with check:    
         value = DataFrameUtils.head(df_ibis, 2)
         assert list(value.execute()["col1"]) == [1, 2]
+    with check:    
         assert list(value.execute()["col2"]) == [4, 5]
+    with check:    
         assert list(value.execute()["col3"]) == ["A", "B"]
 
 def test_head_over():
 
+    value = DataFrameUtils.head(df_pandas, 7)
     with check:      
-        value = DataFrameUtils.head(df_pandas, 7)
         assert list(value["col1"]) == [1, 2, 3]
+    with check:    
         assert list(value["col2"]) == [4, 5, 6]
+    with check:    
         assert list(value["col3"]) == ["A", "B", "C"]
 
-        value = DataFrameUtils.head(df_polars, 7)
+    value = DataFrameUtils.head(df_polars, 7)
+    with check:    
         assert list(value["col1"]) == [1, 2, 3]
+    with check:    
         assert list(value["col2"]) == [4, 5, 6]
+    with check:    
         assert list(value["col3"]) == ["A", "B", "C"]
 
-        value = DataFrameUtils.head(df_ibis, 7)
+    value = DataFrameUtils.head(df_ibis, 7)
+    with check:    
         assert list(value.execute()["col1"]) == [1, 2, 3]
+    with check:    
         assert list(value.execute()["col2"]) == [4, 5, 6]
+    with check:    
         assert list(value.execute()["col3"]) == ["A", "B", "C"]
 
 def test_head_under():
@@ -845,16 +911,21 @@ def test_head_under():
     with check:  
         with pytest.raises(ValueError):
             value = DataFrameUtils.head(df_pandas, -1)
+    with check:  
         with pytest.raises(ValueError):
             value = DataFrameUtils.head(df_polars, -1)
+    with check:  
         with pytest.raises(ValueError):
             value = DataFrameUtils.head(df_polars, -1)
         
         #NR: It should be OK to call this.  I would expect an empty dataframe, but with column names and types populated.
+    with check:  
         with pytest.raises(ValueError):
             value = DataFrameUtils.head(df_pandas, 0)
+    with check:  
         with pytest.raises(ValueError):
             value = DataFrameUtils.head(df_polars, 0)
+    with check:  
         with pytest.raises(ValueError):
             value = DataFrameUtils.head(df_polars, 0)
         
