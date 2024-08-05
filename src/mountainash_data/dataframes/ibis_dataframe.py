@@ -73,17 +73,42 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+
+    def _select_ibis(self, ibis_expr: Any) -> Any:
+
+        #Do not add a parameter name here for columns. That will be interpreted as a column name
+        df_cols: Any = self.ibis_df.select(ibis_expr)
+        return df_cols
+    
+
     def drop(self, columns: Any) -> "IbisDataFrame":
 
         new_df: ir.Table = self._drop_ibis(columns).alias(alias=self.generate_tablename(prefix="drop"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
+    def _drop_ibis(self, columns: Any) -> ir.Table:
+
+        #Only drop columns if they exist in the dataframe
+        existing_columns = self.get_column_names()
+        columns = [x for x in columns if x in existing_columns]
+
+        if not columns or len(columns) == 0:
+            return self.ibis_df
+
+        new_df: Any = self.ibis_df.drop(columns)
+        return new_df
+
     def distinct(self) -> "BaseDataFrame":
 
         new_df: ir.Table = self._distinct_ibis().alias(alias=self.generate_tablename(prefix="distinct"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def _distinct_ibis(self) -> ir.Table:
+        new_df: Any = self.ibis_df.distinct()
+        return new_df
+
 
     def rename(self, **kwargs) -> "BaseDataFrame":
 
@@ -91,41 +116,62 @@ class IbisDataFrame(BaseDataFrame):
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
     
+    def _rename_ibis(self,  **kwargs) -> ir.Table:
+        new_df: Any = self.ibis_df.rename( **kwargs)
+        return new_df
+
+
     def try_cast(self, **kwargs) -> "BaseDataFrame":
 
         new_df: ir.Table = self._try_cast_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="try_cast"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _try_cast_ibis(self,  **kwargs) -> ir.Table:
+        new_df: Any = self.ibis_df.try_cast( **kwargs)
+        return new_df
+
 # Add Columns       
     def mutate(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._mutate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="mutate"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
-
+    def _mutate_ibis(self,  **kwargs) -> ir.Table:
+        df_cols: Any = self.ibis_df.mutate( **kwargs)
+        return df_cols
+    
 # Reshape
     def aggregate(self,  **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="aggregate"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
       
+    def _aggregate_ibis(self, **kwargs) -> ir.Table:
+
+        df_cols: Any = self.ibis_df.aggregate(**kwargs)
+        return df_cols
 
     def pivot_wider(self,  **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._pivot_wider_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_wider"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
+    def _pivot_wider_ibis(self, **kwargs) -> ir.Table:
+        df_cols: Any = self.ibis_df.pivot_wider(**kwargs)
+        return df_cols
+
     def pivot_longer(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_longer"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _pivot_longer_ibis(self, **kwargs) -> ir.Table:
+        df_cols: Any = self.ibis_df.pivot_longer(**kwargs)
+        return df_cols
 
+
+    #Join Resolution!
     def _resolve_join_backend_ibis(self, 
                                    right: "BaseDataFrame",
                                    execute_on: Optional[str] = None
@@ -184,6 +230,16 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _inner_join_ibis(self, 
+             right: "BaseDataFrame", 
+             predicates: Any,
+             execute_on: Optional["str"] = None,
+             **kwargs
+            ) -> ir.Table:
+
+        left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
+
+        return left_table.inner_join(right=right_table, predicates=predicates, **kwargs)
 
     def left_join(self,             
                    right: "BaseDataFrame", 
@@ -196,6 +252,17 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _left_join_ibis(self, 
+             right: "BaseDataFrame", 
+             predicates: Any,
+             execute_on: Optional["str"] = None,
+             **kwargs
+            ) -> ir.Table:
+
+        left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
+
+        return left_table.left_join(right=right_table, predicates=predicates, **kwargs)
+
 
     def outer_join(self,             
                    right: "BaseDataFrame", 
@@ -206,6 +273,17 @@ class IbisDataFrame(BaseDataFrame):
         new_df: ir.Table = self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="outer_join"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def _outer_join_ibis(self, 
+             right: "BaseDataFrame", 
+             predicates: Any,
+             execute_on: Optional["str"] = None,
+             **kwargs
+            ) -> ir.Table:
+
+        left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
+
+        return left_table.outer_join(right=right_table, predicates=predicates, **kwargs)
 
 # Row Selection
 
@@ -225,6 +303,12 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _head_ibis(self, n: int) -> ir.Table:
+
+        if n < 0:
+            raise ValueError("n must be greater than or equal to 0")
+
+        return self.ibis_df.head(n=n) 
                 
     def union(self, **kwargs) -> "IbisDataFrame":
         """Take the first n rows."""
@@ -232,6 +316,9 @@ class IbisDataFrame(BaseDataFrame):
         new_df = self._union_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="union"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def _union_ibis(self, **kwargs) -> ir.Table:
+        return ibis.union(self.ibis_df, **kwargs) 
 
 
     def order_by(self, **kwargs) -> "IbisDataFrame":
@@ -241,17 +328,24 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
                
-
+    def _order_by_ibis(self, **kwargs) -> ir.Table:
+        return self.ibis_df.order_by(**kwargs) 
+    
 #Column Metadata
     def get_column_names(self) -> list:
         return self._get_column_names_ibis()   
             
+    def _get_column_names_ibis(self) -> List[str]:
+        return DataFrameUtils.get_column_names(df=self.ibis_df)
+                
 ### Aggregates        
     
     def count(self) -> int:
        return self._count_ibis()
          
+    def _count_ibis(self) -> int:
 
+        return DataFrameUtils.count(self.ibis_df) 
 
 
 ### Query        
@@ -266,11 +360,30 @@ class IbisDataFrame(BaseDataFrame):
     def as_dict(self) -> Dict[str, List[Any]] | Any:
         return self._as_dict_ibis()
 
+    def _as_dict_ibis(self) -> Dict[str, List[Any]] | Any:
+
+        return DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=self.ibis_df)
+
     def as_list(self) -> Dict[str, List[Any]] | Any:
         return self._as_list_ibis()
+
+    def _as_list_ibis(self) -> Dict[str, List[Any]] | Any:
+        
+        return DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=self.ibis_df)
 
     def get_first_row_as_dict(self,
         ) -> Dict[Any,Any]:
         return self._get_first_row_as_dict_ibis()
 
+    def _get_first_row_as_dict_ibis(
+            self,
+        ) -> Dict[Any,Any]:
+        
+        obj_df = self.head(n=1)
+        obj_list = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.materialise())
 
+        if len(obj_list) > 0:
+            return obj_list[0]  
+        else:
+            return {}
+      
