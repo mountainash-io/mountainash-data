@@ -175,6 +175,29 @@ class IbisDataFrame(BaseDataFrame):
         return df_cols
 
 
+    def _cast_types_ibis(self, 
+                         df_ibis: ir.Table,
+                         target_ibis_backend_schema: Optional[str],
+                         fields_diff_types: List[str],
+                         target_fields_types: Dict[str, Any]) -> ir.Table:
+
+        if self.ibis_backend_schema in set("duckdb"):
+            cast_dict = {field: target_fields_types[field] for field in fields_diff_types}
+            print(f"CAST DICT: {cast_dict}")
+            df_ibis = df_ibis.try_cast(cast_dict)
+        else:
+
+            for field in fields_diff_types:
+                target_type = target_fields_types[field]
+                print(f"Casting field: {field} to {target_type}")
+                df_ibis = ( df_ibis 
+                                .mutate(field = ibis._[field].cast(target_type ) )
+                                .drop(field)
+                                .rename({field: "field"})
+                )
+        return df_ibis
+
+
     #Join Resolution!
     def _resolve_join_backend_ibis(self, 
                                    right: "BaseDataFrame",
@@ -201,10 +224,12 @@ class IbisDataFrame(BaseDataFrame):
         right_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(right.ibis_df)
 
         #find common keys in schemas:
-        common_fields = list(set(left_table_schema.fields.keys()) & set(right_table_schema.fields.keys()))
+        common_fields = list(set(left_table_schema.fields.keys()).intersection(set(right_table_schema.fields.keys())))
 
         #For common keys, check if the types are the same
-        unequal_field_types: Dict[str,Dict[str, Any]] = {field: {"left": left_table_schema[field], "right": right_table_schema[field]} for field in common_fields if left_table_schema.fields[field] != right_table_schema.fields[field]}
+        fields_diff_types: List[str] = [field for field in common_fields if left_table_schema.fields[field] != right_table_schema.fields[field]]
+        fields_types_left: Dict[str, Any] = {field: left_table_schema[field] for field in fields_diff_types}
+        fields_types_right: Dict[str, Any] = {field: right_table_schema[field] for field in fields_diff_types}
 
 
         #For in-memory dbs don't use equals (==) here as it just compares the connection string!
@@ -215,32 +240,17 @@ class IbisDataFrame(BaseDataFrame):
             same_backend = True
 
         
-        if isinstance(right, IbisDataFrame) and same_backend == True: 
-
-            # print(f"A. Same backend SELF to:{self.ibis_backend_schema} from:{type(self.ibis_df)} - RIGHT to:{right.ibis_backend_schema} from:{type(right.ibis_df)}")
+        if isinstance(right, IbisDataFrame) and same_backend: 
 
             left_table = self.ibis_df
             right_table = right.ibis_df
 
+            if len(fields_diff_types) > 0:
 
-            #Cast non matching column types
-            if self.ibis_backend_schema in set("duckdb"):
-                cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
-                print(f"CAST DICT: {cast_dict}")
-                right_table = right_table.try_cast(cast_dict)
-            else:
-
-                for field in unequal_field_types.keys():
-                    target_type = unequal_field_types[field]["left"]
-                    print(f"Casting field: {field} to {target_type}")
-                    right_table = ( right_table 
-                                    .mutate(field = ibis._[field].cast(target_type ) )
-                                    .drop(field)
-                                    .rename({field: "field"})
-                    )
-
-
-            # print(f"A. Same backend POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
+                right_table = self._cast_types_ibis(df_ibis=right_table,
+                                                    target_ibis_backend_schema =self.ibis_backend_schema,
+                                                    fields_diff_types=fields_diff_types, 
+                                                    target_fields_types=fields_types_left)
 
 
         #right a different backend or not ibis
@@ -248,92 +258,43 @@ class IbisDataFrame(BaseDataFrame):
 
             if execute_on == "left":
 
-                # print(f"B. Left SELF to:{self.ibis_backend_schema} from:{self.ibis_backend.name}  - RIGHT to:{self.ibis_backend_schema}  from:{right.ibis_backend.name} ")
-
-
                 left_table = self.ibis_df
                 right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
 
-                #Cast non matching column types
-                if self.ibis_backend_schema in set("duckdb"):
-                    cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
-                    print(f"CAST DICT: {cast_dict}")
-                    right_table = right_table.try_cast(cast_dict)
-                else:
-
-                    for field in unequal_field_types.keys():
-                        target_type = unequal_field_types[field]["left"]
-                        print(f"Casting field: {field} to {target_type}")
-                        right_table = ( right_table 
-                                        .mutate(field = ibis._[field].cast(target_type ) )
-                                        .drop(field)
-                                        .rename({field: "field"})
-                        )
-
-                # print(f"B. Left POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
-
+                if len(fields_diff_types) > 0:
+                    right_table = self._cast_types_ibis(df_ibis=right_table, 
+                                                        target_ibis_backend_schema =right.ibis_backend_schema,
+                                                        fields_diff_types=fields_diff_types, 
+                                                        target_fields_types=fields_types_left)
 
             elif execute_on == "right":
-                #create temp table on right
-
-                # print(f"C. Right SELF to:{right.ibis_backend_schema} from:{self.ibis_backend.name}  - RIGHT to:{right.ibis_backend_schema} from:{right.ibis_backend.name} ")
-
 
                 if not isinstance(right, IbisDataFrame):
                     raise ValueError("Right must be an IbisDataFrame to execute on right")
 
                 left_table = right.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=right.ibis_backend, overwrite=True)
-                # right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", ibis_backend=right.ibis_backend, overwrite=True, create_as_view=True)
                 right_table = right.ibis_df
 
-                #Cast non matching column types
-                if right.ibis_backend_schema in set("duckdb"):
-                    cast_dict = {field: unequal_field_types[field]["right"] for field in unequal_field_types.keys()}
-                    print(f"CAST DICT: {cast_dict}")
-                    left_table = left_table.try_cast(cast_dict)
+                if len(fields_diff_types) > 0:
+                    left_table = self._cast_types_ibis(df_ibis=left_table, 
+                                                       target_ibis_backend_schema =self.ibis_backend_schema,
+                                                       fields_diff_types=fields_diff_types, 
+                                                       target_fields_types=fields_types_right)
 
-                else:
-                    for field in unequal_field_types.keys():
-                        target_type = unequal_field_types[field]["right"]
-
-                        print(f"Casting field: {field} to {target_type}")
-                        left_table = ( left_table 
-                                        .mutate(field = ibis._[field].cast(target_type ) )
-                                        .drop(field)
-                                        .rename({field: "field"})
-                        )
-
-                # print(f"C. Right  POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
 
             else:
 
                 default_ibis_backend = init_ibis_connection(self.default_ibis_backend_schema)
 
-                # print(f"D. Default SELF to:{self.default_ibis_backend_schema} from:{self.ibis_backend.name} - RIGHT to:{self.default_ibis_backend_schema} from:{right.ibis_backend.name}")
-
-
                 #We have differing backends, and we are running locally. Bring both into local memory
                 left_table =  self.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
                 right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
 
-                #Cast non matching column types
-                if self.default_ibis_backend_schema in set("duckdb"):
-                    cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
-                    print(f"CAST DICT: {cast_dict}")
-                    right_table = right_table.try_cast(cast_dict)
-                else:
-                    for field in unequal_field_types.keys():
-                        target_type = unequal_field_types[field]["left"]
-                        print(f"Casting field: {field} to {target_type}")
-                        right_table = ( right_table 
-                                        .mutate(field = ibis._[field].cast(target_type ) )
-                                        .drop(field)
-                                        .rename({field: "field"})
-                        )
-
-
-                # print(f"D. Default post: SELF backend:{self.ibis_backend_schema} df:{left_table._find_backend(use_default=True)} - RIGHT backend:{right.ibis_backend_schema} df:{right_table._find_backend(use_default=True)} ")
-
+                if len(fields_diff_types) > 0:
+                    right_table = self._cast_types_ibis(df_ibis=right_table, 
+                                                        target_ibis_backend_schema =self.ibis_backend_schema,
+                                                        fields_diff_types=fields_diff_types, 
+                                                        target_fields_types=fields_types_left)
 
         return (left_table, right_table)
 

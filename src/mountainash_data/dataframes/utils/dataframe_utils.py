@@ -24,6 +24,15 @@ class DataFrameUtils:
 
 
     @classmethod
+    def validate_dataframe_input(cls,
+                                df_dataframe: Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table]) -> bool:
+
+        if not isinstance(df_dataframe, (pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table)):  
+            raise TypeError("Unsupported dataframe type")
+        return True
+
+
+    @classmethod
     def validate_column_mapping(cls,
                                 column_dict: Optional[Dict[str, str]]=None) -> bool:
         """
@@ -204,6 +213,8 @@ class DataFrameUtils:
             df = DataframeUtils.cast_dataframe_to_pandas(polars_df)
         """
 
+        DataFrameUtils.validate_dataframe_input(df_dataframe)
+
         if isinstance(df_dataframe, pa.Table):  
             return pl.DataFrame(data=df_dataframe).to_pandas()          
         elif isinstance(df_dataframe, pd.DataFrame):
@@ -242,6 +253,10 @@ class DataFrameUtils:
         Example:
             polars_df = DataframeUtils.cast_dataframe_to_polars(pandas_df)
         """
+
+        DataFrameUtils.validate_dataframe_input(df_dataframe)
+
+
         if isinstance(df_dataframe, pa.Table):  
             return pl.DataFrame(data=df_dataframe)        
         elif isinstance(df_dataframe, pl.DataFrame):
@@ -267,9 +282,10 @@ class DataFrameUtils:
             ) -> ir.Table:
 
 
+        DataFrameUtils.validate_dataframe_input(df_dataframe)
+
         if overwrite is None:
             overwrite = True
-        
 
         tablename = DataFrameUtils.generate_tablename(prefix=tablename_prefix)
 
@@ -278,16 +294,13 @@ class DataFrameUtils:
             #This will use the default backend in-memory connection 
             new_table  = ibis.memtable(data=df_dataframe, 
                                 columns=DataFrameUtils.get_column_names(df_dataframe), 
-                                # schema=table_schema, 
                                 name=tablename) 
-            
-            # print(f"A create_temp_table_ibis: type:{type(df_dataframe)} - {ibis_backend.name}  to:{DataFrameUtils.get_table_schema(new_table)} ")
 
         else:
             
             if current_ibis_backend is target_ibis_backend:
 
-                if create_as_view:   
+                if create_as_view and isinstance(df_dataframe, ir.Table):
                     new_table =  target_ibis_backend.create_view(name = tablename, obj=df_dataframe, overwrite=overwrite)
                     return new_table                
             else:
@@ -299,9 +312,6 @@ class DataFrameUtils:
                 new_table =  target_ibis_backend.create_table(name = tablename, obj=df_dataframe, overwrite=overwrite, temp=True)
             else:
                 new_table =  target_ibis_backend.create_table(name = tablename, obj=df_dataframe, overwrite=overwrite)
-
-
-            # print(f"B create_temp_table_ibis: type:{type(df_dataframe)} - {ibis_backend.name}: {DataFrameUtils.get_table_schema(new_table)} ")
 
 
         return new_table
@@ -333,12 +343,14 @@ class DataFrameUtils:
             polars_df = DataframeUtils.cast_dataframe_to_polars(pandas_df)
         """
 
+        DataFrameUtils.validate_dataframe_input(df_dataframe)
+
+
         if ibis_backend is None:
             ibis_backend = "polars"
 
         if isinstance(ibis_backend, str):
             ibis_backend = init_ibis_connection(ibis_backend)
-
 
         # columns = DataFrameUtils.get_column_names(df_dataframe)
         table_schema = DataFrameUtils.get_table_schema(df_dataframe)
@@ -377,6 +389,9 @@ class DataFrameUtils:
         Example:
             arrow_table = cast_dataframe_to_arrow(pandas_df)
         """
+
+        DataFrameUtils.validate_dataframe_input(df_dataframe)
+
         if isinstance(df_dataframe, pa.Table):
             return df_dataframe
         elif isinstance(df_dataframe, pl.DataFrame):
@@ -415,6 +430,9 @@ class DataFrameUtils:
         Example:
             dict_df = DataframeUtils.cast_dataframe_to_dictonary_of_lists(df, 'list')
         """
+
+        DataFrameUtils.validate_dataframe_input(df)
+
 
         if isinstance(df, (pa.Table, pd.DataFrame)):  
             #Convert pyarrow to polars!
@@ -456,6 +474,9 @@ class DataFrameUtils:
         Example:
             dict_df = DataframeUtils.cast_dataframe_to_dictonary_of_lists(df, 'list')
         """
+
+        DataFrameUtils.validate_dataframe_input(df)
+
 
         if isinstance(df, (pa.Table, pd.DataFrame)):  
             #Convert pyarrow to polars!
@@ -499,6 +520,8 @@ class DataFrameUtils:
         Example:
             dict_df = DataframeUtils.cast_dataframe_to_list_of_dictionaries(df, 'list')
         """
+        DataFrameUtils.validate_dataframe_input(df)
+
 
         if isinstance(df, pa.Table):  
             #Convert pyarrow to polars!
@@ -530,6 +553,7 @@ class DataFrameUtils:
                      columns: List[str]|str
                      ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]:
 
+        DataFrameUtils.validate_dataframe_input(df)
 
 
         if isinstance(columns, str):
@@ -565,6 +589,9 @@ class DataFrameUtils:
                         columns: List[str]|str
                         ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]:
 
+        DataFrameUtils.validate_dataframe_input(df)
+
+
         if isinstance(columns, str):
             columns = [columns]
 
@@ -595,6 +622,8 @@ class DataFrameUtils:
     @staticmethod        
     def get_column_names(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] ) -> List:
 
+        DataFrameUtils.validate_dataframe_input(df)
+
         if isinstance(df, pa.Table):  
             #Convert pyarrow to polars!
             df =  pl.DataFrame(df)
@@ -612,6 +641,9 @@ class DataFrameUtils:
     # Column Metadata
     @staticmethod        
     def get_table_schema(df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] ) -> ibis_schema.Schema:
+
+        DataFrameUtils.validate_dataframe_input(df)
+
 
         if isinstance(df, (pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame)):  
             df = DataFrameUtils.head(df=df, n=0)
@@ -632,6 +664,9 @@ class DataFrameUtils:
               n: int
             ) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]:
 
+        DataFrameUtils.validate_dataframe_input(df)
+
+
         if n < 0:
             raise ValueError("n must be greater than or equal to 0")
 
@@ -651,6 +686,9 @@ class DataFrameUtils:
     @staticmethod            
     def count( df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
                         ) -> int:
+
+        DataFrameUtils.validate_dataframe_input(df_dataframe=df)
+
 
         if isinstance(df, pa.Table):  
             #Convert pyarrow to polars!
