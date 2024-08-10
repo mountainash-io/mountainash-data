@@ -74,17 +74,42 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+
+    def _select_ibis(self, ibis_expr: Any) -> Any:
+
+        #Do not add a parameter name here for columns. That will be interpreted as a column name
+        df_cols: Any = self.ibis_df.select(ibis_expr)
+        return df_cols
+    
+
     def drop(self, columns: Any) -> "IbisDataFrame":
 
         new_df: ir.Table = self._drop_ibis(columns).alias(alias=self.generate_tablename(prefix="drop"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
+    def _drop_ibis(self, columns: Any) -> ir.Table:
+
+        #Only drop columns if they exist in the dataframe
+        existing_columns = self.get_column_names()
+        columns = [x for x in columns if x in existing_columns]
+
+        if not columns or len(columns) == 0:
+            return self.ibis_df
+
+        new_df: Any = self.ibis_df.drop(columns)
+        return new_df
+
     def distinct(self) -> "BaseDataFrame":
 
         new_df: ir.Table = self._distinct_ibis().alias(alias=self.generate_tablename(prefix="distinct"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def _distinct_ibis(self) -> ir.Table:
+        new_df: Any = self.ibis_df.distinct()
+        return new_df
+
 
     def rename(self, **kwargs) -> "BaseDataFrame":
 
@@ -92,41 +117,88 @@ class IbisDataFrame(BaseDataFrame):
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
     
+    def _rename_ibis(self,  **kwargs) -> ir.Table:      
+
+        #Will need to be addresses in https://github.com/mountainash-io/mountainash-data/issues/22
+        # Needs to pass test_rename_method()  
+        new_df: Any = self.ibis_df.rename( **kwargs)
+        return new_df
+
+
     def try_cast(self, **kwargs) -> "BaseDataFrame":
 
         new_df: ir.Table = self._try_cast_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="try_cast"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _try_cast_ibis(self,  **kwargs) -> ir.Table:
+        new_df: Any = self.ibis_df.try_cast( **kwargs)
+        return new_df
+
 # Add Columns       
     def mutate(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._mutate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="mutate"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
-
+    def _mutate_ibis(self,  **kwargs) -> ir.Table:
+        df_cols: Any = self.ibis_df.mutate( **kwargs)
+        return df_cols
+    
 # Reshape
     def aggregate(self,  **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="aggregate"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
       
+    def _aggregate_ibis(self, **kwargs) -> ir.Table:
+
+        df_cols: Any = self.ibis_df.aggregate(**kwargs)
+        return df_cols
 
     def pivot_wider(self,  **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._pivot_wider_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_wider"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
+    def _pivot_wider_ibis(self, **kwargs) -> ir.Table:
+        df_cols: Any = self.ibis_df.pivot_wider(**kwargs)
+        return df_cols
+
     def pivot_longer(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_longer"))
-
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _pivot_longer_ibis(self, **kwargs) -> ir.Table:
+        df_cols: Any = self.ibis_df.pivot_longer(**kwargs)
+        return df_cols
 
+
+    def _cast_types_ibis(self, 
+                         df_ibis: ir.Table,
+                         target_ibis_backend_schema: Optional[str],
+                         fields_diff_types: List[str],
+                         target_fields_types: Dict[str, Any]) -> ir.Table:
+
+        if self.ibis_backend_schema in set("duckdb"):
+            cast_dict = {field: target_fields_types[field] for field in fields_diff_types}
+            print(f"CAST DICT: {cast_dict}")
+            df_ibis = df_ibis.try_cast(cast_dict)
+        else:
+
+            for field in fields_diff_types:
+                target_type = target_fields_types[field]
+                print(f"Casting field: {field} to {target_type}")
+                df_ibis = ( df_ibis 
+                                .mutate(field = ibis._[field].cast(target_type ) )
+                                .drop(field)
+                                .rename({field: "field"})
+                )
+        return df_ibis
+
+
+    #Join Resolution!
     def _resolve_join_backend_ibis(self, 
                                    right: "BaseDataFrame",
                                    execute_on: Optional[str] = None
@@ -152,10 +224,12 @@ class IbisDataFrame(BaseDataFrame):
         right_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(right.ibis_df)
 
         #find common keys in schemas:
-        common_fields = list(set(left_table_schema.fields.keys()) & set(right_table_schema.fields.keys()))
+        common_fields = list(set(left_table_schema.fields.keys()).intersection(set(right_table_schema.fields.keys())))
 
         #For common keys, check if the types are the same
-        unequal_field_types: Dict[str,Dict[str, Any]] = {field: {"left": left_table_schema[field], "right": right_table_schema[field]} for field in common_fields if left_table_schema.fields[field] != right_table_schema.fields[field]}
+        fields_diff_types: List[str] = [field for field in common_fields if left_table_schema.fields[field] != right_table_schema.fields[field]]
+        fields_types_left: Dict[str, Any] = {field: left_table_schema[field] for field in fields_diff_types}
+        fields_types_right: Dict[str, Any] = {field: right_table_schema[field] for field in fields_diff_types}
 
 
         #For in-memory dbs don't use equals (==) here as it just compares the connection string!
@@ -166,32 +240,17 @@ class IbisDataFrame(BaseDataFrame):
             same_backend = True
 
         
-        if isinstance(right, IbisDataFrame) and same_backend == True: 
-
-            # print(f"A. Same backend SELF to:{self.ibis_backend_schema} from:{type(self.ibis_df)} - RIGHT to:{right.ibis_backend_schema} from:{type(right.ibis_df)}")
+        if isinstance(right, IbisDataFrame) and same_backend: 
 
             left_table = self.ibis_df
             right_table = right.ibis_df
 
+            if len(fields_diff_types) > 0:
 
-            #Cast non matching column types
-            if self.ibis_backend_schema in ("duckdb"):
-                cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
-                print(f"CAST DICT: {cast_dict}")
-                right_table = right_table.try_cast(cast_dict)
-            else:
-
-                for field in unequal_field_types.keys():
-                    target_type = unequal_field_types[field]["left"]
-                    print(f"Casting field: {field} to {target_type}")
-                    right_table = ( right_table 
-                                    .mutate(field = ibis._[field].cast(target_type ) )
-                                    .drop(field)
-                                    .rename({field: "field"})
-                    )
-
-
-            # print(f"A. Same backend POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
+                right_table = self._cast_types_ibis(df_ibis=right_table,
+                                                    target_ibis_backend_schema =self.ibis_backend_schema,
+                                                    fields_diff_types=fields_diff_types, 
+                                                    target_fields_types=fields_types_left)
 
 
         #right a different backend or not ibis
@@ -199,92 +258,43 @@ class IbisDataFrame(BaseDataFrame):
 
             if execute_on == "left":
 
-                # print(f"B. Left SELF to:{self.ibis_backend_schema} from:{self.ibis_backend.name}  - RIGHT to:{self.ibis_backend_schema}  from:{right.ibis_backend.name} ")
-
-
                 left_table = self.ibis_df
                 right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
 
-                #Cast non matching column types
-                if self.ibis_backend_schema in ("duckdb"):
-                    cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
-                    print(f"CAST DICT: {cast_dict}")
-                    right_table = right_table.try_cast(cast_dict)
-                else:
-
-                    for field in unequal_field_types.keys():
-                        target_type = unequal_field_types[field]["left"]
-                        print(f"Casting field: {field} to {target_type}")
-                        right_table = ( right_table 
-                                        .mutate(field = ibis._[field].cast(target_type ) )
-                                        .drop(field)
-                                        .rename({field: "field"})
-                        )
-
-                # print(f"B. Left POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
-
+                if len(fields_diff_types) > 0:
+                    right_table = self._cast_types_ibis(df_ibis=right_table, 
+                                                        target_ibis_backend_schema =right.ibis_backend_schema,
+                                                        fields_diff_types=fields_diff_types, 
+                                                        target_fields_types=fields_types_left)
 
             elif execute_on == "right":
-                #create temp table on right
-
-                # print(f"C. Right SELF to:{right.ibis_backend_schema} from:{self.ibis_backend.name}  - RIGHT to:{right.ibis_backend_schema} from:{right.ibis_backend.name} ")
-
 
                 if not isinstance(right, IbisDataFrame):
                     raise ValueError("Right must be an IbisDataFrame to execute on right")
 
                 left_table = right.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=right.ibis_backend, overwrite=True)
-                # right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", ibis_backend=right.ibis_backend, overwrite=True, create_as_view=True)
                 right_table = right.ibis_df
 
-                #Cast non matching column types
-                if right.ibis_backend_schema in ("duckdb"):
-                    cast_dict = {field: unequal_field_types[field]["right"] for field in unequal_field_types.keys()}
-                    print(f"CAST DICT: {cast_dict}")
-                    left_table = left_table.try_cast(cast_dict)
+                if len(fields_diff_types) > 0:
+                    left_table = self._cast_types_ibis(df_ibis=left_table, 
+                                                       target_ibis_backend_schema =self.ibis_backend_schema,
+                                                       fields_diff_types=fields_diff_types, 
+                                                       target_fields_types=fields_types_right)
 
-                else:
-                    for field in unequal_field_types.keys():
-                        target_type = unequal_field_types[field]["right"]
-
-                        print(f"Casting field: {field} to {target_type}")
-                        left_table = ( left_table 
-                                        .mutate(field = ibis._[field].cast(target_type ) )
-                                        .drop(field)
-                                        .rename({field: "field"})
-                        )
-
-                # print(f"C. Right  POST - SELF backend:{self.ibis_backend_schema} df:{type(left_table)}  - RIGHT backend:{right.ibis_backend_schema}  df:{type(right_table)} ")
 
             else:
 
                 default_ibis_backend = init_ibis_connection(self.default_ibis_backend_schema)
 
-                # print(f"D. Default SELF to:{self.default_ibis_backend_schema} from:{self.ibis_backend.name} - RIGHT to:{self.default_ibis_backend_schema} from:{right.ibis_backend.name}")
-
-
                 #We have differing backends, and we are running locally. Bring both into local memory
                 left_table =  self.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
                 right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
 
-                #Cast non matching column types
-                if self.default_ibis_backend_schema in ("duckdb", "polars"):
-                    cast_dict = {field: unequal_field_types[field]["left"] for field in unequal_field_types.keys()}
-                    print(f"CAST DICT: {cast_dict}")
-                    right_table = right_table.try_cast(cast_dict)
-                else:
-                    for field in unequal_field_types.keys():
-                        target_type = unequal_field_types[field]["left"]
-                        print(f"Casting field: {field} to {target_type}")
-                        right_table = ( right_table 
-                                        .mutate(field = ibis._[field].cast(target_type ) )
-                                        .drop(field)
-                                        .rename({field: "field"})
-                        )
-
-
-                # print(f"D. Default post: SELF backend:{self.ibis_backend_schema} df:{left_table._find_backend(use_default=True)} - RIGHT backend:{right.ibis_backend_schema} df:{right_table._find_backend(use_default=True)} ")
-
+                if len(fields_diff_types) > 0:
+                    right_table = self._cast_types_ibis(df_ibis=right_table, 
+                                                        target_ibis_backend_schema =self.ibis_backend_schema,
+                                                        fields_diff_types=fields_diff_types, 
+                                                        target_fields_types=fields_types_left)
 
         return (left_table, right_table)
 
@@ -300,6 +310,16 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _inner_join_ibis(self, 
+             right: "BaseDataFrame", 
+             predicates: Any,
+             execute_on: Optional["str"] = None,
+             **kwargs
+            ) -> ir.Table:
+
+        left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
+
+        return left_table.inner_join(right=right_table, predicates=predicates, **kwargs)
 
     def left_join(self,             
                    right: "BaseDataFrame", 
@@ -312,6 +332,17 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _left_join_ibis(self, 
+             right: "BaseDataFrame", 
+             predicates: Any,
+             execute_on: Optional["str"] = None,
+             **kwargs
+            ) -> ir.Table:
+
+        left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
+
+        return left_table.left_join(right=right_table, predicates=predicates, **kwargs)
+
 
     def outer_join(self,             
                    right: "BaseDataFrame", 
@@ -322,6 +353,17 @@ class IbisDataFrame(BaseDataFrame):
         new_df: ir.Table = self._outer_join_ibis(right=right, predicates=predicates, execute_on=execute_on, **kwargs).alias(self.generate_tablename(prefix="outer_join"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def _outer_join_ibis(self, 
+             right: "BaseDataFrame", 
+             predicates: Any,
+             execute_on: Optional["str"] = None,
+             **kwargs
+            ) -> ir.Table:
+
+        left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
+
+        return left_table.outer_join(right=right_table, predicates=predicates, **kwargs)
 
 # Row Selection
 
@@ -341,6 +383,12 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
+    def _head_ibis(self, n: int) -> ir.Table:
+
+        if n < 0:
+            raise ValueError("n must be greater than or equal to 0")
+
+        return self.ibis_df.head(n=n) 
                 
     def union(self, **kwargs) -> "IbisDataFrame":
         """Take the first n rows."""
@@ -348,6 +396,9 @@ class IbisDataFrame(BaseDataFrame):
         new_df = self._union_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="union"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
+
+    def _union_ibis(self, **kwargs) -> ir.Table:
+        return ibis.union(self.ibis_df, **kwargs) 
 
 
     def order_by(self, **kwargs) -> "IbisDataFrame":
@@ -357,17 +408,24 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
                
-
+    def _order_by_ibis(self, **kwargs) -> ir.Table:
+        return self.ibis_df.order_by(**kwargs) 
+    
 #Column Metadata
     def get_column_names(self) -> list:
         return self._get_column_names_ibis()   
             
+    def _get_column_names_ibis(self) -> List[str]:
+        return DataFrameUtils.get_column_names(df=self.ibis_df)
+                
 ### Aggregates        
     
     def count(self) -> int:
        return self._count_ibis()
          
+    def _count_ibis(self) -> int:
 
+        return DataFrameUtils.count(self.ibis_df) 
 
 
 ### Query        
@@ -382,11 +440,30 @@ class IbisDataFrame(BaseDataFrame):
     def as_dict(self) -> Dict[str, List[Any]] | Any:
         return self._as_dict_ibis()
 
+    def _as_dict_ibis(self) -> Dict[str, List[Any]] | Any:
+
+        return DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=self.ibis_df)
+
     def as_list(self) -> Dict[str, List[Any]] | Any:
         return self._as_list_ibis()
+
+    def _as_list_ibis(self) -> Dict[str, List[Any]] | Any:
+        
+        return DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=self.ibis_df)
 
     def get_first_row_as_dict(self,
         ) -> Dict[Any,Any]:
         return self._get_first_row_as_dict_ibis()
 
+    def _get_first_row_as_dict_ibis(
+            self,
+        ) -> Dict[Any,Any]:
+        
+        obj_df = self.head(n=1)
+        obj_list = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.materialise())
 
+        if len(obj_list) > 0:
+            return obj_list[0]  
+        else:
+            return {}
+      
