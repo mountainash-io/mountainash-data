@@ -148,6 +148,11 @@ class DataFrameFactory:
         if df is None:
             raise ValueError("create_dataframe_object: No dataframe provided for Ibis DataFrame creation")
 
+        column_names = DataFrameUtils.get_column_names(df)
+        
+        if column_names is None or len(column_names) == 0:
+            raise ValueError("create_dataframe_object: No column names found in the dataframe")
+
                 
         # df = df if isinstance(df, ir.Table) else DataFrameUtils.cast_dataframe_to_ibis(df_dataframe=df)
         return IbisDataFrame(df=df, ibis_backend=ibis_backend, ibis_backend_schema=ibis_backend_schema, tablename_prefix=tablename_prefix)
