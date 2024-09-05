@@ -91,6 +91,9 @@ class IbisDataFrame(BaseDataFrame):
     def _drop_ibis(self, columns: Any) -> ir.Table:
 
         #Only drop columns if they exist in the dataframe
+        if isinstance(columns, str):
+            columns = [columns]
+
         existing_columns = self.get_column_names()
         columns = [x for x in columns if x in existing_columns]
 
