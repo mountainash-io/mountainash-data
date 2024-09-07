@@ -33,6 +33,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Display SQLite version
+        run: |
+          python -c "import sqlite3; print(f'SQLite version: {sqlite3.sqlite_version}')"
+      
+
+
       ###### MtAsh DEPENDENCIES ######
 
       - name: Set ORGNAME - mountainash-io
