@@ -8,7 +8,9 @@ import pyarrow as pa
 import ibis.expr.types as ir
 import ibis
 from functools import lru_cache
-from .utils.dataframe_utils import DataFrameUtils, init_ibis_connection
+from .utils.dataframe_utils import DataFrameUtils
+from .utils.dataframe_functions import init_ibis_connection
+
 
 # class IbisTableLineageWrapper:  
 
@@ -129,7 +131,7 @@ class BaseDataFrame(ABC):
 
         else:
             #we have a new table from pandas or polars
-            ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df, tablename_prefix=tablename_prefix, current_ibis_backend=self.ibis_backend,  target_ibis_backend=self.ibis_backend, create_as_view=create_as_view)
+            ibis_df = DataFrameUtils.create_temp_table_ibis(df=df, tablename_prefix=tablename_prefix, current_ibis_backend=self.ibis_backend,  target_ibis_backend=self.ibis_backend, create_as_view=create_as_view)
         
         return ibis_df
 
@@ -140,7 +142,7 @@ class BaseDataFrame(ABC):
         return DataFrameUtils.generate_tablename(prefix=prefix)
 
     def create_temp_table_ibis(self,
-                          df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
+                          df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
                           tablename_prefix: Optional[str] = None,
                           current_ibis_backend: Optional[ibis.BaseBackend] = None,
                           target_ibis_backend: Optional[ibis.BaseBackend] = None,
@@ -154,7 +156,7 @@ class BaseDataFrame(ABC):
         if target_ibis_backend is None:
             target_ibis_backend = self.ibis_backend
 
-        ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df_dataframe, 
+        ibis_df = DataFrameUtils.create_temp_table_ibis(df=df, 
                                                         tablename_prefix=tablename_prefix, 
                                                         current_ibis_backend=current_ibis_backend,
                                                         target_ibis_backend=target_ibis_backend,
@@ -184,14 +186,14 @@ class BaseDataFrame(ABC):
         return self.materialise()
 
     def to_arrow(self) -> pa.Table:
-        return DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=self.ibis_df)
+        return DataFrameUtils.cast_dataframe_to_arrow(df=self.ibis_df)
 
     def to_pandas(self) -> pd.DataFrame:
-        return DataFrameUtils.cast_dataframe_to_pandas(df_dataframe=self.ibis_df)
+        return DataFrameUtils.cast_dataframe_to_pandas(df=self.ibis_df)
 
 
     def to_polars(self) -> pl.DataFrame:
-        return DataFrameUtils.cast_dataframe_to_polars(df_dataframe=self.ibis_df)
+        return DataFrameUtils.cast_dataframe_to_polars(df=self.ibis_df)
 
     # def append_lineage_record(self, ibis_table: ir.Table) -> None:
 

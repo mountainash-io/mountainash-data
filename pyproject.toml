@@ -7,7 +7,7 @@ name = "mountainash_data"
 dynamic = ["version"]
 description = 'Mountain Ash - Data'
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = "MIT"
 keywords = []
 authors = [
