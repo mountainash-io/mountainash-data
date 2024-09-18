@@ -178,7 +178,7 @@ class DataFrameUtils:
 
     @classmethod
     def _get_strategy(cls, 
-                      df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]):
+                      df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> BaseDataFrameStrategy:
         
         
         if isinstance(df, pd.DataFrame):
@@ -194,7 +194,7 @@ class DataFrameUtils:
         elif isinstance(df, ir.Table):
             return IbisDataFrameUtils()
         else:
-            raise TypeError("Unsupported dataframe type")
+            raise TypeError(f"Unsupported dataframe type. Received {type(df)}")
 
 
     @classmethod
