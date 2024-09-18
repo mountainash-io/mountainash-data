@@ -95,28 +95,28 @@ class BaseDataFrameStrategy(ABC):
     #######################
 
     @abstractmethod
-    def _cast_to_pandas(self, df) -> pd.DataFrame:
+    def _cast_to_pandas(self, df: Any) -> pd.DataFrame:
         pass
 
-    def cast_to_pandas(self, df) -> pd.DataFrame:
+    def cast_to_pandas(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> pd.DataFrame:
         self.validate_dataframe_input(df=df)
         return self._cast_to_pandas(df=df)
 
 
     @abstractmethod
-    def _cast_to_polars(self, df) -> pl.DataFrame:
+    def _cast_to_polars(self, df: Any) -> pl.DataFrame:
         pass
 
-    def cast_to_polars(self, df) -> pl.DataFrame:
+    def cast_to_polars(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> pl.DataFrame:
         self.validate_dataframe_input(df=df)
         return self._cast_to_polars(df=df)
 
 
     @abstractmethod
-    def _cast_to_pyarrow_table(self, df) -> pa.Table:
+    def _cast_to_pyarrow_table(self, df: Any) -> pa.Table:
         pass
 
-    def cast_to_pyarrow_table(self, df) -> pa.Table:
+    def cast_to_pyarrow_table(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> pa.Table:
 
         self.validate_dataframe_input(df=df)
 
@@ -129,10 +129,10 @@ class BaseDataFrameStrategy(ABC):
 
 
     @abstractmethod
-    def _cast_to_pyarrow_recordbatch(self, df) -> pa.RecordBatch:
+    def _cast_to_pyarrow_recordbatch(self, df: Any) -> pa.RecordBatch:
         pass
 
-    def cast_to_pyarrow_recordbatch(self, df) -> pa.RecordBatch:
+    def cast_to_pyarrow_recordbatch(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> pa.RecordBatch:
         self.validate_dataframe_input(df=df)
 
         if self.supports_pyarrow_interchange(df=df):
@@ -141,7 +141,8 @@ class BaseDataFrameStrategy(ABC):
             return self._cast_to_pyarrow_recordbatch(df=df)
 
 
-    def cast_to_ibis(self, df,        
+    def cast_to_ibis(self, 
+                     df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch],        
                      ibis_backend: Optional[ibis.BaseBackend|str] = None,
                      tablename_prefix: Optional[str] = None) -> ir.Table:
         
@@ -171,37 +172,37 @@ class BaseDataFrameStrategy(ABC):
 
 
     @abstractmethod
-    def _cast_to_dictonary_of_lists(self, df) -> Dict[Any,List[Any]]:
+    def _cast_to_dictonary_of_lists(self, df: Any) -> Dict[Any,List[Any]]:
         pass
 
-    def cast_to_dictonary_of_lists(self, df) -> Dict[Any,List[Any]]:
+    def cast_to_dictonary_of_lists(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> Dict[Any,List[Any]]:
         self.validate_dataframe_input(df=df)
         return self._cast_to_dictonary_of_lists(df=df)        
 
 
     @abstractmethod
-    def _cast_to_dictonary_of_series(self, df) -> Dict[str,pl.Series]:
+    def _cast_to_dictonary_of_series(self, df: Any) -> Dict[str,pl.Series]:
         pass
 
-    def cast_to_dictonary_of_series(self, df) -> Dict[str,pl.Series]:
+    def cast_to_dictonary_of_series(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> Dict[str,pl.Series]:
         self.validate_dataframe_input(df=df)
         return self._cast_to_dictonary_of_series(df=df)        
 
 
     @abstractmethod
-    def _cast_to_list_of_dictionaries(self, df) -> List[Dict[Any,Any]]:
+    def _cast_to_list_of_dictionaries(self, df: Any) -> List[Dict[Any,Any]]:
         pass
 
-    def cast_to_list_of_dictionaries(self, df) -> List[Dict[Any,Any]]:
+    def cast_to_list_of_dictionaries(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> List[Dict[Any,Any]]:
         self.validate_dataframe_input(df=df)
         return self._cast_to_list_of_dictionaries(df=df)        
 
 
     @abstractmethod
-    def _get_column_names(self, df) -> List[str]:
+    def _get_column_names(self, df: Any) -> List[str]:
         pass
 
-    def get_column_names(self, df) -> List[str]:
+    def get_column_names(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> List[str]:
         self.validate_dataframe_input(df=df)
         return self._get_column_names(df=df)  
 
@@ -219,11 +220,14 @@ class BaseDataFrameStrategy(ABC):
 
 
     @abstractmethod
-    def _drop(self, df, columns: List[str]) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
+    def _drop(self, 
+              df: Any, 
+              columns: List[str]) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
         pass
 
 
-    def drop(self, df, 
+    def drop(self, 
+             df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch], 
              columns: List[str]|str) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
     
         self.validate_dataframe_input(df=df)
@@ -244,11 +248,15 @@ class BaseDataFrameStrategy(ABC):
       
 
     @abstractmethod
-    def _select(self, df, columns: List[str]) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
+    def _select(self,
+                df: Any, 
+                columns: List[str]) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
         pass
 
 
-    def select(self, df, columns: List[str]|str) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
+    def select(self,
+               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch], 
+               columns: List[str]|str) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
         
         self.validate_dataframe_input(df=df)
 
@@ -267,10 +275,14 @@ class BaseDataFrameStrategy(ABC):
 
 
     @abstractmethod
-    def _head(self, df, n: int) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
+    def _head(self, 
+              df: Any, 
+              n: int) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
         pass
 
-    def head(self, df, n: int) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
+    def head(self, 
+             df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch], 
+             n: int) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch]:
 
         if n < 0:
             raise ValueError("n must be greater than or equal to 0")
@@ -279,10 +291,11 @@ class BaseDataFrameStrategy(ABC):
         return self._head(df=df, n=n)
 
     @abstractmethod
-    def _count(self, df) -> int:
+    def _count(self, df: Any) -> int:
         pass
 
-    def count(self, df) -> int:
+    def count(self, 
+              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch]) -> int:
         self.validate_dataframe_input(df=df)
         return self._count(df=df)
 

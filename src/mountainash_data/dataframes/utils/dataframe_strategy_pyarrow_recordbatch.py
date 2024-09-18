@@ -12,18 +12,15 @@ from .base_dataframe_strategy import BaseDataFrameStrategy
 class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
 
     def _cast_to_pandas(self, df: pa.RecordBatch) -> pd.DataFrame:
-        self.validate_dataframe_input(df=df)
-        return pl.DataFrame(data=df).to_pandas() 
+        return df.to_pandas() 
 
     def _cast_to_polars(self, df: pa.RecordBatch) -> pl.DataFrame:
-        self.validate_dataframe_input(df=df)
         return pl.DataFrame(data=df) 
 
     def _cast_to_pyarrow_table(self, df: pa.RecordBatch) -> pa.Table:
         return pa.Table.from_batches(df)
 
     def _cast_to_pyarrow_recordbatch(self, df: pa.RecordBatch) -> pa.RecordBatch:
-        self.validate_dataframe_input(df=df)
         return df 
 
 
@@ -42,7 +39,6 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
         return df.column_names
 
     def get_table_schema(self, df: pa.RecordBatch) -> ibis_schema.Schema:
-        self.validate_dataframe_input(df=df)
         return self._get_table_schema(df=df)
 
 
