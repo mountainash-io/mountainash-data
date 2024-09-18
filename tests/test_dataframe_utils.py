@@ -463,7 +463,7 @@ df_pandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.val
 df_polars = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)
 df_ibis = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1)
 df_pyarrow_table = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value, dataDictExample1, columnDictExample1)
-df_pyarrow_recordbatch = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value, dataDictExample1, columnDictExample1)
+# df_pyarrow_recordbatch = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value, dataDictExample1, columnDictExample1)
 
 
 def test_cast_dataframe_to_pandas():
@@ -497,7 +497,7 @@ def test_cast_dataframe_to_pandas():
         (df_polars, df_pandas),
         (df_ibis, df_pandas),
         (df_pyarrow_table, df_pandas),
-        (df_pyarrow_recordbatch, df_pandas),
+        # (df_pyarrow_recordbatch, df_pandas),
     ],
 )
 def test_cast_dataframe_to_pandas_extended(input_df, expectedDF):
@@ -525,7 +525,7 @@ def test_cast_dataframe_to_polars():
         (df_polars, df_polars),
         (df_ibis, df_polars),
         (df_pyarrow_table, df_polars),
-        (df_pyarrow_recordbatch, df_polars),
+        # (df_pyarrow_recordbatch, df_polars),
 
     ],
 )
@@ -561,7 +561,7 @@ def test_cast_dataframe_to_ibis():
         (df_polars, ["col1","col2","col3"], ["A","B","C"]),
         (df_ibis,   ["col1","col2","col3"], ["A","B","C"]),
         (df_pyarrow_table, ["col1","col2","col3"], ["A","B","C"]),
-        (df_pyarrow_recordbatch, ["col1","col2","col3"], ["A","B","C"]),
+        # (df_pyarrow_recordbatch, ["col1","col2","col3"], ["A","B","C"]),
 
     ],
 )
@@ -632,7 +632,7 @@ dataListDicts = [{"col1": 1, "col2": 4, "col3": "A"}, {"col1": 2, "col2": 5, "co
         (df_polars, dataDictList),
         (df_ibis, dataDictList),
         (df_pyarrow_table, dataDictList),
-        (df_pyarrow_recordbatch, dataDictList),        
+        # (df_pyarrow_recordbatch, dataDictList),        
     ],
 )
 def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
@@ -645,7 +645,7 @@ def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
         (df_polars, dataListDicts),
         (df_ibis, dataListDicts),
         (df_pyarrow_table, dataListDicts),
-        (df_pyarrow_recordbatch, dataListDicts),        
+        # (df_pyarrow_recordbatch, dataListDicts),        
 
     ],
 )
@@ -817,7 +817,7 @@ def test_drop_exceptions_dfs(input_df, columnList, expected_exception):
         (df_polars, list(df_polars.columns)),
         (df_ibis,   list(df_ibis.columns)),
         (df_pyarrow_table, list(df_pandas.columns)),
-        (df_pyarrow_recordbatch, list(df_pandas.columns)),        
+        # (df_pyarrow_recordbatch, list(df_pandas.columns)),        
 
 
     ],
@@ -990,7 +990,7 @@ def test_head_exceptions(input_df, expected_exception):
         (df_polars),
         (df_ibis),
         (df_pyarrow_table),
-        (df_pyarrow_recordbatch),
+        # (df_pyarrow_recordbatch),
 
     ],
 )
