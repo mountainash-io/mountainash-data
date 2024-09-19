@@ -462,6 +462,8 @@ def test_create_dataframe_ibis_uneven():
 df_pandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1)
 df_polars = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)
 df_ibis = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1)
+df_pyarrow_table = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value, dataDictExample1, columnDictExample1)
+df_pyarrow_recordbatch = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value, dataDictExample1, columnDictExample1)
 
 
 def test_cast_dataframe_to_pandas():
@@ -494,10 +496,12 @@ def test_cast_dataframe_to_pandas():
         (df_pandas, df_pandas),
         (df_polars, df_pandas),
         (df_ibis, df_pandas),
+        (df_pyarrow_table, df_pandas),
+        (df_pyarrow_recordbatch, df_pandas),
     ],
 )
 def test_cast_dataframe_to_pandas_extended(input_df, expectedDF):
-    assert DataFrameUtils.cast_dataframe_to_pandas(input_df).equals(expectedDF)
+    assert DataFrameUtils.cast_dataframe_to_pandas(df=input_df).equals(expectedDF)
 
 def test_cast_dataframe_to_polars():
     # Test using a Pandas DataFrame
@@ -520,6 +524,9 @@ def test_cast_dataframe_to_polars():
         (df_pandas, df_polars),
         (df_polars, df_polars),
         (df_ibis, df_polars),
+        (df_pyarrow_table, df_polars),
+        (df_pyarrow_recordbatch, df_polars),
+
     ],
 )
 def test_cast_dataframe_to_polars_extended(input_df, expectedDF):
@@ -552,16 +559,18 @@ def test_cast_dataframe_to_ibis():
     [
         (df_pandas, ["col1","col2","col3"], ["A","B","C"]),
         (df_polars, ["col1","col2","col3"], ["A","B","C"]),
-        (df_ibis, ["col1","col2","col3"], ["A","B","C"]),
+        (df_ibis,   ["col1","col2","col3"], ["A","B","C"]),
+        (df_pyarrow_table, ["col1","col2","col3"], ["A","B","C"]),
+        (df_pyarrow_recordbatch, ["col1","col2","col3"], ["A","B","C"]),
+
     ],
 )
 def test_cast_dataframe_to_ibis_extended(input_df, expectedColumns, expectedValues):
-    result = DataFrameUtils.cast_dataframe_to_ibis(input_df)
+    result = DataFrameUtils.cast_dataframe_to_ibis(df=input_df)
 
     with check:    
-
         #Expected column names
-        assert result.columns == expectedColumns
+        assert DataFrameUtils.get_column_names(df=result) == expectedColumns
         #Expected col values
     with check:    
         valuesColOne = list(result.execute()["col3"])
@@ -621,6 +630,8 @@ dataListDicts = [{"col1": 1, "col2": 4, "col3": "A"}, {"col1": 2, "col2": 5, "co
         (df_pandas, dataDictList),
         (df_polars, dataDictList),
         (df_ibis, dataDictList),
+        (df_pyarrow_table, dataDictList),
+        (df_pyarrow_recordbatch, dataDictList),        
     ],
 )
 def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
@@ -632,6 +643,9 @@ def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
         (df_pandas, dataListDicts),
         (df_polars, dataListDicts),
         (df_ibis, dataListDicts),
+        (df_pyarrow_table, dataListDicts),
+        (df_pyarrow_recordbatch, dataListDicts),        
+
     ],
 )
 def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
@@ -800,7 +814,11 @@ def test_drop_exceptions_dfs(input_df, columnList, expected_exception):
     [
         (df_pandas, list(df_pandas.columns)),
         (df_polars, list(df_polars.columns)),
-        (df_ibis,   list(df_ibis.columns))
+        (df_ibis,   list(df_ibis.columns)),
+        (df_pyarrow_table, list(df_pandas.columns)),
+        # (df_pyarrow_recordbatch, list(df_pandas.columns)),        
+
+
     ],
 )
 def test_get_column_names(input_df, columnList):
@@ -969,7 +987,10 @@ def test_head_exceptions(input_df, expected_exception):
     [
         (df_pandas),
         (df_polars),
-        (df_ibis)
+        (df_ibis),
+        (df_pyarrow_table),
+        # (df_pyarrow_recordbatch),
+
     ],
 )
 def test_select_exceptions(input_df):
@@ -985,4 +1006,4 @@ def test_select_exceptions(input_df):
 )
 def test_count(input_df, expected_exception):
     with pytest.raises(expected_exception):
-        value = DataFrameUtils.count(input_df)
+        DataFrameUtils.count(input_df)

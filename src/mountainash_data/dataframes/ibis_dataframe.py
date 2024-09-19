@@ -8,7 +8,8 @@ import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
 # import uuid
-from .utils.dataframe_utils import DataFrameUtils, init_ibis_connection
+from .utils.dataframe_utils import DataFrameUtils
+from .utils.dataframe_functions import init_ibis_connection
 from .base_dataframe import BaseDataFrame
 
 class IbisDataFrame(BaseDataFrame):
@@ -262,7 +263,7 @@ class IbisDataFrame(BaseDataFrame):
             if execute_on == "left":
 
                 left_table = self.ibis_df
-                right_table = self.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
+                right_table = self.create_temp_table_ibis(df=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
 
                 if len(fields_diff_types) > 0:
                     right_table = self._cast_types_ibis(df_ibis=right_table, 
@@ -275,7 +276,7 @@ class IbisDataFrame(BaseDataFrame):
                 if not isinstance(right, IbisDataFrame):
                     raise ValueError("Right must be an IbisDataFrame to execute on right")
 
-                left_table = right.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=right.ibis_backend, overwrite=True)
+                left_table = right.create_temp_table_ibis(df=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=right.ibis_backend, overwrite=True)
                 right_table = right.ibis_df
 
                 if len(fields_diff_types) > 0:
@@ -290,8 +291,8 @@ class IbisDataFrame(BaseDataFrame):
                 default_ibis_backend = init_ibis_connection(self.default_ibis_backend_schema)
 
                 #We have differing backends, and we are running locally. Bring both into local memory
-                left_table =  self.create_temp_table_ibis(df_dataframe=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
-                right_table = right.create_temp_table_ibis(df_dataframe=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
+                left_table =  self.create_temp_table_ibis(df=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
+                right_table = right.create_temp_table_ibis(df=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
 
                 if len(fields_diff_types) > 0:
                     right_table = self._cast_types_ibis(df_ibis=right_table, 
