@@ -18,8 +18,8 @@ class PolarsDataFrameUtils(BaseDataFrameStrategy):
     def _cast_to_pyarrow_table(self, df: pl.DataFrame) -> pa.Table:
         return df.to_arrow() 
 
-    def _cast_to_pyarrow_recordbatch(self, df: pl.DataFrame) -> pa.RecordBatch:
-        return df.to_arrow().to_batches() 
+    def _cast_to_pyarrow_recordbatch(self, df: pl.DataFrame, batchsize: int = 1) -> List[pa.RecordBatch]:
+        return df.to_arrow().to_batches(max_chunksize=batchsize) 
 
     def _cast_to_dictonary_of_lists(self, df: pl.DataFrame) -> Dict[Any,List[Any]]:
         return df.to_dict(as_series=False) 

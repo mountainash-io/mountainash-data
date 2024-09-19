@@ -18,8 +18,8 @@ class PolarsLazyFrameUtils(BaseDataFrameStrategy):
     def _cast_to_pyarrow_table(self, df: pl.LazyFrame) -> pa.Table:
         return df.collect().to_arrow() 
 
-    def _cast_to_pyarrow_recordbatch(self, df: pl.LazyFrame) -> pa.RecordBatch:
-        return df.collect().to_arrow().to_batches() 
+    def _cast_to_pyarrow_recordbatch(self, df: pl.LazyFrame, batchsize: int = 1) -> List[pa.RecordBatch]:
+        return df.collect().to_arrow().to_batches(max_chunksize=batchsize) 
 
 
     def _cast_to_dictonary_of_lists(self, df: pl.LazyFrame) -> Dict[Any,List[Any]]:

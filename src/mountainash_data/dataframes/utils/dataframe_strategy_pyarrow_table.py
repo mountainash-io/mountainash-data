@@ -19,8 +19,8 @@ class PyArrowTableUtils(BaseDataFrameStrategy):
     def _cast_to_pyarrow_table(self, df: pa.Table) -> pa.Table:
         return df
 
-    def _cast_to_pyarrow_recordbatch(self, df: pa.RecordBatch) -> pa.RecordBatch:
-        return df.to_batches() 
+    def _cast_to_pyarrow_recordbatch(self, df: pa.Table, batchsize: int = 1) -> List[pa.RecordBatch]:
+        return df.to_batches(max_chunksize=batchsize) 
 
     def _cast_to_dictonary_of_lists(self, df: pa.Table) -> Dict[Any,List[Any]]:
         return df.to_pydict()
@@ -53,8 +53,7 @@ class PyArrowTableUtils(BaseDataFrameStrategy):
         if n < 0:
             raise ValueError("n must be greater than or equal to 0")
 
-        df_pl: pl.DataFrame = self.cast_to_polars(df=df)
-        return df_pl.head(n=n).to_arrow()
+        return df.slice(length=n)
 
     def _count(self, df: pa.Table) -> int:
         return df.num_rows
