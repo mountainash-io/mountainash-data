@@ -17,7 +17,7 @@ class DataFrameFactory:
 
     @classmethod
     def create_ibis_dataframe_object_from_dataframe(cls, 
-            df: Optional[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table]] = None,
+            df: Optional[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]] = None,
             ibis_backend: Optional[ibis.BaseBackend] = None,
             ibis_backend_schema: Optional[str] = None,
             tablename_prefix: Optional[str] = None) -> IbisDataFrame:
@@ -58,7 +58,7 @@ class DataFrameFactory:
     @classmethod
     def create_dataframe_object(cls,
                                 
-            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
             ibis_backend: Optional[ibis.BaseBackend] = None,
             ibis_backend_schema: Optional[str] = None,
             tablename_prefix: Optional[str] = None
@@ -68,10 +68,13 @@ class DataFrameFactory:
         if df is None:
             raise ValueError("create_dataframe_object: No dataframe provided for Ibis DataFrame creation")
 
-        column_names = DataFrameUtils.get_column_names(df)
+        column_names = DataFrameUtils.get_column_names(df=df)
         
         if column_names is None or len(column_names) == 0:
             raise ValueError("create_dataframe_object: No column names found in the dataframe")
+        
+        if DataFrameUtils._is_recordbatch(df=df):
+            df = DataFrameUtils.cast_dataframe_to_arrow(df=df)
                
         return IbisDataFrame(df=df, ibis_backend=ibis_backend, ibis_backend_schema=ibis_backend_schema, tablename_prefix=tablename_prefix)
 

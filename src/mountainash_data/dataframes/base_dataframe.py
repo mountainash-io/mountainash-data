@@ -188,6 +188,10 @@ class BaseDataFrame(ABC):
     def to_arrow(self) -> pa.Table:
         return DataFrameUtils.cast_dataframe_to_arrow(df=self.ibis_df)
 
+    def to_pyarrow_recordbatch(self, batchsize: int = 1) -> List[pa.RecordBatch]:
+        return DataFrameUtils.cast_dataframe_to_pyarrow_recordbatch(df=self.ibis_df, batchsize=batchsize)
+
+
     def to_pandas(self) -> pd.DataFrame:
         return DataFrameUtils.cast_dataframe_to_pandas(df=self.ibis_df)
 
