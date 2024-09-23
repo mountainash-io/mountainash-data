@@ -7,7 +7,7 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-
+from .filter import FilterNode, PyArrowFilterVisitor
 
 class PyArrowTableUtils(BaseDataFrameStrategy):
     def _cast_to_pandas(self, df: pa.Table) -> pd.DataFrame:
@@ -57,3 +57,9 @@ class PyArrowTableUtils(BaseDataFrameStrategy):
 
     def _count(self, df: pa.Table) -> int:
         return df.num_rows
+    
+    def _filter(self, df: pa.Table, condition: FilterNode) -> pa.Table:
+        visitor = PyArrowFilterVisitor()
+        pyarrow_condition = condition.accept(visitor)
+        mask = pyarrow_condition(df)
+        return df.filter(mask)

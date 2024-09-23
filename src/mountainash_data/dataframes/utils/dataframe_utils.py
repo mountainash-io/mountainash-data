@@ -13,6 +13,7 @@ import ibis.expr.schema as ibis_schema
 
 from . import BaseDataFrameStrategy, PandasDataFrameUtils, PolarsDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, IbisDataFrameUtils, PyArrowRecordBatchUtils
 
+from .filter import FilterCondition, FilterNode
 # from pyarrow import Table as irTable  # assuming you are using pyarrow's Table for ir.Table
 
 
@@ -228,6 +229,13 @@ class DataFrameUtils:
         strategy = cls._get_strategy(df=df)
         return strategy.cast_to_pyarrow_recordbatch(df=df, batchsize=batchsize)
 
+    # @classmethod
+    # def cast_dataframe_to_pyarrow_reader(cls, 
+    #                                           df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]
+    #                                           ) -> pa.RecordBatchReader:
+    #     strategy = cls._get_strategy(df=df)
+    #     return strategy.cast_to_pyarrow_reader(df=df)
+
 
     @classmethod
     def cast_dataframe_to_ibis(cls, 
@@ -324,7 +332,16 @@ class DataFrameUtils:
  
 
 
+    @classmethod
+    def filter(cls, 
+               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+               condition: FilterNode) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+        strategy = cls._get_strategy(df)
+        return strategy.filter(df, condition)
 
+    @classmethod
+    def create_filter_condition(cls):
+        return FilterCondition
 
 
     

@@ -1,0 +1,53 @@
+import polars as pl
+from typing import  Callable
+
+from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition
+
+
+class PolarsFilterVisitor(FilterVisitor):
+
+    def visit_column_condition(self, condition: ColumnCondition) -> Callable:
+
+        # column = pl.col(condition.column)
+        
+        if condition.operator == "==":
+            return lambda df: pl.col(condition.column) == condition.value
+        elif condition.operator == "!=":
+            return lambda df: pl.col(condition.column) != condition.value
+        elif condition.operator == ">":
+            return lambda df: pl.col(condition.column) > condition.value
+        elif condition.operator == "<":
+            return lambda df: pl.col(condition.column) < condition.value
+        elif condition.operator == ">=":
+            return lambda df: pl.col(condition.column) >= condition.value
+        elif condition.operator == "<=":
+            return lambda df: pl.col(condition.column) <= condition.value
+        elif condition.operator == "in":
+            return lambda df: pl.col(condition.column).is_in(condition.value)
+        elif condition.operator == "is null":
+            return lambda df: pl.col(condition.column).is_null()
+        elif condition.operator == "is not null":
+            return lambda df: pl.col(condition.column).is_not_null()
+        else:
+            raise ValueError(f"Unsupported operator: {condition.operator}")
+
+    # def visit_logical_condition(self, condition: LogicalCondition) -> Callable:
+    #     if condition.operator == "and":
+    #         return lambda df: pl.all([operand.accept(self)(df) for operand in condition.operands])
+    #     elif condition.operator == "or":
+    #         return lambda df: pl.any([operand.accept(self)(df) for operand in condition.operands])
+    #     elif condition.operator == "not":
+    #         return lambda df: ~condition.operands[0].accept(self)(df)
+    #     else:
+    #         raise ValueError(f"Unsupported logical operator: {condition.operator}")
+
+    def visit_logical_condition(self, condition: LogicalCondition):
+        if condition.operator == "and":
+            return lambda df: pl.all_horizontal([operand.accept(self)(df) for operand in condition.operands])
+        elif condition.operator == "or":
+            return lambda df: pl.any_horizontal([operand.accept(self)(df) for operand in condition.operands])
+        elif condition.operator == "not":
+            return lambda df: ~condition.operands[0].accept(self)(df)
+        else:
+            raise ValueError(f"Unsupported logical operator: {condition.operator}")
+

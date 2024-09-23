@@ -8,6 +8,7 @@ import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
+from .filter import FilterNode, IbisFilterVisitor
 
 
 class IbisDataFrameUtils(BaseDataFrameStrategy):
@@ -55,3 +56,9 @@ class IbisDataFrameUtils(BaseDataFrameStrategy):
 
     def _count(self, df: ir.Table) -> int:
         return df.count().execute()
+
+    def _filter(self, df: ir.Table, condition: FilterNode) -> ir.Table:
+        visitor = IbisFilterVisitor()
+        ibis_callable = condition.accept(visitor)
+
+        return df.filter(ibis_callable)

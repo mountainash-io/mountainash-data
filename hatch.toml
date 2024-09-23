@@ -91,6 +91,9 @@ dependencies = [
 ]
 [envs.test.scripts]
 test = "pytest"
+
+test-filters = "pytest tests/test_dataframe_filters.py"
+
 test-cov = "coverage run -m pytest"
 test-xml = "coverage xml"
 cov-report = [
