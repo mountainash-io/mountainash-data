@@ -13,7 +13,7 @@ import ibis.expr.schema as ibis_schema
 
 from . import BaseDataFrameStrategy, PandasDataFrameUtils, PolarsDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, IbisDataFrameUtils, PyArrowRecordBatchUtils
 
-from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PandasFilterVisitor
+from .filter import FilterCondition, FilterNode
 # from pyarrow import Table as irTable  # assuming you are using pyarrow's Table for ir.Table
 
 

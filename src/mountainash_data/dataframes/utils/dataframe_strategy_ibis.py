@@ -6,10 +6,9 @@ import polars as pl
 import pyarrow as pa
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
-import ibis
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, IbisFilterVisitor
+from .filter import FilterNode, IbisFilterVisitor
 
 
 class IbisDataFrameUtils(BaseDataFrameStrategy):

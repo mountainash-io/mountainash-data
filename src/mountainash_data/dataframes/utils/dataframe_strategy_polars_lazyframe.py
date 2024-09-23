@@ -6,7 +6,7 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PolarsFilterVisitor
+from .filter import FilterNode, PolarsFilterVisitor
 
 
 class PolarsLazyFrameUtils(BaseDataFrameStrategy):

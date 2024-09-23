@@ -8,7 +8,7 @@ import ibis.expr.schema as ibis_schema
 
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PandasFilterVisitor
+from .filter import FilterNode, PandasFilterVisitor
 
 
 class PandasDataFrameUtils(BaseDataFrameStrategy):

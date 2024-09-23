@@ -8,7 +8,7 @@ import pyarrow.compute as pc
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PyArrowFilterVisitor
+from .filter import FilterNode, PyArrowFilterVisitor
 
 
 class PyArrowRecordBatchUtils(BaseDataFrameStrategy):

@@ -1,9 +1,9 @@
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from typing import Any, List, Union, Callable
+from typing import Callable
 
-from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode
+from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition
 
 
 class PyArrowFilterVisitor(FilterVisitor):

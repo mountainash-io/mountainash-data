@@ -1,10 +1,8 @@
 import ibis
-import ibis.expr.types as ir
-import ibis.selectors as s
 
-from typing import Any, List, Union, Callable
+from typing import Callable
 
-from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode
+from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition
 
 class IbisFilterVisitor(FilterVisitor):
     

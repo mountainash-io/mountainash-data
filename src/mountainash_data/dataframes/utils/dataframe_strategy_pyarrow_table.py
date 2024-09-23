@@ -3,13 +3,11 @@ from typing import Any,  Dict, List
 import pandas as pd
 import polars as pl
 import pyarrow as pa
-import pyarrow.compute as pc
-
 
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PyArrowFilterVisitor
+from .filter import FilterNode, PyArrowFilterVisitor
 
 class PyArrowTableUtils(BaseDataFrameStrategy):
     def _cast_to_pandas(self, df: pa.Table) -> pd.DataFrame:

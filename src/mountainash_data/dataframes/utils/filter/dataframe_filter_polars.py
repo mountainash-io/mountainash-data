@@ -1,8 +1,7 @@
 import polars as pl
-# from polars import col
-from typing import Any, List, Union, Callable
+from typing import  Callable
 
-from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode
+from .dataframe_filter import FilterVisitor, ColumnCondition, LogicalCondition
 
 
 class PolarsFilterVisitor(FilterVisitor):
