@@ -3,10 +3,12 @@ from typing import Any,  Dict, List
 import pandas as pd
 import polars as pl
 import pyarrow as pa
+import pyarrow.compute as pc
 
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
+from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PyArrowFilterVisitor
 
 
 class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
@@ -38,6 +40,12 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
     
 
     def _cast_to_pyarrow_recordbatch(self, df: pa.RecordBatch|List[pa.RecordBatch], batchsize: int = 1) -> List[pa.RecordBatch]:
+
+        #If the batchsize already matches, don't do anything
+        if batchsize == self._get_existing_batch_size(df=df):
+            return df
+        
+        #Otherwise , convert to pyarrow table and then to new batchesize
         df_tbl = self._cast_to_pyarrow_table(df=df)
         return df_tbl.to_batches(max_chunksize=batchsize) 
 
@@ -92,3 +100,13 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
     def _count(self, df: pa.RecordBatch|List[pa.RecordBatch]) -> int:
         df_tbl: pa.Table = self._cast_to_pyarrow_table(df=df)
         return df_tbl.num_rows
+    
+    def _filter(self, df: pa.Table, condition: FilterNode) -> pa.Table:
+
+        visitor = PyArrowFilterVisitor()
+        
+        pyarrow_condition = condition.accept(visitor)
+
+        mask = pc.filter(df, pyarrow_condition)
+
+        return df.filter(mask)    

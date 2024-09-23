@@ -6,16 +6,11 @@ import pyarrow as pa
 import ibis as ibis
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
-from functools import lru_cache
 
 # import uuid
 from .utils.dataframe_utils import DataFrameUtils
 from .utils.dataframe_functions import init_ibis_connection
 from .base_dataframe import BaseDataFrame
-
-@lru_cache(maxsize=None)
-def init_default_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
-    return init_ibis_connection(ibis_schema=ibis_schema)
 
 class IbisDataFrame(BaseDataFrame):
 
@@ -28,35 +23,12 @@ class IbisDataFrame(BaseDataFrame):
                 #lineage_history: Optional[List[Any]] = None,
                  ) -> None:
 
-        super().__init__(df=df)
+        super().__init__(df=df, 
+                         ibis_backend=ibis_backend, 
+                         ibis_backend_schema=ibis_backend_schema, 
+                         tablename_prefix=tablename_prefix,
+                         create_as_view=create_as_view)
 
-
-        #default ibis schema. Schema is the type of backend, eg "polars", "duckdb", "postgres"
-        self.default_ibis_backend_schema: Optional[str] = None
-        self.init_default_ibis_backend_schema()        
-        
-        #Init the backend
-        if not ibis_backend:
-
-            if not ibis_backend_schema:
-                ibis_backend_schema = self.default_ibis_backend_schema
-
-            self.init_default_ibis_backend(default_ibis_schema=ibis_backend_schema)
-        else:
-            self.ibis_backend = ibis_backend
-            ibis_backend_schema = self.ibis_backend.name
-
-        #We now know the final schema type!
-        self.ibis_backend_schema = ibis_backend_schema
-
-        # self.ibis_temp_tablename: str = self.init_ibis_temp_tablename()
-
-        #Init the dataframe. What Am I doing with a pyarrow table here?
-        self.ibis_df: ir.Table = self.init_ibis_table(df=df, tablename_prefix=tablename_prefix, create_as_view=create_as_view)
-
-
-    def _get_dataframe(self) -> Any:
-        return self.ibis_df
 
 
     # =========
@@ -77,77 +49,6 @@ class IbisDataFrame(BaseDataFrame):
         #TODO: verify that the new backend schema is valid
 
         return IbisDataFrame(df=self.ibis_df, ibis_backend_schema=new_backend_schema)
-
-
-    def init_default_ibis_backend(self, 
-                                  default_ibis_schema: Optional[str] = None):    
-            
-        if not default_ibis_schema:
-            default_ibis_schema = self.default_ibis_backend_schema
-
-        #TODO: Check that we have a valid schema
-        if default_ibis_schema not in ["duckdb", "polars", "sqlite"]:
-            raise ValueError(f"Invalid default ibis schema: {default_ibis_schema}")
-
-        #Using the function to cache the connection.
-        self.ibis_backend = init_default_ibis_connection(ibis_schema=default_ibis_schema)
-        # self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
-
-        if not self.ibis_backend:
-            raise Exception("Ibis client connection not established")
-
-
-    def init_ibis_table(self, 
-                        df : Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
-                        tablename_prefix:Optional[str]=None,
-                        create_as_view:        Optional[bool] = False,
-                 ) -> ir.Table:
-        
-        if not self.ibis_backend:
-            self.init_default_ibis_backend()
-
-        if isinstance(df, ir.Table):
-            # We already have ibis, but if generated manually, we may lack a name
-            if df.has_name() and not tablename_prefix:
-                ibis_df = df
-            else:
-                tablename = self.generate_tablename(prefix=tablename_prefix)
-                ibis_df = df.alias(alias=tablename)
-
-        else:
-            #we have a new table from pandas or polars
-            ibis_df = DataFrameUtils.create_temp_table_ibis(df=df, tablename_prefix=tablename_prefix, current_ibis_backend=self.ibis_backend,  target_ibis_backend=self.ibis_backend, create_as_view=create_as_view)
-        
-        return ibis_df
-
-
-
-    def generate_tablename(self, prefix: Optional[str] = None) -> str:
-
-        return DataFrameUtils.generate_tablename(prefix=prefix)
-
-    def create_temp_table_ibis(self,
-                          df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
-                          tablename_prefix: Optional[str] = None,
-                          current_ibis_backend: Optional[ibis.BaseBackend] = None,
-                          target_ibis_backend: Optional[ibis.BaseBackend] = None,
-                          overwrite: Optional[bool] = True,
-                          create_as_view: Optional[bool] = False
-            ) -> ir.Table:
-
-        if current_ibis_backend is None:
-            current_ibis_backend = self.ibis_backend
-
-        if target_ibis_backend is None:
-            target_ibis_backend = self.ibis_backend
-
-        ibis_df = DataFrameUtils.create_temp_table_ibis(df=df, 
-                                                        tablename_prefix=tablename_prefix, 
-                                                        current_ibis_backend=current_ibis_backend,
-                                                        target_ibis_backend=target_ibis_backend,
-                                                        overwrite=overwrite,
-                                                        create_as_view=create_as_view)
-        return ibis_df
 
 
 
@@ -302,14 +203,6 @@ class IbisDataFrame(BaseDataFrame):
 
 
     #Join Resolution!
-
-    def _resolve_join_backend(self, 
-                                   right: "BaseDataFrame",
-                                   execute_on: Optional[str] = None
-                                   ) -> Tuple[ir.Table, ir.Table]:
-        return self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
-
-
     def _resolve_join_backend_ibis(self, 
                                    right: "BaseDataFrame",
                                    execute_on: Optional[str] = None
@@ -332,7 +225,7 @@ class IbisDataFrame(BaseDataFrame):
 
         #Resolve table schema
         left_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(self.ibis_df)
-        right_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(right._get_dataframe())
+        right_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(right.ibis_df)
 
         #find common keys in schemas:
         common_fields = list(set(left_table_schema.fields.keys()).intersection(set(right_table_schema.fields.keys())))
@@ -344,7 +237,7 @@ class IbisDataFrame(BaseDataFrame):
 
 
         #For in-memory dbs don't use equals (==) here as it just compares the connection string!
-        if self.ibis_backend_schema in ["duckdb", "sqlite"] and self.ibis_backend is right._get_dataframe():
+        if self.ibis_backend_schema in ["duckdb", "sqlite"] and self.ibis_backend is right.ibis_backend:
             same_backend = True
         #For database connections (like databases) it is OK to use == as it compares the connection string, which will be the same database, even if they are distinct connections
         if self.ibis_backend_schema not in ["duckdb", "sqlite"] and self.ibis_backend == right.ibis_backend:
@@ -370,7 +263,7 @@ class IbisDataFrame(BaseDataFrame):
             if execute_on == "left":
 
                 left_table = self.ibis_df
-                right_table = self.create_temp_table_ibis(df=right._get_dataframe(), tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
+                right_table = self.create_temp_table_ibis(df=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=self.ibis_backend, overwrite=True)
 
                 if len(fields_diff_types) > 0:
                     right_table = self._cast_types_ibis(df_ibis=right_table, 
@@ -399,7 +292,7 @@ class IbisDataFrame(BaseDataFrame):
 
                 #We have differing backends, and we are running locally. Bring both into local memory
                 left_table =  self.create_temp_table_ibis(df=self.ibis_df, tablename_prefix="left_table", current_ibis_backend=self.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
-                right_table = right.create_temp_table_ibis(df=right._get_dataframe(), tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
+                right_table = right.create_temp_table_ibis(df=right.ibis_df, tablename_prefix="right_table", current_ibis_backend=right.ibis_backend, target_ibis_backend=default_ibis_backend, overwrite=True)
 
                 if len(fields_diff_types) > 0:
                     right_table = self._cast_types_ibis(df_ibis=right_table, 
@@ -485,10 +378,6 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    def _filter_ibis(self, ibis_expr: Any) -> ir.Table:
-        filtered_df = self.ibis_df.filter(ibis_expr)
-        return filtered_df
-
 
 
     def head(self, n: int) -> "IbisDataFrame":
@@ -550,17 +439,8 @@ class IbisDataFrame(BaseDataFrame):
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
-    def _sql_ibis(self, query:str) -> ir.Table:
 
-        if self.ibis_df.has_name():
-            query = query.format(_=self.ibis_df.get_name())
-        else:
-            query = query.format(_="df")
-
-        return self.ibis_df.sql(query=query)       
     
-
-
     def as_dict(self) -> Dict[str, List[Any]] | Any:
         return self._as_dict_ibis()
 

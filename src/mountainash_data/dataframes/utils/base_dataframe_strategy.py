@@ -12,6 +12,7 @@ import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
 from .dataframe_functions import init_ibis_connection
+from .filter import FilterNode
 
 class BaseDataFrameStrategy(ABC):
 
@@ -133,12 +134,10 @@ class BaseDataFrameStrategy(ABC):
 
         self.validate_dataframe_input(df=df)
 
-        if self.supports_pyarrow_interchange(df=df):
-            return from_dataframe(df=df)
-        else:
-            return self._cast_to_pyarrow_table(df=df)
-
-
+        # if self.supports_pyarrow_interchange(df=df):
+        #     return from_dataframe(df=df)
+        # else:
+        return self._cast_to_pyarrow_table(df=df)
 
 
     @abstractmethod
@@ -152,7 +151,8 @@ class BaseDataFrameStrategy(ABC):
         self.validate_dataframe_input(df=df)
 
         if self.supports_pyarrow_interchange(df=df):
-            return from_dataframe(df=df).to_batches(max_chunksize=batchsize)
+            temp_df = self._cast_to_pyarrow_table(df=df)   
+            return from_dataframe(df=temp_df).to_batches(max_chunksize=batchsize)
         else:
             return self._cast_to_pyarrow_recordbatch(df=df, batchsize=batchsize)
 
@@ -317,3 +317,11 @@ class BaseDataFrameStrategy(ABC):
         self.validate_dataframe_input(df=df)
         return self._count(df=df)
 
+
+    @abstractmethod
+    def _filter(self, df: Any, condition: FilterNode) -> Any:
+        pass
+
+    def filter(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], condition: FilterNode) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+        self.validate_dataframe_input(df)
+        return self._filter(df, condition)

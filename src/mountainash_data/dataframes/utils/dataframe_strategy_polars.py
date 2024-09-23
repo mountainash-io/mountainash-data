@@ -1,4 +1,4 @@
-from typing import Any,  Dict, List
+from typing import Any,  Dict, List, Union, Callable
 
 import pandas as pd
 import polars as pl
@@ -6,6 +6,7 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
+from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PolarsFilterVisitor
 
 
 class PolarsDataFrameUtils(BaseDataFrameStrategy):
@@ -19,7 +20,8 @@ class PolarsDataFrameUtils(BaseDataFrameStrategy):
         return df.to_arrow() 
 
     def _cast_to_pyarrow_recordbatch(self, df: pl.DataFrame, batchsize: int = 1) -> List[pa.RecordBatch]:
-        return df.to_arrow().to_batches(max_chunksize=batchsize) 
+        temp = self._cast_to_pyarrow_table(df)
+        return temp.to_batches(max_chunksize=batchsize) 
 
     def _cast_to_dictonary_of_lists(self, df: pl.DataFrame) -> Dict[Any,List[Any]]:
         return df.to_dict(as_series=False) 
@@ -56,3 +58,11 @@ class PolarsDataFrameUtils(BaseDataFrameStrategy):
     def _count(self, df: pl.DataFrame) -> int:
         dict_count =  df.select(pl.len()).rows(named=True) 
         return dict_count[0]["len"]
+    
+    def _filter(self, df: Union[pl.DataFrame, pl.LazyFrame], condition: FilterNode) -> Union[pl.DataFrame, pl.LazyFrame]:
+        
+        visitor = PolarsFilterVisitor()
+        polars_callable: Callable = condition.accept(visitor)
+        polars_condition = polars_callable(df)
+        
+        return df.filter(polars_condition)

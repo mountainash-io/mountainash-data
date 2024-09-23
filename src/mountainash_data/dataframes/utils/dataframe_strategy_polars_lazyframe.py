@@ -1,4 +1,4 @@
-from typing import Any,  Dict, List
+from typing import Any,  Dict, List, Union, Callable
 
 import pandas as pd
 import polars as pl
@@ -6,6 +6,7 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
+from .filter import FilterVisitor, ColumnCondition, LogicalCondition, FilterNode, PolarsFilterVisitor
 
 
 class PolarsLazyFrameUtils(BaseDataFrameStrategy):
@@ -58,3 +59,11 @@ class PolarsLazyFrameUtils(BaseDataFrameStrategy):
     def _count(self, df: pl.LazyFrame) -> int:
         dict_count =  df.select(pl.len()).collect().rows(named=True) 
         return dict_count[0]["len"]
+    
+    def _filter(self, df: Union[pl.DataFrame, pl.LazyFrame], condition: FilterNode) -> Union[pl.DataFrame, pl.LazyFrame]:
+        
+        visitor = PolarsFilterVisitor()
+        polars_callable: Callable = condition.accept(visitor)
+        polars_condition = polars_callable(df)
+        
+        return df.filter(polars_condition)
