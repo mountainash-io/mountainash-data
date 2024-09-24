@@ -8,29 +8,42 @@ class IbisFilterVisitor(FilterVisitor):
     
     def visit_column_condition(self, condition: ColumnCondition) -> Callable:
 
-        # column = ibis.expr.types.Column(condition.column)
+        if condition.compare_column:
+            if condition.operator == "==":
+                return lambda table: table[condition.column] == table[condition.compare_column]
+            elif condition.operator == "!=":
+                return lambda table: table[condition.column] != table[condition.compare_column]
+            elif condition.operator == ">":
+                return lambda table: table[condition.column] > table[condition.compare_column]
+            elif condition.operator == "<":
+                return lambda table: table[condition.column] < table[condition.compare_column]
+            elif condition.operator == ">=":
+                return lambda table: table[condition.column] >= table[condition.compare_column]
+            elif condition.operator == "<=":
+                return lambda table: table[condition.column] <= table[condition.compare_column]
 
-
-        if condition.operator == "==":
-            return lambda table: table[condition.column] == ibis.literal(condition.value)
-        elif condition.operator == "!=":
-            return lambda table: table[condition.column] != ibis.literal(condition.value)
-        elif condition.operator == ">":
-            return lambda table: table[condition.column] > ibis.literal(condition.value)
-        elif condition.operator == "<":
-            return lambda table: table[condition.column] < ibis.literal(condition.value)
-        elif condition.operator == ">=":
-            return lambda table: table[condition.column] >= ibis.literal(condition.value)
-        elif condition.operator == "<=":
-            return lambda table: table[condition.column] <= ibis.literal(condition.value)
-        elif condition.operator == "in":
-            return lambda table: table[condition.column].isin(ibis.literal(condition.value))
-        elif condition.operator == "is null":
-            return lambda table: table[condition.column].isnull()
-        elif condition.operator == "is not null":
-            return lambda table: table[condition.column].notnull()
         else:
-            raise ValueError(f"Unsupported operator: {condition.operator}")
+
+            if condition.operator == "==":
+                return lambda table: table[condition.column] == ibis.literal(condition.value)
+            elif condition.operator == "!=":
+                return lambda table: table[condition.column] != ibis.literal(condition.value)
+            elif condition.operator == ">":
+                return lambda table: table[condition.column] > ibis.literal(condition.value)
+            elif condition.operator == "<":
+                return lambda table: table[condition.column] < ibis.literal(condition.value)
+            elif condition.operator == ">=":
+                return lambda table: table[condition.column] >= ibis.literal(condition.value)
+            elif condition.operator == "<=":
+                return lambda table: table[condition.column] <= ibis.literal(condition.value)
+            elif condition.operator == "in":
+                return lambda table: table[condition.column].isin(ibis.literal(condition.value))
+            elif condition.operator == "is null":
+                return lambda table: table[condition.column].isnull()
+            elif condition.operator == "is not null":
+                return lambda table: table[condition.column].notnull()
+            else:
+                raise ValueError(f"Unsupported operator: {condition.operator}")
 
 
     def visit_logical_condition(self, condition: LogicalCondition):

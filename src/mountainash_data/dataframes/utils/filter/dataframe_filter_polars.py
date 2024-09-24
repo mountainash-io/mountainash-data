@@ -8,28 +8,42 @@ class PolarsFilterVisitor(FilterVisitor):
 
     def visit_column_condition(self, condition: ColumnCondition) -> Callable:
 
-        # column = pl.col(condition.column)
-        
-        if condition.operator == "==":
-            return lambda df: pl.col(condition.column) == condition.value
-        elif condition.operator == "!=":
-            return lambda df: pl.col(condition.column) != condition.value
-        elif condition.operator == ">":
-            return lambda df: pl.col(condition.column) > condition.value
-        elif condition.operator == "<":
-            return lambda df: pl.col(condition.column) < condition.value
-        elif condition.operator == ">=":
-            return lambda df: pl.col(condition.column) >= condition.value
-        elif condition.operator == "<=":
-            return lambda df: pl.col(condition.column) <= condition.value
-        elif condition.operator == "in":
-            return lambda df: pl.col(condition.column).is_in(condition.value)
-        elif condition.operator == "is null":
-            return lambda df: pl.col(condition.column).is_null()
-        elif condition.operator == "is not null":
-            return lambda df: pl.col(condition.column).is_not_null()
-        else:
-            raise ValueError(f"Unsupported operator: {condition.operator}")
+        if condition.compare_column:
+            if condition.operator == "==":
+                return lambda table: pl.col(condition.column) == pl.col(condition.compare_column)
+            elif condition.operator == "!=":
+                return lambda table: pl.col(condition.column) != pl.col(condition.compare_column)
+            elif condition.operator == ">":
+                return lambda table: pl.col(condition.column) > pl.col(condition.compare_column)
+            elif condition.operator == "<":
+                return lambda table: pl.col(condition.column) < pl.col(condition.compare_column)
+            elif condition.operator == ">=":
+                return lambda table: pl.col(condition.column) >= pl.col(condition.compare_column)
+            elif condition.operator == "<=":
+                return lambda table: pl.col(condition.column) <= pl.col(condition.compare_column)
+            else:
+                raise ValueError(f"Unsupported operator for column comparison: {condition.operator}")
+        else:        
+            if condition.operator == "==":
+                return lambda df: pl.col(condition.column) == condition.value
+            elif condition.operator == "!=":
+                return lambda df: pl.col(condition.column) != condition.value
+            elif condition.operator == ">":
+                return lambda df: pl.col(condition.column) > condition.value
+            elif condition.operator == "<":
+                return lambda df: pl.col(condition.column) < condition.value
+            elif condition.operator == ">=":
+                return lambda df: pl.col(condition.column) >= condition.value
+            elif condition.operator == "<=":
+                return lambda df: pl.col(condition.column) <= condition.value
+            elif condition.operator == "in":
+                return lambda df: pl.col(condition.column).is_in(condition.value)
+            elif condition.operator == "is null":
+                return lambda df: pl.col(condition.column).is_null()
+            elif condition.operator == "is not null":
+                return lambda df: pl.col(condition.column).is_not_null()
+            else:
+                raise ValueError(f"Unsupported operator: {condition.operator}")
 
     # def visit_logical_condition(self, condition: LogicalCondition) -> Callable:
     #     if condition.operator == "and":

@@ -101,12 +101,11 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
         df_tbl: pa.Table = self._cast_to_pyarrow_table(df=df)
         return df_tbl.num_rows
     
-    def _filter(self, df: pa.Table, condition: FilterNode) -> pa.Table:
+    def _filter(self, df: pa.RecordBatch|List[pa.RecordBatch], condition: FilterNode) -> pa.Table:
 
+        df = self._cast_to_pyarrow_table(df=df)
+    
         visitor = PyArrowFilterVisitor()
-        
         pyarrow_condition = condition.accept(visitor)
-
-        mask = pc.filter(df, pyarrow_condition)
-
-        return df.filter(mask)    
+        mask = pyarrow_condition(df)
+        return df.filter(mask)

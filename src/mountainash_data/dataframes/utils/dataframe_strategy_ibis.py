@@ -23,7 +23,8 @@ class IbisDataFrameUtils(BaseDataFrameStrategy):
         return df.to_pyarrow()
 
     def _cast_to_pyarrow_recordbatch(self, df: ir.Table, batchsize: int = 1) -> List[pa.RecordBatch]:
-        return df.to_pyarrow().to_batches(max_chunksize=batchsize)
+        temp = self._cast_to_pyarrow_table(df)
+        return temp.to_batches(max_chunksize=batchsize) 
     
 
     def _cast_to_dictonary_of_lists(self, df: ir.Table) -> Dict[Any,List[Any]]:

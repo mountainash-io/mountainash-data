@@ -22,7 +22,8 @@ class PandasDataFrameUtils(BaseDataFrameStrategy):
         return pa.Table.from_pandas(df)
 
     def _cast_to_pyarrow_recordbatch(self, df: pd.DataFrame, batchsize: int = 1) -> List[pa.RecordBatch]:
-        return pa.RecordBatch.from_pandas(df).to_batches(max_chunksize=batchsize)
+        temp = self._cast_to_pyarrow_table(df)
+        return temp.to_batches(max_chunksize=batchsize) 
 
 
     def _cast_to_dictonary_of_lists(self, df: pd.DataFrame) -> Dict[Any,List[Any]]:

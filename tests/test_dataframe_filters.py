@@ -31,7 +31,6 @@ def create_test_data(df_type):
     elif df_type == 'pyarrow':
         return pa.Table.from_pydict(data)
     elif df_type == 'pyarrow_recordbatch':
-        # table = pa.Table.from_pydict(data)
         return DataFrameUtils.cast_dataframe_to_pyarrow_recordbatch(pl.DataFrame(data), 1)
     elif df_type == 'ibis':
         return ibis.memtable(data)
@@ -44,7 +43,7 @@ def create_test_data(df_type):
     'polars', 
     'polars_lazy', 
     'pyarrow', 
-    # 'pyarrow_recordbatch', 
+    'pyarrow_recordbatch', 
     'ibis'
     ])
 def df_type(request):

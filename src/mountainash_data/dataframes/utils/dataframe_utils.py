@@ -325,6 +325,13 @@ class DataFrameUtils:
         return strategy.count(df)
     
     @classmethod
+    def validate_dataframe_supported(cls, 
+              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> int:
+        strategy = cls._get_strategy(df)
+        return strategy.validate_dataframe_input(df)
+
+
+    @classmethod
     def generate_tablename(cls, 
                            prefix: Optional[str] = None) -> str:
         return BaseDataFrameStrategy.generate_tablename(prefix=prefix)
