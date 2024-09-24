@@ -42,12 +42,10 @@ class PyArrowTableUtils(BaseDataFrameStrategy):
 
 
     def _drop(self, df: pa.Table, columns: List[str]) -> pa.Table:
-        # df =  self.cast_to_polars(df=df)
         return df.drop_columns(columns)
 
     def _select(self, df: pa.Table, columns: List[str]) -> pa.Table:
-        # df = self.cast_to_polars(df=df)
-        return df.select(columns).to_arrow()
+        return df.select(columns)
 
     def _head(self, df: pa.Table, n: int) -> pa.Table:
         if n < 0:
