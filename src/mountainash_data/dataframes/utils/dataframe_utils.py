@@ -1,4 +1,4 @@
-from typing import Union, Any,  Dict, List, Optional, Sequence
+from typing import Union, Any,  Dict, List, Optional, Sequence, Set
 
 import collections
 
@@ -177,7 +177,7 @@ class DataFrameUtils:
     @classmethod
     def _is_recordbatch(cls, df: Any) -> bool:
 
-        if isinstance(df, list):
+        if isinstance(df, list) and len(df) > 0:
             return isinstance(df[0], pa.RecordBatch)
         else:
             return isinstance(df, pa.RecordBatch)
@@ -351,4 +351,25 @@ class DataFrameUtils:
         return FilterCondition
 
 
+    @classmethod
+    def get_column_as_list(
+            cls,
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            column:str
+        ) -> List[Any]:
+        
+        obj_df = cls.select(df=df, columns=column)
+        obj_dict = cls.cast_dataframe_to_dictonary_of_lists(df=obj_df)
+
+        return obj_dict[column]
     
+    @classmethod
+    def get_column_as_set(
+            cls,
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            column:str
+        ) -> Set[Any]:
+        
+        list_vals: List[Any] = cls.get_column_as_list(df=df, column=column)
+
+        return set(list_vals)    

@@ -128,20 +128,6 @@ class BaseDataFrame(ABC):
         return obj_dict[column]
 
 
-    def get_columns_as_dict(
-            self,
-            key_column:str,
-            value_column:str
-        ) -> Dict[Any,Any]:
-        
-        obj_df = self.select([key_column, value_column])
-        obj_dict = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df._get_dataframe())
-
-        #create a dictionary of key: value
-        obj_dict = {x[key_column]: x[value_column] for x in obj_dict}
-
-        return obj_dict
-
     @abstractmethod
     def select(self, ibis_expr: Any) -> "BaseDataFrame":
         pass

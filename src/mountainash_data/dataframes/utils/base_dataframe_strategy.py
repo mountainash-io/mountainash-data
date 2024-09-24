@@ -21,7 +21,7 @@ class BaseDataFrameStrategy(ABC):
                                 df: Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> bool:
 
         if not isinstance(df, (pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch)) and not cls._is_recordbatch(df=df):  
-            raise TypeError("Unsupported dataframe type")
+            raise TypeError(f"Unsupported dataframe type. Receieved: {type(df)}")
         
         return True
 
