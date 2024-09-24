@@ -66,3 +66,6 @@ class PandasDataFrameUtils(BaseDataFrameStrategy):
         visitor = PandasFilterVisitor()
         mask = condition.accept(visitor)(df)
         return df[mask]
+
+    def _split_in_batches(self, df: pd.DataFrame, batch_size: int) -> List[pd.DataFrame]:
+        return [df[i:i + batch_size] for i in range(0, len(df), batch_size)]

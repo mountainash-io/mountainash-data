@@ -373,3 +373,13 @@ class DataFrameUtils:
         list_vals: List[Any] = cls.get_column_as_list(df=df, column=column)
 
         return set(list_vals)    
+
+
+    @classmethod
+    def split_dataframe_in_batches(cls, 
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            batch_size: int
+            ) -> List[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]]:
+        
+        strategy = cls._get_strategy(df=df)
+        return strategy.split_in_batches(df, batch_size)

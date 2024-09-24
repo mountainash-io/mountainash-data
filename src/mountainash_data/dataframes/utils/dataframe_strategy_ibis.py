@@ -63,3 +63,7 @@ class IbisDataFrameUtils(BaseDataFrameStrategy):
         ibis_callable = condition.accept(visitor)
 
         return df.filter(ibis_callable)
+    
+    def _split_in_batches(self, df: ir.Table, batch_size: int) -> List[ir.Table]:
+        total_rows = df.count().execute()
+        return [df.limit(batch_size, offset=i) for i in range(0, total_rows, batch_size)]    

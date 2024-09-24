@@ -8,6 +8,8 @@ import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 from functools import lru_cache
 
+from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
+
 # import uuid
 from .utils.dataframe_utils import DataFrameUtils
 from .utils.dataframe_functions import init_ibis_connection
@@ -157,11 +159,26 @@ class IbisDataFrame(BaseDataFrame):
         return isinstance(self.ibis_df, ir.Table)
 
 
-    def materialise(self) -> Union[pd.DataFrame, pl.DataFrame]:
+    def materialise(self, format: Optional[str]=None) -> Any:
 
-        if isinstance(self.ibis_df, ir.Table):
+        if format is None:
+            format = CONST_DATAFRAME_FRAMEWORK.POLARS.value
 
-            return self.ibis_df.to_polars()
+        if format == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
+            return self.to_polars()
+
+        elif format == CONST_DATAFRAME_FRAMEWORK.PANDAS.value:
+            return self.to_pandas()
+
+        elif format == CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value:
+            return self.to_arrow()
+
+        elif format == CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value:
+            return self.to_pyarrow_recordbatch()
+
+        elif format == CONST_DATAFRAME_FRAMEWORK.IBIS.value:
+            return self._get_dataframe()
+
         else:
             raise ValueError("Dataframe could not be not materialised")
 
