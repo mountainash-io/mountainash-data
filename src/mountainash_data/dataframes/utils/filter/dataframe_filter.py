@@ -1,19 +1,22 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Union, Callable
+from typing import Any, List, Union, Callable, Optional
 
 class FilterNode(ABC):
     @abstractmethod
     def accept(self, visitor: 'FilterVisitor') -> Callable:
         pass
 
+
 class ColumnCondition(FilterNode):
-    def __init__(self, column: str, operator: str, value: Any):
+    def __init__(self, column: str, operator: str, value: Any, compare_column: Optional[str] = None):
         self.column = column
         self.operator = operator
         self.value = value
+        self.compare_column = compare_column
 
     def accept(self, visitor: 'FilterVisitor') -> Callable:
         return visitor.visit_column_condition(self)
+
 
 class LogicalCondition(FilterNode):
     def __init__(self, operator: str, operands: List[FilterNode]):
@@ -33,60 +36,144 @@ class FilterVisitor(ABC):
         pass
 
 class FilterCondition:
-    @staticmethod
-    def equals(column: str, value: Any) -> ColumnCondition:
+
+    #############
+    # Shortcut Aliases - Values
+    @classmethod
+    def eq(cls, column: str, value: Any) -> ColumnCondition:
+        return cls.equals(column, value)
+
+    @classmethod
+    def ne(cls, column: str, value: Any) -> ColumnCondition:
+        return cls.not_equals(column, value)
+
+    @classmethod
+    def gt(cls, column: str, value: Any) -> ColumnCondition:
+        return cls.greater_than(column, value)
+
+    @classmethod
+    def lt(cls, column: str, value: Any) -> ColumnCondition:
+        return cls.less_than(column, value)
+
+    @classmethod
+    def ge(cls, column: str, value: Any) -> ColumnCondition:
+        return cls.greater_than_or_equal(column, value)
+
+    @classmethod
+    def le(cls, column: str, value: Any) -> ColumnCondition:
+        return cls.less_than_or_equal(column, value)
+
+    #############
+    # Shortcut Aliases - Column to Column
+    @classmethod
+    def col_eq(cls, column1: str, column2: str) -> ColumnCondition:
+        return cls.column_equals(column1, column2)
+
+    @classmethod
+    def col_ne(cls, column1: str, column2: str) -> ColumnCondition:
+        return cls.column_not_equals(column1, column2)
+
+    @classmethod
+    def col_gt(cls, column1: str, column2: str) -> ColumnCondition:
+        return cls.column_greater_than(column1, column2)
+
+    @classmethod
+    def col_lt(cls, column1: str, column2: str) -> ColumnCondition:
+        return cls.column_less_than(column1, column2)
+
+    @classmethod
+    def col_ge(cls, column1: str, column2: str) -> ColumnCondition:
+        return cls.column_greater_than_or_equal(column1, column2)
+
+    @classmethod
+    def col_le(cls, column1: str, column2: str) -> ColumnCondition:
+        return cls.column_less_than_or_equal(column1, column2)
+
+
+
+    #####  Actual Implementations ####
+    # Column to Value comparison
+    @classmethod
+    def equals(cls, column: str, value: Any) -> ColumnCondition:
         return ColumnCondition(column, "==", value)
 
-    @staticmethod
-    def not_equals(column: str, value: Any) -> ColumnCondition:
+    @classmethod
+    def not_equals(cls, column: str, value: Any) -> ColumnCondition:
         return ColumnCondition(column, "!=", value)
 
-    @staticmethod
-    def greater_than(column: str, value: Union[int, float]) -> ColumnCondition:
+    @classmethod
+    def greater_than(cls, column: str, value: Union[int, float]) -> ColumnCondition:
         return ColumnCondition(column, ">", value)
 
-    @staticmethod
-    def less_than(column: str, value: Union[int, float]) -> ColumnCondition:
+    @classmethod
+    def less_than(cls, column: str, value: Union[int, float]) -> ColumnCondition:
         return ColumnCondition(column, "<", value)
 
-    @staticmethod
-    def greater_than_or_equal(column: str, value: Union[int, float]) -> ColumnCondition:
+    @classmethod
+    def greater_than_or_equal(cls, column: str, value: Union[int, float]) -> ColumnCondition:
         return ColumnCondition(column, ">=", value)
 
-    @staticmethod
-    def less_than_or_equal(column: str, value: Union[int, float]) -> ColumnCondition:
+    @classmethod
+    def less_than_or_equal(cls, column: str, value: Union[int, float]) -> ColumnCondition:
         return ColumnCondition(column, "<=", value)
 
 
-    @staticmethod
-    def between(column: str, lower: Union[int, float], upper: Union[int, float]) -> LogicalCondition:
+    @classmethod
+    def between(cls, column: str, lower: Union[int, float], upper: Union[int, float]) -> LogicalCondition:
         return LogicalCondition("and", [
             ColumnCondition(column, ">=", lower),
             ColumnCondition(column, "<=", upper)
         ])
 
-    @staticmethod
-    def in_list(column: str, values: List[Any]) -> ColumnCondition:
+    @classmethod
+    def in_list(cls, column: str, values: List[Any]) -> ColumnCondition:
         return ColumnCondition(column, "in", values)
 
 
-    @staticmethod
-    def is_null(column: str) -> ColumnCondition:
+    @classmethod
+    def is_null(cls, column: str) -> ColumnCondition:
         return ColumnCondition(column, "is null", None)
 
-    @staticmethod
-    def not_null(column: str) -> ColumnCondition:
+    @classmethod
+    def not_null(cls, column: str) -> ColumnCondition:
         return ColumnCondition(column, "is not null", None)
 
+    # Column to Column comparison
+    @classmethod
+    def column_equals(cls, column1: str, column2: str) -> ColumnCondition:
+        return ColumnCondition(column1, "==", None, compare_column=column2)
+
+    @classmethod
+    def column_not_equals(cls, column1: str, column2: str) -> ColumnCondition:
+        return ColumnCondition(column1, "!=", None, compare_column=column2)
+
+    @classmethod
+    def column_greater_than(cls, column1: str, column2: str) -> ColumnCondition:
+        return ColumnCondition(column1, ">", None, compare_column=column2)
+
+    @classmethod
+    def column_less_than(cls, column1: str, column2: str) -> ColumnCondition:
+        return ColumnCondition(column1, "<", None, compare_column=column2)
+
+    @classmethod
+    def column_greater_than_or_equal(cls, column1: str, column2: str) -> ColumnCondition:
+        return ColumnCondition(column1, ">=", None, compare_column=column2)
+
+    @classmethod
+    def column_less_than_or_equal(cls, column1: str, column2: str) -> ColumnCondition:
+        return ColumnCondition(column1, "<=", None, compare_column=column2)
+
+
+
     # Logical operators on multiple ColumnConditions
-    @staticmethod
-    def and_(*conditions: FilterNode) -> LogicalCondition:
+    @classmethod
+    def and_(cls, *conditions: FilterNode) -> LogicalCondition:
         return LogicalCondition("and", list(conditions))
 
-    @staticmethod
-    def or_(*conditions: FilterNode) -> LogicalCondition:
+    @classmethod
+    def or_(cls, *conditions: FilterNode) -> LogicalCondition:
         return LogicalCondition("or", list(conditions))
 
-    @staticmethod
-    def not_(condition: FilterNode) -> LogicalCondition:
+    @classmethod
+    def not_(cls, condition: FilterNode) -> LogicalCondition:
         return LogicalCondition("not", [condition])
