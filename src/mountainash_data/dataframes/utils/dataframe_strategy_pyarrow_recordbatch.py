@@ -3,7 +3,6 @@ from typing import Any,  Dict, List
 import pandas as pd
 import polars as pl
 import pyarrow as pa
-import pyarrow.compute as pc
 
 import ibis.expr.schema as ibis_schema
 
