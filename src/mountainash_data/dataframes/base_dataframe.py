@@ -69,17 +69,17 @@ class BaseDataFrame(ABC):
     ### Materialisation
         
     @abstractmethod
-    def materialise(self) -> Union[pd.DataFrame, pl.DataFrame]:
+    def materialise(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
         pass
 
-    def materialize(self) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise()
+    def materialize(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(format)
 
-    def execute(self) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise()
+    def execute(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(format)
 
-    def collect(self) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise()
+    def collect(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(format)
 
     def to_arrow(self) -> pa.Table:
         return DataFrameUtils.cast_dataframe_to_arrow(df=self._get_dataframe())
@@ -87,10 +87,8 @@ class BaseDataFrame(ABC):
     def to_pyarrow_recordbatch(self, batchsize: int = 1) -> List[pa.RecordBatch]:
         return DataFrameUtils.cast_dataframe_to_pyarrow_recordbatch(df=self._get_dataframe(), batchsize=batchsize)
 
-
     def to_pandas(self) -> pd.DataFrame:
         return DataFrameUtils.cast_dataframe_to_pandas(df=self._get_dataframe())
-
 
     def to_polars(self) -> pl.DataFrame:
         return DataFrameUtils.cast_dataframe_to_polars(df=self._get_dataframe())

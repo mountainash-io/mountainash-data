@@ -72,20 +72,18 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
 
 
 
-    def _drop(self, df: pa.RecordBatch|List[pa.RecordBatch], columns: List[str]) -> pa.Table:
+    def _drop(self, df: pa.RecordBatch|List[pa.RecordBatch], columns: List[str]) -> List[pa.RecordBatch]:
         df_tbl: pa.Table = self._cast_to_pyarrow_table(df=df)
         batchsize: int = self._get_existing_batch_size(df=df)
         return df_tbl.drop_columns(columns).to_batches(max_chunksize=batchsize)
 
-    def _select(self, df: pa.RecordBatch, columns: List[str]) -> pa.Table:
+    def _select(self, df: pa.RecordBatch, columns: List[str]) -> List[pa.RecordBatch]:
         df_tbl: pa.Table = self._cast_to_pyarrow_table(df=df)
         batchsize: int = self._get_existing_batch_size(df=df)
         # df = self.cast_to_polars(df=df)
         return df_tbl.select(columns).to_batches(max_chunksize=batchsize)
 
-    def _head(self, df: pa.RecordBatch|List[pa.RecordBatch], n: int) -> pa.Table:
-
-        print(f"df: {df} of type: {type(df)}")
+    def _head(self, df: pa.RecordBatch|List[pa.RecordBatch], n: int) -> List[pa.RecordBatch]:
 
         if n < 0:
             raise ValueError("n must be greater than or equal to 0")
@@ -100,11 +98,18 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
         df_tbl: pa.Table = self._cast_to_pyarrow_table(df=df)
         return df_tbl.num_rows
     
-    def _filter(self, df: pa.RecordBatch|List[pa.RecordBatch], condition: FilterNode) -> pa.Table:
+    def _filter(self, df: pa.RecordBatch|List[pa.RecordBatch], condition: FilterNode) -> List[pa.RecordBatch]:
 
-        df = self._cast_to_pyarrow_table(df=df)
+        df_pa: pa.Table = self._cast_to_pyarrow_table(df=df)
     
         visitor = PyArrowFilterVisitor()
         pyarrow_condition = condition.accept(visitor)
-        mask = pyarrow_condition(df)
-        return df.filter(mask)
+        mask = pyarrow_condition(df_pa)
+        return df_pa.filter(mask)
+
+    def _split_in_batches(self, df: pa.RecordBatch|List[pa.RecordBatch], batch_size: int) -> List[List[pa.RecordBatch]]:
+
+        df_pa: pa.Table = self._cast_to_pyarrow_table(df=df)
+        batchsize = self._get_existing_batch_size(df=df)
+
+        return  [df_pa.slice(i, batch_size).to_batches(batchsize) for i in range(0, df_pa.num_rows, batch_size)]    

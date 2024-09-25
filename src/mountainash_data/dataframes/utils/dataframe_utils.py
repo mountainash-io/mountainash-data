@@ -51,7 +51,11 @@ class DataFrameUtils:
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None,
-            column_types: Optional[Dict[str, str]]=None) -> pd.DataFrame:
+            column_types: Optional[Dict[str, str]]=None) -> Optional[pd.DataFrame]:
+
+        if data_dict is None:
+            return pd.DataFrame()    
+
 
         pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
         return cls.cast_dataframe_to_pandas(df=pl_df)
@@ -63,6 +67,10 @@ class DataFrameUtils:
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]]=None,
             column_types: Optional[Dict[str, str]]=None) -> pl.DataFrame:
+
+        if data_dict is None:
+            return pl.DataFrame()    
+
 
         if column_dict and cls.validate_column_mapping(column_dict=column_dict):
 
@@ -83,6 +91,9 @@ class DataFrameUtils:
         column_types: Optional[Dict[str, str]] = None,
         batchsize: int = 1
     ) -> List[pa.RecordBatch]:
+
+        if data_dict is None:
+            return []    
         
         pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
         return cls.cast_dataframe_to_pyarrow_recordbatch(df=pl_df, batchsize=batchsize)
@@ -96,6 +107,9 @@ class DataFrameUtils:
         column_types: Optional[Dict[str, str]] = None
     ) -> pa.Table:
         
+        if data_dict is None:
+            return pa.Table()
+
         pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
         return cls.cast_dataframe_to_arrow(df=pl_df)
 
@@ -125,11 +139,14 @@ class DataFrameUtils:
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
             column_dict: Optional[Dict[str, str]] = None,
-            column_types: Optional[Dict[str, str]]=None ) -> ir.Table:
+            column_types: Optional[Dict[str, str]]=None ) -> Optional[ir.Table]:
         
         pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
 
         return cls.cast_dataframe_to_ibis(df=pl_df)
+
+    ################################
+    # Validation Methods
 
     @classmethod
     def validate_column_mapping(cls,
@@ -174,6 +191,7 @@ class DataFrameUtils:
                 return False
         return True
 
+
     @classmethod
     def _is_recordbatch(cls, df: Any) -> bool:
 
@@ -182,13 +200,22 @@ class DataFrameUtils:
         else:
             return isinstance(df, pa.RecordBatch)
 
+    @classmethod
+    def validate_dataframe_supported(cls, 
+              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Optional[bool]:
+        
+        if df is None:
+            return df
+        
+        strategy = cls._get_strategy(df)
+        return strategy.validate_dataframe_input(df)
+
 
     ################################
-
+    # Strategy Based Methods
     @classmethod
     def _get_strategy(cls, 
                       df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> BaseDataFrameStrategy:
-        
         
         if isinstance(df, ir.Table):
             return IbisDataFrameUtils()
@@ -208,17 +235,29 @@ class DataFrameUtils:
 
     @classmethod
     def cast_dataframe_to_pandas(cls, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
+
+        if df is None:
+            return df
+
         strategy = cls._get_strategy(df=df)
         return strategy.cast_to_pandas(df=df)
 
     @classmethod
     def cast_dataframe_to_polars(cls, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pl.DataFrame:
+
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df=df)
         return strategy.cast_to_polars(df=df)
 
     @classmethod
     def cast_dataframe_to_arrow(cls, 
                                 df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pa.Table:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df=df)
         return strategy._cast_to_pyarrow_table(df)
 
@@ -226,6 +265,10 @@ class DataFrameUtils:
     def cast_dataframe_to_pyarrow_recordbatch(cls, 
                                               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
                                               batchsize: int = 1) -> List[pa.RecordBatch]:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df=df)
         return strategy.cast_to_pyarrow_recordbatch(df=df, batchsize=batchsize)
 
@@ -242,6 +285,10 @@ class DataFrameUtils:
                                df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
                                ibis_backend=None, 
                                tablename_prefix=None) -> ir.Table:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df=df)
         return strategy.cast_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)
 
@@ -253,7 +300,11 @@ class DataFrameUtils:
                             target_ibis_backend: Optional[ibis.BaseBackend] = None,
                             overwrite: Optional[bool] = True,
                             create_as_view: Optional[bool] = False
-            ) -> ir.Table:                               
+            ) -> ir.Table:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df=df)
         return strategy.create_temp_table_ibis(df=df, 
                                      tablename_prefix= tablename_prefix,
@@ -268,18 +319,30 @@ class DataFrameUtils:
     @classmethod
     def cast_dataframe_to_dictonary_of_lists(cls, 
                                              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[Any, List[Any]]:
+        
+        if df is None:
+            return {}
+        
         strategy = cls._get_strategy(df)
         return strategy.cast_to_dictonary_of_lists(df)
 
     @classmethod
     def cast_dataframe_to_dictonary_of_series(cls, 
                                               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[str, pl.Series]:
+        
+        if df is None:
+            return {}
+        
         strategy = cls._get_strategy(df)
         return strategy.cast_to_dictonary_of_series(df)
 
     @classmethod
     def cast_dataframe_to_list_of_dictionaries(cls, 
                                                df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[Dict[Any, Any]]:
+        
+        if df is None:
+            return []
+        
         strategy = cls._get_strategy(df)
         return strategy.cast_to_list_of_dictionaries(df)
 
@@ -287,12 +350,20 @@ class DataFrameUtils:
     @classmethod
     def get_column_names(cls, 
                          df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[str]:
+        
+        if df is None:
+            return []
+        
         strategy = cls._get_strategy(df)
         return strategy.get_column_names(df)
 
     @classmethod
     def get_table_schema(cls, 
-                         df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> ibis_schema.Schema:
+                         df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Optional[ibis_schema.Schema]:
+                         
+        if df is None:
+            return None
+        
         strategy = cls._get_strategy(df)
         return strategy.get_table_schema(df)
 
@@ -300,35 +371,46 @@ class DataFrameUtils:
     @classmethod
     def drop(cls, 
              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
-             columns: List[str]|str):
+             columns: List[str]|str) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df)
         return strategy.drop(df, columns)
 
     @classmethod
     def select(cls, 
                df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
-               columns: List[str]|str):
+               columns: List[str]|str) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df)
         return strategy.select(df, columns)
 
     @classmethod
     def head(cls, 
              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
-             n: int):
+             n: int) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df)
         return strategy.head(df, n)
 
     @classmethod
     def count(cls, 
               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> int:
+        
+        if df is None:
+            return 0
+        
         strategy = cls._get_strategy(df)
         return strategy.count(df)
     
-    @classmethod
-    def validate_dataframe_supported(cls, 
-              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> int:
-        strategy = cls._get_strategy(df)
-        return strategy.validate_dataframe_input(df)
 
 
     @classmethod
@@ -338,11 +420,14 @@ class DataFrameUtils:
 
  
 
-
     @classmethod
     def filter(cls, 
                df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
                condition: FilterNode) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+        
+        if df is None:
+            return df
+        
         strategy = cls._get_strategy(df)
         return strategy.filter(df, condition)
 
@@ -357,9 +442,17 @@ class DataFrameUtils:
             df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
             column:str
         ) -> List[Any]:
+
+        if df is None or column is None:
+            return []
         
         obj_df = cls.select(df=df, columns=column)
         obj_dict = cls.cast_dataframe_to_dictonary_of_lists(df=obj_df)
+
+        if obj_dict is None:
+            return []
+        if column not in obj_dict:
+            return []
 
         return obj_dict[column]
     
@@ -370,6 +463,25 @@ class DataFrameUtils:
             column:str
         ) -> Set[Any]:
         
+        if df is None or column is None:
+            return set()  
+              
         list_vals: List[Any] = cls.get_column_as_list(df=df, column=column)
 
+        if list_vals is None or len(list_vals) == 0:
+            return set()
+
         return set(list_vals)    
+
+
+    @classmethod
+    def split_dataframe_in_batches(cls, 
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            batch_size: int
+            ) -> List[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]]:
+
+        if df is None:
+            return df      
+          
+        strategy = cls._get_strategy(df=df)
+        return strategy.split_in_batches(df, batch_size)

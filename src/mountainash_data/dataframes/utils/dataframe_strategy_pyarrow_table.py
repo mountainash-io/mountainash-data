@@ -61,3 +61,6 @@ class PyArrowTableUtils(BaseDataFrameStrategy):
         pyarrow_condition = condition.accept(visitor)
         mask = pyarrow_condition(df)
         return df.filter(mask)
+    
+    def _split_in_batches(self, df: pa.Table, batch_size: int) -> List[pa.Table]:
+        return [df.slice(i, batch_size) for i in range(0, df.num_rows, batch_size)]    

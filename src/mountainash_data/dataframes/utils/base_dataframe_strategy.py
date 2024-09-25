@@ -325,3 +325,19 @@ class BaseDataFrameStrategy(ABC):
     def filter(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], condition: FilterNode) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         self.validate_dataframe_input(df)
         return self._filter(df, condition)
+    
+
+    @abstractmethod
+    def _split_in_batches(self, df: Any, batch_size: int) -> List[Any]:
+        pass
+
+    def split_in_batches(self, 
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+            batch_size: int
+        ) -> List[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]]:
+        
+        self.validate_dataframe_input(df=df)
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0")
+        
+        return self._split_in_batches(df, batch_size)    

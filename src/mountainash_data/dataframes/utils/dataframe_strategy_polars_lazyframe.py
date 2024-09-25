@@ -67,3 +67,6 @@ class PolarsLazyFrameUtils(BaseDataFrameStrategy):
         polars_condition = polars_callable(df)
         
         return df.filter(polars_condition)
+    
+    def _split_in_batches(self, df: pl.DataFrame, batch_size: int) -> List[pl.DataFrame]:
+        return [df.slice(i, batch_size) for i in range(0, len(df), batch_size)]    
