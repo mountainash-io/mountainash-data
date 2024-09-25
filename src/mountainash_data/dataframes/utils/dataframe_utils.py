@@ -321,7 +321,7 @@ class DataFrameUtils:
                                              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[Any, List[Any]]:
         
         if df is None:
-            return df
+            return {}
         
         strategy = cls._get_strategy(df)
         return strategy.cast_to_dictonary_of_lists(df)
@@ -331,7 +331,7 @@ class DataFrameUtils:
                                               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[str, pl.Series]:
         
         if df is None:
-            return df
+            return {}
         
         strategy = cls._get_strategy(df)
         return strategy.cast_to_dictonary_of_series(df)
@@ -341,7 +341,7 @@ class DataFrameUtils:
                                                df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[Dict[Any, Any]]:
         
         if df is None:
-            return df
+            return []
         
         strategy = cls._get_strategy(df)
         return strategy.cast_to_list_of_dictionaries(df)
@@ -352,17 +352,17 @@ class DataFrameUtils:
                          df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[str]:
         
         if df is None:
-            return df
+            return []
         
         strategy = cls._get_strategy(df)
         return strategy.get_column_names(df)
 
     @classmethod
     def get_table_schema(cls, 
-                         df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> ibis_schema.Schema:
+                         df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Optional[ibis_schema.Schema]:
                          
         if df is None:
-            return df
+            return None
         
         strategy = cls._get_strategy(df)
         return strategy.get_table_schema(df)
