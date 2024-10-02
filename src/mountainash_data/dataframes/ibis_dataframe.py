@@ -661,7 +661,7 @@ class IbisDataFrame(BaseDataFrame):
         ) -> Dict[Any,Any]:
         
         obj_df = self.head(n=1)
-        obj_list = obj_df.to_pyarrow().to_pylist()
+        obj_list = obj_df.ibis_df.to_pyarrow().to_pylist()
         if len(obj_list) > 0:
             return obj_list[0]  
         else:
@@ -673,6 +673,6 @@ class IbisDataFrame(BaseDataFrame):
         ) -> List[Any]:
         
         obj_df = self.select(ibis_expr=column)
-        obj_dict = obj_df._get_dataframe().to_pyarrow().to_pydict()
+        obj_dict = obj_df.ibis_df.to_pyarrow().to_pydict()
 
         return obj_dict[column]
