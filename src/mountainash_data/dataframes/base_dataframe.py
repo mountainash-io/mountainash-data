@@ -6,7 +6,7 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 import ibis.expr.types as ir
-from .utils.dataframe_utils import DataFrameUtils
+# from .utils.dataframe_utils import DataFrameUtils
 
 
 # class IbisTableLineageWrapper:  
@@ -58,8 +58,9 @@ class BaseDataFrame(ABC):
     def init_native_table(self, df) -> Any:
         pass
 
+    @abstractmethod
     def generate_tablename(self, prefix: Optional[str] = None) -> str:
-        return DataFrameUtils.generate_tablename(prefix=prefix)
+        ...
 
     @abstractmethod
     def _get_dataframe(self) -> Any:
@@ -69,30 +70,33 @@ class BaseDataFrame(ABC):
     ### Materialisation
         
     @abstractmethod
-    def materialise(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+    def materialise(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
         pass
 
-    def materialize(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise(format)
+    def materialize(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(dataframe_framework)
 
-    def execute(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise(format)
+    def execute(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(dataframe_framework)
 
-    def collect(self, format:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise(format)
+    def collect(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(dataframe_framework)
 
+    @abstractmethod
     def to_arrow(self) -> pa.Table:
-        return DataFrameUtils.cast_dataframe_to_arrow(df=self._get_dataframe())
+        ...
 
+    @abstractmethod
     def to_pyarrow_recordbatch(self, batchsize: int = 1) -> List[pa.RecordBatch]:
-        return DataFrameUtils.cast_dataframe_to_pyarrow_recordbatch(df=self._get_dataframe(), batchsize=batchsize)
+        ...
 
+    @abstractmethod
     def to_pandas(self) -> pd.DataFrame:
-        return DataFrameUtils.cast_dataframe_to_pandas(df=self._get_dataframe())
+        ...
 
+    @abstractmethod
     def to_polars(self) -> pl.DataFrame:
-        return DataFrameUtils.cast_dataframe_to_polars(df=self._get_dataframe())
-
+        ...
     # def append_lineage_record(self, ibis_table: ir.Table) -> None:
 
     #     #TODO: Cater for full lineage of native and ibis transformations here.
@@ -115,16 +119,13 @@ class BaseDataFrame(ABC):
     # ==============
     ### Columns
 
+    @abstractmethod
     def get_column_as_list(
             self,
             column:str
         ) -> List[Any]:
-        
-        obj_df = self.select(ibis_expr=column)
-        obj_dict = DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=obj_df._get_dataframe())
-
-        return obj_dict[column]
-
+        ...       
+ 
 
     @abstractmethod
     def select(self, ibis_expr: Any) -> "BaseDataFrame":

@@ -13,14 +13,15 @@ import ibis.expr.schema as ibis_schema
 
 from .dataframe_functions import init_ibis_connection
 from .filter import FilterNode
+from ..base_dataframe import BaseDataFrame
 
 class BaseDataFrameStrategy(ABC):
 
     @classmethod
     def validate_dataframe_input(cls,
-                                df: Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> bool:
+                                df: Union[BaseDataFrame, pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> bool:
 
-        if not isinstance(df, (pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch)) and not cls._is_recordbatch(df=df):  
+        if not isinstance(df, (BaseDataFrame, pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch)) and not cls._is_recordbatch(df=df):  
             raise TypeError(f"Unsupported dataframe type. Receieved: {type(df)}")
         
         return True
