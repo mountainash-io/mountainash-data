@@ -14,7 +14,7 @@ from .filter import FilterNode, IbisFilterVisitor
 class IbisDataFrameUtils(BaseDataFrameStrategy):
 
     def _cast_to_pandas(self, df: ir.Table) -> pd.DataFrame:
-        return df.execute()
+        return df.to_pandas()
 
     def _cast_to_polars(self, df: ir.Table) -> pl.DataFrame:
         return df.to_polars()
