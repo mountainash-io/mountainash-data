@@ -159,28 +159,40 @@ class IbisDataFrame(BaseDataFrame):
         return isinstance(self.ibis_df, ir.Table)
 
 
-    def materialise(self, format: Optional[str]=None) -> Any:
+    def materialise(self, dataframe_framework: Optional[str]=None) -> Any:
 
-        if format is None:
-            format = CONST_DATAFRAME_FRAMEWORK.POLARS.value
+        if dataframe_framework is None:
+            dataframe_framework = CONST_DATAFRAME_FRAMEWORK.POLARS.value
 
-        if format == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
+        if dataframe_framework == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
             return self.to_polars()
 
-        elif format == CONST_DATAFRAME_FRAMEWORK.PANDAS.value:
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PANDAS.value:
             return self.to_pandas()
 
-        elif format == CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value:
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value:
             return self.to_arrow()
 
-        elif format == CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value:
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value:
             return self.to_pyarrow_recordbatch()
 
-        elif format == CONST_DATAFRAME_FRAMEWORK.IBIS.value:
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.IBIS.value:
             return self._get_dataframe()
 
         else:
             raise ValueError("Dataframe could not be not materialised")
+
+    def to_arrow(self) -> pa.Table:
+        return DataFrameUtils.cast_dataframe_to_arrow(df=self._get_dataframe())
+
+    def to_pyarrow_recordbatch(self, batchsize: int = 1) -> List[pa.RecordBatch]:
+        return DataFrameUtils.cast_dataframe_to_pyarrow_recordbatch(df=self._get_dataframe(), batchsize=batchsize)
+
+    def to_pandas(self) -> pd.DataFrame:
+        return DataFrameUtils.cast_dataframe_to_pandas(df=self._get_dataframe())
+
+    def to_polars(self) -> pl.DataFrame:
+        return DataFrameUtils.cast_dataframe_to_polars(df=self._get_dataframe())
 
 
 # Column Selection
@@ -348,8 +360,8 @@ class IbisDataFrame(BaseDataFrame):
         same_backend = False
 
         #Resolve table schema
-        left_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(self.ibis_df)
-        right_table_schema: ibis_schema.Schema = DataFrameUtils.get_table_schema(right._get_dataframe())
+        left_table_schema:  Optional[ibis_schema.Schema] = DataFrameUtils.get_table_schema(self.ibis_df)
+        right_table_schema: Optional[ibis_schema.Schema] = DataFrameUtils.get_table_schema(right._get_dataframe())
 
         #find common keys in schemas:
         common_fields = list(set(left_table_schema.fields.keys()).intersection(set(right_table_schema.fields.keys())))
@@ -608,3 +620,12 @@ class IbisDataFrame(BaseDataFrame):
         else:
             return {}
       
+    def get_column_as_list(
+            self,
+            column:str
+        ) -> List[Any]:
+        
+        obj_df = self.select(ibis_expr=column)
+        obj_dict = DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=obj_df._get_dataframe())
+
+        return obj_dict[column]

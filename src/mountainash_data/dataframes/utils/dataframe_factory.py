@@ -17,17 +17,23 @@ class DataFrameFactory:
 
     @classmethod
     def create_ibis_dataframe_object_from_dataframe(cls, 
-            df: Optional[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]] = None,
+            df: Optional[Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]] = None,
             ibis_backend: Optional[ibis.BaseBackend] = None,
             ibis_backend_schema: Optional[str] = None,
-            tablename_prefix: Optional[str] = None) -> IbisDataFrame:
+            tablename_prefix: Optional[str] = None) -> Optional[BaseDataFrame]:
         
+        if df is None:
+            return df
+
+        if isinstance(df, BaseDataFrame):
+            return df
+
         obj_df =  cls.create_dataframe_object(df=df, 
                                               ibis_backend = ibis_backend,
                                               ibis_backend_schema=ibis_backend_schema,
                                               tablename_prefix = tablename_prefix)
 
-        if not isinstance(obj_df, IbisDataFrame):
+        if not isinstance(obj_df, BaseDataFrame):
             raise ValueError("Unexpected dataframe type returned")
 
         return obj_df
@@ -40,7 +46,10 @@ class DataFrameFactory:
             column_dict: Optional[Dict[str, str]] = None,
             ibis_backend: Optional[ibis.BaseBackend] = None,
             ibis_backend_schema: Optional[str] = None,
-            tablename_prefix: Optional[str] = None) -> IbisDataFrame:
+            tablename_prefix: Optional[str] = None) -> Optional[BaseDataFrame]:
+
+        if data_dict is None:
+            return data_dict
 
         df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
         #df = DataFrameUtils.create_pyarrow_table(data_dict=data_dict, column_dict=column_dict)
@@ -58,15 +67,18 @@ class DataFrameFactory:
     @classmethod
     def create_dataframe_object(cls,
                                 
-            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
             ibis_backend: Optional[ibis.BaseBackend] = None,
             ibis_backend_schema: Optional[str] = None,
             tablename_prefix: Optional[str] = None
 
-        ) -> BaseDataFrame|IbisDataFrame:
+        ) -> Optional[BaseDataFrame]:
 
         if df is None:
-            raise ValueError("create_dataframe_object: No dataframe provided for Ibis DataFrame creation")
+            return df
+        
+        if isinstance(df, BaseDataFrame):
+            return df
 
         column_names = DataFrameUtils.get_column_names(df=df)
         
