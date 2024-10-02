@@ -14,6 +14,8 @@ import ibis.expr.schema as ibis_schema
 from . import BaseDataFrameStrategy, PandasDataFrameUtils, PolarsDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, IbisDataFrameUtils, PyArrowRecordBatchUtils
 
 from .filter import FilterCondition, FilterNode
+from ..base_dataframe import BaseDataFrame
+
 # from pyarrow import Table as irTable  # assuming you are using pyarrow's Table for ir.Table
 
 
@@ -215,9 +217,11 @@ class DataFrameUtils:
     # Strategy Based Methods
     @classmethod
     def _get_strategy(cls, 
-                      df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> BaseDataFrameStrategy:
+                      df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> BaseDataFrameStrategy:
         
-        if isinstance(df, ir.Table):
+        if isinstance(df, BaseDataFrame):
+            return IbisDataFrameUtils()
+        elif isinstance(df, ir.Table):
             return IbisDataFrameUtils()
         elif cls._is_recordbatch(df=df):
             return PyArrowRecordBatchUtils()
@@ -234,7 +238,7 @@ class DataFrameUtils:
 
 
     @classmethod
-    def cast_dataframe_to_pandas(cls, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
+    def cast_dataframe_to_pandas(cls, df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
 
         if df is None:
             return df
@@ -243,7 +247,7 @@ class DataFrameUtils:
         return strategy.cast_to_pandas(df=df)
 
     @classmethod
-    def cast_dataframe_to_polars(cls, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pl.DataFrame:
+    def cast_dataframe_to_polars(cls, df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pl.DataFrame:
 
         if df is None:
             return df
@@ -253,7 +257,7 @@ class DataFrameUtils:
 
     @classmethod
     def cast_dataframe_to_arrow(cls, 
-                                df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pa.Table:
+                                df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pa.Table:
         
         if df is None:
             return df
@@ -263,7 +267,7 @@ class DataFrameUtils:
 
     @classmethod
     def cast_dataframe_to_pyarrow_recordbatch(cls, 
-                                              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+                                              df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
                                               batchsize: int = 1) -> List[pa.RecordBatch]:
         
         if df is None:
@@ -318,7 +322,7 @@ class DataFrameUtils:
 
     @classmethod
     def cast_dataframe_to_dictonary_of_lists(cls, 
-                                             df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[Any, List[Any]]:
+                                             df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[Any, List[Any]]:
         
         if df is None:
             return {}
@@ -328,7 +332,7 @@ class DataFrameUtils:
 
     @classmethod
     def cast_dataframe_to_dictonary_of_series(cls, 
-                                              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[str, pl.Series]:
+                                              df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Dict[str, pl.Series]:
         
         if df is None:
             return {}
@@ -338,7 +342,7 @@ class DataFrameUtils:
 
     @classmethod
     def cast_dataframe_to_list_of_dictionaries(cls, 
-                                               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[Dict[Any, Any]]:
+                                               df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[Dict[Any, Any]]:
         
         if df is None:
             return []
@@ -349,7 +353,7 @@ class DataFrameUtils:
 
     @classmethod
     def get_column_names(cls, 
-                         df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[str]:
+                         df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> List[str]:
         
         if df is None:
             return []
@@ -359,7 +363,7 @@ class DataFrameUtils:
 
     @classmethod
     def get_table_schema(cls, 
-                         df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Optional[ibis_schema.Schema]:
+                         df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> Optional[ibis_schema.Schema]:
                          
         if df is None:
             return None
@@ -370,7 +374,7 @@ class DataFrameUtils:
 
     @classmethod
     def drop(cls, 
-             df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+             df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
              columns: List[str]|str) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         
         if df is None:
@@ -381,7 +385,7 @@ class DataFrameUtils:
 
     @classmethod
     def select(cls, 
-               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+               df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
                columns: List[str]|str) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         
         if df is None:
@@ -392,7 +396,7 @@ class DataFrameUtils:
 
     @classmethod
     def head(cls, 
-             df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+             df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
              n: int) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         
         if df is None:
@@ -403,7 +407,7 @@ class DataFrameUtils:
 
     @classmethod
     def count(cls, 
-              df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> int:
+              df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> int:
         
         if df is None:
             return 0
@@ -422,7 +426,7 @@ class DataFrameUtils:
 
     @classmethod
     def filter(cls, 
-               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+               df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
                condition: FilterNode) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         
         if df is None:
@@ -439,7 +443,7 @@ class DataFrameUtils:
     @classmethod
     def get_column_as_list(
             cls,
-            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
             column:str
         ) -> List[Any]:
 
@@ -459,7 +463,7 @@ class DataFrameUtils:
     @classmethod
     def get_column_as_set(
             cls,
-            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
             column:str
         ) -> Set[Any]:
         
@@ -476,7 +480,7 @@ class DataFrameUtils:
 
     @classmethod
     def split_dataframe_in_batches(cls, 
-            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
+            df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]],
             batch_size: int
             ) -> List[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]]:
 
