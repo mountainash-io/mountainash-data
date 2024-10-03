@@ -3,7 +3,6 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 
-from mountainash_utils_dataclasses import DataclassUtils
 import ibis.expr.types as ir
 import ibis 
 
@@ -94,7 +93,7 @@ class DataFrameFactory:
 
     @classmethod
     def get_supported_dataframe_frameworks(cls) -> Set[str]:
-        return DataclassUtils.get_enum_values_set(enumclass=CONST_DATAFRAME_FRAMEWORK)
+        return {enum.value for enum in list(CONST_DATAFRAME_FRAMEWORK)}
 
 
    
