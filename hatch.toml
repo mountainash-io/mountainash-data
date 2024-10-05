@@ -20,7 +20,6 @@ dependencies = [
   "mountainash_constants @      {root:uri}/../mountainash-constants",
   "mountainash_settings @       {root:uri}/../mountainash-settings",
 
-  "mountainash_utils_dataclasses @  {root:uri}/../mountainash-utils-dataclasses",
   "mountainash_utils_files @        {root:uri}/../mountainash-utils-files",
   "mountainash_utils_os @           {root:uri}/../mountainash-utils-os",
   "mountainash_utils_ssh @          {root:uri}/../mountainash-utils-ssh",
@@ -43,7 +42,7 @@ dependencies = [
   "mountainash_auth_settings @      /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-auth-settings",
   "mountainash_constants @          /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-constants",
   "mountainash_settings @           /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-settings",
-  "mountainash_utils_dataclasses @  /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-utils-dataclasses",
+
   "mountainash_utils_files @        /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-utils-files",
   "mountainash_utils_os @           /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-utils-os",
   "mountainash_utils_ssh @          /home/runner/work/mountainash-data/mountainash-data/temp/mountainash-utils-ssh",
@@ -79,12 +78,10 @@ dependencies = [
   "pytest==8.1.1",
   "pytest-check==2.3.1",
 
-
   "mountainash_auth_settings @  {root:uri}/../mountainash-auth-settings",
   "mountainash_constants @      {root:uri}/../mountainash-constants",
   "mountainash_settings @       {root:uri}/../mountainash-settings",
 
-  "mountainash_utils_dataclasses @  {root:uri}/../mountainash-utils-dataclasses",
   "mountainash_utils_files @        {root:uri}/../mountainash-utils-files",
   "mountainash_utils_os @           {root:uri}/../mountainash-utils-os",
   "mountainash_utils_ssh @          {root:uri}/../mountainash-utils-ssh",
