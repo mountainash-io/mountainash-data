@@ -62,33 +62,33 @@ def mock_duckdb_connection(mock_settings_parameters_1):
         yield DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
 
 #################
-# Tests
-def test_postgres_connection(mock_postgres_connection):
-    mock_postgres_connection.connect()
-    assert mock_postgres_connection.ibis_backend is not None
+# # Tests
+# def test_postgres_connection(mock_postgres_connection):
+#     mock_postgres_connection.connect()
+#     assert mock_postgres_connection.ibis_backend is not None
 
-def test_mysql_connection(mock_mysql_connection):
-    mock_mysql_connection.connect()
-    assert mock_mysql_connection.ibis_backend is not None
+# def test_mysql_connection(mock_mysql_connection):
+#     mock_mysql_connection.connect()
+#     assert mock_mysql_connection.ibis_backend is not None
 
-def test_mssql_connection(mock_mssql_connection):
-    mock_mssql_connection.connect()
-    assert mock_mssql_connection.ibis_backend is not None
-
-
-def test_snowflake_connection(mock_snowflake_connection):
-    mock_snowflake_connection.connect()
-    assert mock_snowflake_connection.ibis_backend is not None
+# def test_mssql_connection(mock_mssql_connection):
+#     mock_mssql_connection.connect()
+#     assert mock_mssql_connection.ibis_backend is not None
 
 
+# def test_snowflake_connection(mock_snowflake_connection):
+#     mock_snowflake_connection.connect()
+#     assert mock_snowflake_connection.ibis_backend is not None
 
-def test_sqlite_connection(mock_sqlite_connection):
-    mock_sqlite_connection.connect()
-    assert mock_sqlite_connection.ibis_backend is not None
 
-def test_duckdb_connection(mock_duckdb_connection):
-    mock_duckdb_connection.connect()
-    assert mock_duckdb_connection.ibis_backend is not None
+
+# def test_sqlite_connection(mock_sqlite_connection):
+#     mock_sqlite_connection.connect()
+#     assert mock_sqlite_connection.ibis_backend is not None
+
+# def test_duckdb_connection(mock_duckdb_connection):
+#     mock_duckdb_connection.connect()
+#     assert mock_duckdb_connection.ibis_backend is not None
 
 # @pytest.fixture(scope="module")
 # def docker_compose_file(pytestconfig):

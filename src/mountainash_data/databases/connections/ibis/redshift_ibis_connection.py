@@ -1,6 +1,6 @@
 from typing import Optional
 
-import ibis.backends.postgres as ir_backend
+import ibis.backends.mysql as ir_backend
 
 from .base_ibis_connection import BaseIbisConnection
 from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
