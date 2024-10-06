@@ -2,8 +2,6 @@ from .__version__ import __version__
 
 from .dataframes import (   
     BaseDataFrame,
-    # PandasDataFrame,
-    # PolarsDataFrame,
     IbisDataFrame,
     DataFrameFactory,
     DataFrameUtils,
@@ -18,16 +16,13 @@ from .databases.connections.ibis import (
     Snowflake_IbisConnection,
     SQLite_IbisConnection,
     Trino_IbisConnection,
-    Polars_IbisConnection,
-    Pandas_IbisConnection,
+    DuckDB_IbisConnection,
 )
 
 __all__ = (
     "__version__",
 
     "BaseDataFrame",
-    # "PandasDataFrame",
-    # "PolarsDataFrame",
     "IbisDataFrame",
     "DataFrameFactory",
     "DataFrameUtils",
@@ -41,8 +36,7 @@ __all__ = (
     "Snowflake_IbisConnection",
     "SQLite_IbisConnection",
     "Trino_IbisConnection",
-    "Polars_IbisConnection",
-    "Pandas_IbisConnection",
+    "DuckDB_IbisConnection",
 
 
 )
