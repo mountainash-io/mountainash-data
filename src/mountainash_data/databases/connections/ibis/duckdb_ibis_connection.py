@@ -1,7 +1,5 @@
-from typing import Optional, Any
-import ibis
+from typing import Optional
 
-import ibis.expr.types as ir
 import ibis.backends.duckdb as ir_backend
 
 from .base_ibis_connection import BaseIbisConnection

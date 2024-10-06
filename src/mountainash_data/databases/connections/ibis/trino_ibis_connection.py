@@ -1,6 +1,5 @@
-from typing import Optional, Any
+from typing import Optional
 import ibis as ibis
-import ibis.expr.types.relations as ir 
 
 import ibis.backends.trino as ir_backend
 

@@ -1,6 +1,4 @@
-from typing import Optional, Any
-import ibis
-import ibis.expr.types.relations as ir 
+from typing import Optional
 import ibis.backends.snowflake as ir_backend
 
 from .base_ibis_connection import BaseIbisConnection

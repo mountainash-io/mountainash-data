@@ -7,7 +7,7 @@ from mountainash_data.databases.connections.base_db_connection import BaseDBConn
 
 from abc import abstractmethod
 from mountainash_settings import SettingsParameters
-from mountainash_data import DataFrameFactory, BaseDataFrame, IbisDataFrame
+from mountainash_data import BaseDataFrame, IbisDataFrame
 
 class BaseIbisConnection(BaseDBConnection):
 
@@ -236,6 +236,24 @@ class BaseIbisConnection(BaseDBConnection):
                                     database=database,
                                     overwrite=overwrite)  if self.ibis_backend is not None else None  
         
+
+
+
+    def truncate(
+        self, 
+        table_name: str, 
+        database: str | None = None, 
+        schema: str | None = None
+    ) -> None:
+
+        self.connect()
+
+        self.ibis_backend.truncate_table(   
+                                    name=table_name, 
+                                    schema=schema,
+                                    database=database)  if self.ibis_backend is not None else None  
+
+
     def upsert(
         self,
         table_name: str,
@@ -267,22 +285,6 @@ class BaseIbisConnection(BaseDBConnection):
         ) -> None:
 
         raise NotImplementedError(f"{self.database_backend}: Upsert is not implemented for this backend")
-
-
-
-    def truncate(
-        self, 
-        table_name: str, 
-        database: str | None = None, 
-        schema: str | None = None
-    ) -> None:
-
-        self.connect()
-
-        self.ibis_backend.truncate_table(   
-                                    name=table_name, 
-                                    schema=schema,
-                                    database=database)  if self.ibis_backend is not None else None  
 
 
     ###########################
