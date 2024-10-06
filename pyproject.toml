@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
   "duckdb",
-  "ibis-framework[polars,pandas,sqlite,duckdb] == 9.1.0",
+  "ibis-framework[polars,pandas,sqlite,duckdb,mysql,mssql,oracle,snowflake,pyspark] == 9.1.0",
   "pandas==2.2.2",
   "polars==0.20.31",
   "universal_pathlib==0.2.2",
@@ -32,7 +32,6 @@ dependencies = [
   # "pyarrow==15.0.2",
   "pyarrow<17",
   "openlineage-python==1.17.1",
-  "PyMySQL",
 ]
 
 
