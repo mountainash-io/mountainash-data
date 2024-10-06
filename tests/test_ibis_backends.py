@@ -24,26 +24,26 @@ def mock_settings_parameters_3():
 # Connections
 @pytest.fixture
 def mock_postgres_connection(mock_settings_parameters_2):
-    with mock.patch('mountainash_data.databases.connections.ibis.Postgres_IbisConnection.connect_ibis') as mock_connect:
+    with mock.patch('mountainash_data.databases.connections.ibis.Postgres_IbisConnection.connect') as mock_connect:
         mock_connect.return_value = mock.MagicMock()
         yield Postgres_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_2)
 
 @pytest.fixture
 def mock_mssql_connection(mock_settings_parameters_3):
-    with mock.patch('mountainash_data.databases.connections.ibis.MSSQL_IbisConnection.connect_ibis') as mock_connect:
+    with mock.patch('mountainash_data.databases.connections.ibis.MSSQL_IbisConnection.connect') as mock_connect:
         mock_connect.return_value = mock.MagicMock()
         yield MSSQL_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_3)
 
 @pytest.fixture
 def mock_snowflake_connection(mock_settings_parameters_3):
-    with mock.patch('mountainash_data.databases.connections.ibis.Snowflake_IbisConnection.connect_ibis') as mock_connect:
+    with mock.patch('mountainash_data.databases.connections.ibis.Snowflake_IbisConnection.connect') as mock_connect:
         mock_connect.return_value = mock.MagicMock()
         yield Snowflake_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_3)
 
 
 @pytest.fixture
 def mock_mysql_connection(mock_settings_parameters_3):
-    with mock.patch('mountainash_data.databases.connections.ibis.MySQL_IbisConnection.connect_ibis') as mock_connect:
+    with mock.patch('mountainash_data.databases.connections.ibis.MySQL_IbisConnection.connect') as mock_connect:
         mock_connect.return_value = mock.MagicMock()
         yield MySQL_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_3)
 
@@ -51,13 +51,13 @@ def mock_mysql_connection(mock_settings_parameters_3):
 
 @pytest.fixture
 def mock_sqlite_connection(mock_settings_parameters_1):
-    with mock.patch('mountainash_data.databases.connections.ibis.SQLite_IbisConnection.connect_ibis') as mock_connect:
+    with mock.patch('mountainash_data.databases.connections.ibis.SQLite_IbisConnection.connect') as mock_connect:
         mock_connect.return_value = mock.MagicMock()
         yield SQLite_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
 
 @pytest.fixture
 def mock_duckdb_connection(mock_settings_parameters_1):
-    with mock.patch('mountainash_data.databases.connections.ibis.DuckDB_IbisConnection.connect_ibis') as mock_connect:
+    with mock.patch('mountainash_data.databases.connections.ibis.DuckDB_IbisConnection.connect') as mock_connect:
         mock_connect.return_value = mock.MagicMock()
         yield DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
 
