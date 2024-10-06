@@ -9,6 +9,7 @@ from .sqlite_ibis_connection    import SQLite_IbisConnection
 from .trino_ibis_connection     import Trino_IbisConnection
 from .polars_ibis_connection     import Polars_IbisConnection
 from .pandas_ibis_connection     import Pandas_IbisConnection
+from .duckdb_ibis_connection     import DuckDB_IbisConnection
 
 
 
@@ -27,6 +28,7 @@ __all__ = (
 "Trino_IbisConnection",
 "Polars_IbisConnection",
 "Pandas_IbisConnection",
+"DuckDB_IbisConnection",
 
 # "IbisConnectionFactory"
 
