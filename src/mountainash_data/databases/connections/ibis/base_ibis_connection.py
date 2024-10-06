@@ -5,7 +5,7 @@ from ibis.expr.schema import SchemaLike
 from ibis.backends.sql import SQLBackend
 from mountainash_data.databases.connections.base_db_connection import BaseDBConnection
 
-from abc import abstractmethod
+# from abc import abstractmethod
 from mountainash_settings import SettingsParameters
 from mountainash_data import BaseDataFrame, IbisDataFrame
 
@@ -273,7 +273,7 @@ class BaseIbisConnection(BaseDBConnection):
                         natural_key_columns=natural_key_columns,
                         data_columns=data_columns)  if self.ibis_backend is not None else None  
 
-    @abstractmethod
+    # @abstractmethod
     def _upsert(
         self,
         table_name: str,

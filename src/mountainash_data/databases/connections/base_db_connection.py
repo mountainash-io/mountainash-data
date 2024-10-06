@@ -38,7 +38,7 @@ class BaseDBConnection(ABC):
         pass
 
     @abstractmethod
-    def close(self):
+    def disconnect(self):
         """Close the connection to the database."""
         pass
     
@@ -65,8 +65,9 @@ class BaseDBConnection(ABC):
     # Concrete Functions
 
     def init_ssh(self):
+
         if self.ssh_required:
-            self.ssh_client.connect()
+            self.ssh_client.connect_ssh()
 
 
     def prepare_connection_parameters(self) -> str:
