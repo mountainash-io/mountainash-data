@@ -222,7 +222,7 @@ class IbisDataFrame(BaseDataFrame):
     def to_polars(self) -> pl.DataFrame:
         return self._get_dataframe().to_polars()
 
-    def to_ibis(self) -> pl.DataFrame:
+    def to_ibis(self) -> ir.Table:
         return self._get_dataframe()
 
 
@@ -238,7 +238,7 @@ class IbisDataFrame(BaseDataFrame):
     def cast_dataframe_to_polars(self) -> pl.DataFrame:
         return self.to_polars()
 
-    def cast_dataframe_to_ibis(self) -> pl.DataFrame:
+    def cast_dataframe_to_ibis(self) -> ir.Table:
         return self._get_dataframe()
 
 
@@ -280,7 +280,7 @@ class IbisDataFrame(BaseDataFrame):
         new_df: Any = self.ibis_df.drop(columns)
         return new_df
 
-    def distinct(self) -> "BaseDataFrame":
+    def distinct(self) -> "IbisDataFrame":
 
         new_df: ir.Table = self._distinct_ibis().alias(alias=self.generate_tablename(prefix="distinct"))
  
@@ -291,7 +291,7 @@ class IbisDataFrame(BaseDataFrame):
         return new_df
 
 
-    def rename(self, **kwargs) -> "BaseDataFrame":
+    def rename(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._rename_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="rename"))
  
@@ -305,7 +305,7 @@ class IbisDataFrame(BaseDataFrame):
         return new_df
 
 
-    def try_cast(self, **kwargs) -> "BaseDataFrame":
+    def try_cast(self, **kwargs) -> "IbisDataFrame":
 
         new_df: ir.Table = self._try_cast_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="try_cast"))
  

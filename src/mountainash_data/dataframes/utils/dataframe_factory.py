@@ -79,10 +79,10 @@ class DataFrameFactory:
         if isinstance(df, BaseDataFrame):
             return df
 
-        column_names = DataFrameUtils.get_column_names(df=df)
+        column_names: List[str] = DataFrameUtils.get_column_names(df=df)
         
         if column_names is None or len(column_names) == 0:
-            raise ValueError("create_dataframe_object: No column names found in the dataframe")
+            return None
         
         if DataFrameUtils._is_recordbatch(df=df):
             df = DataFrameUtils.cast_dataframe_to_arrow(df=df)
