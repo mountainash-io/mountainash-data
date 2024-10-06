@@ -1,5 +1,5 @@
 from typing import Optional
-import ibis
+import ibis.backends.mssql as ir_backend
 
 from .base_ibis_connection import BaseIbisConnection
 from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
@@ -18,20 +18,13 @@ class MSSQL_IbisConnection(BaseIbisConnection):
                          connection_string=connection_string)
 
 
+        self.ibis_backend:         Optional[ir_backend.Backend] = None
+
         self.database_backend: str =             CONST_DB_BACKEND.MSSQL.value
         self.database_abstraction_layer: str =   CONST_DB_ABSTRACTION_LAYER.IBIS.value
-
-        
 
         self.template_connection_string:    Optional[str] = "mssql://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DATABASE_NAME}"
 
 
-    def connect_ibis(self, connection_string: str) -> ibis.BaseBackend:
-        """Connect to the database using the provided connection string."""
 
-        ibis_backend = ibis.mssql.connect(connection_string)
-
-        if ibis_backend is None:
-            raise ValueError("MSSQL_IbisConnection: Connection could not be established")
-    
-        return ibis_backend
+  

@@ -24,14 +24,16 @@ classifiers = [
 ]
 dependencies = [
   "duckdb",
-  "ibis-framework[polars,pandas,sqlite,duckdb] == 9.1.0",
+  #"psycopg2-binary==2.9.9",
+
+  "ibis-framework[polars,pandas,sqlite,duckdb,mysql,mssql,oracle,snowflake,trino] == 9.1.0",
   "pandas==2.2.2",
   "polars==0.20.31",
   "universal_pathlib==0.2.2",
   "numpy==1.26.0, <2.0.0",
   # "pyarrow==15.0.2",
   "pyarrow<17",
-  "openlineage-python==1.17.1"
+  "openlineage-python==1.17.1",
 ]
 
 
