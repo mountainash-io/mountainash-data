@@ -18,12 +18,12 @@ class MSSQL_IbisConnection(BaseIbisConnection):
                          connection_string=connection_string)
 
 
-        self.ibis_backend:         Optional[ir_backend.Backend] = None
+        self.ibis_backend:                      Optional[ir_backend.Backend] = None
 
-        self.database_backend: str =             CONST_DB_BACKEND.MSSQL.value
-        self.database_abstraction_layer: str =   CONST_DB_ABSTRACTION_LAYER.IBIS.value
+        self.database_backend: str =            CONST_DB_BACKEND.MSSQL.value
+        self.database_abstraction_layer: str =  CONST_DB_ABSTRACTION_LAYER.IBIS.value
 
-        self.template_connection_string:    Optional[str] = "mssql://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DATABASE_NAME}"
+        self.template_connection_string:        Optional[str] = "mssql://{USERNAME}:{PASSWORD}@{HOST}:{PORT}/{DATABASE_NAME}"
 
 
 
