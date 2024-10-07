@@ -47,8 +47,12 @@ class DataFrameFactory:
             ibis_backend_schema: Optional[str] = None,
             tablename_prefix: Optional[str] = None) -> Optional[BaseDataFrame]:
 
-        if data_dict is None:
-            return data_dict
+        if data_dict is None or len(data_dict) == 0:
+            return None
+        
+        if not isinstance(data_dict, dict) and not isinstance(data_dict, list):
+            raise ValueError("data_dict must be a dictionary or list of dictionaries")
+        
 
         df = DataFrameUtils.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
         #df = DataFrameUtils.create_pyarrow_table(data_dict=data_dict, column_dict=column_dict)
