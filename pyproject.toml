@@ -26,7 +26,8 @@ dependencies = [
   "duckdb",
   #"psycopg2-binary==2.9.9",
 
-  "ibis-framework[polars,pandas,sqlite,duckdb,mysql,mssql,oracle,snowflake,trino] == 9.1.0",
+  "ibis-framework[polars,pandas,sqlite,duckdb] == 9.1.0",
+  # "ibis-framework[polars,pandas,sqlite,duckdb,mysql,mssql,oracle,snowflake,trino] == 9.1.0",
   "pandas==2.2.2",
   "polars==0.20.31",
   "universal_pathlib==0.2.2",

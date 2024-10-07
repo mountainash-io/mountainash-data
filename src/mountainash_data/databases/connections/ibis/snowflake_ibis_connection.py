@@ -16,12 +16,12 @@ class Snowflake_IbisConnection(BaseIbisConnection):
                          ssh_auth_settings_parameters=ssh_auth_settings_parameters,
                          connection_string=connection_string)
 
-        self.ibis_backend:          Optional[ir_backend.Backend] = None
+        self.ibis_backend:                      Optional[ir_backend.Backend] = None
 
-        self.database_backend: str =             CONST_DB_BACKEND.SNOWFLAKE.value
-        self.database_abstraction_layer: str =   CONST_DB_ABSTRACTION_LAYER.IBIS.value
+        self.database_backend: str =            CONST_DB_BACKEND.SNOWFLAKE.value
+        self.database_abstraction_layer: str =  CONST_DB_ABSTRACTION_LAYER.IBIS.value
 
-        self.template_connection_string:    Optional[str] = "snowflake://{USERNAME}:{PASSWORD}@{HOST}/{DATABASE_NAME}"
+        self.template_connection_string:        Optional[str] = "snowflake://{USERNAME}:{PASSWORD}@{HOST}/{DATABASE_NAME}"
 
 
 
