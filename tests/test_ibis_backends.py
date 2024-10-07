@@ -24,17 +24,25 @@ def mock_settings_parameters_3():
 ################
 # Connections
 
-@pytest.fixture
-def mock_sqlite_connection(mock_settings_parameters_1):
-    with mock.patch('mountainash_data.databases.connections.ibis.SQLite_IbisConnection.connect') as mock_connect:
-        mock_connect.return_value = mock.MagicMock()
-        yield SQLite_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
+# @pytest.fixture
+# def mock_sqlite_connection(mock_settings_parameters_1):
+#     with mock.patch('mountainash_data.databases.connections.ibis.SQLite_IbisConnection.connect') as mock_connect:
+#         mock_connect.return_value = mock.MagicMock()
+#         yield SQLite_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
+
+# @pytest.fixture
+# def mock_duckdb_connection(mock_settings_parameters_1):
+#     with mock.patch('mountainash_data.databases.connections.ibis.DuckDB_IbisConnection.connect') as mock_connect:
+#         mock_connect.return_value = mock.MagicMock()
+#         yield DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
 
 @pytest.fixture
-def mock_duckdb_connection(mock_settings_parameters_1):
-    with mock.patch('mountainash_data.databases.connections.ibis.DuckDB_IbisConnection.connect') as mock_connect:
-        mock_connect.return_value = mock.MagicMock()
-        yield DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
+def sqlite_connection(mock_settings_parameters_1):
+    return SQLite_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
+
+@pytest.fixture
+def duckdb_connection(mock_settings_parameters_1):
+    return DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
 
 
 
@@ -69,13 +77,21 @@ def mock_duckdb_connection(mock_settings_parameters_1):
 #################
 # # Tests
 
-def test_sqlite_connection(mock_sqlite_connection):
-    mock_sqlite_connection.connect()
-    assert mock_sqlite_connection.ibis_backend is not None
+# def test_sqlite_connection(mock_sqlite_connection):
+#     mock_sqlite_connection.connect()
+#     assert mock_sqlite_connection.ibis_backend is not None
 
-def test_duckdb_connection(mock_duckdb_connection):
-    mock_duckdb_connection.connect()
-    assert mock_duckdb_connection.ibis_backend is not None
+# def test_duckdb_connection(mock_duckdb_connection):
+#     mock_duckdb_connection.connect()
+#     assert mock_duckdb_connection.ibis_backend is not None
+
+def test_sqlite_connection(sqlite_connection):
+    sqlite_connection.connect()
+    assert sqlite_connection.ibis_backend is not None
+
+def test_duckdb_connection(duckdb_connection):
+    duckdb_connection.connect()
+    assert duckdb_connection.ibis_backend is not None
 
 
 # def test_postgres_connection(mock_postgres_connection):
