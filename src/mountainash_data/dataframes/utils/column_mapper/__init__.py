@@ -4,9 +4,6 @@ from mountainash_data.dataframes.utils.column_mapper.column_config_builder impor
 from .column_mapper_validator import ColumnMappingValidator
 from .column_mapper import ColumnMapper
 
-# from .dataframe_filter import FilterNode, FilterCondition, FilterVisitor, ColumnCondition, LogicalCondition
-
-
 
 __all__ = (
     "TypeConfig",

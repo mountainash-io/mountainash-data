@@ -1,5 +1,3 @@
-# from .dataframe_factory import DataFrameFactory
-# from .dataframe_utils import DataFrameUtils
 from .dataframe_filter_ibis import IbisFilterVisitor
 from .dataframe_filter_polars import PolarsFilterVisitor
 from .dataframe_filter_pandas import PandasFilterVisitor
@@ -19,8 +17,5 @@ __all__ = (
     "FilterVisitor",
     "ColumnCondition",
     "LogicalCondition"
-
-    # "DataFrameFactory",
-    # "DataFrameUtils"
 
 )

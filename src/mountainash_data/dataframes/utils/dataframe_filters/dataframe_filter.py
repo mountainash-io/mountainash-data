@@ -176,4 +176,4 @@ class FilterCondition:
 
     @classmethod
     def not_(cls, condition: FilterNode) -> LogicalCondition:
-        return LogicalCondition("not", [condition])
+        return LogicalCondition("not", [condition]) 
