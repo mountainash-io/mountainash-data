@@ -2,7 +2,6 @@
 
 from typing import Union, Any,  Dict, List, Optional, Sequence, Set
 
-import collections
 
 import pandas as pd
 from mountainash_data.dataframes.utils.column_mapper.column_config import ColumnMapConfig

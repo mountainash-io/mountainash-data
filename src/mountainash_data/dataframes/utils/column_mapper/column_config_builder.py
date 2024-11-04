@@ -1,5 +1,4 @@
 from typing import Any, Optional, Type, Union, Tuple, Dict
-import collections
 
 from .constants import DataType, NullStrategy
 from .column_config import ColumnConfig, TypeConfig

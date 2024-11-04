@@ -1,14 +1,7 @@
-from abc import ABC, abstractmethod
 from dataclasses import is_dataclass, fields
-from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Type, Union, Sequence
-import inspect
+from typing import Any, Dict, Optional
 
-import pandas as pd
 import polars as pl
-import pyarrow as pa
-import ibis.expr.types as ir
-from pydantic import BaseModel
 from .base_pydata_converter import BasePyDataConverter
 from ..column_mapper import ColumnMapper
 

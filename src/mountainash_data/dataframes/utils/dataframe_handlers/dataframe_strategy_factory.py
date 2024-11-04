@@ -5,7 +5,6 @@ import polars as pl
 import pyarrow as pa
 
 import ibis.expr.types as ir
-import ibis.expr.schema as ibis_schema
 from ...base_dataframe import BaseDataFrame
 
 from . import BaseDataFrameStrategy, IbisDataFrameUtils, PolarsDataFrameUtils, PandasDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, PyArrowRecordBatchUtils

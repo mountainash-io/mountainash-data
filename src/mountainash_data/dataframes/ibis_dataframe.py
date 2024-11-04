@@ -6,7 +6,6 @@ import pyarrow as pa
 import ibis as ibis
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
-from functools import lru_cache
 import uuid
 
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
