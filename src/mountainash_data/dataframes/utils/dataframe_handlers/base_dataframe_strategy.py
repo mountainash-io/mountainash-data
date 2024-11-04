@@ -281,8 +281,9 @@ class BaseDataFrameStrategy(ABC):
 
 
     def select(self,
-               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch], 
-               columns: List[str]|str) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+               columns: List[str]|str
+               ) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         
         self.validate_dataframe_input(df=df)
 

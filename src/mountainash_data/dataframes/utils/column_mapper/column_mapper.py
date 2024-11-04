@@ -4,6 +4,7 @@ import polars as pl
 from .column_config import ColumnConfig, ColumnMapConfig
 from .column_mapper_validator import ColumnMappingValidator
 from .constants import DataType, NullStrategy
+from ..dataframe_handlers import DataFrameStrategyFactory
 
 
 class ColumnMapper:
@@ -37,9 +38,14 @@ class ColumnMapper:
         # Validate the mapping
         ColumnMappingValidator.validate_mapping(df.columns, config.mapping)
         
+
+        df_strategy = DataFrameStrategyFactory._get_strategy(df)
+
         # Get the columns we want to keep
+        existing_columns = df_strategy.get_column_names(df)
+        
         columns_to_keep = cls._get_columns_to_keep(
-            existing_columns=df.columns,
+            existing_columns=existing_columns,
             config=config
         )
         
@@ -57,7 +63,7 @@ class ColumnMapper:
                 select_exprs.append(pl.col(col))
         
         # Apply the mapping
-        return df.select(select_exprs)
+        return df_strategy.select(select_exprs)
 
     @classmethod
     def get_target_columns(cls,

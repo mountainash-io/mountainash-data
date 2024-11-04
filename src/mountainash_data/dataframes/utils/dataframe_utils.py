@@ -196,58 +196,6 @@ class DataFrameUtils:
     ################################
     # Validation Methods
 
-    #TODO: Move!
-    @classmethod
-    def validate_column_mapping(cls,
-                                column_dict: Optional[Dict[str, str|Dict[str,str]]]=None) -> bool:
-        """
-        Validates the column mapping for a given data dictionary and column dictionary.
-
-        Args:
-            data_dict (Dict[str, Union[Sequence,List]] | List[Dict[str, Any]]): The data dictionary to validate.
-            column_dict (Optional[Dict[str, str]]): The column dictionary to validate. Defaults to None.
-
-        Raises:
-            ValueError: If source and target column names are not specified or if duplicate column names are found.
-            TypeError: If column names are not strings.
-        """
-
-        # Column Validation
-        if column_dict is not None:
-
-            try:
-                # Cannot have duplicate column names in the keys or the values
-                if len(column_dict) != len(set(column_dict.values())):
-                    duplicate_values = [item for item, count in collections.Counter(column_dict.values()).items() if count > 1]    
-                    raise ValueError(f"Source and target column names must be unique. Duplicate column names: {duplicate_values}")
-
-                if len(column_dict) != len(set(column_dict.keys())):
-                    duplicate_values = [item for item, count in collections.Counter(column_dict.keys()).items() if count > 1]    
-                    raise ValueError(f"Source and target column names must be unique. Duplicate column names: {duplicate_values}")
-
-                if None in column_dict.values():
-                    raise ValueError("Source and target column names must be specified")
-
-                column_types = [type(colname) for colname in column_dict.values()]
-                if any(coltype != str for coltype in column_types):
-                    raise ValueError("Column names must be strings")
-                
-            except ValueError as e:
-                print(f"Error validating column mapping: {e}")
-                return False
-            except TypeError as e:
-                print(f"Error validating column mapping: {e}")
-                return False
-        return True
-
-
-    @classmethod
-    def _is_recordbatch(cls, df: Any) -> bool:
-
-        if isinstance(df, list) and len(df) > 0:
-            return isinstance(df[0], pa.RecordBatch)
-        else:
-            return isinstance(df, pa.RecordBatch)
 
     @classmethod
     def validate_dataframe_supported(cls, 
@@ -262,28 +210,6 @@ class DataFrameUtils:
 
     ################################
     # Dataframe Conversion Methods
-
-    # @classmethod
-    # def _get_strategy(cls, 
-    #                   df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> BaseDataFrameStrategy:
-        
-    #     if isinstance(df, BaseDataFrame):
-    #         return IbisDataFrameUtils()
-    #     elif isinstance(df, ir.Table):
-    #         return IbisDataFrameUtils()
-    #     elif cls._is_recordbatch(df=df):
-    #         return PyArrowRecordBatchUtils()
-    #     elif isinstance(df, pa.Table):
-    #         return PyArrowTableUtils()
-    #     elif isinstance(df, pl.DataFrame ):
-    #         return PolarsDataFrameUtils()
-    #     elif isinstance(df, pl.LazyFrame ):
-    #         return PolarsLazyFrameUtils()
-    #     elif isinstance(df, pd.DataFrame):
-    #         return PandasDataFrameUtils()
-    #     else:
-    #         raise TypeError(f"Unsupported dataframe type. Received {type(df)}")
-
 
     @classmethod
     def cast_dataframe_to_pandas(cls, df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
@@ -343,13 +269,6 @@ class DataFrameUtils:
 
         return df_strategy.cast_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)
 
-
-    # @classmethod
-    # def cast_dataframe_to_pyarrow_reader(cls, 
-    #                                           df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]
-    #                                           ) -> pa.RecordBatchReader:
-    #     strategy = cls._get_strategy(df=df)
-    #     return strategy.cast_to_pyarrow_reader(df=df)
 
     @classmethod
     def create_temp_table_ibis(cls, 
