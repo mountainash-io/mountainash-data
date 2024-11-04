@@ -347,3 +347,36 @@ class BaseDataFrameStrategy(ABC):
             raise ValueError("batch_size must be greater than 0")
         
         return self._split_in_batches(df, batch_size)    
+    
+
+    @abstractmethod
+    def _rename(self, 
+            df: Any,
+            mapping: Dict[str, str], 
+            **kwargs) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+
+        pass
+
+    def rename(self, 
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+            mapping: Dict[str, str], 
+        ) -> List[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]]:
+        
+        """Rename columns in a dataframe.
+        
+        Args:
+            df: Input dataframe
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments passed to underlying rename implementation
+            
+        Returns:
+            DataFrame with renamed columns
+            
+        Raises:
+            ValueError: If mapping contains invalid column names
+        """
+
+        self.validate_dataframe_input(df=df)
+       
+        return self._rename(df, mapping)    
+    

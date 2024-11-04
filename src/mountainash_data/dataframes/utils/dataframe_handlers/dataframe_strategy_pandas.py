@@ -72,3 +72,31 @@ class PandasDataFrameUtils(BaseDataFrameStrategy):
 
     def _split_in_batches(self, df: pd.DataFrame, batch_size: int) -> List[pd.DataFrame]:
         return [df[i:i + batch_size] for i in range(0, len(df), batch_size)]
+
+
+    def _rename(self,
+            df: pd.DataFrame,
+            mapping: Dict[str, str],
+            **kwargs) -> pd.DataFrame:
+        """Rename columns in a pandas DataFrame.
+        
+        Args:
+            df: Input pandas DataFrame
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments passed to pd.DataFrame.rename()
+            
+        Returns:
+            pd.DataFrame: DataFrame with renamed columns
+        """
+        # Validate column existence
+        missing_cols = set(mapping.keys()) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Columns not found in DataFrame: {missing_cols}")
+
+        # Validate no duplicate target names
+        new_names = set(mapping.values())
+        if len(new_names) != len(mapping):
+            raise ValueError("Duplicate target column names in mapping")
+
+        # Use pandas native rename
+        return df.rename(columns=mapping, **kwargs)

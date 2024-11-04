@@ -69,3 +69,30 @@ class IbisDataFrameUtils(BaseDataFrameStrategy):
     def _split_in_batches(self, df: ir.Table, batch_size: int) -> List[ir.Table]:
         total_rows = df.count().execute()
         return [df.limit(batch_size, offset=i) for i in range(0, total_rows, batch_size)]    
+    
+    def _rename(self,
+            df: ir.Table,
+            mapping: Dict[str, str],
+            **kwargs) -> ir.Table:
+        """Rename columns in an Ibis Table.
+        
+        Args:
+            df: Input Ibis Table
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments passed to ibis rename
+            
+        Returns:
+            ir.Table: Table with renamed columns
+        """
+        # Validate column existence
+        missing_cols = set(mapping.keys()) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Columns not found in Table: {missing_cols}")
+
+        # Validate no duplicate target names
+        new_names = set(mapping.values())
+        if len(new_names) != len(mapping):
+            raise ValueError("Duplicate target column names in mapping")
+
+        # Use ibis native rename
+        return df.rename(mapping)    

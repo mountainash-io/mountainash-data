@@ -73,3 +73,30 @@ class PolarsLazyFrameUtils(BaseDataFrameStrategy):
     
     def _split_in_batches(self, df: pl.DataFrame, batch_size: int) -> List[pl.DataFrame]:
         return [df.slice(i, batch_size) for i in range(0, len(df), batch_size)]    
+
+    def _rename(self,
+           df: pl.LazyFrame,
+           mapping: Dict[str, str],
+           **kwargs) -> pl.LazyFrame:
+        """Rename columns in a Polars LazyFrame.
+        
+        Args:
+            df: Input Polars LazyFrame
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments passed to pl.LazyFrame.rename()
+            
+        Returns:
+            pl.LazyFrame: LazyFrame with renamed columns
+        """
+        # Validate column existence
+        missing_cols = set(mapping.keys()) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Columns not found in LazyFrame: {missing_cols}")
+
+        # Validate no duplicate target names
+        new_names = set(mapping.values())
+        if len(new_names) != len(mapping):
+            raise ValueError("Duplicate target column names in mapping")
+
+        # Use polars native rename
+        return df.rename(mapping=mapping)        

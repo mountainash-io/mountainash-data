@@ -225,7 +225,7 @@ def test_column_mapper_bulk_operations():
         assert all(f"new_col_{i}" in result.columns for i in range(10))
         assert result.shape == df.shape
 
-def test_get_target_columns():
+def test_get_target_columns_to_keep():
     """Test getting target column names."""
     source_columns = ["name", "age", "email", "extra"]
     
@@ -234,7 +234,7 @@ def test_get_target_columns():
         mapping={"name": "full_name", "age": "years"},
         filter_unmapped=False
     )
-    result1 = ColumnMapper.get_target_columns(source_columns, config1)
+    result1 = ColumnMapper.get_target_columns_to_keep(source_columns, config1)
     with check:
         assert "full_name" in result1
         assert "years" in result1
@@ -246,7 +246,7 @@ def test_get_target_columns():
         mapping={"name": "full_name", "age": "years"},
         filter_unmapped=True
     )
-    result2 = ColumnMapper.get_target_columns(source_columns, config2)
+    result2 = ColumnMapper.get_target_columns_to_keep(source_columns, config2)
     with check:
         assert result2 == ["full_name", "years"]
 

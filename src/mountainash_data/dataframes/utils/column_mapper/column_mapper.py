@@ -2,9 +2,9 @@ from typing import Dict, List, Optional, Union, Set
 from dataclasses import dataclass
 import polars as pl
 from .column_config import ColumnConfig, ColumnMapConfig
-from .column_mapper_validator import ColumnMappingValidator
 from .constants import DataType, NullStrategy
 from ..dataframe_handlers import DataFrameStrategyFactory
+import collections 
 
 
 class ColumnMapper:
@@ -36,7 +36,7 @@ class ColumnMapper:
             >>> result = ColumnMapper.apply_mapping(df, config)
         """
         # Validate the mapping
-        ColumnMappingValidator.validate_mapping(df.columns, config.mapping)
+        cls.validate_mapping(df.columns, config.mapping)
         
 
         df_strategy = DataFrameStrategyFactory._get_strategy(df)
@@ -44,29 +44,46 @@ class ColumnMapper:
         # Get the columns we want to keep
         existing_columns = df_strategy.get_column_names(df)
         
-        columns_to_keep = cls._get_columns_to_keep(
+        source_columns_to_keep = cls.get_source_columns_to_keep(
             existing_columns=existing_columns,
             config=config
         )
-        
-        # Build expressions for select operation
-        select_exprs = []
-        
-        for col in columns_to_keep:
-            if col in config.mapping:
-                # Column needs to be renamed
-                select_exprs.append(
-                    pl.col(col).alias(config.mapping[col])
-                )
-            else:
-                # Keep column with same name
-                select_exprs.append(pl.col(col))
+
+        columns_to_rename = cls.get_columns_to_rename(
+            source_columns=source_columns_to_keep,
+            config=config
+        )
+
+        df = df_strategy.select(df=df, columns=source_columns_to_keep)
+        df = df_strategy.rename(df=df, mapping=columns_to_rename)
         
         # Apply the mapping
-        return df_strategy.select(select_exprs)
+        return df
+
 
     @classmethod
-    def get_target_columns(cls,
+    def get_columns_to_rename(cls,
+                          source_columns: List[str],
+                          config: ColumnMapConfig) -> Dict[str,str]:
+        """
+        Get the final column names after applying mapping.
+        
+        Args:
+            source_columns: Original column names
+            config: Column mapping configuration
+            
+        Returns:
+            List[str]: Final column names after mapping
+        """
+
+        source_columns_to_keep =  cls.get_source_columns_to_keep(source_columns, config)
+        
+        return {col: config.mapping.get(col, col)
+            for col in source_columns_to_keep if col != config.mapping.get(col, col)
+        }
+
+    @classmethod
+    def get_target_columns_to_keep(cls,
                           source_columns: List[str],
                           config: ColumnMapConfig) -> List[str]:
         """
@@ -79,19 +96,17 @@ class ColumnMapper:
         Returns:
             List[str]: Final column names after mapping
         """
-        columns_to_keep = cls._get_columns_to_keep(
-            existing_columns=source_columns,
-            config=config
-        )
+
+        source_columns_to_keep =  cls.get_source_columns_to_keep(source_columns, config)
         
         return [
             config.mapping.get(col, col)
-            for col in columns_to_keep
+            for col in source_columns_to_keep
         ]
 
 
     @classmethod
-    def _get_columns_to_keep(cls,
+    def get_source_columns_to_keep(cls,
                             existing_columns: List[str],
                             config: ColumnMapConfig) -> List[str]:
         """
@@ -106,11 +121,10 @@ class ColumnMapper:
             List[str]: List of columns to keep
         """
 
+        if config.mapping is None:
+            return existing_columns
+
         if config.filter_unmapped:
-
-            if config.mapping is None:
-                return existing_columns
-
             # Only keep columns that are in the mapping
             return [col for col in existing_columns if col in config.mapping]
         else:
@@ -135,8 +149,8 @@ class ColumnMapper:
         if mapping is None:
             return None
 
-        ColumnMappingValidator.validate_mapping_structure(mapping=mapping)
-        ColumnMappingValidator.validate_no_duplicate_targets(mapping=mapping)
+        cls.validate_mapping_structure(mapping=mapping)
+        cls.validate_no_duplicate_targets(mapping=mapping)
 
 
         return ColumnMapConfig(
@@ -144,35 +158,7 @@ class ColumnMapper:
             filter_unmapped=filter_unmapped
         )
     
-    @classmethod
-    def _validate_mapping(cls,
-                        #  existing_columns: List[str],
-                         mapping: Dict[str, str]) -> None:
-        """
-        Validate the column mapping configuration.
-        
-        Args:
-            existing_columns: List of existing column names
-            mapping: Column mapping dictionary
-            
-        Raises:
-            ValueError: If mapping is invalid
-        """
-
-        if mapping and not isinstance(mapping, dict):
-            raise ValueError("Mapping must be a dictionary")
-        
-        if not all(isinstance(k, str) and isinstance(v, str) 
-                  for k, v in mapping.items()):
-            raise ValueError("All mapping keys and values must be strings")
-
-
-        # Check for duplicate target names
-        target_names = list(mapping.values())
-        duplicates = {name for name in target_names if target_names.count(name) > 1}
-        if duplicates:
-            raise ValueError(f"Duplicate target column names found: {duplicates}")
-        
+       
 
     #### Typing 
 
@@ -287,3 +273,78 @@ class ColumnMapper:
             .otherwise(None if drop_invalid else expr)
         )
 
+#### Validation Methods
+
+
+    @classmethod
+    def validate_mapping_structure(cls, mapping: Dict[str, str]) -> None:
+        """
+        Validate the basic structure of a column mapping.
+        
+        Args:
+            mapping: Column mapping dictionary
+            
+        Raises:
+            ValueError: If mapping structure is invalid
+        """
+        if not isinstance(mapping, dict):
+            raise ValueError("Column mapping must be a dictionary")
+
+        if not all(isinstance(k, str) and isinstance(v, str) 
+                  for k, v in mapping.items()):
+            raise ValueError("All mapping keys and values must be strings")
+
+    @classmethod
+    def validate_no_duplicate_targets(cls, mapping: Dict[str, str]) -> None:
+        """
+        Validate that there are no duplicate target column names.
+        
+        Args:
+            mapping: Column mapping dictionary
+            
+        Raises:
+            ValueError: If duplicate target names are found
+        """
+
+        if len(mapping) != len(set(mapping.values())):
+            duplicate_values = [item for item, count in collections.Counter(mapping.values()).items() if count > 1]    
+            raise ValueError(f"Duplicate target column names found: {duplicate_values}")
+
+
+
+
+    @classmethod
+    def validate_source_columns_exist(cls, 
+                                    existing_columns: List[str], 
+                                    mapping: Dict[str, str]) -> None:
+        """
+        Validate that all mapped source columns exist in the data.
+        
+        Args:
+            existing_columns: List of existing column names
+            mapping: Column mapping dictionary
+            
+        Raises:
+            ValueError: If mapped columns don't exist
+        """
+        missing_columns = set(mapping.keys()) - set(existing_columns)
+        if missing_columns:
+            raise ValueError(f"Mapped columns not found in data: {missing_columns}")
+
+    @classmethod
+    def validate_mapping(cls, 
+                        existing_columns: List[str], 
+                        mapping: Dict[str, str]) -> None:
+        """
+        Perform all column mapping validations.
+        
+        Args:
+            existing_columns: List of existing column names
+            mapping: Column mapping dictionary
+            
+        Raises:
+            ValueError: If any validation fails
+        """
+        cls.validate_mapping_structure(mapping)
+        cls.validate_no_duplicate_targets(mapping)
+        # cls.validate_source_columns_exist(existing_columns, mapping)

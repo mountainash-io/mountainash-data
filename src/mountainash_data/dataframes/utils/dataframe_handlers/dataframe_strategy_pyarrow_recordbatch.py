@@ -1,4 +1,4 @@
-from typing import Any,  Dict, List
+from typing import Any,  Dict, List, Union
 
 import pandas as pd
 import polars as pl
@@ -114,3 +114,38 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
         batchsize = self._get_existing_batch_size(df=df)
 
         return  [df_pa.slice(i, batch_size).to_batches(batchsize) for i in range(0, df_pa.num_rows, batch_size)]    
+
+
+    def _rename(self,
+            df: Union[pa.RecordBatch, List[pa.RecordBatch]],
+            mapping: Dict[str, str],
+            **kwargs) -> List[pa.RecordBatch]:
+        """Rename columns in PyArrow RecordBatch or list of RecordBatches.
+        
+        Args:
+            df: Input PyArrow RecordBatch or list of RecordBatches
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments (not used)
+            
+        Returns:
+            List[pa.RecordBatch]: RecordBatches with renamed columns
+        """
+        # Convert single RecordBatch to list
+        if isinstance(df, pa.RecordBatch):
+            df = [df]
+
+        # Validate against first batch's schema
+        missing_cols = set(mapping.keys()) - set(df[0].schema.names)
+        if missing_cols:
+            raise ValueError(f"Columns not found in RecordBatch: {missing_cols}")
+
+        # Validate no duplicate target names
+        new_names = set(mapping.values())
+        if len(new_names) != len(mapping):
+            raise ValueError("Duplicate target column names in mapping")
+
+        # Create new names list, replacing old names with new ones
+        new_names = [mapping.get(name, name) for name in df[0].schema.names]
+
+        # Rename each batch
+        return [batch.rename_columns(new_names) for batch in df]

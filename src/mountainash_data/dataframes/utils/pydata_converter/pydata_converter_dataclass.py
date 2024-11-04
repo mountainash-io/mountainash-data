@@ -65,13 +65,12 @@ class PyDataConverterDataclass(BasePyDataConverter):
         df = pl.DataFrame(data_dicts)
 
         if column_mapping:
-                # Create ColumnMapConfig
-                map_config = ColumnMapper.create_config(
-                    mapping=column_mapping,
-                    filter_unmapped=filter_unmapped  # Keep unmapped columns by default
-                )
-                # Apply the mapping using ColumnMapper
-                df = ColumnMapper.apply_mapping(df, map_config)
-
+            # Create ColumnMapConfig
+            map_config = ColumnMapper.create_config(
+                mapping=column_mapping,
+                filter_unmapped=filter_unmapped  # Keep unmapped columns by default
+            )
+            # Apply the mapping using ColumnMapper
+            df = ColumnMapper.apply_mapping(df, map_config)
 
         return df
