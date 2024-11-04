@@ -173,11 +173,6 @@ class ColumnMapper:
         if duplicates:
             raise ValueError(f"Duplicate target column names found: {duplicates}")
         
-        # Check if any mapped columns don't exist
-        # missing_columns = set(mapping.keys()) - set(existing_columns)
-        # if missing_columns:
-        #     raise ValueError(f"Mapped columns not found in data: {missing_columns}")
-
 
     #### Typing 
 
@@ -215,20 +210,16 @@ class ColumnMapper:
             )
             
             # Handle null strategy
-            if config.type_config.null_strategy == NullStrategy.REJECT:
+            if config.type_config.null_strategy == NullStrategy.REJECT or config.type_config.null_strategy == NullStrategy.DROP_ROW:
                 null_check = pl.col(source_col).is_null()
                 if drop_mask is None:
                     drop_mask = ~null_check
                 else:
                     drop_mask = drop_mask & ~null_check
+                
+
             elif config.type_config.null_strategy == NullStrategy.DEFAULT:
                 expr = expr.fill_null(config.type_config.default_value)
-            elif config.type_config.null_strategy == NullStrategy.DROP_ROW:
-                null_check = pl.col(source_col).is_null()
-                if drop_mask is None:
-                    drop_mask = ~null_check
-                else:
-                    drop_mask = drop_mask & ~null_check
             
             exprs.append(expr.alias(config.target_name))
         

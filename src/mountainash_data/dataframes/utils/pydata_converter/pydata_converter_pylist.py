@@ -65,17 +65,5 @@ class PyDataConverterPylist(BasePyDataConverter):
 
         return df
 
-
-        # if column_mapping:
-        #     # Filter and rename columns
-        #     filtered_data = []
-        #     for item in data:
-        #         filtered_item = {
-        #             column_mapping.get(k, k): v 
-        #             for k, v in item.items() 
-        #             if k in column_mapping or k not in column_mapping
-        #         }
-        #         filtered_data.append(filtered_item)
-        #     return pl.DataFrame(filtered_data)
         
         return pl.DataFrame(data)

@@ -55,13 +55,4 @@ class PyDataConverterPydict(BasePyDataConverter):
                 # Apply the mapping using ColumnMapper
                 df = ColumnMapper.apply_mapping(df, map_config)
         return df
-
-        # if column_mapping:
-        #     # Filter and rename columns
-        #     filtered_data = {
-        #         column_mapping.get(k, k): v 
-        #         for k, v in data.items() 
-        #         if k in column_mapping or k not in column_mapping
-        #     }
-        #     return pl.DataFrame(filtered_data)
         

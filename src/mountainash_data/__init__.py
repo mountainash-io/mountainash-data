@@ -3,8 +3,6 @@ from .__version__ import __version__
 from .dataframes import (   
     BaseDataFrame,
     IbisDataFrame,
-    # DataFrameFactory,
-    # DataFrameUtils,
 )
 from .databases.connections.ibis import (
     BaseIbisConnection,
@@ -25,8 +23,6 @@ __all__ = (
 
     "BaseDataFrame",
     "IbisDataFrame",
-    # "DataFrameFactory",
-    # "DataFrameUtils",
 
     "BaseIbisConnection",
     "SQLite_IbisConnection",

@@ -68,12 +68,5 @@ class PyDataConverterPydantic(BasePyDataConverter):
                 # Apply the mapping using ColumnMapper
                 df = ColumnMapper.apply_mapping(df, map_config)
 
-        # # Apply column mapping if provided
-        # if column_mapping:
-        #     df = df.select([
-        #         pl.col(old_name).alias(column_mapping.get(old_name, old_name))
-        #         for old_name in df.columns
-        #         if old_name in column_mapping or old_name not in column_mapping
-        #     ])
 
         return df
