@@ -253,12 +253,6 @@ def test_get_target_columns():
 def test_column_mapper_edge_cases():
     """Test edge cases and corner scenarios."""
     
-    # # Empty DataFrame
-    # df_empty = pl.DataFrame()
-    # config = ColumnMapper.create_config(mapping={"old": "new"})
-
-    # with pytest.raises(ValueError):
-    #     ColumnMapper.apply_mapping(df_empty, config)
     
     # Single column DataFrame
     df_single = pl.DataFrame({"single": [1]})

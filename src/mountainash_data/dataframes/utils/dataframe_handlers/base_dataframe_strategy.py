@@ -142,9 +142,6 @@ class BaseDataFrameStrategy(ABC):
 
         self.validate_dataframe_input(df=df)
 
-        # if self.supports_pyarrow_interchange(df=df):
-        #     return from_dataframe(df=df)
-        # else:
         return self._cast_to_pyarrow_table(df=df)
 
 

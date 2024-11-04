@@ -116,51 +116,6 @@ def test_complex_nested_dataclass():
             "created_at", "tags", "preferences"
         ])
 
-# def test_complex_nested_pydantic():
-#     converter = PyDataConverterPydantic()
-    
-#     # Create complex nested data
-#     address = AddressModel(
-#         street="123 Main St",
-#         city="City",
-#         country="Country",
-#         postal_code="12345"
-#     )
-    
-#     transaction = TransactionModel(
-#         id="tx1",
-#         amount=Decimal("100.50"),
-#         date=datetime.now(),
-#         status=Status.ACTIVE,
-#         metadata={"key": "value"}
-#     )
-    
-#     person = ComplexPersonModel(
-#         name="John",
-#         age=30,
-#         address=address,
-#         transactions=[transaction],
-#         active=True,
-#         created_at=datetime.now(),
-#         tags=["tag1", "tag2"],
-#         preferences={"theme": "dark"}
-#     )
-
-#     # Test single instance
-#     df = converter.convert(person)
-#     with check:
-#         assert isinstance(df, pl.DataFrame)
-#         assert "address" in df.columns
-#         assert "transactions" in df.columns
-#         assert df.shape[0] == 1
-
-#     # Test list of instances
-#     people = [person, person]
-#     df_list = converter.convert(people)
-#     with check:
-#         assert isinstance(df_list, pl.DataFrame)
-#         assert df_list.shape[0] == 2
-
 def test_edge_cases():
     # Test empty collections
     dict_converter = PyDataConverterPydict()
@@ -261,20 +216,3 @@ def test_mixed_data_types():
         assert df.shape == (3, 2)
         # Polars should coerce to common type or string
         assert df["mixed"].dtype in [pl.Utf8, pl.Float64]
-
-# def test_large_nested_structures():
-#     # Test handling of deeply nested structures
-#     nested_data = {
-#         "level1": [
-#             {"level2": [
-#                 {"level3": {"value": i}}
-#                 for i in range(3)
-#             ]}
-#             for _ in range(2)
-#         ]
-#     }
-
-#     converter = PyDataConverterPydict()
-#     with pytest.raises(ValueError):
-#         # Should raise error for overly complex nested structures
-#         converter.convert(nested_data)

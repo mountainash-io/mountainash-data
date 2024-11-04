@@ -207,8 +207,3 @@ def test_invalid_inputs():
         PyDataConverterPydantic()
     ]
     
-    # for converter in converters:
-    #     with check:
-            # assert not converter.can_handle(None)
-            # with pytest.raises((ValueError, TypeError)):
-            #     converter.validate(None)
