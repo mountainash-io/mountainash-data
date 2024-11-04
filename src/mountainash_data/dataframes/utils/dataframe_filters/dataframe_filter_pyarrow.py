@@ -39,47 +39,7 @@ class PyArrowFilterVisitor(FilterVisitor):
                 # Column to value comparison
                 return lambda table: op_func(pc.field(condition.column), pc.scalar(condition.value))
 
-    # def visit_column_condition(self, condition: ColumnCondition) -> Callable:
-        
-    #     if condition.compare_column:
-    #         if condition.operator == "==":
-    #             return lambda table: pc.field(condition.column) == pc.field(condition.compare_column)
-    #         elif condition.operator == "!=":
-    #             return lambda table: pc.field(condition.column) != pc.field(condition.compare_column)
-    #         elif condition.operator == ">":
-    #             return lambda table: pc.field(condition.column) > pc.field(condition.compare_column)
-    #         elif condition.operator == "<":
-    #             return lambda table: pc.field(condition.column) < pc.field(condition.compare_column)
-    #         elif condition.operator == ">=":
-    #             return lambda table: pc.field(condition.column) >= pc.field(condition.compare_column)
-    #         elif condition.operator == "<=":
-    #             return lambda table: pc.field(condition.column) <= pc.field(condition.compare_column)
 
-    #         else:
-    #             raise ValueError(f"Unsupported operator for column comparison: {condition.operator}")
-    #     else:
-
-    #         if condition.operator == "==":
-    #             return lambda table: pc.field(condition.column) == pc.scalar(condition.value)
-    #         elif condition.operator == "!=":
-    #             return lambda table: pc.field(condition.column) != pc.scalar(condition.value)
-    #         elif condition.operator == ">":
-    #             return lambda table: pc.field(condition.column) > pc.scalar(condition.value)
-    #         elif condition.operator == "<":
-    #             return lambda table: pc.field(condition.column) < pc.scalar(condition.value)
-    #         elif condition.operator == ">=":
-    #             return lambda table: pc.field(condition.column) >= pc.scalar(condition.value)
-    #         elif condition.operator == "<=":
-    #             return lambda table: pc.field(condition.column) <= pc.scalar(condition.value)
-    #         elif condition.operator == "in":
-    #             return lambda table: pc.field(condition.column).isin(pa.array(condition.value))
-            
-    #         elif condition.operator == "is null":
-    #             return lambda table: pc.field(condition.column).is_null()
-    #         elif condition.operator == "is not null":
-    #             return lambda table: pc.field(condition.column).is_valid()
-    #         else:
-    #             raise ValueError(f"Unsupported operator: {condition.operator}")
 
     def visit_logical_condition(self, condition: LogicalCondition):
         if condition.operator == "and":

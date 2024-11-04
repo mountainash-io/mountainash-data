@@ -28,8 +28,12 @@ class IbisFilterVisitor(FilterVisitor):
             # Column to column comparison
             return lambda table: op_func(table[condition.column], table[condition.compare_column])
         else:
-            # Column to value comparison
-            return lambda table: op_func(table[condition.column], ibis.literal(condition.value))
+
+            if condition.operator == "in":
+               return  lambda table: table[condition.column].isin(ibis.literal(condition.value))       
+            else:               
+                # Column to value comparison
+                return lambda table: op_func(table[condition.column], ibis.literal(condition.value))
 
 
 

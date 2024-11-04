@@ -29,8 +29,12 @@ class PandasFilterVisitor(FilterVisitor):
             # Column to column comparison
             return lambda df: op_func(df[condition.column], df[condition.compare_column])
         else:
-            # Column to value comparison
-            return lambda df: op_func(df[condition.column], condition.value)
+
+            if condition.operator == "in":
+               return  lambda df: df[condition.column].isin(condition.value)          
+            else:            
+                # Column to value comparison
+                return lambda df: op_func(df[condition.column], condition.value)
 
 
     # def visit_column_condition(self, condition: ColumnCondition) -> Callable:

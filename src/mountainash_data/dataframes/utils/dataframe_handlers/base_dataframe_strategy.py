@@ -14,7 +14,6 @@ import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
 from ..dataframe_filters import FilterNode
-# from ...ibis_dataframe import init_ibis_connection
 from ...base_dataframe import BaseDataFrame
 
 
