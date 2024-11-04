@@ -1,3 +1,5 @@
+# path: src/mountainash_data/dataframes/utils/base_dataframe_strategy.py
+
 from abc import abstractmethod, ABC
 from typing import Union, Any,  Dict, List, Optional
 import uuid
@@ -11,9 +13,14 @@ import ibis
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
-from ..ibis_dataframe import init_ibis_connection
-from .filter import FilterNode
-from ..base_dataframe import BaseDataFrame
+from ..dataframe_filters import FilterNode
+# from ...ibis_dataframe import init_ibis_connection
+from ...base_dataframe import BaseDataFrame
+
+
+def init_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
+    return ibis.connect(resource=f"{ibis_schema}://")
+
 
 class BaseDataFrameStrategy(ABC):
 

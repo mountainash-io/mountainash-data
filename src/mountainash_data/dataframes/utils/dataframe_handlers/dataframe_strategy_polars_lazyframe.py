@@ -1,3 +1,5 @@
+# path: src/mountainash_data/dataframes/utils/dataframe_strategy_polars_lazyframe.py
+
 from typing import Any,  Dict, List, Union, Callable
 
 import pandas as pd
@@ -6,7 +8,8 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterNode, PolarsFilterVisitor
+from ..dataframe_filters import FilterNode, PolarsFilterVisitor
+
 
 
 class PolarsLazyFrameUtils(BaseDataFrameStrategy):

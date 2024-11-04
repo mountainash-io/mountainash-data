@@ -49,6 +49,11 @@ dependencies = [
 ]
 [envs.test_github.scripts]
 test = "pytest"
+
+
+
+
+
 test-cov = "coverage run -m pytest"
 test-xml = "coverage xml"
 cov-report = [
@@ -77,6 +82,13 @@ dependencies = [
   "coverage[toml]>=6.5",
   "pytest==8.1.1",
   "pytest-check==2.3.1",
+  "pytest-json-report>=1.5.0",    # Structured JSON output
+  "pytest-metadata>=2.0.0",       # Additional test metadata
+  "pytest-benchmark>=4.0.0",      # Performance benchmarking
+  "pytest-cov>=4.1.0",           # Better coverage integration
+  "pytest-clarity>=1.0.1",       # Better test output diff
+  "pytest-timeout>=2.1.0",       # Test timing control
+  "pytest-picked>=0.5.0",         # Changed files testing
 
   "mountainash_auth_settings @  {root:uri}/../mountainash-auth-settings",
   "mountainash_constants @      {root:uri}/../mountainash-constants",
@@ -87,23 +99,35 @@ dependencies = [
   "mountainash_utils_ssh @          {root:uri}/../mountainash-utils-ssh",
 ]
 [envs.test.scripts]
+# Basic test commands
 test = "pytest"
+test-file = "pytest {args}"  # For specific file targeting
+test-changed = "pytest --picked"  # Only changed files
 
-test-local = "pytest tests/test_ibis_backends.py"
+# Coverage commands
+test-cov = [
+    "coverage run -m pytest",
+    "coverage json --pretty-print",  # JSON output for agent consumption
+    "coverage xml",                  # XML for CI tools
+    "coverage html"                  # HTML for human review
+]
 
-test-cov = "coverage run -m pytest"
-test-xml = "coverage xml"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
+# Targeted testing with coverage
+test-cov-file = [
+    "coverage run -m pytest {args}",
+    "coverage json --pretty-print"
 ]
-cov = [
-  "test-cov",
-  "cov-report",
-  "test-xml",
-]
-cov-html = [
-  "coverage html",
+
+# Performance testing
+test-perf = "pytest --benchmark-only"
+test-perf-file = "pytest --benchmark-only {args}"
+
+# Combined report generation
+test-full-report = [
+    "pytest --json-report --json-report-file=pytest_report.json",
+    "coverage run -m pytest",
+    "coverage json --pretty-print",
+    "coverage xml"
 ]
 
 

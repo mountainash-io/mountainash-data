@@ -6,7 +6,8 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import  FilterNode, PolarsFilterVisitor
+from ..dataframe_filters import FilterNode, PolarsFilterVisitor
+
 
 
 class PolarsDataFrameUtils(BaseDataFrameStrategy):

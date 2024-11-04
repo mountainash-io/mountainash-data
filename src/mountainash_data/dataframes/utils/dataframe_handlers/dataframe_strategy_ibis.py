@@ -1,4 +1,6 @@
 
+# path: src/mountainash_data/dataframes/utils/dataframe_strategy_ibis.py
+
 from typing import Any,  Dict, List
 
 import pandas as pd
@@ -8,7 +10,7 @@ import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterNode, IbisFilterVisitor
+from ..dataframe_filters import FilterNode, IbisFilterVisitor
 
 
 class IbisDataFrameUtils(BaseDataFrameStrategy):

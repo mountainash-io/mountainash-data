@@ -7,7 +7,8 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterNode, PyArrowFilterVisitor
+from ..dataframe_filters import FilterNode, PyArrowFilterVisitor
+
 
 
 class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
