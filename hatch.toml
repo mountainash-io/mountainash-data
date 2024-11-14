@@ -129,7 +129,10 @@ test-full-report = [
     "coverage json --pretty-print",
     "coverage xml"
 ]
+test-cov-junit = [
 
+  "pytest --cov --junitxml=junit.xml"
+]
 
 #================
 # Env: ruff
