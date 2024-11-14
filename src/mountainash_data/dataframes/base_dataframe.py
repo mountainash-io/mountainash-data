@@ -6,7 +6,6 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 import ibis.expr.types as ir
-# from .utils.dataframe_utils import DataFrameUtils
 
 
 # class IbisTableLineageWrapper:  

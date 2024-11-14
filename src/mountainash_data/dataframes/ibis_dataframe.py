@@ -6,18 +6,17 @@ import pyarrow as pa
 import ibis as ibis
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
-from functools import lru_cache
 import uuid
 
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
 
 # import uuid
 from .base_dataframe import BaseDataFrame
+from ..dataframes.utils.ibis_utils import init_ibis_connection, get_default_ibis_backend_schema
 
-
-@lru_cache(maxsize=None)
-def init_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
-    return ibis.connect(resource=f"{ibis_schema}://")
+# @lru_cache(maxsize=None)
+# def init_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
+#     return ibis.connect(resource=f"{ibis_schema}://")
 
 
 class IbisDataFrame(BaseDataFrame):
@@ -67,7 +66,7 @@ class IbisDataFrame(BaseDataFrame):
         
     # Call a method to set the backend schema after super().__init__
     def init_default_ibis_backend_schema(self):
-        self.default_ibis_backend_schema = "polars"
+        self.default_ibis_backend_schema = get_default_ibis_backend_schema()
 
     def init_default_ibis_connection(self, ibis_schema: str) -> ibis.BaseBackend: 
         return init_ibis_connection(ibis_schema=ibis_schema)
@@ -97,7 +96,6 @@ class IbisDataFrame(BaseDataFrame):
 
         #Using the function to cache the connection.
         self.ibis_backend = self.init_default_ibis_connection(ibis_schema=default_ibis_schema)
-        # self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
  
         if not self.ibis_backend:
             raise Exception("Ibis client connection not established")

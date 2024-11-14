@@ -2,1008 +2,275 @@ import pytest
 from pytest_check import check
 import pandas as pd
 import polars as pl
+import pyarrow as pa
 import ibis
-from mountainash_data import DataFrameUtils
+from datetime import datetime, date
+from decimal import Decimal
+from typing import Dict, List, Any, Union
+
+from mountainash_data.dataframes.utils import DataFrameUtils
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
-import ibis.expr.types as ir
 
-#Data Dicts
-dataDictExample1 = {
-    "column1": [1, 2, 3],
-    "column2": [4, 5, 6],
-    "column3": ["A", "B", "C"]
-}
-
-dataDictExampleEmpty = {
-    "column1": [7,8,9],
-    "column2": [2,4,6],
-    "column3": None
-}
-
-dataDictExampleDirty = {
-    "column1": 4,
-    "column2": [4.7, None, "90"],
-    "column3": ["A", 5, [5,9.7]]
-}
-
-dataDictExampleUneven = {
-    "column1": [2, 7],
-    "column2": [4.7, 8.9, 0.002],
-    "column3": ["A", "B", "C", "D", "E"],
-    "column4": [["a","b"],["c"]]
-}
-
-# Column dictionary for renaming columns
-columnDictExample1 = {
-    "column1": "col1",
-    "column2": "col2",
-    "column3": "col3"
-}
-
-columnDictExampleEmpty = {
-    "column1": None,
-    "column2": [],
-    "column3": "col3"
-}
-
-columnDictExampleDirty = {
-    "column1": ["col1"],
-    "column2": " ",
-    "column3": 9
-}
-
-columnDictExampleUneven = {
-    "column1": "col1",
-    "column2": "col2"
-}
-
-"""
-TODO Create tests for PyArrow Tables, reconfigure other tests after implementing data valiadation
-"""
-
-dataframe_frameworks = [CONST_DATAFRAME_FRAMEWORK.PANDAS.value, 
-                        CONST_DATAFRAME_FRAMEWORK.POLARS.value
-                        ]
-ibis_backend_schemas = ["polars", 
-                        "duckdb", 
-                        "sqlite"
-                        ]
-
-
-@pytest.mark.parametrize(
-    "dataframe_framework, data_dict, expected_exception",
-    [
-        (None,      dataDictExample1, ValueError), # This should not raise an error, but should just ignore the invalid column
-        (2,         dataDictExample1, ValueError),  # NR: This catches an issue in the drop function being brittle to non-string column drop requests.  The function should just ignore invalid columns and not raise an error.
-        ("AAAAAA",  dataDictExample1, ValueError), # Same as above for all df types
-        ([CONST_DATAFRAME_FRAMEWORK.PANDAS.value], dataDictExample1, ValueError),
-
-    ],
-)
-# Def create_dataframe tests
-def test_create_dataframe_fake_dataframes(dataframe_framework, data_dict, expected_exception):
-
-    with pytest.raises(expected_exception):
-        DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict)
-
-    
-@pytest.mark.parametrize(
-    "dataframe_framework, data_dict, column_dict, df_type",
-    [
-        (CONST_DATAFRAME_FRAMEWORK.PANDAS.value,      dataDictExample1, columnDictExample1, pd.DataFrame), 
-        (CONST_DATAFRAME_FRAMEWORK.POLARS.value,      dataDictExample1, columnDictExample1, pl.DataFrame), 
-        (CONST_DATAFRAME_FRAMEWORK.IBIS.value,        dataDictExample1, columnDictExample1, ir.Table),
-    ],
-)
-def test_create_dataframe_simple(dataframe_framework, data_dict, column_dict, df_type):
-
-    df = DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict, column_dict=column_dict)
-
-    with check:        
-        assert isinstance(df, df_type)
-    with check:        
-        assert "col1" in DataFrameUtils.get_column_names(df)
-    with check:        
-        assert "col2" in DataFrameUtils.get_column_names(df)
-    with check:        
-        assert "col3" in DataFrameUtils.get_column_names(df)
-    with check:        
-        assert "column1" not in DataFrameUtils.get_column_names(df)
-    with check:        
-        assert "column2" not in DataFrameUtils.get_column_names(df)
-    with check:        
-        assert "column3" not in DataFrameUtils.get_column_names(df)
-        # assert "col3" in df.get_columns()
-        # assert df["col1"][0] == 1
-        # assert df["col2"][1] == 5
-        # assert df["col3"][2] == "C"
-
-# def test_create_dataframe_polas_simple():
-
-#     plDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)
-    
-#     with check:
-
-#         assert isinstance(plDataFrame, pl.DataFrame)
-#         assert "col3" in plDataFrame
-#         assert plDataFrame["col1"][0] == 1
-#         assert plDataFrame["col2"][1] == 5
-#         assert plDataFrame["col3"][2] == "C"
-
-
-# def test_create_dataframe_ibis_simple():
-#     ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1)
-#     #Expected column names
-#     expCol = list(columnDictExample1.values())
-#     assert ibisDataFrame.columns == expCol
-#     #Expected col 1
-#     expOne = dataDictExample1["column1"]
-#     valuesColOne = list(ibisDataFrame.execute()["col1"])
-#     assert valuesColOne == expOne
-
-@pytest.mark.parametrize(
-    "dataframe_framework, data_dict, column_dict",
-    [
-        (CONST_DATAFRAME_FRAMEWORK.PANDAS.value,      dataDictExample1, columnDictExampleEmpty), 
-        (CONST_DATAFRAME_FRAMEWORK.POLARS.value,      dataDictExample1, columnDictExampleEmpty),
-        (CONST_DATAFRAME_FRAMEWORK.IBIS.value,        dataDictExample1, columnDictExampleEmpty),
-        (CONST_DATAFRAME_FRAMEWORK.PANDAS.value,      dataDictExample1, columnDictExampleDirty), 
-        (CONST_DATAFRAME_FRAMEWORK.POLARS.value,      dataDictExample1, columnDictExampleDirty),
-        (CONST_DATAFRAME_FRAMEWORK.IBIS.value,        dataDictExample1, columnDictExampleDirty),
-    ],
-)
-def test_create_dataframe_invalid_columns(dataframe_framework, data_dict, column_dict):
-
-    #TODO: These should no longer fail. The function should just ignore invalid columns and not raise an error.
-    df =  DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict, column_dict=column_dict)
-    with check:
-        assert "col1" not in DataFrameUtils.get_column_names(df)
-        assert "col2" not in DataFrameUtils.get_column_names(df)
-        assert "col3" not in DataFrameUtils.get_column_names(df)
-        assert "column1" in DataFrameUtils.get_column_names(df)
-        assert "column2" in DataFrameUtils.get_column_names(df)
-        assert "column3" in DataFrameUtils.get_column_names(df)
-
-
-@pytest.mark.parametrize(
-    "dataframe_framework, data_dict",
-    [
-        (CONST_DATAFRAME_FRAMEWORK.PANDAS.value,      dataDictExampleEmpty), 
-        (CONST_DATAFRAME_FRAMEWORK.POLARS.value,      dataDictExampleEmpty),
-        (CONST_DATAFRAME_FRAMEWORK.IBIS.value,        dataDictExampleEmpty),
-    ],
-)
-def test_create_dataframe_null_data(dataframe_framework, data_dict):
-
-    #Pandas Empty Data
-    df = DataFrameUtils.create_dataframe(dataframe_framework=dataframe_framework, data_dict=data_dict)
-    with check:
-        assert "column1" in DataFrameUtils.get_column_names(df)
-    with check:
-        assert "column2" in DataFrameUtils.get_column_names(df)
-    with check:
-        assert "column3" in DataFrameUtils.get_column_names(df)
-
-
-    # with check:
-    #     assert df["column3"]
-    # with pytest.raises(ValueError): #Either the dataframe creation should be stopped before this or this should fail
-        # print(df["column1"])
-        # assert pdDataframe["col1"] == [7,8,9] #Allows for creation of an unaccesable dataframe
-        # assert pdDataframe["col3"] == None 
-
-# def test_create_dataframe_polars_empty():
-
-# def test_create_dataframe_polars_empty():
-
-    # #Polars Empty Column Names
-    # with pytest.raises(ValueError):
-    #     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleEmpty)
-    # #Should raise errors when any of the column values is none
-
-    # tempDict = dict(columnDictExampleEmpty)
-    # tempDict["column1"] = "col1"
-    
-    # with pytest.raises(TypeError):
-    #     plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, tempDict)
-    # #Should raise a type error because there is a list in the column names
-
-    # #Polars Empty Data
-    # plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleEmpty, columnDictExample1)
-    # print(plDataframe) #Same issue as pandas, allows for creation of unaccessable dataframes with None columns
-
-    # with check:        
-    #     assert plDataframe["col3"] == [None, None, None]  
-
-# def test_create_dataframe_ibis_empty():
-    #Ibis Empty Column Names
-    # with pytest.raises(ValueError): 
-    #     ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleEmpty)
-    # #Should raise errors when any of the column values is none
-
-    # tempDict = dict(columnDictExampleEmpty)
-    # tempDict["column1"] = "col1"
-    
-    # with pytest.raises(TypeError):
-    #     ibisDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, tempDict)
-    # #Should raise a type error because there is a list in the column names
-
-    
-    # #Ibis Empty Data
-    # ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleEmpty, columnDictExample1)
-    # print(ibisDataFrame)
-
-    # #Expected column names
-    # with check:    
-    #     expCol = list(columnDictExample1.values())
-    #     assert ibisDataFrame.columns == expCol
-    # with check:    
-    #     valuesColOne = list(ibisDataFrame.execute()["col3"])
-    #     assert valuesColOne == [None] * 3
-
-    #Ibis actually works after being created with an empty value for one of the columns, needs to be restricted if we want it
-    #to stay in line with Polars and Pandas.
-    #Still need to raise value error when created with empty column names in the creation function
-
-"""
-def test_create_dataframe_pandas_dirty():
-    #Pandas Dirty Column Names
-    with pytest.raises(TypeError):
-        pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleDirty)
-    #Should create a type error because there is a list in the column names
-
-     #Pandas Dirty Data
-    pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExampleDirty, columnDictExample1)
-    with check:    
-        assert pdDataframe["col1"][0] == 4
-    with check:    
-        assert pdDataframe["col2"][2] == "90" 
-    with check:    
-        assert pdDataframe["col3"][1] == 5 
-    with check:    
-        assert pdDataframe["col3"][2][1] == 9.7 
-
-    #Need to ensure that inputed data is in a list form. Could just put the value in a list and multiple by row number
-
-
-def test_create_dataframe_polars_dirty():
-    #Polars Dirty Column Names
-    with pytest.raises(TypeError):
-        plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleDirty)
-    #Should create a type error because there is a list in the column names
-
-    #Polars Dirty Data
-    plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleDirty, columnDictExample1)
-    #Same issue as pandas, allows for creation of unaccessable dataframes with None columns
-    with check:    
-        assert plDataframe["col1"][0] == 4
-    with check:    
-        assert plDataframe["col2"][0] == None
-    with check:    
-        assert plDataframe["col2"][2] == "90"
-    with check:    
-        assert plDataframe["col3"][2] == None 
-    with check:    
-        assert plDataframe["col3"][0] == "A"
-
-    #Dirty no strings
-    tempDict = {}
-    tempDict["column1"] = [4, 4, 4]
-    tempDict["column2"] = [1, 2.4, 3]
-    tempDict["column3"] = [1.2, 2.3, "3.4"]
-
-    plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, tempDict, columnDictExample1)   
-    with check:    
-        assert plDataframe["col1"][0] == 4
-    with check:    
-        assert plDataframe["col2"][0] == 1
-    with check:    
-        assert plDataframe["col2"][1] == 2.4
-    with check:    
-        assert plDataframe["col3"][2] == "3.4" 
-        #assert plDataframe["col3"][0] == 1.2  #Need to Fix
-
-
-    #Polars always chooses the string as the data type when a column has more than one, this is different than pandas
-    #Need to validate that all inputed values are the same type in creation
-    #If integers and floats are inputted it changes the integers into float values
-
-
-
-def test_create_dataframe_ibis_dirty():
-    with pytest.raises(TypeError):
-        ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleDirty)
-    #Should create a type error because there is a list in the column names
-
-    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleDirty, columnDictExample1)
-    valuesColOne = list(ibisDataFrame.execute()["col1"])
-    valuesColTwo = list(ibisDataFrame.execute()["col2"])
-    valuesColThree = list(ibisDataFrame.execute()["col3"])
-    with check:    
-
-        assert valuesColOne == [4] * 3 #Ibis actually works with a single value inputted, creates a list so each row has the value
-    with check:    
-        assert valuesColTwo == [None, None, "90"]
-    with check:    
-        assert valuesColThree == ["A", None, None]
-        #Does the same as Polars, if multiple data type are inputted it defaults to strings
-
-    #Dirty no strings
-    tempDict = {}
-    tempDict["column1"] = [4, 4, 4]
-    tempDict["column2"] = [1, 2.4, 3]
-    tempDict["column3"] = [1.2, 2.3, "3.4"]
-
-    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, tempDict, columnDictExample1)
-    valuesColOne = list(ibisDataFrame.execute()["col1"])
-    valuesColTwo = list(ibisDataFrame.execute()["col2"])
-    valuesColThree = list(ibisDataFrame.execute()["col3"])
-
-    with check:    
-        assert valuesColOne == [4] * 3 
-    with check:    
-        assert valuesColTwo == [1, 2.4, 3]
-    with check:    
-        assert valuesColThree == [None, None, "3.4"]
-        #Same as Polars
-
-"""
-
-# def test_create_dataframe_pandas_uneven():
-    #Pandas Uneven Column Names
-    # with pytest.raises(Exception):
-    #    pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleUneven)
-
-    # with check:    
-    #     assert "col1" in pdDataframe
-    # with check:    
-    #     assert "column3" in pdDataframe
-    # with check:    
-    #     assert not "col3" in pdDataframe
-    # with check:    
-    #     assert pdDataframe["col2"][0] == 4
-    # with check:    
-    #     assert pdDataframe["column3"][0] == "A"
-
-    # columnDictExampleUneven2 = {
-    #     "column1": "col1",
-    #     "column2": "col2",
-    #     "column3": "col3",
-    #     "column4": "col4"
-    #     }
-
-    # with check:    
-    #     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExampleUneven2)
-    #     assert "col1" in pdDataframe
-    # with check:    
-    #     assert "col2" in pdDataframe
-    # with check:    
-    #     assert "col3" in pdDataframe
-    # with check:    
-    #     assert not "col4" in pdDataframe
-
-    #If there are not enough column names then the original names will be kept, if there are too many than only the \
-    #correct assiociations will be kept. Works properly
-
-    #Pandas Uneven Data
-    # with pytest.raises(ValueError):
-    #     pdDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExampleUneven, columnDictExample1)
-    #Creates a value error, does not raise it in the function tho
-    #Should test this before it gets to the actual pandas library code
-
-
-def test_create_dataframe_polars_uneven():
-    #Polars Uneven Column Names
-    plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleUneven)
-    with check:  
-        assert "col1" in plDataframe
-    with check:    
-        assert "col2" in plDataframe
-    with check:    
-        assert "column3" in plDataframe
-
-    columnDictExampleUneven2 = {
-	"column1": "col1",
-	"column2": "col2",
-    "column3": "col3",
-    "column4": "col4"
+# Test Data Fixtures
+@pytest.fixture
+def sample_data_clean() -> Dict[str, List[Any]]:
+    """Clean test data with consistent types and lengths."""
+    return {
+        "integers": [1, 2, 3],
+        "floats": [4.0, 5.0, 6.0],
+        "strings": ["A", "B", "C"],
+        "booleans": [True, False, True],
+        "dates": [date(2023, 1, 1), date(2023, 1, 2), date(2023, 1, 3)],
+        "decimals": [Decimal("1.1"), Decimal("2.2"), Decimal("3.3")]
     }
-    plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExampleUneven2)
-    with check:  
-        assert "col1" in plDataframe
-    with check:    
-        assert "col2" in plDataframe
-    with check:    
-        assert "col3" in plDataframe
-    with check:    
-        assert not "col4" in plDataframe
-        #Seems to work similar to Pandas
-    with check:    
 
-        #Polars Uneven Data
-        with pytest.raises(Exception):
-            plDataframe = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExampleUneven, columnDictExample1)
-        #Raises an error however it is a ShapeError and is not in the function 
-
-
-def test_create_dataframe_ibis_uneven():
-    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleUneven)
-    with check:  
-        assert ibisDataFrame.columns == ["col1", "col2", "column3"]
-
-    columnDictExampleUneven2 = {
-	"column1": "col1",
-	"column2": "col2",
-    "column3": "col3",
-    "column4": "col4"
+@pytest.fixture
+def sample_data_mixed_types() -> Dict[str, List[Any]]:
+    """Test data with mixed types in columns."""
+    return {
+        "mixed_ints_floats": [1, 2.5, 3],
+        "mixed_strings_ints": ["1", 2, "3"],
+        "mixed_nulls": [1, None, 3],
+        "mixed_complex": [1, "string", True]
     }
-    ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExampleUneven2)
-    with check:  
-        assert ibisDataFrame.columns == ["col1", "col2", "col3"]
 
-    with check:    
-
-        with pytest.raises(Exception):
-            ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven, columnDictExample1)
-    #Raises exact same error as the polars
-
-    dataDictExampleUneven2 = {
-	"column1": [2],
-	"column2": [4.7, 8.9, 0.002],
-	"column3": ["A", "B", "C"]
+@pytest.fixture
+def sample_data_uneven() -> Dict[str, List[Any]]:
+    """Test data with uneven column lengths."""
+    return {
+        "short": [1, 2],
+        "medium": [1, 2, 3],
+        "long": [1, 2, 3, 4, 5]
     }
-    with check:  
-        with pytest.raises(Exception): 
-            ibisDataFrame = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExampleUneven2, columnDictExample1)
-    #Intrestingly dataframes can be created with single values (str,int,float) inputed into the creation but lists cannot
 
-#Sample DFs
-
-df_pandas = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PANDAS.value, dataDictExample1, columnDictExample1)
-df_polars = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.POLARS.value, dataDictExample1, columnDictExample1)
-df_ibis = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.IBIS.value, dataDictExample1, columnDictExample1)
-df_pyarrow_table = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value, dataDictExample1, columnDictExample1)
-df_pyarrow_recordbatch = DataFrameUtils.create_dataframe(CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value, dataDictExample1, columnDictExample1)
-
-
-def test_cast_dataframe_to_pandas():
-    # Test using a Polars DataFrame
-    df_polars = pl.DataFrame({"a": [1, 2, 3]})
-
-    result = DataFrameUtils.cast_dataframe_to_pandas(df_polars)
-
-    with check:  
-        assert isinstance(result, pd.DataFrame)
-    with check:    
-        assert result.equals(pd.DataFrame({"a": [1, 2, 3]}))
-
-    """
-    TODO Test pa tables and pl lazyframes
-    """
- 
-    # Test using a Pandas DataFrame
-    df_pandas = pd.DataFrame({"a": [1, 2, 3]})
-    result = DataFrameUtils.cast_dataframe_to_pandas(df_pandas)
-
-    with check:  
-        assert isinstance(result, pd.DataFrame)
-    with check:    
-        assert result.equals(df_pandas)
-
-@pytest.mark.parametrize(
-    "input_df, expectedDF",
-    [
-        (df_pandas, df_pandas),
-        (df_polars, df_pandas),
-        (df_ibis, df_pandas),
-        (df_pyarrow_table, df_pandas),
-        (df_pyarrow_recordbatch, df_pandas),
-    ],
-)
-def test_cast_dataframe_to_pandas_extended(input_df, expectedDF):
-    assert DataFrameUtils.cast_dataframe_to_pandas(df=input_df).equals(expectedDF)
-
-def test_cast_dataframe_to_polars():
-    # Test using a Pandas DataFrame
-    df_pandas = pd.DataFrame({"a": [1, 2, 3]})
-
-    result = DataFrameUtils.cast_dataframe_to_polars(df_pandas)
-
-    with check:  
-        assert isinstance(result, pl.DataFrame)
-    with check:    
-        assert result.shape == (3, 1)
-
-    """
-    TODO Test pa tables and pl lazyframes
-    """
-
-@pytest.mark.parametrize(
-    "input_df, expectedDF",
-    [
-        (df_pandas, df_polars),
-        (df_polars, df_polars),
-        (df_ibis, df_polars),
-        (df_pyarrow_table, df_polars),
-        (df_pyarrow_recordbatch, df_polars),
-
-    ],
-)
-def test_cast_dataframe_to_polars_extended(input_df, expectedDF):
-    assert DataFrameUtils.cast_dataframe_to_polars(input_df).equals(expectedDF)
-
-
-
-def test_cast_dataframe_to_ibis():
-    # Test using a Pandas DataFrame
-    df_pandas = pd.DataFrame({"a": [1, 2, 3]})
-
-    result = DataFrameUtils.cast_dataframe_to_ibis(df_pandas)
-
-    with check:  
-        #Expected column names
-        expCol = ["a"]
-        assert result.columns == expCol
-        #Expected col values
-    with check:    
-        expOne = [1,2,3]
-        valuesColOne = list(result.execute()["a"])
-        assert valuesColOne == expOne
-
-    """
-    TODO Test pa tables and pl lazyframes
-    """
-
-@pytest.mark.parametrize(
-    "input_df, expectedColumns, expectedValues",
-    [
-        (df_pandas, ["col1","col2","col3"], ["A","B","C"]),
-        (df_polars, ["col1","col2","col3"], ["A","B","C"]),
-        (df_ibis,   ["col1","col2","col3"], ["A","B","C"]),
-        (df_pyarrow_table, ["col1","col2","col3"], ["A","B","C"]),
-        (df_pyarrow_recordbatch, ["col1","col2","col3"], ["A","B","C"]),
-
-    ],
-)
-def test_cast_dataframe_to_ibis_extended(input_df, expectedColumns, expectedValues):
-    result = DataFrameUtils.cast_dataframe_to_ibis(df=input_df)
-
-    with check:    
-        #Expected column names
-        assert DataFrameUtils.get_column_names(df=result) == expectedColumns
-        #Expected col values
-    with check:    
-        valuesColOne = list(result.execute()["col3"])
-        assert valuesColOne == expectedValues
-
-
-#Exceptions
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        (123, TypeError),
-        ("random_string", TypeError),
-    ],
-)
-def test_cast_dataframe_to_pandas_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        DataFrameUtils.cast_dataframe_to_pandas(input_df)
-
-
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        (123, TypeError),
-        ("random_string", TypeError),
-    ],
-)
-def test_cast_dataframe_to_polars_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        DataFrameUtils.cast_dataframe_to_polars(input_df)
-
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        (123, TypeError),
-        ("random_string", TypeError),
-    ],
-)
-def test_cast_dataframe_to_ibis_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        DataFrameUtils.cast_dataframe_to_ibis(input_df)
-
-
-#Casting to Dicts
-
-dataDictList = {
-    "col1": [1, 2, 3],
-    "col2": [4, 5, 6],
-    "col3": ["A", "B", "C"]
-}
-
-dataListDicts = [{"col1": 1, "col2": 4, "col3": "A"}, {"col1": 2, "col2": 5, "col3": "B"}, {"col1": 3, "col2": 6, "col3": "C"}]
-
-
-@pytest.mark.parametrize(
-    "input_df, expectedValue",
-    [
-        (df_pandas, dataDictList),
-        (df_polars, dataDictList),
-        (df_ibis, dataDictList),
-        (df_pyarrow_table, dataDictList),
-        (df_pyarrow_recordbatch, dataDictList),        
-    ],
-)
-def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
-    assert DataFrameUtils.cast_dataframe_to_dictonary_of_lists(input_df) == expectedValue
-
-@pytest.mark.parametrize(
-    "input_df, expectedValue",
-    [
-        (df_pandas, dataListDicts),
-        (df_polars, dataListDicts),
-        (df_ibis, dataListDicts),
-        (df_pyarrow_table, dataListDicts),
-        (df_pyarrow_recordbatch, dataListDicts),        
-
-    ],
-)
-def test_cast_dataframe_to_dict_of_lists(input_df, expectedValue):
-    assert DataFrameUtils.cast_dataframe_to_list_of_dictionaries(input_df) == expectedValue
-
-#Exceptions
-
-
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        (123, TypeError),
-        ("random_string", TypeError),
-        (["wonder what this'll do"], TypeError)
-    ],
-)
-def test_cast_dataframe__dictonary_of_lists_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        value = DataFrameUtils.cast_dataframe_to_dictonary_of_lists(input_df)
-
-
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        (123, TypeError),
-        ("random_string", TypeError),
-        (["wonder what this'll do"], TypeError)
-    ],
-)
-def test_cast_dataframe_to_dict_of_lists_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        value = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(input_df)
-
-
-#Drop Tests
-
-columnsToDrop1 = ["col1", "col2"]
-columnsToDrop2 = []
-columnsToDrop3 = ["col4", "AHHHHHHH"]
-columnsToDrop4 = ["col4", "col2"]
-columnsToDrop5 = ["col4", 5, "col6", "col7", "col8", "col9", "Dropping this many columns could have zero consequences", "col11"]
-
-
-notSoColumn1 = "whats the len of this?"
-notSoColumn2 = 123
-
-def test_drop_pandas():
-
-    with check:      
-        startColumns = list(df_pandas.columns)
-        value = DataFrameUtils.drop(df_pandas, columnsToDrop1)
-        assert list(value.columns) == ["col3"]
-
-    with check:    
-
-        value = DataFrameUtils.drop(df_pandas, columnsToDrop2)
-        assert list(value.columns) == startColumns
-
-    with check:    
-        value = DataFrameUtils.drop(df_pandas, columnsToDrop3)
-        assert list(value.columns) == startColumns
-
-    with check:    
-        value = DataFrameUtils.drop(df_pandas, columnsToDrop4)
-        assert list(value.columns) == ["col1", "col3"]
-
-    # with check:    
-    #     value = DataFrameUtils.drop(df_pandas, columnsToDrop5)
-    #     assert value.columns == startColumns #Turns out there are consequences, funny that
-        #TODO Fix this
-
-def test_drop_polars():
-
-    with check:      
-        startColumns = list(df_polars.columns)
-        print(startColumns)
-        value = DataFrameUtils.drop(df_polars, columnsToDrop1)
-        assert list(value.columns) == ["col3"]
-
-    with check:    
-        value = DataFrameUtils.drop(df_polars, columnsToDrop2)
-        assert list(value.columns) == startColumns
-
-    with check:    
-        value = DataFrameUtils.drop(df_polars, columnsToDrop3)
-        assert list(value.columns) == startColumns
-
-    with check:    
-        value = DataFrameUtils.drop(df_polars, columnsToDrop4)
-        assert list(value.columns) == ["col1", "col3"]
-
-    with check:    
-        value = DataFrameUtils.drop(df_polars, columnsToDrop5)
-        assert value.columns == startColumns #Apparently it only breaks for Pandas
-        
-    #TODO Fix this
-
-
-def test_drop_ibis():
-
-    with check:      
-        startColumns = list(df_ibis.columns)
-        print(startColumns)
-        value = DataFrameUtils.drop(df_ibis, columnsToDrop1)
-        print(value)
-        assert list(value.columns) == ["col3"]
-
-    with check:    
-        value = DataFrameUtils.drop(df_ibis, columnsToDrop2)
-        assert list(value.columns) == startColumns
-
-    with check:    
-        value = DataFrameUtils.drop(df_ibis, columnsToDrop3)
-        assert list(value.columns) == startColumns
-
-    with check:    
-        value = DataFrameUtils.drop(df_ibis, columnsToDrop4)
-        assert list(value.columns) == ["col1", "col3"]
-
-    with check:    
-        value = DataFrameUtils.drop(df_ibis, columnsToDrop5)
-        assert value.columns == startColumns 
-            
-        #TODO Need to add validation that it is a list to the function
-    
-
-@pytest.mark.parametrize(
-    "input_df, columnList, expected_exception",
-    [
-        # (df_pandas, notSoColumn1, ValueError), # This should not raise an error, but should just ignore the invalid column
-        (df_pandas, notSoColumn2, TypeError),  # NR: This catches an issue in the drop function being brittle to non-string column drop requests.  The function should just ignore invalid columns and not raise an error.
-        # (df_polars, notSoColumn1, ValueError), # Same as above for all df types
-        (df_polars, notSoColumn2, TypeError),
-        # (df_ibis, notSoColumn1, ValueError), 
-        (df_ibis, notSoColumn2, TypeError)
-
-    ],
-)
-def test_drop_exceptions_columns(input_df, columnList, expected_exception):
-    with pytest.raises(expected_exception):
-        value = DataFrameUtils.drop(df=input_df, columns=columnList)
-    #TODO Add validation so that attempts are not made without the list being true
-   
-
-    
-
-@pytest.mark.parametrize(
-    "input_df, columnList, expected_exception",
-    [
-        ("AHHH", columnsToDrop1, TypeError),
-        (1234, columnsToDrop1, TypeError),
-        (12.34, columnsToDrop1, TypeError)
-    ],
-)
-def test_drop_exceptions_dfs(input_df, columnList, expected_exception):
-    with pytest.raises(expected_exception):
-        value = DataFrameUtils.drop(input_df, columnList)
-
-
-
-
-
-#Get column names (Didn't see this, would have made past task easier, woops)   
-@pytest.mark.parametrize(
-    "input_df, columnList",
-    [
-        (df_pandas, list(df_pandas.columns)),
-        (df_polars, list(df_polars.columns)),
-        (df_ibis,   list(df_ibis.columns)),
-        (df_pyarrow_table, list(df_pandas.columns)),
-        # (df_pyarrow_recordbatch, list(df_pandas.columns)),        
-
-
-    ],
-)
-def test_get_column_names(input_df, columnList):
-    assert DataFrameUtils.get_column_names(input_df) == columnList
-
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        ("AHHH", TypeError),
-        (1234, TypeError),
-        (12.34, TypeError)
-    ],
-)
-def test_get_columns_names_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        value = DataFrameUtils.get_column_names(input_df)
-
-
-#Select Tests
-
-selectColumn1 = ["col3"]
-selectColumn2 = ["col1", "col2", "col3"]
-selectColumn3 = ["col1", "col3"]
-selectColumn4 = "col3"
-
-def test_select_pandas():
-
-    with check:      
-        valueSEL = DataFrameUtils.select(df_pandas, selectColumn1)
-        valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop1)
-        assert valueSEL.equals(valueDROP)
-
-    with check:    
-        valueSEL = DataFrameUtils.select(df_pandas, selectColumn2)
-        valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop2)
-        assert valueSEL.equals(valueDROP)
-
-    with check:    
-        valueSEL = DataFrameUtils.select(df_pandas, selectColumn3)
-        valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop4)
-        assert valueSEL.equals(valueDROP)
-
-    with check:    
-        valueSEL = DataFrameUtils.select(df_pandas, selectColumn4)
-        valueDROP = DataFrameUtils.drop(df_pandas, columnsToDrop1)
-        assert valueSEL.equals(valueDROP)
-
-
-def test_select_polars():
-
-    with check:      
-        valueSEL = DataFrameUtils.select(df_polars, selectColumn1)
-        valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
-        assert valueSEL.equals(valueDROP)
-        
-    with check:    
-        valueSEL = DataFrameUtils.select(df_polars, selectColumn2)
-        valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop2)
-        assert valueSEL.equals(valueDROP)
-
-    with check:    
-        valueSEL = DataFrameUtils.select(df_polars, selectColumn3)
-        valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop4)
-        assert valueSEL.equals(valueDROP)
-
-    with check:    
-        valueSEL = DataFrameUtils.select(df_polars, selectColumn4)
-        valueDROP = DataFrameUtils.drop(df_polars, columnsToDrop1)
-        assert valueSEL.equals(valueDROP)
-
-
-
-#Head Tests
-def test_head():
-
-    with check:      
-        value = DataFrameUtils.head(df_pandas, 2)
-        assert list(value["col1"]) == [1, 2]
-    with check:    
-        assert list(value["col2"]) == [4, 5]
-    with check:    
-        assert list(value["col3"]) == ["A", "B"]
-
-    with check:    
-        value = DataFrameUtils.head(df_polars, 2)
-        assert list(value["col1"]) == [1, 2]
-    with check:    
-        assert list(value["col2"]) == [4, 5]
-    with check:    
-        assert list(value["col3"]) == ["A", "B"]
-
-    with check:    
-        value = DataFrameUtils.head(df_ibis, 2)
-        assert list(value.execute()["col1"]) == [1, 2]
-    with check:    
-        assert list(value.execute()["col2"]) == [4, 5]
-    with check:    
-        assert list(value.execute()["col3"]) == ["A", "B"]
-
-def test_head_over():
-
-    value = DataFrameUtils.head(df_pandas, 7)
-    with check:      
-        assert list(value["col1"]) == [1, 2, 3]
-    with check:    
-        assert list(value["col2"]) == [4, 5, 6]
-    with check:    
-        assert list(value["col3"]) == ["A", "B", "C"]
-
-    value = DataFrameUtils.head(df_polars, 7)
-    with check:    
-        assert list(value["col1"]) == [1, 2, 3]
-    with check:    
-        assert list(value["col2"]) == [4, 5, 6]
-    with check:    
-        assert list(value["col3"]) == ["A", "B", "C"]
-
-    value = DataFrameUtils.head(df_ibis, 7)
-    with check:    
-        assert list(value.execute()["col1"]) == [1, 2, 3]
-    with check:    
-        assert list(value.execute()["col2"]) == [4, 5, 6]
-    with check:    
-        assert list(value.execute()["col3"]) == ["A", "B", "C"]
-
-def test_head_under():
-
-    #NR: I think It should be OK to call this, but with a warning rather than an exception.
-    # As per 0 case, I would expect an empty dataframe, but with column names and types populated.
-    with check:  
+@pytest.fixture
+def sample_column_mappings() -> Dict[str, Dict[str, Any]]:
+    """Various column mapping scenarios."""
+    return {
+        "simple": {
+            "integers": "numbers",
+            "strings": "text"
+        },
+        "with_types": {
+            "integers": {"target_name": "numbers", "data_type": "integer"},
+            "floats": {"target_name": "decimals", "data_type": "float"}
+        },
+        "invalid": {
+            "integers": 123,  # Invalid mapping
+            "missing": "column"  # Non-existent column
+        }
+    }
+
+@pytest.fixture
+def sample_dataframes(sample_data_clean):
+    """Create sample dataframes in different formats."""
+    return {
+        "pandas": pd.DataFrame(sample_data_clean),
+        "polars": pl.DataFrame(sample_data_clean),
+        "pyarrow": pa.Table.from_pydict(sample_data_clean),
+        "ibis": ibis.memtable(sample_data_clean)
+    }
+
+# Create DataFrame Tests
+class TestCreateDataFrame:
+    """Tests for DataFrame creation functionality."""
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value,
+        CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value
+    ])
+    def test_create_basic_dataframe(self, framework, sample_data_clean):
+        """Test basic dataframe creation with clean data."""
+        df = DataFrameUtils.create_dataframe(
+            dataframe_framework=framework,
+            data_dict=sample_data_clean
+        )
+        assert DataFrameUtils.count(df) == 3
+        assert set(DataFrameUtils.get_column_names(df)) == set(sample_data_clean.keys())
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+    ])
+    def test_create_with_column_mapping(self, framework, sample_data_clean, sample_column_mappings):
+        """Test dataframe creation with column mappings."""
+        df = DataFrameUtils.create_dataframe(
+            dataframe_framework=framework,
+            data_dict=sample_data_clean,
+            column_dict=sample_column_mappings["simple"]
+        )
+        assert "numbers" in DataFrameUtils.get_column_names(df)
+        assert "text" in DataFrameUtils.get_column_names(df)
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+    ])
+    def test_create_with_mixed_types(self, framework, sample_data_mixed_types):
+        """Test dataframe creation with mixed type data."""
+        df = DataFrameUtils.create_dataframe(
+            dataframe_framework=framework,
+            data_dict=sample_data_mixed_types
+        )
+        assert DataFrameUtils.count(df) == 3
+
+    def test_create_with_invalid_framework(self, sample_data_clean):
+        """Test creation with invalid framework specification."""
         with pytest.raises(ValueError):
-            value = DataFrameUtils.head(df_pandas, -1)
-    with check:  
+            DataFrameUtils.create_dataframe(
+                dataframe_framework="invalid",
+                data_dict=sample_data_clean
+            )
+
+    def test_create_with_uneven_data(self, sample_data_uneven):
+        """Test creation with uneven column lengths."""
+        with pytest.raises(pl.ShapeError):
+            DataFrameUtils.create_dataframe(
+                dataframe_framework=CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                data_dict=sample_data_uneven
+            )
+
+# Conversion Tests
+class TestDataFrameConversion:
+    """Tests for DataFrame conversion functionality."""
+
+    @pytest.mark.parametrize("source_df", ["pandas", "polars", "pyarrow", "ibis"])
+    def test_to_pandas(self, source_df, sample_dataframes):
+        """Test conversion to pandas DataFrame."""
+        df = DataFrameUtils.cast_dataframe_to_pandas(sample_dataframes[source_df])
+        assert isinstance(df, pd.DataFrame)
+        assert df.shape[0] == 3
+
+    @pytest.mark.parametrize("source_df", ["pandas", "polars", "pyarrow", "ibis"])
+    def test_to_polars(self, source_df, sample_dataframes):
+        """Test conversion to polars DataFrame."""
+        df = DataFrameUtils.cast_dataframe_to_polars(sample_dataframes[source_df])
+        assert isinstance(df, pl.DataFrame)
+        assert df.shape[0] == 3
+
+    @pytest.mark.parametrize("source_df", ["pandas", "polars", "pyarrow", "ibis"])
+    def test_to_arrow(self, source_df, sample_dataframes):
+        """Test conversion to Arrow table."""
+        df = DataFrameUtils.cast_dataframe_to_arrow(sample_dataframes[source_df])
+        assert isinstance(df, pa.Table)
+        assert df.num_rows == 3
+
+# Column Operation Tests
+class TestColumnOperations:
+    """Tests for column operations."""
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+    ])
+    def test_drop_columns(self, framework, sample_data_clean):
+        """Test dropping columns."""
+        df = DataFrameUtils.create_dataframe(framework, sample_data_clean)
+        columns_to_drop = ["integers", "floats"]
+        result = DataFrameUtils.drop(df, columns_to_drop)
+        assert all(col not in DataFrameUtils.get_column_names(result) for col in columns_to_drop)
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+    ])
+    def test_select_columns(self, framework, sample_data_clean):
+        """Test selecting columns."""
+        df = DataFrameUtils.create_dataframe(framework, sample_data_clean)
+        columns_to_select = ["integers", "strings"]
+        result = DataFrameUtils.select(df, columns_to_select)
+        assert set(DataFrameUtils.get_column_names(result)) == set(columns_to_select)
+
+# Data Export Tests
+class TestDataExport:
+    """Tests for data export functionality."""
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+    ])
+    def test_to_dict_of_lists(self, framework, sample_data_clean):
+        """Test conversion to dictionary of lists."""
+        df = DataFrameUtils.create_dataframe(framework, sample_data_clean)
+        result = DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df)
+        assert isinstance(result, dict)
+        assert all(isinstance(v, list) for v in result.values())
+
+    @pytest.mark.parametrize("framework", [
+        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
+        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+    ])
+    def test_to_list_of_dicts(self, framework, sample_data_clean):
+        """Test conversion to list of dictionaries."""
+        df = DataFrameUtils.create_dataframe(framework, sample_data_clean)
+        result = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df)
+        assert isinstance(result, list)
+        assert all(isinstance(d, dict) for d in result)
+
+# Error Cases Tests
+class TestErrorCases:
+    """Tests for error handling."""
+
+    def test_invalid_column_names(self, sample_data_clean):
+        """Test handling of invalid column names."""
+        invalid_mapping = {123: "column", "valid": None}
         with pytest.raises(ValueError):
-            value = DataFrameUtils.head(df_polars, -1)
-    with check:  
-        with pytest.raises(ValueError):
-            value = DataFrameUtils.head(df_polars, -1)
-        
-        #NR: It should be OK to call this.  I would expect an empty dataframe, but with column names and types populated.
-    # with check:  
-    #     value = DataFrameUtils.head(df_pandas, 0)
-    # with check:  
-    #     value = DataFrameUtils.head(df_polars, 0)
-    # with check:  
-    #     value = DataFrameUtils.head(df_polars, 0)
-        
-#TODO Not raising an error when n == 0.
+            DataFrameUtils.create_dataframe(
+                CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                sample_data_clean,
+                invalid_mapping
+            )
 
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        ("AHHH", TypeError),
-        (1234, TypeError),
-        (12.34, TypeError)
-    ],
-)
-def test_head_exceptions(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        value = DataFrameUtils.head(input_df, 2)
+    def test_invalid_data_types(self, sample_data_clean):
+        """Test handling of invalid data types."""
+        invalid_data = sample_data_clean.copy()
+        invalid_data["invalid"] = [object(), object()]
 
+        with pytest.raises(pl.ShapeError):
+            DataFrameUtils.create_dataframe(
+                CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                invalid_data
+            )
 
-#Count Tests
-@pytest.mark.parametrize(
-    "input_df",
-    [
-        (df_pandas),
-        (df_polars),
-        (df_ibis),
-        (df_pyarrow_table),
-        # (df_pyarrow_recordbatch),
+# Performance Tests
+@pytest.mark.performance
+class TestPerformance:
+    """Performance tests."""
 
-    ],
-)
-def test_select_exceptions(input_df):
-    assert DataFrameUtils.count(input_df) == 3
+    def test_large_dataframe_creation(self):
+        """Test creation of large dataframe."""
+        large_data = {
+            "column_" + str(i): list(range(10000))
+            for i in range(10)
+        }
+        df = DataFrameUtils.create_dataframe(
+            CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+            large_data
+        )
+        assert DataFrameUtils.count(df) == 10000
 
-@pytest.mark.parametrize(
-    "input_df, expected_exception",
-    [
-        ("AHHH", TypeError),
-        (1234, TypeError),
-        (12.34, TypeError)
-    ],
-)
-def test_count(input_df, expected_exception):
-    with pytest.raises(expected_exception):
-        DataFrameUtils.count(input_df)
+    def test_large_dataframe_conversion(self):
+        """Test conversion of large dataframe."""
+        large_data = {
+            "column_" + str(i): list(range(10000))
+            for i in range(10)
+        }
+        df = pl.DataFrame(large_data)
+        result = DataFrameUtils.cast_dataframe_to_pandas(df)
+        assert len(result) == 10000
+
+# Utility Functions
+@pytest.fixture
+def create_test_df():
+    """Utility function to create test dataframes."""
+    def _create_df(framework: str, data: Dict[str, List[Any]], columns: Dict[str, str] = None):
+        return DataFrameUtils.create_dataframe(framework, data, columns)
+    return _create_df

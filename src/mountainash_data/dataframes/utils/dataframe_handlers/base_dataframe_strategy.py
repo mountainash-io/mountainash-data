@@ -1,3 +1,5 @@
+# path: src/mountainash_data/dataframes/utils/base_dataframe_strategy.py
+
 from abc import abstractmethod, ABC
 from typing import Union, Any,  Dict, List, Optional
 import uuid
@@ -11,9 +13,13 @@ import ibis
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
-from ..ibis_dataframe import init_ibis_connection
-from .filter import FilterNode
-from ..base_dataframe import BaseDataFrame
+from ..dataframe_filters import FilterNode
+from ...base_dataframe import BaseDataFrame
+
+
+def init_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
+    return ibis.connect(resource=f"{ibis_schema}://")
+
 
 class BaseDataFrameStrategy(ABC):
 
@@ -135,9 +141,6 @@ class BaseDataFrameStrategy(ABC):
 
         self.validate_dataframe_input(df=df)
 
-        # if self.supports_pyarrow_interchange(df=df):
-        #     return from_dataframe(df=df)
-        # else:
         return self._cast_to_pyarrow_table(df=df)
 
 
@@ -274,8 +277,9 @@ class BaseDataFrameStrategy(ABC):
 
 
     def select(self,
-               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch], 
-               columns: List[str]|str) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+               df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+               columns: List[str]|str
+               ) -> Union[pa.Table, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.RecordBatch, List[pa.RecordBatch]]:
         
         self.validate_dataframe_input(df=df)
 
@@ -342,3 +346,36 @@ class BaseDataFrameStrategy(ABC):
             raise ValueError("batch_size must be greater than 0")
         
         return self._split_in_batches(df, batch_size)    
+    
+
+    @abstractmethod
+    def _rename(self, 
+            df: Any,
+            mapping: Dict[str, str], 
+            **kwargs) -> Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]:
+
+        pass
+
+    def rename(self, 
+            df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+            mapping: Dict[str, str], 
+        ) -> List[Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]]:
+        
+        """Rename columns in a dataframe.
+        
+        Args:
+            df: Input dataframe
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments passed to underlying rename implementation
+            
+        Returns:
+            DataFrame with renamed columns
+            
+        Raises:
+            ValueError: If mapping contains invalid column names
+        """
+
+        self.validate_dataframe_input(df=df)
+       
+        return self._rename(df, mapping)    
+    

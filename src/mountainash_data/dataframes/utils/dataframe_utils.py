@@ -1,206 +1,194 @@
+# path: src/mountainash_data/dataframes/utils/dataframe_utils.py
+
 from typing import Union, Any,  Dict, List, Optional, Sequence, Set
 
-import collections
 
 import pandas as pd
+from mountainash_data.dataframes.utils.column_mapper.column_config import ColumnMapConfig
 import polars as pl
 import pyarrow as pa
 
 import ibis
-from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
 import ibis.expr.types as ir
 import ibis.expr.schema as ibis_schema
 
-from . import BaseDataFrameStrategy, PandasDataFrameUtils, PolarsDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, IbisDataFrameUtils, PyArrowRecordBatchUtils
 
-from .filter import FilterCondition, FilterNode
+from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
+
+from .dataframe_handlers import BaseDataFrameStrategy #, PandasDataFrameUtils, PolarsDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, IbisDataFrameUtils, PyArrowRecordBatchUtils
+
+from .dataframe_filters import FilterCondition, FilterNode
 from ..base_dataframe import BaseDataFrame
+from .dataframe_handlers.dataframe_strategy_factory import DataFrameStrategyFactory
+from .pydata_converter import PyDataConverterFactory
+from .column_mapper.column_mapper import ColumnMapper
 
+# from .data_structures.data_structure_adapter import DataStructureAdapter, InputType
 # from pyarrow import Table as irTable  # assuming you are using pyarrow's Table for ir.Table
 
 
 class DataFrameUtils:
 
+    ################################
+    # Dataframe Creation Methods
 
     @classmethod
     def create_dataframe(
             cls,
             dataframe_framework: str, 
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
-            column_dict: Optional[Dict[str, str]]=None,
-            column_types: Optional[Dict[str, str]]=None
+            column_dict: Optional[Dict[str, str|Dict[str,str]]]=None,
          ) -> Union[pd.DataFrame, pl.DataFrame, ir.Table, pa.Table, pa.RecordBatch]:
 
         if not dataframe_framework:
             raise ValueError("dataframe_framework must be specified")
         
-
         if dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PANDAS.value:
-            return cls.create_pandas_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+            return cls.create_pandas_dataframe(data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
-            return cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+            return cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.IBIS.value:
-            return cls.create_ibis_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+            return cls.create_ibis_dataframe(data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value:
-            return cls.create_pyarrow_table(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+            return cls.create_pyarrow_table(data_dict=data_dict, column_dict=column_dict)
         elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value:
-            return cls.create_pyarrow_recordbatch(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+            return cls.create_pyarrow_recordbatch(data_dict=data_dict, column_dict=column_dict)
         else:
             raise ValueError(f"Unsupported dataframe framework: {dataframe_framework}")
         
+
+    # @classmethod
+    # def _apply_column_mapping(cls, df: pl.DataFrame, column_dict: Dict[str, str|Dict[str,str]]) -> pl.DataFrame:
+    #     df_cols = DataFrameUtils.get_column_names(df)
+    #     new_colnames = {col: column_dict.get(col, col) for col in df_cols}
+    #     return df.rename(mapping=new_colnames)
+    
+
     @classmethod
     def create_pandas_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
-            column_dict: Optional[Dict[str, str]]=None,
-            column_types: Optional[Dict[str, str]]=None) -> Optional[pd.DataFrame]:
+            column_dict: Optional[Dict[str, str|Dict[str,str]]]=None,
+            filter_unmapped: Optional[bool]=False
+            ) -> Optional[pd.DataFrame]:
 
         if data_dict is None:
             return pd.DataFrame()    
 
+        #Convert data to Polars DataFrame as an intermediate format
+        pydata_strategy = PyDataConverterFactory.get_strategy(data_dict)
+        pl_df = pydata_strategy.convert(data_dict)
 
-        pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
-        return cls.cast_dataframe_to_pandas(df=pl_df)
+
+        #Apply column mappings and type enforcement if specified
+        col_mapping: ColumnMapConfig|None = ColumnMapper.create_config(column_dict, filter_unmapped)
+        
+        if col_mapping:
+            pl_df =  ColumnMapper.apply_mapping(pl_df,col_mapping)
+
+        #Finalise the cast to the target dataframe
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=pl_df)
+        return df_strategy.cast_to_pandas(df=pl_df)
+
 
 
     @classmethod
     def create_polars_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
-            column_dict: Optional[Dict[str, str]]=None,
-            column_types: Optional[Dict[str, str]]=None) -> pl.DataFrame:
+            column_dict: Optional[Dict[str, str|Dict[str,str]]]=None,
+            filter_unmapped: Optional[bool]=False
+
+            ) -> pl.DataFrame:
 
         if data_dict is None:
             return pl.DataFrame()    
 
+        #Convert data to Polars DataFrame as an intermediate format
+        pydata_strategy = PyDataConverterFactory.get_strategy(data_dict)
+        pl_df = pydata_strategy.convert(data_dict)
 
-        if column_dict and cls.validate_column_mapping(column_dict=column_dict):
+        col_mapping: ColumnMapConfig|None = ColumnMapper.create_config(column_dict, filter_unmapped)
+        
+        if col_mapping:
+            pl_df =  ColumnMapper.apply_mapping(pl_df, col_mapping )
 
-            df = pl.DataFrame(data_dict, strict=False)
-            df_cols = DataFrameUtils.get_column_names(df)
-            new_colnames = {col: column_dict.get(col, col) for col in df_cols}
-
-            return df.rename(mapping=new_colnames)
-
-        else:
-            return pl.DataFrame(data=data_dict, strict=False)
+        return pl_df
             
     @classmethod
     def create_pyarrow_recordbatch(
         cls,
         data_dict: Dict[str, Union[Sequence, List]] | List[Dict[str, Any]],
-        column_dict: Optional[Dict[str, str]] = None,
-        column_types: Optional[Dict[str, str]] = None,
+        column_dict: Optional[Dict[str, str|Dict[str,str]]] = None,
+        filter_unmapped: Optional[bool]=False,
         batchsize: int = 1
     ) -> List[pa.RecordBatch]:
 
         if data_dict is None:
             return []    
+
+        #Convert data to Polars DataFrame as an intermediate format
+        pydata_strategy = PyDataConverterFactory.get_strategy(data_dict)
+        pl_df = pydata_strategy.convert(data_dict)
+
+        col_mapping: ColumnMapConfig|None = ColumnMapper.create_config(column_dict, filter_unmapped)
         
-        pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
-        return cls.cast_dataframe_to_pyarrow_recordbatch(df=pl_df, batchsize=batchsize)
+        if col_mapping:
+            pl_df =  ColumnMapper.apply_mapping(pl_df, col_mapping )
+
+        #Finalise the cast to the target dataframe
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=pl_df)
+        return df_strategy.cast_to_pyarrow_recordbatch(df=pl_df, batchsize=batchsize)
+
 
 
     @classmethod
     def create_pyarrow_table(
         cls,
         data_dict: Dict[str, Union[Sequence, List]] | List[Dict[str, Any]],
-        column_dict: Optional[Dict[str, str]] = None,
-        column_types: Optional[Dict[str, str]] = None
+        column_dict: Optional[Dict[str, str|Dict[str,str]]] = None,
+        filter_unmapped: Optional[bool]=False
+
     ) -> pa.Table:
         
         if data_dict is None:
             return pa.Table()
 
-        pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+        #Convert data to Polars DataFrame as an intermediate format
+        pydata_strategy = PyDataConverterFactory.get_strategy(data_dict)
+        pl_df = pydata_strategy.convert(data_dict)
+
+        col_mapping: ColumnMapConfig|None = ColumnMapper.create_config(column_dict, filter_unmapped)
+        
+        if col_mapping:
+            pl_df =  ColumnMapper.apply_mapping(pl_df, col_mapping )
+
         return cls.cast_dataframe_to_arrow(df=pl_df)
 
-
-        # if isinstance(data_dict, dict):
-        #     # Convert dict of lists/sequences to PyArrow table
-        #     table = pa.Table.from_pydict(data_dict)
-        # elif isinstance(data_dict, list):
-        #     # Convert list of dicts to PyArrow table
-        #     table = pa.Table.from_pylist(data_dict)
-        # else:
-        #     raise ValueError("Input must be a dictionary of sequences or a list of dictionaries")
-
-        # if column_dict and cls.validate_column_mapping(column_dict=column_dict):
-
-        #     # Rename columns if column_dict is provided
-        #     # new_names = [column_dict.get(col, col) for col in table.column_names]
-        #     df_cols = cls.get_column_names(table)
-        #     new_colnames = {col: column_dict.get(col, col) for col in df_cols}
-
-        #     table = table.rename_columns(new_colnames)
-
-        # return table
 
     @classmethod
     def create_ibis_dataframe(
             cls,
             data_dict: Dict[str, Union[Sequence,List]] | List[Dict[str, Any]],
-            column_dict: Optional[Dict[str, str]] = None,
-            column_types: Optional[Dict[str, str]]=None ) -> Optional[ir.Table]:
+            column_dict: Optional[Dict[str, str|Dict[str,str]]] = None,
+            filter_unmapped: Optional[bool]=False
+            ) -> Optional[ir.Table]:
         
-        pl_df = cls.create_polars_dataframe(data_dict=data_dict, column_dict=column_dict, column_types=column_types)
+
+        #Convert data to Polars DataFrame as an intermediate format
+        pydata_strategy = PyDataConverterFactory.get_strategy(data_dict)
+        pl_df = pydata_strategy.convert(data_dict)
+
+        col_mapping: ColumnMapConfig|None = ColumnMapper.create_config(column_dict, filter_unmapped)
+        
+        if col_mapping:
+            pl_df =  ColumnMapper.apply_mapping(pl_df, col_mapping )
 
         return cls.cast_dataframe_to_ibis(df=pl_df)
 
     ################################
     # Validation Methods
 
-    @classmethod
-    def validate_column_mapping(cls,
-                                column_dict: Optional[Dict[str, str]]=None) -> bool:
-        """
-        Validates the column mapping for a given data dictionary and column dictionary.
-
-        Args:
-            data_dict (Dict[str, Union[Sequence,List]] | List[Dict[str, Any]]): The data dictionary to validate.
-            column_dict (Optional[Dict[str, str]]): The column dictionary to validate. Defaults to None.
-
-        Raises:
-            ValueError: If source and target column names are not specified or if duplicate column names are found.
-            TypeError: If column names are not strings.
-        """
-
-        # Column Validation
-        if column_dict is not None:
-
-            try:
-                # Cannot have duplicate column names in the keys or the values
-                if len(column_dict) != len(set(column_dict.values())):
-                    duplicate_values = [item for item, count in collections.Counter(column_dict.values()).items() if count > 1]    
-                    raise ValueError(f"Source and target column names must be unique. Duplicate column names: {duplicate_values}")
-
-                if len(column_dict) != len(set(column_dict.keys())):
-                    duplicate_values = [item for item, count in collections.Counter(column_dict.keys()).items() if count > 1]    
-                    raise ValueError(f"Source and target column names must be unique. Duplicate column names: {duplicate_values}")
-
-                if None in column_dict.values():
-                    raise ValueError("Source and target column names must be specified")
-
-                column_types = [type(colname) for colname in column_dict.values()]
-                if any(coltype != str for coltype in column_types):
-                    raise ValueError("Column names must be strings")
-                
-            except ValueError as e:
-                print(f"Error validating column mapping: {e}")
-                return False
-            except TypeError as e:
-                print(f"Error validating column mapping: {e}")
-                return False
-        return True
-
-
-    @classmethod
-    def _is_recordbatch(cls, df: Any) -> bool:
-
-        if isinstance(df, list) and len(df) > 0:
-            return isinstance(df[0], pa.RecordBatch)
-        else:
-            return isinstance(df, pa.RecordBatch)
 
     @classmethod
     def validate_dataframe_supported(cls, 
@@ -209,33 +197,12 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.validate_dataframe_input(df)
 
 
     ################################
-    # Strategy Based Methods
-    @classmethod
-    def _get_strategy(cls, 
-                      df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> BaseDataFrameStrategy:
-        
-        if isinstance(df, BaseDataFrame):
-            return IbisDataFrameUtils()
-        elif isinstance(df, ir.Table):
-            return IbisDataFrameUtils()
-        elif cls._is_recordbatch(df=df):
-            return PyArrowRecordBatchUtils()
-        elif isinstance(df, pa.Table):
-            return PyArrowTableUtils()
-        elif isinstance(df, pl.DataFrame ):
-            return PolarsDataFrameUtils()
-        elif isinstance(df, pl.LazyFrame ):
-            return PolarsLazyFrameUtils()
-        elif isinstance(df, pd.DataFrame):
-            return PandasDataFrameUtils()
-        else:
-            raise TypeError(f"Unsupported dataframe type. Received {type(df)}")
-
+    # Dataframe Conversion Methods
 
     @classmethod
     def cast_dataframe_to_pandas(cls, df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
@@ -243,17 +210,18 @@ class DataFrameUtils:
         if df is None:
             return df
 
-        strategy = cls._get_strategy(df=df)
-        return strategy.cast_to_pandas(df=df)
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=df)
+        return df_strategy.cast_to_pandas(df=df)
 
     @classmethod
     def cast_dataframe_to_polars(cls, df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pl.DataFrame:
 
         if df is None:
             return df
-        
-        strategy = cls._get_strategy(df=df)
-        return strategy.cast_to_polars(df=df)
+
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=df)
+
+        return df_strategy.cast_to_polars(df=df)
 
     @classmethod
     def cast_dataframe_to_arrow(cls, 
@@ -262,8 +230,9 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df=df)
-        return strategy._cast_to_pyarrow_table(df)
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=df)
+        
+        return df_strategy.cast_to_pyarrow_table(df)
 
     @classmethod
     def cast_dataframe_to_pyarrow_recordbatch(cls, 
@@ -273,15 +242,11 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df=df)
-        return strategy.cast_to_pyarrow_recordbatch(df=df, batchsize=batchsize)
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=df)
 
-    # @classmethod
-    # def cast_dataframe_to_pyarrow_reader(cls, 
-    #                                           df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]
-    #                                           ) -> pa.RecordBatchReader:
-    #     strategy = cls._get_strategy(df=df)
-    #     return strategy.cast_to_pyarrow_reader(df=df)
+        return df_strategy.cast_to_pyarrow_recordbatch(df=df, batchsize=batchsize)
+
+
 
 
     @classmethod
@@ -293,8 +258,10 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df=df)
-        return strategy.cast_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)
+        df_strategy = DataFrameStrategyFactory._get_strategy(df=df)
+
+        return df_strategy.cast_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)
+
 
     @classmethod
     def create_temp_table_ibis(cls, 
@@ -309,7 +276,7 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df=df)
+        strategy = DataFrameStrategyFactory._get_strategy(df=df)
         return strategy.create_temp_table_ibis(df=df, 
                                      tablename_prefix= tablename_prefix,
                                      current_ibis_backend=current_ibis_backend,
@@ -327,7 +294,7 @@ class DataFrameUtils:
         if df is None:
             return {}
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.cast_to_dictonary_of_lists(df)
 
     @classmethod
@@ -337,7 +304,7 @@ class DataFrameUtils:
         if df is None:
             return {}
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.cast_to_dictonary_of_series(df)
 
     @classmethod
@@ -347,9 +314,12 @@ class DataFrameUtils:
         if df is None:
             return []
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.cast_to_list_of_dictionaries(df)
 
+
+    ################################
+    # Strategy Based Methods - Dataframne Manipulation
 
     @classmethod
     def get_column_names(cls, 
@@ -358,7 +328,7 @@ class DataFrameUtils:
         if df is None:
             return []
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.get_column_names(df)
 
     @classmethod
@@ -368,7 +338,7 @@ class DataFrameUtils:
         if df is None:
             return None
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.get_table_schema(df)
 
 
@@ -380,7 +350,7 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.drop(df, columns)
 
     @classmethod
@@ -391,7 +361,7 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.select(df, columns)
 
     @classmethod
@@ -402,7 +372,7 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.head(df, n)
 
     @classmethod
@@ -412,7 +382,7 @@ class DataFrameUtils:
         if df is None:
             return 0
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.count(df)
     
 
@@ -432,7 +402,7 @@ class DataFrameUtils:
         if df is None:
             return df
         
-        strategy = cls._get_strategy(df)
+        strategy = DataFrameStrategyFactory._get_strategy(df)
         return strategy.filter(df, condition)
 
     @classmethod
@@ -449,9 +419,12 @@ class DataFrameUtils:
 
         if df is None or column is None:
             return []
-        
-        obj_df = cls.select(df=df, columns=column)
-        obj_dict = cls.cast_dataframe_to_dictonary_of_lists(df=obj_df)
+
+        strategy = DataFrameStrategyFactory._get_strategy(df)
+
+
+        obj_df = strategy.select(df=df, columns=column)
+        obj_dict = strategy.cast_to_dictonary_of_lists(df=obj_df)
 
         if obj_dict is None:
             return []
@@ -487,5 +460,5 @@ class DataFrameUtils:
         if df is None:
             return df      
           
-        strategy = cls._get_strategy(df=df)
+        strategy = DataFrameStrategyFactory._get_strategy(df=df)
         return strategy.split_in_batches(df, batch_size)

@@ -27,6 +27,8 @@ class LogicalCondition(FilterNode):
         return visitor.visit_logical_condition(self)
 
 class FilterVisitor(ABC):
+
+
     @abstractmethod
     def visit_column_condition(self, condition: ColumnCondition) -> Callable:
         pass
@@ -176,4 +178,4 @@ class FilterCondition:
 
     @classmethod
     def not_(cls, condition: FilterNode) -> LogicalCondition:
-        return LogicalCondition("not", [condition])
+        return LogicalCondition("not", [condition]) 

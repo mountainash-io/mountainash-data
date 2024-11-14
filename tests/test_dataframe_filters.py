@@ -7,8 +7,8 @@ from ibis import _
 import numpy as np
 from datetime import datetime, date
 
-from mountainash_data import DataFrameUtils
-from mountainash_data.dataframes.utils.filter import FilterCondition
+from mountainash_data.dataframes.utils import DataFrameUtils
+from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition
 
 # Helper function to create test data in different formats
 def create_test_data(df_type):

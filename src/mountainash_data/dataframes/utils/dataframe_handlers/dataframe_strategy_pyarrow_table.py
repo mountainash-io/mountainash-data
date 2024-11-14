@@ -1,3 +1,4 @@
+# path: src/mountainash_data/dataframes/utils/dataframe_strategy_pyarrow_table.py
 from typing import Any,  Dict, List
 
 import pandas as pd
@@ -7,7 +8,8 @@ import pyarrow as pa
 import ibis.expr.schema as ibis_schema
 
 from .base_dataframe_strategy import BaseDataFrameStrategy
-from .filter import FilterNode, PyArrowFilterVisitor
+from ..dataframe_filters import FilterNode, PyArrowFilterVisitor
+
 
 class PyArrowTableUtils(BaseDataFrameStrategy):
     def _cast_to_pandas(self, df: pa.Table) -> pd.DataFrame:
@@ -64,3 +66,34 @@ class PyArrowTableUtils(BaseDataFrameStrategy):
     
     def _split_in_batches(self, df: pa.Table, batch_size: int) -> List[pa.Table]:
         return [df.slice(i, batch_size) for i in range(0, df.num_rows, batch_size)]    
+    
+
+    def _rename(self,
+            df: pa.Table,
+            mapping: Dict[str, str],
+            **kwargs) -> pa.Table:
+        """Rename columns in a PyArrow Table.
+        
+        Args:
+            df: Input PyArrow Table
+            mapping: Dictionary mapping old column names to new column names
+            **kwargs: Additional keyword arguments (not used)
+            
+        Returns:
+            pa.Table: Table with renamed columns
+        """
+        # Validate column existence
+        missing_cols = set(mapping.keys()) - set(df.column_names)
+        if missing_cols:
+            raise ValueError(f"Columns not found in Table: {missing_cols}")
+
+        # Validate no duplicate target names
+        new_names = set(mapping.values())
+        if len(new_names) != len(mapping):
+            raise ValueError("Duplicate target column names in mapping")
+
+        # Create new names list, replacing old names with new ones
+        new_names = [mapping.get(name, name) for name in df.column_names]
+        
+        # PyArrow rename_columns returns a new table
+        return df.rename_columns(new_names)    

@@ -1,3 +1,6 @@
+
+# path: src/mountainash_data/dataframes/utils/dataframe_factory.py
+
 from typing import Union, Any,  Dict, List, Set, Optional, Sequence
 import pandas as pd
 import polars as pl
@@ -9,8 +12,9 @@ import ibis
 
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
 from ..base_dataframe import BaseDataFrame
-from .dataframe_utils import DataFrameUtils
 from ..ibis_dataframe import IbisDataFrame
+from .dataframe_utils import DataFrameUtils
+from ..utils.ibis_utils import get_default_ibis_backend_schema, init_default_ibis_backend
 
 class DataFrameFactory:
 
@@ -62,7 +66,7 @@ class DataFrameFactory:
                                               ibis_backend_schema=ibis_backend_schema,
                                               tablename_prefix = tablename_prefix)
 
-        if not isinstance(obj_df, IbisDataFrame):
+        if not isinstance(obj_df, BaseDataFrame):
             raise ValueError("Unexpected dataframe type returned")
 
         return obj_df
@@ -88,8 +92,15 @@ class DataFrameFactory:
         if column_names is None or len(column_names) == 0:
             return None
         
-        if DataFrameUtils._is_recordbatch(df=df):
-            df = DataFrameUtils.cast_dataframe_to_arrow(df=df)
+        #Identify the ibis backend           
+        if not ibis_backend:
+            if not ibis_backend_schema:
+                ibis_backend_schema = get_default_ibis_backend_schema()
+
+            ibis_backend = init_default_ibis_backend(default_ibis_schema=ibis_backend_schema)
+
+        #Pre-create an ibis table with the appropriate backend and tablename
+        df = DataFrameUtils.cast_dataframe_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)
                
         return IbisDataFrame(df=df, ibis_backend=ibis_backend, ibis_backend_schema=ibis_backend_schema, tablename_prefix=tablename_prefix)
 
