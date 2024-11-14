@@ -81,7 +81,8 @@ jobs:
       - name: Get Base Version
         id: base_version
         run: |
-          BASE_VERSION=$(python -c "import sys; sys.path.append('src'); from ${{env.PACKAGE_SRCDIR}}.__version__ import __version__; print(__version__)")
+          # BASE_VERSION=$(python -c "import sys; sys.path.append('src'); from ${{env.PACKAGE_SRCDIR}}.__version__ import __version__; print(__version__)")
+          BASE_VERSION=$(hatch version)
           echo "BASE_VERSION=${BASE_VERSION}" >> $GITHUB_ENV
           
           # Validate semantic version format
