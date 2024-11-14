@@ -209,8 +209,8 @@ jobs:
 
       - name: Verify Version Before Build
         run: |
-          echo "Checking version from Python:"
-          python -c "import sys; sys.path.append('src'); from ${PACKAGE_SRCDIR}.__version__ import __version__; print(f'Version from import: {__version__}')"
+          echo "Checking version from Hatch:"
+          hatch version
 
 
       - name: Build Package
