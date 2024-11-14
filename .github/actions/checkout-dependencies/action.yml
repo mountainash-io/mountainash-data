@@ -40,7 +40,7 @@ runs:
             continue
           fi
 
-          org_name=$(echo "$dep" | jq -r '.["org-name"] // "${{ inputs.org-name }"')
+          org_name=$(echo "$dep" | jq -r '.["org-name"] // "${{ inputs.org-name }}"')
 
           # default_branch=$(echo "$dep" | jq -r '.["default-branch"] // "main"')
           default_branch=${{ inputs.default-branch }}
