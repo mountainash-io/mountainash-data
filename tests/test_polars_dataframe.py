@@ -10,7 +10,7 @@ from itertools import product
 
 from mountainash_data import IbisDataFrame
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
-from mountainash_data import DataFrameUtils
+from mountainash_data.dataframes.utils import DataFrameUtils
 
 # Create fixture for initializing IbisDataFrame instance with sample data
 @pytest.fixture

@@ -6,9 +6,7 @@ import pandas as pd
 import polars as pl
 import pyarrow as pa
 import ibis.expr.types as ir
-import ibis
-from functools import lru_cache
-from .utils.dataframe_utils import DataFrameUtils, init_ibis_connection
+
 
 # class IbisTableLineageWrapper:  
 
@@ -38,9 +36,7 @@ from .utils.dataframe_utils import DataFrameUtils, init_ibis_connection
 #                 print(f"Backend temp table {self.ibis_tablename} closed.")
 
 
-@lru_cache(maxsize=None)
-def init_default_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
-    return init_ibis_connection(ibis_schema=ibis_schema)
+
 
 class BaseDataFrame(ABC):
 
@@ -49,36 +45,10 @@ class BaseDataFrame(ABC):
     
     def __init__(self, 
                  df:                    Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
-                 ibis_backend:          Optional[ibis.BaseBackend] = None,
-                 ibis_backend_schema:   Optional[str] = None,
-                 tablename_prefix:      Optional[str] = None,
-                 create_as_view:        Optional[bool] = False,
                 #lineage_history: Optional[List[Any]] = None,
                  ) -> None:
         
-        #default ibis schema. Schema is the type of backend, eg "polars", "duckdb", "postgres"
-        self.default_ibis_backend_schema: Optional[str] = None
-        self.init_default_ibis_backend_schema()        
-        
-        #Init the backend
-        if not ibis_backend:
-
-            if not ibis_backend_schema:
-                ibis_backend_schema = self.default_ibis_backend_schema
-
-            self.init_default_ibis_backend(default_ibis_schema=ibis_backend_schema)
-        else:
-            self.ibis_backend = ibis_backend
-            ibis_backend_schema = self.ibis_backend.name
-
-        #We now know the final schema type!
-        self.ibis_backend_schema = ibis_backend_schema
-
-        # self.ibis_temp_tablename: str = self.init_ibis_temp_tablename()
-
-        #Init the dataframe. What Am I doing with a pyarrow table here?
         self.native_df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table] = self.init_native_table(df=df)
-        self.ibis_df: ir.Table = self.init_ibis_table(df=df, tablename_prefix=tablename_prefix, create_as_view=create_as_view)
 
 
     #==============
@@ -88,110 +58,48 @@ class BaseDataFrame(ABC):
         pass
 
     @abstractmethod
-    def init_default_ibis_backend_schema(self) -> None:
-        pass
-
-
-    def init_default_ibis_backend(self, 
-                                  default_ibis_schema: Optional[str] = None):    
-            
-        if not default_ibis_schema:
-            default_ibis_schema = self.default_ibis_backend_schema
-
-        #TODO: Check that we have a valid schema
-        if default_ibis_schema not in ["duckdb", "polars", "sqlite"]:
-            raise ValueError(f"Invalid default ibis schema: {default_ibis_schema}")
-
-        #Using the function to cache the connection.
-        self.ibis_backend = init_default_ibis_connection(ibis_schema=default_ibis_schema)
-        # self.ibis_backend = ibis.connect(resource=f"{default_ibis_schema}://")
-
-        if not self.ibis_backend:
-            raise Exception("Ibis client connection not established")
-
-
-    def init_ibis_table(self, 
-                        df : Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table], 
-                        tablename_prefix:Optional[str]=None,
-                        create_as_view:        Optional[bool] = False,
-                 ) -> ir.Table:
-        
-        if not self.ibis_backend:
-            self.init_default_ibis_backend()
-
-        if isinstance(df, ir.Table):
-            # We already have ibis, but if generated manually, we may lack a name
-            if df.has_name() and not tablename_prefix:
-                ibis_df = df
-            else:
-                tablename = self.generate_tablename(prefix=tablename_prefix)
-                ibis_df = df.alias(alias=tablename)
-
-        else:
-            #we have a new table from pandas or polars
-            ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df, tablename_prefix=tablename_prefix, current_ibis_backend=self.ibis_backend,  target_ibis_backend=self.ibis_backend, create_as_view=create_as_view)
-        
-        return ibis_df
-
-
-
     def generate_tablename(self, prefix: Optional[str] = None) -> str:
-
-        return DataFrameUtils.generate_tablename(prefix=prefix)
-
-    def create_temp_table_ibis(self,
-                          df_dataframe: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
-                          tablename_prefix: Optional[str] = None,
-                          current_ibis_backend: Optional[ibis.BaseBackend] = None,
-                          target_ibis_backend: Optional[ibis.BaseBackend] = None,
-                          overwrite: Optional[bool] = True,
-                          create_as_view: Optional[bool] = False
-            ) -> ir.Table:
-
-        if current_ibis_backend is None:
-            current_ibis_backend = self.ibis_backend
-
-        if target_ibis_backend is None:
-            target_ibis_backend = self.ibis_backend
-
-        ibis_df = DataFrameUtils.create_temp_table_ibis(df_dataframe=df_dataframe, 
-                                                        tablename_prefix=tablename_prefix, 
-                                                        current_ibis_backend=current_ibis_backend,
-                                                        target_ibis_backend=target_ibis_backend,
-                                                        overwrite=overwrite,
-                                                        create_as_view=create_as_view)
-        return ibis_df
+        ...
 
     @abstractmethod
-    def convert_backend_schema(self, new_backend_schema:str) -> "BaseDataFrame":
+    def _get_dataframe(self) -> Any:
         pass
-
 
     # ==============
     ### Materialisation
         
     @abstractmethod
-    def materialise(self) -> Union[pd.DataFrame, pl.DataFrame]:
+    def materialise(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
         pass
 
-    def materialize(self) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise()
+    def materialize(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(dataframe_framework)
 
-    def execute(self) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise()
+    def execute(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(dataframe_framework)
 
-    def collect(self) -> Union[pd.DataFrame, pl.DataFrame]:
-        return self.materialise()
+    def collect(self, dataframe_framework:Optional[str]=None) -> Union[pd.DataFrame, pl.DataFrame]:
+        return self.materialise(dataframe_framework)
 
-    def to_arrow(self) -> pa.Table:
-        return DataFrameUtils.cast_dataframe_to_arrow(df_dataframe=self.ibis_df)
+    @abstractmethod
+    def to_pyarrow(self) -> pa.Table:
+        ...
 
+    @abstractmethod
+    def to_pyarrow_recordbatch(self, batchsize: int = 1) -> List[pa.RecordBatch]:
+        ...
+
+    @abstractmethod
     def to_pandas(self) -> pd.DataFrame:
-        return DataFrameUtils.cast_dataframe_to_pandas(df_dataframe=self.ibis_df)
+        ...
 
-
+    @abstractmethod
     def to_polars(self) -> pl.DataFrame:
-        return DataFrameUtils.cast_dataframe_to_polars(df_dataframe=self.ibis_df)
+        ...
+
+    @abstractmethod
+    def to_xarray(self) -> pl.DataFrame:
+        ...
 
     # def append_lineage_record(self, ibis_table: ir.Table) -> None:
 
@@ -215,34 +123,17 @@ class BaseDataFrame(ABC):
     # ==============
     ### Columns
 
+    @abstractmethod
     def get_column_as_list(
             self,
             column:str
         ) -> List[Any]:
-        
-        obj_df = self.select(ibis_expr=column)
-        obj_dict = DataFrameUtils.cast_dataframe_to_dictonary_of_lists(df=obj_df.ibis_df)
+        ...       
+ 
 
-        return obj_dict[column]
-
-
-    def get_columns_as_dict(
-            self,
-            key_column:str,
-            value_column:str
-        ) -> Dict[Any,Any]:
-        
-        obj_df = self.select([key_column, value_column])
-        obj_dict = DataFrameUtils.cast_dataframe_to_list_of_dictionaries(df=obj_df.ibis_df)
-
-        #create a dictionary of key: value
-        obj_dict = {x[key_column]: x[value_column] for x in obj_dict}
-
-        return obj_dict
-
-    @abstractmethod
-    def select(self, ibis_expr: Any) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def select(self, ibis_expr: Any) -> "BaseDataFrame":
+    #     pass
 
     @abstractmethod
     def drop(self, columns: Any) -> "BaseDataFrame":
@@ -250,48 +141,42 @@ class BaseDataFrame(ABC):
 
 
 
-    @abstractmethod
-    def distinct(self) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def distinct(self) -> "BaseDataFrame":
+    #     pass
 
 
 
-    @abstractmethod
-    def rename(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def rename(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
-    @abstractmethod
-    def try_cast(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def try_cast(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
-    @abstractmethod
-    def mutate(self,  **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def mutate(self,  **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
-    @abstractmethod
-    def aggregate(self, **kwargs) -> "BaseDataFrame":
-        pass
-
-
-
-    @abstractmethod
-    def pivot_wider(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def aggregate(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
 
-    @abstractmethod
-    def pivot_longer(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def pivot_wider(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
 
-
-
-
+    # @abstractmethod
+    # def pivot_longer(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
     # ==============
@@ -301,14 +186,11 @@ class BaseDataFrame(ABC):
     def filter(self, ibis_expr: Any) -> "BaseDataFrame":
         pass
 
-    def _filter_ibis(self, ibis_expr: Any) -> ir.Table:
-        filtered_df = self.ibis_df.filter(ibis_expr)
-        return filtered_df
 
 
-    @abstractmethod
-    def head(self, n: int) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def head(self, n: int) -> "BaseDataFrame":
+    #     pass
 
 
 
@@ -319,9 +201,9 @@ class BaseDataFrame(ABC):
 
 
 
-    @abstractmethod
-    def order_by(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def order_by(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
     # ==============
     ### Column Metadata
@@ -371,7 +253,7 @@ class BaseDataFrame(ABC):
     ### Joins
     
     @abstractmethod
-    def _resolve_join_backend_ibis(self, 
+    def _resolve_join_backend(self, 
                                    right: "BaseDataFrame",
                                    execute_on: Optional[str] = None
                                    ) -> Tuple[ir.Table, ir.Table]:
@@ -420,12 +302,5 @@ class BaseDataFrame(ABC):
         pass
 
 
-    def _sql_ibis(self, query:str) -> ir.Table:
-
-        if self.ibis_df.has_name():
-            query = query.format(_=self.ibis_df.get_name())
-        else:
-            query = query.format(_="df")
-
-        return self.ibis_df.sql(query=query)        
+ 
 
