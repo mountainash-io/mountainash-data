@@ -11,7 +11,7 @@ import ibis.expr.schema as ibis_schema
 
 from ibis.expr.types.groupby import GroupedTable, GroupedArray, GroupedNumbers
 from ibis.expr.types.temporal_windows import WindowedTable 
-import warning
+
 
 import uuid
 
@@ -180,10 +180,10 @@ class IbisDataFrame(BaseDataFrame):
         elif hasattr(self.ibis_df, name):
 
             if self.ibis_df_grouped is not None:
-                warning(f"Grouped table '{self.ibis_df_grouped}' does not have attribute or method '{name}'. Applying to the underlying ibis table. The result may not be what you expected.")
+                print(f"Grouped table '{self.ibis_df_grouped}' does not have attribute or method '{name}'. Applying to the underlying ibis table. The result may not be what you expected.")
 
             if self.ibis_df_windowed is not None:
-                warning(f"Windowed table '{self.ibis_df_windowed}' does not have attribute or method '{name}'. Applying to the underlying ibis table. The result may not be what you expected.")
+                print(f"Windowed table '{self.ibis_df_windowed}' does not have attribute or method '{name}'. Applying to the underlying ibis table. The result may not be what you expected.")
 
             #Get the attribute/method from the ibis dataframe
             attr = getattr(self.ibis_df, name)
