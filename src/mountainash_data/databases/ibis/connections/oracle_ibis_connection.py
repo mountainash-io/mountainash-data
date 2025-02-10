@@ -1,12 +1,10 @@
 import typing as t
 import ibis.backends.oracle as ir_backend
-import contextlib
-import warnings
 from pydantic_settings import BaseSettings
 
 from ..base_ibis_connection import BaseIbisConnection
 from ..constants import IBIS_DB_connection_mode
-from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
+from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
 # from mountainash_settings.auth.database.providers import 
 

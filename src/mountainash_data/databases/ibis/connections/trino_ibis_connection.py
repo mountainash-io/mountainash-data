@@ -1,12 +1,11 @@
 import typing as t
 import ibis as ibis
-from ibis.backends.sql import SQLBackend
 import ibis.backends.trino as ir_backend
 import contextlib
 import warnings
 from ..constants import IBIS_DB_connection_mode
 from ..base_ibis_connection import BaseIbisConnection
-from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
+from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
 from mountainash_settings.settings.auth.database import TrinoAuthSettings
 from pydantic_settings import BaseSettings

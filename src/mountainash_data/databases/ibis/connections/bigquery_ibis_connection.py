@@ -5,14 +5,10 @@ import ibis.backends.bigquery as ir_backend
 from ..base_ibis_connection import BaseIbisConnection
 from ..constants import IBIS_DB_connection_mode
 
-from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
+from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
 from mountainash_settings.settings.auth.database import BigQueryAuthSettings
-from upath import UPath
-from google.auth.credentials import Credentials
 
-from google.cloud import bigquery
-import json
 from google.oauth2 import service_account
 import contextlib
 import warnings

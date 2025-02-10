@@ -3,7 +3,6 @@ from typing import Union, List, Any
 import pandas as pd
 import polars as pl
 import pyarrow as pa
-import xarray  as xr
 
 import ibis.expr.types as ir
 from ...base_dataframe import BaseDataFrame

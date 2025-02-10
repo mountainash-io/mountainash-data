@@ -1,5 +1,4 @@
-from operator import is_
-from typing import Union, List, Dict, Any, Optional, Tuple, Set
+from typing import Union, List, Dict, Any, Optional, Tuple
 import typing as t
 
 import pandas as pd
@@ -208,14 +207,14 @@ class IbisDataFrame(BaseDataFrame):
                     return type(self)(df=df, ibis_backend=self.ibis_backend, df_grouped=result)
 
                 elif isinstance(result, (GroupedArray,GroupedNumbers)):
-                    print(f"We have a GroupedArray or GroupedNumbers table!")
+                    print("We have a GroupedArray or GroupedNumbers table!")
                     # result= result.alias(alias=self.generate_tablename(prefix=name))
                     df = result.parent.alias(alias=self.generate_tablename(prefix=name)) 
                     return type(self)(df=df, ibis_backend=self.ibis_backend, df_windowed=result)
 
 
                 elif isinstance(result, (WindowedTable)):
-                    print(f"We have a windowed table!")
+                    print("We have a windowed table!")
                     # result= result.alias(alias=self.generate_tablename(prefix=name))
                     df = result.parent.alias(alias=self.generate_tablename(prefix=name)) 
                     return type(self)(df=df, ibis_backend=self.ibis_backend, df_windowed=result)

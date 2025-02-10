@@ -3,13 +3,11 @@ import contextlib
 import warnings
 import ibis.backends.duckdb as ir_backend
 from pydantic_settings import BaseSettings
-from contextlib import contextmanager
-import ibis
 
 from ..base_ibis_connection import BaseIbisConnection
 from ..constants import IBIS_DB_connection_mode
 
-from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
+from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters, get_settings
 from mountainash_settings.settings.auth.database import DuckDBAuthSettings
 

@@ -1,13 +1,11 @@
 
 # path: src/mountainash_data/dataframes/utils/dataframe_strategy_ibis.py
 
-import re
 from typing import Any,  Dict, List, Optional
 
 import pandas as pd
 import polars as pl
 import pyarrow as pa
-import ibis.expr.types as ir
 import xarray as xr
 
 import ibis.expr.schema as ibis_schema
