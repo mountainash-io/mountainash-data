@@ -64,3 +64,10 @@ jobs:
           default-branch: main
           token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
           org-name: ${{ env.ORGNAME }}          
+
+      # ======================================================
+      # BUILD ARTIFACTS
+
+      - name: Setup Build Environment
+        run: |
+          hatch env create ${{ env.BUILD_ENV }}          
