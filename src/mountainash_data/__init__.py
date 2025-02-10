@@ -5,10 +5,10 @@ from .dataframes import (
     IbisDataFrame,
 )
 
-from .databases.connections.ibis import (
+from .databases.ibis import (
     BaseIbisConnection,
     SQLite_IbisConnection,
-    DuckDB_IbisConnection
+    DuckDB_IbisConnection 
 
 )
 

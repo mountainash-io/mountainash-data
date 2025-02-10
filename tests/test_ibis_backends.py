@@ -3,23 +3,23 @@ import ibis
 import os
 from unittest import mock
 # from mountainash_data.databases.connections.ibis import Postgres_IbisConnection, SQLite_IbisConnection, DuckDB_IbisConnection, MSSQL_IbisConnection, MySQL_IbisConnection, Snowflake_IbisConnection
-from mountainash_data.databases.connections.ibis import SQLite_IbisConnection, DuckDB_IbisConnection
+from mountainash_data.databases.ibis import SQLite_IbisConnection, DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters
 from mountainash_auth_settings.auth_settings import AuthSettings
 
 @pytest.fixture
 def mock_settings_parameters_1():
-    return SettingsParameters.create(namespace="mock", settings_class = AuthSettings)
+    return SettingsParameters.create(settings_class = AuthSettings, namespace="mock", )
 
 @pytest.fixture
 def mock_settings_parameters_2():
     kwargs = {"USERNAME": "ngods", "PASSWORD": "ngods", "HOST": "host", "PORT": "5432"}
-    return SettingsParameters.create(namespace="mock_pg", settings_class = AuthSettings, kwargs=kwargs)
+    return SettingsParameters.create(settings_class = AuthSettings, namespace="mock_pg", kwargs=kwargs)
 
 @pytest.fixture
 def mock_settings_parameters_3():
     kwargs = {"USERNAME": "ngods", "PASSWORD": "ngods", "HOST": "host", "PORT": "5432", "DATABASE_NAME": "database_name"}
-    return SettingsParameters.create(namespace="mock_mssql", settings_class = AuthSettings, kwargs=kwargs)
+    return SettingsParameters.create(settings_class = AuthSettings, namespace="mock_mssql", kwargs=kwargs)
 
 ################
 # Connections

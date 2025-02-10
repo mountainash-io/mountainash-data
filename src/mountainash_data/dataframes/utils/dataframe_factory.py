@@ -14,7 +14,7 @@ from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
 from ..base_dataframe import BaseDataFrame
 from ..ibis_dataframe import IbisDataFrame
 from .dataframe_utils import DataFrameUtils
-from ..utils.ibis_utils import get_default_ibis_backend_schema, init_default_ibis_backend
+from ..utils.ibis_utils import get_default_ibis_backend_schema, init_ibis_connection
 
 class DataFrameFactory:
 
@@ -97,7 +97,7 @@ class DataFrameFactory:
             if not ibis_backend_schema:
                 ibis_backend_schema = get_default_ibis_backend_schema()
 
-            ibis_backend = init_default_ibis_backend(default_ibis_schema=ibis_backend_schema)
+            ibis_backend = init_ibis_connection(default_ibis_schema=ibis_backend_schema)
 
         #Pre-create an ibis table with the appropriate backend and tablename
         df = DataFrameUtils.cast_dataframe_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)

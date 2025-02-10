@@ -205,6 +205,31 @@ class DataFrameUtils:
     # Dataframe Conversion Methods
 
     @classmethod
+    def cast_dataframe(cls, 
+                       df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]], 
+                       dataframe_framework: str) -> pd.DataFrame:
+
+        if df is None:
+            return df
+
+        if dataframe_framework == CONST_DATAFRAME_FRAMEWORK.IBIS:
+            return cls.cast_dataframe_to_ibis(df)
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PANDAS:
+            return cls.cast_dataframe_to_pandas(df)
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.POLARS:
+            return cls.cast_dataframe_to_polars(df)
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE:
+            return cls.cast_dataframe_to_pyarrow(df)
+        elif dataframe_framework == CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH:
+            return cls.cast_dataframe_to_pyarrow_recordbatch(df)
+        else:
+            raise ValueError("Invalid Dataframe Framework provided: {dataframe_framework}")
+
+
+
+
+
+    @classmethod
     def cast_dataframe_to_pandas(cls, df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
 
         if df is None:
@@ -224,7 +249,7 @@ class DataFrameUtils:
         return df_strategy.cast_to_polars(df=df)
 
     @classmethod
-    def cast_dataframe_to_arrow(cls, 
+    def cast_dataframe_to_pyarrow(cls, 
                                 df: Union[BaseDataFrame, pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pa.Table:
         
         if df is None:

@@ -8,6 +8,7 @@ from .dataframe_handlers.dataframe_strategy_polars_lazyframe import PolarsLazyFr
 from .dataframe_handlers.dataframe_strategy_pyarrow_table import PyArrowTableUtils
 from .dataframe_handlers.dataframe_strategy_pyarrow_recordbatch import PyArrowRecordBatchUtils
 from .dataframe_utils import DataFrameUtils
+# from .dataframe_factory import DataFrameFactory
 
 
 
@@ -21,6 +22,7 @@ __all__ = (
     "PyArrowTableUtils",
     "PyArrowRecordBatchUtils",
 
-    "DataFrameUtils"
+    "DataFrameUtils",
+    # "DataFrameFactory"
 
 )

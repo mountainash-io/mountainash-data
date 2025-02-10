@@ -19,9 +19,22 @@ class ColumnCondition(FilterNode):
 
 
 class LogicalCondition(FilterNode):
+    ALWAYS_TRUE_OP = "__always_true__"
+    ALWAYS_FALSE_OP = "__always_false__"
+
     def __init__(self, operator: str, operands: List[FilterNode]):
         self.operator = operator
         self.operands = operands
+
+    @classmethod
+    def always_true(cls) -> 'LogicalCondition':
+        """Creates a logical condition that always evaluates to True."""
+        return cls(operator=cls.ALWAYS_TRUE_OP, operands=[])
+
+    @classmethod
+    def always_false(cls) -> 'LogicalCondition':
+        """Creates a logical condition that always evaluates to False."""
+        return cls(operator=cls.ALWAYS_FALSE_OP, operands=[])
 
     def accept(self, visitor: 'FilterVisitor') -> Callable:
         return visitor.visit_logical_condition(self)
@@ -94,6 +107,15 @@ class FilterCondition:
 
 
     #####  Actual Implementations ####
+
+    @classmethod
+    def always_true(cls) -> ColumnCondition:
+        return LogicalCondition.always_true()
+
+    @classmethod
+    def always_false(cls) -> ColumnCondition:
+        return LogicalCondition.always_false()
+
     # Column to Value comparison
     @classmethod
     def equals(cls, column: str, value: Any) -> ColumnCondition:

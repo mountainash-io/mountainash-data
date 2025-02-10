@@ -3,11 +3,12 @@ from typing import Union, List, Any
 import pandas as pd
 import polars as pl
 import pyarrow as pa
+import xarray  as xr
 
 import ibis.expr.types as ir
 from ...base_dataframe import BaseDataFrame
 
-from . import BaseDataFrameStrategy, IbisDataFrameUtils, PolarsDataFrameUtils, PandasDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, PyArrowRecordBatchUtils
+from . import BaseDataFrameStrategy, IbisDataFrameUtils, PolarsDataFrameUtils, PandasDataFrameUtils, PolarsLazyFrameUtils, PyArrowTableUtils, PyArrowRecordBatchUtils#, XArrayDataFrameUtils
 
 
 class DataFrameStrategyFactory():
@@ -30,6 +31,9 @@ class DataFrameStrategyFactory():
             return PolarsLazyFrameUtils()
         elif isinstance(df, pd.DataFrame):
             return PandasDataFrameUtils()
+        # elif isinstance(df, xr.DataArray):
+        #     return XArrayDataFrameUtils()
+        
         else:
             raise TypeError(f"Unsupported dataframe type. Received {type(df)}")    
         
