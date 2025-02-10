@@ -214,5 +214,6 @@ def test_mixed_data_types():
     with check:
         assert isinstance(df, pl.DataFrame)
         assert df.shape == (3, 2)
-        # Polars should coerce to common type or string
-        assert df["mixed"].dtype in [pl.Utf8, pl.Float64]
+        # Mixed types should be coerced to strings
+        assert df["mixed"].dtype == pl.Utf8
+        assert df["mixed_nullable"].dtype == pl.Utf8

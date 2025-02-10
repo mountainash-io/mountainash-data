@@ -35,8 +35,6 @@ class IbisFilterVisitor(FilterVisitor):
                 # Column to value comparison
                 return lambda table: op_func(table[condition.column], ibis.literal(condition.value))
 
-
-
     # def visit_column_condition(self, condition: ColumnCondition) -> Callable:
 
     #     if condition.compare_column:
@@ -76,14 +74,17 @@ class IbisFilterVisitor(FilterVisitor):
     #         else:
     #             raise ValueError(f"Unsupported operator: {condition.operator}")
 
-
-    def visit_logical_condition(self, condition: LogicalCondition):
-        if condition.operator == "and":
-            return lambda table: self._combine_conditions(table,condition.operands, lambda x, y: x & y)
+    def visit_logical_condition(self, condition: LogicalCondition) -> Callable:
+        if condition.operator == LogicalCondition.ALWAYS_TRUE_OP:
+            return lambda table: ibis.literal(True)
+        elif condition.operator == LogicalCondition.ALWAYS_FALSE_OP:
+            return lambda table: ibis.literal(False)
+        elif condition.operator == "and":
+            return lambda table: self._combine_conditions(table, condition.operands, lambda x, y: x & y)
         elif condition.operator == "or":
             return lambda table: self._combine_conditions(table, condition.operands, lambda x, y: x | y)
         elif condition.operator == "not":
-            return lambda table:  ~condition.operands[0].accept(self)(table)
+            return lambda table: ~condition.operands[0].accept(self)(table)
         else:
             raise ValueError(f"Unsupported logical operator: {condition.operator}")
 
@@ -93,4 +94,3 @@ class IbisFilterVisitor(FilterVisitor):
         for condition in conditions[1:]:
             result = combine_func(result, condition)
         return result
-

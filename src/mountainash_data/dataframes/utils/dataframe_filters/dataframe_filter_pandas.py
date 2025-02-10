@@ -77,7 +77,11 @@ class PandasFilterVisitor(FilterVisitor):
     #             raise ValueError(f"Unsupported operator: {condition.operator}")
 
     def visit_logical_condition(self, condition: LogicalCondition) -> Callable:
-        if condition.operator == "and":
+        if condition.operator == LogicalCondition.ALWAYS_TRUE_OP:
+            return lambda df: pd.Series(True, index=df.index)
+        elif condition.operator == LogicalCondition.ALWAYS_FALSE_OP:
+            return lambda df: pd.Series(False, index=df.index)
+        elif condition.operator == "and":
             return lambda df: pd.concat([operand.accept(self)(df) for operand in condition.operands], axis=1).all(axis=1)
         elif condition.operator == "or":
             return lambda df: pd.concat([operand.accept(self)(df) for operand in condition.operands], axis=1).any(axis=1)
@@ -85,3 +89,4 @@ class PandasFilterVisitor(FilterVisitor):
             return lambda df: ~condition.operands[0].accept(self)(df)
         else:
             raise ValueError(f"Unsupported logical operator: {condition.operator}")
+

@@ -155,7 +155,7 @@ class TestDataFrameConversion:
     @pytest.mark.parametrize("source_df", ["pandas", "polars", "pyarrow", "ibis"])
     def test_to_arrow(self, source_df, sample_dataframes):
         """Test conversion to Arrow table."""
-        df = DataFrameUtils.cast_dataframe_to_arrow(sample_dataframes[source_df])
+        df = DataFrameUtils.cast_dataframe_to_pyarrow(sample_dataframes[source_df])
         assert isinstance(df, pa.Table)
         assert df.num_rows == 3
 

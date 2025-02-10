@@ -82,7 +82,7 @@ class BaseDataFrame(ABC):
         return self.materialise(dataframe_framework)
 
     @abstractmethod
-    def to_arrow(self) -> pa.Table:
+    def to_pyarrow(self) -> pa.Table:
         ...
 
     @abstractmethod
@@ -96,6 +96,11 @@ class BaseDataFrame(ABC):
     @abstractmethod
     def to_polars(self) -> pl.DataFrame:
         ...
+
+    @abstractmethod
+    def to_xarray(self) -> pl.DataFrame:
+        ...
+
     # def append_lineage_record(self, ibis_table: ir.Table) -> None:
 
     #     #TODO: Cater for full lineage of native and ibis transformations here.
@@ -126,9 +131,9 @@ class BaseDataFrame(ABC):
         ...       
  
 
-    @abstractmethod
-    def select(self, ibis_expr: Any) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def select(self, ibis_expr: Any) -> "BaseDataFrame":
+    #     pass
 
     @abstractmethod
     def drop(self, columns: Any) -> "BaseDataFrame":
@@ -136,42 +141,42 @@ class BaseDataFrame(ABC):
 
 
 
-    @abstractmethod
-    def distinct(self) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def distinct(self) -> "BaseDataFrame":
+    #     pass
 
 
 
-    @abstractmethod
-    def rename(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def rename(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
-    @abstractmethod
-    def try_cast(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def try_cast(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
-    @abstractmethod
-    def mutate(self,  **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def mutate(self,  **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
-    @abstractmethod
-    def aggregate(self, **kwargs) -> "BaseDataFrame":
-        pass
-
-
-
-    @abstractmethod
-    def pivot_wider(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def aggregate(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
 
-    @abstractmethod
-    def pivot_longer(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def pivot_wider(self, **kwargs) -> "BaseDataFrame":
+    #     pass
+
+
+
+    # @abstractmethod
+    # def pivot_longer(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
 
     # ==============
@@ -183,9 +188,9 @@ class BaseDataFrame(ABC):
 
 
 
-    @abstractmethod
-    def head(self, n: int) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def head(self, n: int) -> "BaseDataFrame":
+    #     pass
 
 
 
@@ -196,9 +201,9 @@ class BaseDataFrame(ABC):
 
 
 
-    @abstractmethod
-    def order_by(self, **kwargs) -> "BaseDataFrame":
-        pass
+    # @abstractmethod
+    # def order_by(self, **kwargs) -> "BaseDataFrame":
+    #     pass
 
     # ==============
     ### Column Metadata

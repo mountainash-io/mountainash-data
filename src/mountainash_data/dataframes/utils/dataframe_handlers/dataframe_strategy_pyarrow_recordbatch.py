@@ -29,7 +29,7 @@ class PyArrowRecordBatchUtils(BaseDataFrameStrategy):
         return df_tbl.to_pandas() 
 
     def _cast_to_polars(self, df: pa.RecordBatch|List[pa.RecordBatch]) -> pl.DataFrame:
-        df_tbl = self._cast_to_pyarrow_table(df=df)
+        df_tbl = self._cast_to_pandas(df=df)
         return pl.DataFrame(data=df_tbl) 
 
     def _cast_to_pyarrow_table(self, df: pa.RecordBatch|List[pa.RecordBatch]) -> pa.Table:

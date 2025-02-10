@@ -6,6 +6,8 @@ from .dataframe_strategy_polars_lazyframe import PolarsLazyFrameUtils
 from .dataframe_strategy_pyarrow_table import PyArrowTableUtils
 from .dataframe_strategy_pyarrow_recordbatch import PyArrowRecordBatchUtils
 from .dataframe_strategy_factory import DataFrameStrategyFactory
+# from .dataframe_strategy_xarray import XArrayDataFrameUtils
+
 
 
 
@@ -17,5 +19,6 @@ __all__ = (
     "PolarsLazyFrameUtils",
     "PyArrowTableUtils",
     "PyArrowRecordBatchUtils",
+    # "XArrayDataFrameUtils",
     "DataFrameStrategyFactory"
 )

@@ -115,6 +115,9 @@ class BaseDataFrameStrategy(ABC):
 
     #######################
 
+
+
+
     @abstractmethod
     def _cast_to_pandas(self, df: Any) -> pd.DataFrame:
         pass
@@ -189,6 +192,13 @@ class BaseDataFrameStrategy(ABC):
         return new_table
 
 
+    # @abstractmethod
+    # def _cast_to_xarray(self, df: Any) -> pd.DataFrame:
+    #     pass
+
+    # def cast_to_xarray(self, df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table, pa.RecordBatch, List[pa.RecordBatch]]) -> pd.DataFrame:
+    #     self.validate_dataframe_input(df=df)
+    #     return self._cast_to_xarray(df=df)
 
 
 
