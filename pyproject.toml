@@ -36,8 +36,7 @@ dependencies = [
   "numpy>=1.23.2,<3",
   # "pandas>=1.5.3,<3",  
   "rich>=12.4.4,<14",  
-    
- 
+     
   "pandas==2.2.2",       
   "polars==1.16.0", 
   "universal_pathlib==0.2.2",   
@@ -45,7 +44,7 @@ dependencies = [
   "pyarrow==17.0.0",     
   "openlineage-python==1.17.1",       
   "xarray==2024.11.0",    
-  "dlt" 
+  "sqlalchemy"
 ]    
    
    

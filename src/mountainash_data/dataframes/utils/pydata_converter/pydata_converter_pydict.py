@@ -36,6 +36,24 @@ class PyDataConverterPydict(BasePyDataConverter):
                 column_mapping: Optional[Dict[str, str|Dict[str,str]]] = None,
                 filter_unmapped: Optional[bool] = False) -> pl.DataFrame:
 
+        #TODO: Handle type casting...
+        # # Handle mixed data types by converting to strings if needed
+        # processed_data = {} 
+        # for col, values in data.items():
+        #     # Check if column has mixed types
+        #     non_none_values = [v for v in values if v is not None]
+        #     if not non_none_values:
+        #         # All None values, use nullable Int64 as default
+        #         processed_data[col] = values
+        #     else:
+        #         value_types = {type(v) for v in non_none_values}
+        #         if len(value_types) > 1:
+        #             # Mixed types, convert all to strings
+        #             processed_data[col] = [str(v) if v is not None else None for v in values]
+        #         else:
+        #             # Single type, keep as is
+        #             processed_data[col] = values
+
         df = pl.DataFrame(data)
 
         if column_mapping:
@@ -47,4 +65,3 @@ class PyDataConverterPydict(BasePyDataConverter):
             # Apply the mapping using ColumnMapper
             df = ColumnMapper.apply_mapping(df, map_config)
         return df
-        
