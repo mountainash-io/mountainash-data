@@ -527,7 +527,7 @@ class BaseIbisConnection(BaseDBConnection):
         return DataFrameUtils.cast_dataframe(df=result, dataframe_framework=dataframe_framework)
 
 
-    def run_expr_as_ibis_dataframe(self, 
+    def run_expr_as_materialised_dataframe(self, 
             ibis_expr: ir.Expr,
             params: t.Dict | None = None,
             limit: str | None = "default",

@@ -11,7 +11,7 @@ import ibis.expr.schema as ibis_schema
 
 from ibis.expr.types.groupby import GroupedTable, GroupedArray, GroupedNumbers
 from ibis.expr.types.temporal_windows import WindowedTable 
-
+import warning
 
 import uuid
 
@@ -606,7 +606,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except:
+        except TypeError:
             new_schema = None
             compatible = False
 
@@ -621,7 +621,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except:
+        except TypeError:
             new_schema = None
             compatible = False
 
@@ -636,7 +636,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except:
+        except TypeError:
             new_schema = None
             compatible = False
 
