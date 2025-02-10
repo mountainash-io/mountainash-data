@@ -10,24 +10,9 @@ from .connections.pyspark_ibis_connection import PySpark_IbisConnection
 from .connections.trino_ibis_connection import Trino_IbisConnection
 
 from .constants import IBIS_DB_connection_mode
-"""
-Note: In future versions, we may add more Ibis connections to this package.
-
-"MySQL_IbisConnection",
-"Oracle_IbisConnection",
-"PySpark_IbisConnection",
-"Snowflake_IbisConnection",
-"Trino_IbisConnection",
-from .mysql_ibis_connection     import MySQL_IbisConnection
-from .oracle_ibis_connection    import Oracle_IbisConnection
-from .postgres_ibis_connection  import Postgres_IbisConnection
-from .pyspark_ibis_connection   import PySpark_IbisConnection
-from .snowflake_ibis_connection import Snowflake_IbisConnection
-from .trino_ibis_connection     import Trino_IbisConnection
-"""
 
 
-__all__ = (
+__all__ = [
     
 "IBIS_DB_connection_mode",
 "BaseIbisConnection",
@@ -40,4 +25,4 @@ __all__ = (
 "BigQuery_IbisConnection",
 "PySpark_IbisConnection",
 "Trino_IbisConnection"
-)
+]
