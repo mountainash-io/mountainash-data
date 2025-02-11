@@ -70,4 +70,4 @@ jobs:
 
       - name: Setup Build Environment
         run: |
-          hatch env create ${{ env.BUILD_ENV }}          
+          hatch env create ${{ env.BUILD_ENV }}
