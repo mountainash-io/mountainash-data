@@ -27,10 +27,10 @@ dependencies = [
   "snowflake-connector-python==3.12.3",       
   "ibis-framework[polars,pandas,sqlite,duckdb,mssql,snowflake,motherduck,bigquery,pyspark,trino] == 9.5.0", 
 
-  "psycopg2-binary==2.9.9",      
+  "psycopg2-binary==2.9.9",       
   "pyarrow-hotfix>=0.4,<1",
   "numpy>=1.23.2,<3",
-  "rich>=12.4.4,<14",  
+  "rich>=12.4.4,<14",    
     
   "pandas==2.2.2",       
   "polars==1.16.0", 
@@ -39,7 +39,7 @@ dependencies = [
   "openlineage-python==1.17.1",       
   "xarray==2024.11.0",    
   "sqlalchemy"
-]    
+]     
    
    
 [project.urls] 

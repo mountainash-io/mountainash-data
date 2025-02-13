@@ -12,6 +12,13 @@ from .databases.ibis import (
 
 )
 
+from .dataframes.utils import (
+    DataFrameUtils
+)
+from .dataframes.utils.dataframe_factory import (
+    DataFrameFactory
+)
+
 __all__ = (
     "__version__",
 
@@ -21,6 +28,9 @@ __all__ = (
     "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",
+
+    "DataFrameFactory",
+    "DataFrameUtils"
 
 )
 
