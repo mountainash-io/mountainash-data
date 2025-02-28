@@ -5,10 +5,10 @@ build-backend = "hatchling.build"
 [project]   
 name = "mountainash_data"   
 dynamic = ["version"]        
-description = 'Mountain Ash - Data'        
+description = 'Mountain Ash - Data'         
 readme = "README.md"              
 requires-python = ">=3.10"          
-license = "MIT"           
+license = "MIT"            
 keywords = []         
 authors = [      
   { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },     
@@ -22,7 +22,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",    
 ]        
 dependencies = [      
-  "duckdb",                 
+  "duckdb",                  
   "pyodbc==5.2.0",          
   "snowflake-connector-python==3.12.3",       
   "ibis-framework[polars,pandas,sqlite,duckdb,mssql,snowflake,motherduck,bigquery,pyspark,trino] == 9.5.0", 

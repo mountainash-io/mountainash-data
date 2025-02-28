@@ -48,7 +48,6 @@ dependencies:
     #Other Mountain Ash Packages
     - -e ../mountainash-constants
     - -e ../mountainash-settings
-    - -e ../mountainash-auth-settings
     # - -e ../mountainash-utils
     - -e ../mountainash-utils-ssh
     - -e ../mountainash-utils-files
