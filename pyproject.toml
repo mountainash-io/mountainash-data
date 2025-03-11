@@ -24,6 +24,11 @@ classifiers = [
 dependencies = [      
   "ibis-framework[polars,pandas,sqlite,duckdb] == 9.5.0", 
 
+  "ibis-framework[mssql,snowflake,bigquery,pyspark,trino] == 9.5.0", 
+  "psycopg2-binary==2.9.9",       
+  "pyodbc==5.2.0",          
+  "snowflake-connector-python==3.12.3", 
+
   "duckdb",                  
   "pyarrow-hotfix>=0.4,<1",
   "numpy>=1.23.2,<3",
@@ -37,7 +42,7 @@ dependencies = [
   "openlineage-python==1.17.1",       
   "xarray==2024.11.0",    
   "sqlalchemy"
-]     
+]      
    
 [project.optional-dependencies]
 all = [
