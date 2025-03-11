@@ -22,18 +22,16 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",    
 ]        
 dependencies = [      
-  "duckdb",                  
-  "pyodbc==5.2.0",          
-  "snowflake-connector-python==3.12.3",       
-  "ibis-framework[polars,pandas,sqlite,duckdb,mssql,snowflake,motherduck,bigquery,pyspark,trino] == 9.5.0", 
+  "ibis-framework[polars,pandas,sqlite,duckdb] == 9.5.0", 
 
-  "psycopg2-binary==2.9.9",       
+  "duckdb",                  
   "pyarrow-hotfix>=0.4,<1",
   "numpy>=1.23.2,<3",
   "rich>=12.4.4,<14",    
     
   "pandas==2.2.2",       
   "polars==1.16.0", 
+
   "universal_pathlib==0.2.2",   
   "pyarrow==17.0.0",     
   "openlineage-python==1.17.1",       
@@ -41,6 +39,25 @@ dependencies = [
   "sqlalchemy"
 ]     
    
+[project.optional-dependencies]
+all = [
+  "ibis-framework[mssql,snowflake,bigquery,pyspark,trino] == 9.5.0", 
+  "psycopg2-binary==2.9.9",       
+  "pyodbc==5.2.0",          
+  "snowflake-connector-python==3.12.3",       
+] 
+mssql = [
+ "pyodbc==5.2.0",
+ "ibis-framework[mssql] == 9.5.0",  
+] 
+snowflake = [
+  "snowflake-connector-python==3.12.3",   
+  "ibis-framework[snowflake] == 9.5.0",       
+] 
+postgres = [
+  "psycopg2-binary==2.9.9",
+  "ibis-framework[postgres] == 9.5.0",       
+] 
    
 [project.urls] 
 Documentation = "https://github.com/mountainash-io/mountainash-data#readme"
