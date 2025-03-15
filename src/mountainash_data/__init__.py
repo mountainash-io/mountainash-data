@@ -8,7 +8,8 @@ from .dataframes import (
 from .databases.ibis import (
     BaseIbisConnection,
     SQLite_IbisConnection,
-    DuckDB_IbisConnection 
+    DuckDB_IbisConnection,
+    MotherDuck_IbisConnection 
 
 )
 
@@ -28,6 +29,7 @@ __all__ = (
     "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",
+    "MotherDuck_IbisConnection"
 
     "DataFrameFactory",
     "DataFrameUtils"
