@@ -6,14 +6,16 @@ from ibis.expr.schema import SchemaLike
 from ibis.backends.sql import SQLBackend
 from mountainash_data.databases.base_db_connection import BaseDBConnection
 from abc import abstractmethod
+import uuid
 
 # from abc import abstractmethod
-from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
 from mountainash_settings import SettingsParameters
-from mountainash_data import BaseDataFrame, IbisDataFrame
-from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
+from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTION_LAYER
+
 from .constants import IBIS_DB_connection_mode
-from mountainash_constants import CONST_DB_ABSTRACTION_LAYER
+from mountainash_data import BaseDataFrame, IbisDataFrame
+from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
+from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
 
 
 class BaseIbisConnection(BaseDBConnection):
@@ -42,6 +44,13 @@ class BaseIbisConnection(BaseDBConnection):
     def ibis_connection_mode(self) -> str:
         """Connect via a connection string, kwargs or both."""
         pass
+
+    # @property
+    # @abstractmethod
+    # def supports_upsert(self) -> str:
+    #     """Whether upserts are supported"""
+    #     pass
+
 
 
 
@@ -390,17 +399,20 @@ class BaseIbisConnection(BaseDBConnection):
         raise NotImplementedError(f"{self.db_backend_name}: Upsert is not implemented for this backend")
 
 
+
+
+
     ###########################
     # t.Optionally Implemented Functions
 
     def list_tables(self, 
-                like: str | None = None,
+                table_name: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
         self.connect()
-        return self._list_tables(like=like, database=database, schema=schema)    
+        return self._list_tables(like=table_name, database=database, schema=schema)    
 
     def _list_tables(self,                
                 like: str | None = None,
@@ -427,6 +439,16 @@ class BaseIbisConnection(BaseDBConnection):
         
         raise NotImplementedError
 
+
+    def table_exists(self, 
+                table_name: str | None = None,
+                database: tuple[str, str] | str | None = None,
+                schema: str | None = None
+                    ) -> bool:
+
+        tables = self.list_tables(table_name=table_name, database=database, schema=schema)
+
+        return True if table_name in tables else False
 
 
     # @abstractmethod

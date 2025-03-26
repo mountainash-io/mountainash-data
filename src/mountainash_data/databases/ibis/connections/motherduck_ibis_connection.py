@@ -3,6 +3,8 @@ import ibis.backends.duckdb as ir_backend
 import contextlib
 import warnings
 from pydantic_settings import BaseSettings
+import ibis.expr.types.relations as ir 
+import uuid
 
 from ..base_ibis_connection import BaseIbisConnection
 from ..constants import IBIS_DB_connection_mode
@@ -10,6 +12,8 @@ from ..constants import IBIS_DB_connection_mode
 from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
 from mountainash_settings.settings.auth.database import MotherDuckAuthSettings
+from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
+from mountainash_data import DataFrameUtils, DataFrameFactory
 
 class MotherDuck_IbisConnection(BaseIbisConnection):
 
@@ -21,6 +25,8 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
 
         self._ibis_backend: t.Optional[ir_backend.Backend] = None
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.CONNECTION_STRING
+
+        self.supports_upsert = True
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
         
@@ -66,3 +72,71 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
                         cur.execute(f"SET @@session.{option_key} = '{option_value}'")
                     except Exception as e:
                         warnings.warn(f"Unable to set session {option_key} to UTC: {e}")
+
+
+    def _upsert_prepare_staging_table(
+        self,
+        table_name: str,
+        df: ir.Table|t.Any,
+        database: str | None = None,
+        schema: str | None = None,
+    ) -> str:
+
+
+        ### Temp Table setup
+        # target table schema
+        # temp_df = self.table_as_ibis_dataframe(table_name).head(0).to_pyarrow()#.filter(filter_condition=fc.always_false())
+        temp_df = DataFrameFactory.create_ibis_dataframe_object_from_dataframe(df=df).head(0).to_pyarrow()
+
+
+        #create temptable
+        staging_table_name = f"temp_upsert_{table_name}_{uuid.uuid4()}"
+        self.ibis_backend.create_table(name = staging_table_name, 
+                                    obj=temp_df, 
+                                    schema=schema,
+                                    database=database,
+                                    overwrite=True, 
+                                    temp=True
+                                    )
+
+        return staging_table_name
+
+
+
+    def _upsert(
+        self,
+        table_name: str,
+        df: ir.Table|t.Any,
+        database: str | None = None,
+        schema: str | None = None,
+        natural_key_columns: list[str] | None = None,
+        data_columns: list[str] | None = None
+        ) -> None:
+
+        if not self.table_exists(table_name=table_name, database=database, schema=schema):
+            raise ValueError(f"Target Upsert table '{table_name}' does not exist")
+
+
+        #Prepare temporary staging table
+        staging_table_name = self._upsert_prepare_staging_table(table_name=table_name, df=df, database=database, schema=schema)
+
+        #Insert real data into temp table
+        self.ibis_backend.insert(table_name=staging_table_name,
+                                obj=df,
+                                schema=schema,
+                                database=database,
+                                overwrite=True
+                                )
+
+
+        #Now for the upsert!
+        sql_natural_keys = ", ".join(natural_key_columns) if natural_key_columns else ""
+        sql_value_fields = ", ".join([f"dest.{col} = stg.{col}" for col in data_columns]) if data_columns else ""
+
+        upsert_sql = f"""INSERT INTO {table_name} dest
+select * from {staging_table_name} stg
+ON CONFLICT ({sql_natural_keys})
+DO UPDATE SET {sql_value_fields};"""
+
+        #Execute it
+        self.run_sql(upsert_sql)
