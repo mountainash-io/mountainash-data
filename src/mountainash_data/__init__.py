@@ -5,19 +5,19 @@ from .dataframes import (
     IbisDataFrame,
 )
 
+from .dataframes.utils import (
+    DataFrameUtils
+)
+from .dataframes.utils.dataframe_factory import (
+    DataFrameFactory
+)
+
 from .databases.ibis import (
     BaseIbisConnection,
     SQLite_IbisConnection,
     DuckDB_IbisConnection,
     MotherDuck_IbisConnection 
 
-)
-
-from .dataframes.utils import (
-    DataFrameUtils
-)
-from .dataframes.utils.dataframe_factory import (
-    DataFrameFactory
 )
 
 __all__ = (
@@ -29,7 +29,7 @@ __all__ = (
     "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",
-    "MotherDuck_IbisConnection"
+    "MotherDuck_IbisConnection",
 
     "DataFrameFactory",
     "DataFrameUtils"

@@ -251,6 +251,11 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
+        #TODO: set a flag to load data. Default is true, if not use the schema.
+        # if schema is None:
+        #     schema = DataFrameUtils.get_table_schema(df)
+
+
         self.ibis_backend.create_table(name=table_name, 
                                        obj=df, 
                                        schema=schema, 
