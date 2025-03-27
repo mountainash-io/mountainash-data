@@ -148,7 +148,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
         self.ibis_backend.insert(table_name=staging_table_name,
                                 obj=df,
                                 database=database,
-                                overwrite=True
+                                #overwrite=True
                                 )
 
         #Now for the upsert!
