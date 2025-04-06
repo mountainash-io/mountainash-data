@@ -75,45 +75,6 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
                         warnings.warn(f"Unable to set session {option_key} to UTC: {e}")
 
 
-    def _upsert_prepare_staging_table(
-        self,
-        table_name: str,
-        df: ir.Table|t.Any,
-        # schema: str | None = None,
-        database: str | None = None,
-    ) -> str:
-
-
-        ### Temp Table setup
-        # target table schema
-        # temp_df = self.table_as_ibis_dataframe(table_name).head(0).to_pyarrow()#.filter(filter_condition=fc.always_false())
-        # temp_df = DataFrameFactory.create_ibis_dataframe_object_from_dataframe(df=df).head(0).to_pyarrow()
-
-        schema = DataFrameUtils.get_table_schema(df)
-
-        table_suffix: str = str(uuid.uuid4()).replace("-", "")
-
-        # print(schema)
-
-        #create temptable
-        staging_table_name = f"temp_upsert_{table_suffix}"
-        self.ibis_backend.create_table(name = staging_table_name, 
-                                    # obj=df, 
-                                    schema=schema,
-                                    database=database,
-                                    overwrite=True, 
-                                    temp=True
-                                    )
-
-        if not self.table_exists(table_name=staging_table_name, database=database):
-            print(f"Could not find temp table: {staging_table_name}")
-        else:
-            print(f"Found temp table: {staging_table_name}")
-
-        return staging_table_name
-
-
-
     def _upsert(
         self,
         table_name: str,
@@ -142,28 +103,26 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
 
 
         #Prepare temporary staging table
-        staging_table_name = self._upsert_prepare_staging_table(table_name=table_name, df=df, database=database)
+        # schema = DataFrameUtils.get_table_schema(df)
 
-        # #Insert real data into temp table
-        self.ibis_backend.insert(table_name=staging_table_name,
-                                obj=df,
-                                database=database,
-                                #overwrite=True
-                                )
+        table_suffix: str = str(uuid.uuid4()).replace("-", "")
+        staging_table_name = f"temp_upsert_{table_suffix}"
 
-        #Now for the upsert!
+        #SQL upsert parts!
         list_all_columns = natural_key_columns + data_columns
         sql_all_columns = ", ".join(list_all_columns) if list_all_columns else ""
         sql_natural_keys = ", ".join(natural_key_columns) if natural_key_columns else ""
         sql_value_fields = ", ".join([f"{col} = excluded.{col}" for col in data_columns]) if data_columns else ""
 
-        upsert_sql = f"INSERT INTO {database}.{table_name}({sql_all_columns}) SELECT {sql_all_columns} FROM {database}.{staging_table_name} ON CONFLICT ({sql_natural_keys}) DO UPDATE SET {sql_value_fields}"
-
+        upsert_sql = f"INSERT INTO {database}.{table_name}({sql_all_columns}) SELECT {sql_all_columns} FROM {staging_table_name} ON CONFLICT ({sql_natural_keys}) DO UPDATE SET {sql_value_fields}"
+  
         with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
-            cur.execute("BEGIN TRANSACTION")
-            cur.execute(upsert_sql)        
-            # cur.execute(f"DROP TABLE {staging_table_name}")        
-            cur.execute("COMMIT")
+
+            cur.execute("BEGIN TRANSACTION;")
+            cur.register(staging_table_name, df)
+            cur.execute(f"{upsert_sql}")
+            cur.unregister(staging_table_name)
+            cur.execute("COMMIT;")
 
 
     def unique_index_exists(
@@ -219,24 +178,19 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
         if len(natural_key_columns) == 0:
             raise ValueError("Natural Keys must be provided")
 
-
         index_exists = self.unique_index_exists(table_name=table_name, natural_key_columns=natural_key_columns, database=database)
-
-        qualified_table = table_name
-        if database:
-            qualified_table = f"{database}.{qualified_table}"
-        
-        # Create a standardized index name
-        index_name = self.create_unique_index_name(table_name, natural_key_columns)
 
         if not index_exists:
 
+            qualified_table = table_name
+            if database:
+                qualified_table = f"{database}.{qualified_table}"
+            
+            # Create a standardized index name
+            index_name = self.create_unique_index_name(table_name, natural_key_columns)
+
             sql_natural_keys = ", ".join(natural_key_columns)
-
-            # Create the index if it doesn't exist
             create_index_sql = f"CREATE UNIQUE INDEX {index_name} ON {qualified_table} ({sql_natural_keys});"
-
-            print(create_index_sql)
 
             with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
                 cur.execute(create_index_sql)

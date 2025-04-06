@@ -300,6 +300,55 @@ class IbisDataFrame(BaseDataFrame):
         return ibis_df
 
 
+
+    def create_temp_table_ibis(self,
+                          df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
+                          tablename_prefix: Optional[str] = None,
+                          current_ibis_backend: Optional[ibis.BaseBackend] = None,
+                          target_ibis_backend: Optional[ibis.BaseBackend] = None,
+                          overwrite: Optional[bool] = True,
+                          create_as_view: Optional[bool] = False
+            ) -> ir.Table:
+
+        if current_ibis_backend is None:
+            current_ibis_backend = self.ibis_backend
+
+        if target_ibis_backend is None:
+            target_ibis_backend = self.ibis_backend
+
+
+        tablename = self.generate_tablename(prefix=tablename_prefix)
+            
+        if current_ibis_backend is target_ibis_backend:
+
+            if create_as_view and isinstance(df, ir.Table):
+                ibis_df =  target_ibis_backend.create_view(name = tablename, obj=df, overwrite=overwrite)
+                return ibis_df        
+                    
+        else:
+            #When moving between backends, we need materialise to move to the new backend
+
+            if isinstance(df, ir.Table):
+
+                print(f"Note: Data {df.get_name()} materialised as copy from {current_ibis_backend.name} to {target_ibis_backend.name}")
+
+                if df._find_backend().name in ["snowflake", "duckdb"]:
+                    df = self._get_dataframe().to_polars()
+                else:
+                    df = df.to_pyarrow()
+            else:
+                print(f"Note: Data materialised as copy from {current_ibis_backend.name} to {target_ibis_backend.name}")
+
+
+        if target_ibis_backend.supports_in_memory_tables:   
+            ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite, temp=True)
+        else:
+            ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite)
+
+        return ibis_df
+
+
+
     # Call a method to set the backend schema after super().__init__
     def init_default_ibis_backend_schema(self):
         self.default_ibis_backend_schema = get_default_ibis_backend_schema()
@@ -351,52 +400,6 @@ class IbisDataFrame(BaseDataFrame):
 
         return temp_tablename 
 
-
-    def create_temp_table_ibis(self,
-                          df: Union[pd.DataFrame, pl.DataFrame, pl.LazyFrame, ir.Table, pa.Table],
-                          tablename_prefix: Optional[str] = None,
-                          current_ibis_backend: Optional[ibis.BaseBackend] = None,
-                          target_ibis_backend: Optional[ibis.BaseBackend] = None,
-                          overwrite: Optional[bool] = True,
-                          create_as_view: Optional[bool] = False
-            ) -> ir.Table:
-
-        if current_ibis_backend is None:
-            current_ibis_backend = self.ibis_backend
-
-        if target_ibis_backend is None:
-            target_ibis_backend = self.ibis_backend
-
-
-        tablename = self.generate_tablename(prefix=tablename_prefix)
-            
-        if current_ibis_backend is target_ibis_backend:
-
-            if create_as_view and isinstance(df, ir.Table):
-                ibis_df =  target_ibis_backend.create_view(name = tablename, obj=df, overwrite=overwrite)
-                return ibis_df        
-                    
-        else:
-            #When moving between backends, we need materialise to move to the new backend
-
-            if isinstance(df, ir.Table):
-
-                print(f"Note: Data {df.get_name()} materialised as copy from {current_ibis_backend.name} to {target_ibis_backend.name}")
-
-                if df._find_backend().name in ["snowflake", "duckdb"]:
-                    df = self._get_dataframe().to_polars()
-                else:
-                    df = df.to_pyarrow()
-            else:
-                print(f"Note: Data materialised as copy from {current_ibis_backend.name} to {target_ibis_backend.name}")
-
-
-        if target_ibis_backend.supports_in_memory_tables:   
-            ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite, temp=True)
-        else:
-            ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite)
-
-        return ibis_df
 
 
 

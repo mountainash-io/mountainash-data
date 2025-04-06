@@ -82,7 +82,7 @@ class BaseIbisConnection(BaseDBConnection):
                 else:
                     self.connect_default(**kwargs)
 
-        return self._ibis_backend
+        return self.ibis_backend
 
 
     def connect_default(self, **kwargs) -> SQLBackend:
@@ -110,7 +110,7 @@ class BaseIbisConnection(BaseDBConnection):
             elif self.ibis_connection_mode == IBIS_DB_connection_mode.HYBRID:
                 self._connect(connection_string=connection_string, connection_kwargs=connection_kwargs, **kwargs)
 
-        return self._ibis_backend
+        return self.ibis_backend
 
 
 
@@ -138,9 +138,9 @@ class BaseIbisConnection(BaseDBConnection):
             raise ValueError(f"{self.db_backend_name}: Connection string is required to establish connection")
 
 
-        self._ibis_backend: t.Any = ibis.connect(connection_string, **connection_kwargs)
+        self._ibis_backend : t.Any = ibis.connect(connection_string, **connection_kwargs)
     
-        return self._ibis_backend
+        return self.ibis_backend
 
 
 
@@ -154,7 +154,7 @@ class BaseIbisConnection(BaseDBConnection):
     
         if self.ibis_backend is not None:
             self.ibis_backend.disconnect()
-            self._ibis_backend = None
+            self._ibis_backend  = None
 
     def is_connected(self) -> bool:
         """ Is the connection open?"""
