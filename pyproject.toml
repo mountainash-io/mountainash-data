@@ -39,7 +39,6 @@ dependencies = [
   "pyarrow-hotfix>=0.4,<1",   
 
   "duckdb",                                 
-  "sqlite",                                 
   "pandas>=2.2.0",              
   "polars==1.16.0",     
    
@@ -47,10 +46,12 @@ dependencies = [
     
 [project.optional-dependencies] 
 all = [ 
-  "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino] == 10.4.0", 
   "psycopg2-binary==2.9.9",       
   "pyodbc==5.2.0",          
-  "snowflake-connector-python==3.12.3",        
+  "snowflake-connector-python==3.12.3",
+  "distutils",        
+  "ibis-framework[mssql,snowflake,postgres,pyspark,trino] == 10.4.0", 
+  # "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino] == 10.4.0", 
 ]    
 mssql = [ 
  "pyodbc==5.2.0",
@@ -68,6 +69,7 @@ bigquery = [
   "ibis-framework[bigquery] == 10.4.0",        
 ]  
 pyspark = [ 
+  "distutils",
   "ibis-framework[pyspark] == 10.4.0",        
 ]  
 trino = [ 
