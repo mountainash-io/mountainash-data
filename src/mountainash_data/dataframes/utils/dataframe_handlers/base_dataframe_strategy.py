@@ -18,7 +18,7 @@ from ...base_dataframe import BaseDataFrame
 
 
 def init_ibis_connection(ibis_schema: Optional[str] = None) -> ibis.BaseBackend:
-    return ibis.connect(resource=f"{ibis_schema}://")
+    return ibis.connect(f"{ibis_schema}://")
 
 
 class BaseDataFrameStrategy(ABC):
@@ -80,7 +80,7 @@ class BaseDataFrameStrategy(ABC):
                 df = self.cast_to_pyarrow_table(df=df)
 
             #This will use the default backend in-memory connection 
-            new_table  = ibis.memtable(data=df, 
+            new_table  = ibis.memtable(df, 
                                 columns=self._get_column_names(df=df), 
                                 name=tablename) 
 
@@ -89,7 +89,7 @@ class BaseDataFrameStrategy(ABC):
             if current_ibis_backend is target_ibis_backend:
 
                 if create_as_view and isinstance(df, ir.Table):
-                    new_table =  target_ibis_backend.create_view(name = tablename, obj=df, overwrite=overwrite)
+                    new_table =  target_ibis_backend.create_view(tablename, obj=df, overwrite=overwrite)
                     return new_table                
             else:
                 #When moving between backends, we need materialise to move to the new backend
@@ -97,9 +97,9 @@ class BaseDataFrameStrategy(ABC):
                     df = self.cast_to_pyarrow_table(df=df)
 
             if target_ibis_backend.supports_temporary_tables:   
-                new_table =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite, temp=True)
+                new_table =  target_ibis_backend.create_table(tablename, obj=df, overwrite=overwrite, temp=True)
             else:
-                new_table =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite)
+                new_table =  target_ibis_backend.create_table(tablename, obj=df, overwrite=overwrite)
 
 
         return new_table
@@ -184,10 +184,10 @@ class BaseDataFrameStrategy(ABC):
             df = self.cast_to_pyarrow_table(df=df)
 
         if ibis_backend.supports_temporary_tables:   
-            new_table =  ibis_backend.create_table(name = tablename, obj=df, #schema=table_schema,
+            new_table =  ibis_backend.create_table(tablename, obj=df, #schema=table_schema,
                                                     overwrite=True, temp=True)
         else:
-            new_table =  ibis_backend.create_table(name = tablename, obj=df, #schema=table_schema, 
+            new_table =  ibis_backend.create_table(tablename, obj=df, #schema=table_schema, 
                                                    overwrite=True)
         return new_table
 

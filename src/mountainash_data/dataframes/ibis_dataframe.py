@@ -58,6 +58,8 @@ class IbisDataFrame(BaseDataFrame):
                                                       ibis_backend=ibis_backend,
                                                       ibis_backend_schema=ibis_backend_schema)
 
+
+
         self.ibis_df_grouped: Optional[GroupedTable] = df_grouped
         self.ibis_df_windowed: Optional[WindowedTable|GroupedArray|GroupedNumbers] = df_windowed
 
@@ -202,26 +204,26 @@ class IbisDataFrame(BaseDataFrame):
                 #TODO: Handle GroupedTables and WindowedTables
                 if isinstance(result, (GroupedTable)):
 
-                    # result= result.alias(alias=self.generate_tablename(prefix=name))
-                    df = result.table.to_expr().alias(alias=self.generate_tablename(prefix=name))
+                    # result= result.alias(self.generate_tablename(prefix=name))
+                    df = result.table.to_expr().alias(self.generate_tablename(prefix=name))
                     return type(self)(df=df, ibis_backend=self.ibis_backend, df_grouped=result)
 
                 elif isinstance(result, (GroupedArray,GroupedNumbers)):
                     print("We have a GroupedArray or GroupedNumbers table!")
-                    # result= result.alias(alias=self.generate_tablename(prefix=name))
-                    df = result.parent.alias(alias=self.generate_tablename(prefix=name)) 
+                    # result= result.alias(self.generate_tablename(prefix=name))
+                    df = result.parent.alias(self.generate_tablename(prefix=name)) 
                     return type(self)(df=df, ibis_backend=self.ibis_backend, df_windowed=result)
 
 
                 elif isinstance(result, (WindowedTable)):
                     print("We have a windowed table!")
-                    # result= result.alias(alias=self.generate_tablename(prefix=name))
-                    df = result.parent.alias(alias=self.generate_tablename(prefix=name)) 
+                    # result= result.alias(self.generate_tablename(prefix=name))
+                    df = result.parent.alias(self.generate_tablename(prefix=name)) 
                     return type(self)(df=df, ibis_backend=self.ibis_backend, df_windowed=result)
 
                 # If result is an ibis DataFrame, wrap it in this class, otherwise return the result
                 elif isinstance(result, ir.Table):
-                    result= result.alias(alias=self.generate_tablename(prefix=name))
+                    result= result.alias(self.generate_tablename(prefix=name))
                     return type(self)(df=result, ibis_backend=self.ibis_backend)
                 
                 return result
@@ -278,11 +280,11 @@ class IbisDataFrame(BaseDataFrame):
 
 
             # We already have ibis, but if generated manually, we may lack a name
-            if df.has_name() and not tablename_prefix:
+            if df.get_name() is not None and not tablename_prefix:
                 ibis_df = df
             else:
                 tablename = self.generate_tablename(prefix=tablename_prefix)
-                ibis_df = df.alias(alias=tablename)
+                ibis_df = df.alias(tablename)
 
         else:
             # We are entering ibis-land for this data.
@@ -340,10 +342,14 @@ class IbisDataFrame(BaseDataFrame):
                 print(f"Note: Data materialised as copy from {current_ibis_backend.name} to {target_ibis_backend.name}")
 
 
-        if target_ibis_backend.supports_in_memory_tables:   
-            ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite, temp=True)
-        else:
-            ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite)
+        # if target_ibis_backend.supports_in_memory_tables:   
+        #     ibis_df =  target_ibis_backend.create_table(name = tablename, obj=df, overwrite=overwrite, temp=True)
+        # else:
+        ibis_df = target_ibis_backend.create_table(tablename, obj=df, overwrite=overwrite)
+        # ibis_df =  target_ibis_backend.create_table(obj=df, overwrite=overwrite)
+
+        if ibis_df is None:
+            raise ValueError("Failed to create ibis_df in create_temp_table_ibis")
 
         return ibis_df
 
@@ -510,17 +516,6 @@ class IbisDataFrame(BaseDataFrame):
                 ibis_df = ibis_df.cast(pandas_schema)
             return_df = ibis_df.to_pandas()
 
-        elif pyarrow_compatibility:
-            if pyarrow_changed:
-
-                schema_changes = {k: {"original":original_schema[k],"new":pyarrow_schema[k]}  for k in original_schema.keys() if original_schema[k] != pyarrow_schema[k]}
-                for field,schema_change in schema_changes.items():
-                    print(f"Warning. The type of {field} has been cast from {schema_change['original']} to {schema_change['new']} during intermediate dataframe conversion to pyarrow")
-
-                ibis_df = ibis_df.cast(pyarrow_schema)
-            temp_ibis_df = ibis_df.to_pyarrow()
-            return_df = temp_ibis_df.to_pandas()
-
         elif polars_compatibility:
             if polars_changed:
 
@@ -532,6 +527,17 @@ class IbisDataFrame(BaseDataFrame):
 
             temp_ibis_df = ibis_df.to_polars()
             return_df =  temp_ibis_df.to_pandas()
+
+        elif pyarrow_compatibility:
+            if pyarrow_changed:
+
+                schema_changes = {k: {"original":original_schema[k],"new":pyarrow_schema[k]}  for k in original_schema.keys() if original_schema[k] != pyarrow_schema[k]}
+                for field,schema_change in schema_changes.items():
+                    print(f"Warning. The type of {field} has been cast from {schema_change['original']} to {schema_change['new']} during intermediate dataframe conversion to pyarrow")
+
+                ibis_df = ibis_df.cast(pyarrow_schema)
+            temp_ibis_df = ibis_df.to_pyarrow()
+            return_df = temp_ibis_df.to_pandas()
         
         
         else:
@@ -609,7 +615,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except TypeError:
+        except:
             new_schema = None
             compatible = False
 
@@ -624,7 +630,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except TypeError:
+        except:
             new_schema = None
             compatible = False
 
@@ -639,7 +645,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except TypeError:
+        except:
             new_schema = None
             compatible = False
 
@@ -668,7 +674,7 @@ class IbisDataFrame(BaseDataFrame):
 # Column Selection
     # def select(self, ibis_expr: Any) -> "IbisDataFrame":
 
-    #     new_df: ir.Table = self._select_ibis(ibis_expr=ibis_expr).alias(alias=self.generate_tablename(prefix="select"))
+    #     new_df: ir.Table = self._select_ibis(ibis_expr=ibis_expr).alias(self.generate_tablename(prefix="select"))
     #     # add a lineage record - name and transformations
 
     #     return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
@@ -683,7 +689,7 @@ class IbisDataFrame(BaseDataFrame):
 
     def drop(self, columns: Any) -> "IbisDataFrame":
 
-        new_df: ir.Table = self._drop_ibis(columns).alias(alias=self.generate_tablename(prefix="drop"))
+        new_df: ir.Table = self._drop_ibis(columns).alias(self.generate_tablename(prefix="drop"))
  
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
@@ -704,7 +710,7 @@ class IbisDataFrame(BaseDataFrame):
 
 #     def distinct(self) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._distinct_ibis().alias(alias=self.generate_tablename(prefix="distinct"))
+#         new_df: ir.Table = self._distinct_ibis().alias(self.generate_tablename(prefix="distinct"))
  
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
@@ -715,7 +721,7 @@ class IbisDataFrame(BaseDataFrame):
 
 #     def rename(self, **kwargs) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._rename_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="rename"))
+#         new_df: ir.Table = self._rename_ibis(**kwargs).alias(self.generate_tablename(prefix="rename"))
  
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
     
@@ -729,7 +735,7 @@ class IbisDataFrame(BaseDataFrame):
 
 #     def try_cast(self, **kwargs) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._try_cast_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="try_cast"))
+#         new_df: ir.Table = self._try_cast_ibis(**kwargs).alias(self.generate_tablename(prefix="try_cast"))
  
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
@@ -740,7 +746,7 @@ class IbisDataFrame(BaseDataFrame):
 # # Add Columns       
 #     def mutate(self, **kwargs) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._mutate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="mutate"))
+#         new_df: ir.Table = self._mutate_ibis( **kwargs).alias(self.generate_tablename(prefix="mutate"))
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
 #     def _mutate_ibis(self,  **kwargs) -> ir.Table:
@@ -750,7 +756,7 @@ class IbisDataFrame(BaseDataFrame):
 # # Reshape
 #     def aggregate(self,  **kwargs) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="aggregate"))
+#         new_df: ir.Table = self._aggregate_ibis( **kwargs).alias(self.generate_tablename(prefix="aggregate"))
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
       
 #     def _aggregate_ibis(self, **kwargs) -> ir.Table:
@@ -760,7 +766,7 @@ class IbisDataFrame(BaseDataFrame):
 
 #     def pivot_wider(self,  **kwargs) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._pivot_wider_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_wider"))
+#         new_df: ir.Table = self._pivot_wider_ibis( **kwargs).alias(self.generate_tablename(prefix="pivot_wider"))
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
        
 #     def _pivot_wider_ibis(self, **kwargs) -> ir.Table:
@@ -769,7 +775,7 @@ class IbisDataFrame(BaseDataFrame):
 
 #     def pivot_longer(self, **kwargs) -> "IbisDataFrame":
 
-#         new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(alias=self.generate_tablename(prefix="pivot_longer"))
+#         new_df: ir.Table = self._pivot_longer_ibis( **kwargs).alias(self.generate_tablename(prefix="pivot_longer"))
 #         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
 #     def _pivot_longer_ibis(self, **kwargs) -> ir.Table:
@@ -1072,7 +1078,7 @@ class IbisDataFrame(BaseDataFrame):
 
     #Table Comparisons                
     def union(self, **kwargs) -> "IbisDataFrame":
-        new_df = self._union_ibis(**kwargs).alias(alias=self.generate_tablename(prefix="union"))
+        new_df = self._union_ibis(**kwargs).alias(self.generate_tablename(prefix="union"))
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
     def _union_ibis(self, **kwargs) -> ir.Table:
@@ -1083,7 +1089,7 @@ class IbisDataFrame(BaseDataFrame):
 
     def difference(self, comparison_df: "IbisDataFrame") -> "IbisDataFrame":
 
-        new_df = self._difference_ibis(comparison_df=comparison_df).alias(alias=self.generate_tablename(prefix="difference"))
+        new_df = self._difference_ibis(comparison_df=comparison_df).alias(self.generate_tablename(prefix="difference"))
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
     def _difference_ibis(self, comparison_df: "IbisDataFrame") -> ir.Table:
@@ -1094,7 +1100,7 @@ class IbisDataFrame(BaseDataFrame):
 
 
     def intersect(self, comparison_df: "IbisDataFrame") -> "IbisDataFrame":
-        new_df = self._intersect_ibis(comparison_df=comparison_df).alias(alias=self.generate_tablename(prefix="intersect"))
+        new_df = self._intersect_ibis(comparison_df=comparison_df).alias(self.generate_tablename(prefix="intersect"))
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
     def _intersect_ibis(self, comparison_df: "IbisDataFrame") -> ir.Table:
@@ -1134,13 +1140,13 @@ class IbisDataFrame(BaseDataFrame):
 ### Query        
     
     def sql(self, query:str) -> "IbisDataFrame":
-        new_df = self._sql_ibis(query=query).alias(alias=self.generate_tablename(prefix="sql"))
+        new_df = self._sql_ibis(query=query).alias(self.generate_tablename(prefix="sql"))
 
         return IbisDataFrame(df=new_df, ibis_backend=self.ibis_backend)
 
     def _sql_ibis(self, query:str) -> ir.Table:
 
-        if self.ibis_df.has_name():
+        if self.ibis_df.get_name() is not None:
             query = query.format(_=self.ibis_df.get_name())
         else:
             query = query.format(_="df")
@@ -1154,8 +1160,8 @@ class IbisDataFrame(BaseDataFrame):
         return self._as_dict_ibis()
 
     def _as_dict_ibis(self) -> Dict[str, List[Any]] | Any:
-        df: pa.Table = self.ibis_df.to_pyarrow()
-        return df.to_pydict()
+        df: pa.Table = self.ibis_df.to_polars()
+        return df.to_dict(as_series=False)
 
 
     def to_pylist(self) -> List[Dict[Any,Any]] | Any:
@@ -1165,8 +1171,8 @@ class IbisDataFrame(BaseDataFrame):
         return self._as_list_ibis()
 
     def _as_list_ibis(self) -> List[Dict[Any,Any]] | Any:        
-        df: pa.Table = self.ibis_df.to_pyarrow()
-        return df.to_pylist()
+        df: pa.Table = self.ibis_df.to_polars()
+        return df.to_dicts()
 
 
 

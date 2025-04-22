@@ -31,6 +31,9 @@ class PandasFilterVisitor(FilterVisitor):
         else:
 
             if condition.operator == "in":
+
+               print(f"PandasFilterVisitor: {condition.value}")
+
                return  lambda df: df[condition.column].isin(condition.value)          
             else:            
                 # Column to value comparison

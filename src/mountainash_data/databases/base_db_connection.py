@@ -62,12 +62,6 @@ class BaseDBConnection(ABC):
 
     @property
     @abstractmethod
-    def connection_string_scheme(self) -> str:
-        """Template string for database connection."""
-        pass
-
-    @property
-    @abstractmethod
     def settings_class(self) -> t.Type[BaseSettings]:
         """Settings class for database configuration."""
         pass

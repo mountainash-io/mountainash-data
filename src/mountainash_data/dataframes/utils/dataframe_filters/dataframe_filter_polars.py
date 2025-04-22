@@ -30,6 +30,8 @@ class PolarsFilterVisitor(FilterVisitor):
         else:
 
             if condition.operator == "in":
+               print(f"PolarsFilterVisitor: {condition.value}")
+
                return  lambda df: pl.col(condition.column).is_in(condition.value)              
             else:
                 # Column to value comparison 

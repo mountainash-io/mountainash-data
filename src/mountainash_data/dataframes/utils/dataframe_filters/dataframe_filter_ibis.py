@@ -30,7 +30,14 @@ class IbisFilterVisitor(FilterVisitor):
         else:
 
             if condition.operator == "in":
-               return  lambda table: table[condition.column].isin(ibis.literal(condition.value))       
+
+               values_list = list(condition.value)  # Ensure it's a list
+                
+               print(f"IbisFilterVisitor: type={type(values_list)}, length={len(values_list)}, sample={values_list[:5] if len(values_list) > 5 else values_list}")
+                           
+            #    print(f"IbisFilterVisitor: {type(condition.value)} {condition.value}")
+
+               return  lambda table: table[condition.column].isin(values_list)       
             else:               
                 # Column to value comparison
                 return lambda table: op_func(table[condition.column], ibis.literal(condition.value))
