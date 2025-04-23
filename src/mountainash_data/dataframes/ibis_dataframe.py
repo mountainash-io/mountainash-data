@@ -280,11 +280,11 @@ class IbisDataFrame(BaseDataFrame):
 
 
             # We already have ibis, but if generated manually, we may lack a name
-            if df.get_name() is not None and not tablename_prefix:
-                ibis_df = df
-            else:
-                tablename = self.generate_tablename(prefix=tablename_prefix)
-                ibis_df = df.alias(tablename)
+            # if df.get_name() is not None and not tablename_prefix:
+            #     ibis_df = df
+            # else:
+            tablename = self.generate_tablename(prefix=tablename_prefix)
+            ibis_df = df.alias(tablename)
 
         else:
             # We are entering ibis-land for this data.
@@ -876,7 +876,7 @@ class IbisDataFrame(BaseDataFrame):
             if execute_on == "left":
 
                 left_table = self.ibis_df
-                right_table = self.create_temp_table_ibis(df=right._get_dataframe(), 
+                right_table = right.create_temp_table_ibis(df=right._get_dataframe(), 
                                                           tablename_prefix="right_table", 
                                                           current_ibis_backend=right.ibis_backend, 
                                                           target_ibis_backend=self.ibis_backend, 
@@ -962,7 +962,7 @@ class IbisDataFrame(BaseDataFrame):
         left_table, right_table = self._resolve_join_backend_ibis(right=right, 
                                                                   execute_on=execute_on)
 
-        return left_table.inner_join(right=right_table, predicates=predicates, **kwargs)
+        return left_table.inner_join(right_table, predicates=predicates, **kwargs)
 
     def left_join(self,             
                    right: "BaseDataFrame", 
@@ -991,7 +991,7 @@ class IbisDataFrame(BaseDataFrame):
 
         left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
 
-        return left_table.left_join(right=right_table, predicates=predicates, **kwargs)
+        return left_table.left_join(right_table, predicates=predicates, **kwargs)
 
 
     def outer_join(self,             
@@ -1020,7 +1020,7 @@ class IbisDataFrame(BaseDataFrame):
 
         left_table, right_table = self._resolve_join_backend_ibis(right=right, execute_on=execute_on)
 
-        return left_table.outer_join(right=right_table, predicates=predicates, **kwargs)
+        return left_table.outer_join(right_table, predicates=predicates, **kwargs)
 
 # Row Selection
 
@@ -1120,12 +1120,13 @@ class IbisDataFrame(BaseDataFrame):
     #     return self.ibis_df.order_by(by) 
     
 #Column Metadata
-    def get_column_names(self) -> list:
+    def get_column_names(self) -> List[str]:
         return self._get_column_names_ibis()   
             
     def _get_column_names_ibis(self) -> List[str]:
         
-        return self.ibis_df.columns
+        #force to list as ibis returns a tuple > v1.10
+        return list(self.ibis_df.columns)
                 
 ### Aggregates        
     

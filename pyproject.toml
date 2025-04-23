@@ -27,7 +27,7 @@ dependencies = [
   # "ibis-framework[mssql,snowflake,bigquery,pyspark,trino] == 10.4.0", 
   # "psycopg2-binary==2.9.9",         
   # "pyodbc==5.2.0",              
-  # "snowflake-connector-python==3.12.3",    
+  # "snowflake-connector-python==3.12.3",     
 
   "numpy>=1.23.2,<3",     
   "rich>=12.4.4,<14",         
@@ -35,7 +35,7 @@ dependencies = [
   "openlineage-python==1.17.1",        
   "xarray==2024.11.0",      
   "pyarrow==17.0.0",         
-  "pyarrow-hotfix>=0.4,<1",   
+  "pyarrow-hotfix>=0.4,<1",    
   "sqlalchemy",       
 
   "duckdb",                                 
@@ -56,15 +56,15 @@ all = [
 mssql = [ 
  "pyodbc==5.2.0",
  "ibis-framework[mssql] == 10.4.0",      
-]   
+]    
 snowflake = [  
-  "snowflake-connector-python==3.12.3",      
+  "snowflake-connector-python==3.12.3",       
   "ibis-framework[snowflake] == 10.4.0",        
 ] 
 postgres = [ 
-  "psycopg2-binary==2.9.9",
+  "psycopg2-binary==2.9.9", 
   "ibis-framework[postgres] == 10.4.0",        
-] 
+]  
 bigquery = [ 
   "ibis-framework[bigquery] == 10.4.0",        
 ]  
@@ -88,7 +88,7 @@ Source = "https://github.com/mountainash-io/mountainash-data"
 [tool.coverage.run]
 source_pkgs = ["mountainash_data", "tests"] 
 branch = true
-parallel = true   
+parallel = true    
 omit = [ 
   "src/mountainash_data/__version__.py", 
 ]

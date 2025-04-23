@@ -34,9 +34,8 @@ class PyArrowFilterVisitor(FilterVisitor):
         else:
             
             if condition.operator == "in":
-               print(f"PyArrowFilterVisitor: {condition.value}")
-
-               return  lambda table: pc.field(condition.column).isin(pc.array(condition.value))                
+               values_list = list(condition.value) if not isinstance(condition.value, list) else condition.value # Ensure it's a list
+               return  lambda table: pc.field(condition.column).isin(values_list)                
             #    return  lambda table: pc.field(condition.column).isin(condition.value)                
             else:
                 # Column to value comparison

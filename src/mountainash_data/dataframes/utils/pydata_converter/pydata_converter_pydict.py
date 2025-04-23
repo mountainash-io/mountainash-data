@@ -54,7 +54,7 @@ class PyDataConverterPydict(BasePyDataConverter):
         #             # Single type, keep as is
         #             processed_data[col] = values
 
-        df = pl.DataFrame(data)
+        df = pl.DataFrame(data, strict=False)
 
         if column_mapping:
             # Create ColumnMapConfig

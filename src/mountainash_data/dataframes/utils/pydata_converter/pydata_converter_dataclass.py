@@ -55,7 +55,7 @@ class PyDataConverterDataclass(BasePyDataConverter):
             }]
 
         # Create DataFrame
-        df = pl.DataFrame(data_dicts)
+        df = pl.DataFrame(data_dicts, strict=False)
 
         if column_mapping:
             # Create ColumnMapConfig
