@@ -1,28 +1,53 @@
-from .base_ibis_connection      import BaseIbisConnection
-from .connections.sqlite_ibis_connection    import SQLite_IbisConnection
-from .connections.duckdb_ibis_connection    import DuckDB_IbisConnection
-# from .connections.postgres_ibis_connection  import Postgres_IbisConnection
-# from .connections.mssql_ibis_connection     import MSSQL_IbisConnection
-from .connections.snowflake_ibis_connection import Snowflake_IbisConnection
-from .connections.motherduck_ibis_connection import MotherDuck_IbisConnection
-# from .connections.bigquery_ibis_connection import BigQuery_IbisConnection
-from .connections.pyspark_ibis_connection import PySpark_IbisConnection
-# from .connections.trino_ibis_connection import Trino_IbisConnection
-
+from .base_ibis_connection import BaseIbisConnection
 from .constants import IBIS_DB_connection_mode
 
+# Core connections that are always available
+from .connections.sqlite_ibis_connection import SQLite_IbisConnection
+from .connections.duckdb_ibis_connection import DuckDB_IbisConnection
+from .connections.motherduck_ibis_connection import MotherDuck_IbisConnection
 
+# Define base exports that are always available
 __all__ = [
-    
-"IBIS_DB_connection_mode",
-"BaseIbisConnection",
-"SQLite_IbisConnection",
-"DuckDB_IbisConnection",
-# "Postgres_IbisConnection",
-# "MSSQL_IbisConnection",
-"Snowflake_IbisConnection",
-"MotherDuck_IbisConnection",
-# "BigQuery_IbisConnection",
-"PySpark_IbisConnection",
-# "Trino_IbisConnection"
+    "IBIS_DB_connection_mode",
+    "BaseIbisConnection",
+    "SQLite_IbisConnection",
+    "DuckDB_IbisConnection",
+    "MotherDuck_IbisConnection"
 ]
+
+# # Import optional connections only if they're available
+# try:
+#     from .connections import Snowflake_IbisConnection
+#     __all__.append("Snowflake_IbisConnection")
+# except ImportError:
+#     pass
+
+# try:
+#     from .connections import PySpark_IbisConnection
+#     __all__.append("PySpark_IbisConnection")
+# except ImportError:
+#     pass
+
+# try:
+#     from .connections import Postgres_IbisConnection
+#     __all__.append("Postgres_IbisConnection")
+# except ImportError:
+#     pass
+
+# try:
+#     from .connections import MSSQL_IbisConnection
+#     __all__.append("MSSQL_IbisConnection")
+# except ImportError:
+#     pass
+
+# try:
+#     from .connections import BigQuery_IbisConnection
+#     __all__.append("BigQuery_IbisConnection")
+# except ImportError:
+#     pass
+
+# try:
+#     from .connections import Trino_IbisConnection
+#     __all__.append("Trino_IbisConnection")
+# except ImportError:
+#     pass

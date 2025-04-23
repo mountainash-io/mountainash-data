@@ -34,9 +34,9 @@ dependencies = [
   "universal_pathlib==0.2.2",     
   "openlineage-python==1.17.1",        
   "xarray==2024.11.0",      
-  "sqlalchemy",      
   "pyarrow==17.0.0",         
   "pyarrow-hotfix>=0.4,<1",   
+  "sqlalchemy",       
 
   "duckdb",                                 
   "pandas>=2.2.0",              
