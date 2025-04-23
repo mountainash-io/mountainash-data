@@ -44,7 +44,7 @@ dependencies = [
    
 ]          
     
-[project.optional-dependencies] 
+[project.optional-dependencies]  
 all = [ 
   "psycopg2-binary==2.9.9",       
   "pyodbc==5.2.0",          

@@ -1074,7 +1074,7 @@ class IbisDataFrame(BaseDataFrame):
     #     if n < 0:
     #         raise ValueError("n must be greater than or equal to 0")
 
-    #     return self.ibis_df.head(n=n) 
+    #     return self.ibis_df.head(n) 
 
     #Table Comparisons                
     def union(self, **kwargs) -> "IbisDataFrame":
@@ -1185,7 +1185,7 @@ class IbisDataFrame(BaseDataFrame):
             self,
         ) -> Dict[Any,Any]:
         
-        obj_df = self.head(n=1)
+        obj_df = self.head(1)
         obj_list = obj_df.ibis_df.to_pyarrow().to_pylist()
         if len(obj_list) > 0:
             return obj_list[0]  

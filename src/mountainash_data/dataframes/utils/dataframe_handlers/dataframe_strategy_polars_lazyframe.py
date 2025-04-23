@@ -57,7 +57,7 @@ class PolarsLazyFrameUtils(BaseDataFrameStrategy):
         if n < 0:
             raise ValueError("n must be greater than or equal to 0")
 
-        return df.head(n=n)
+        return df.head(n)
 
     def _count(self, df: pl.LazyFrame) -> int:
         dict_count =  df.select(pl.len()).collect().rows(named=True) 
