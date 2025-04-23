@@ -15,9 +15,8 @@ from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTIO
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.rest import RestCatalog
 
-from mountainash_data import BaseDataFrame, IbisDataFrame, DataFrameUtils
+from mountainash_data import IbisDataFrame, DataFrameUtils
 # from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
-from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
 
 from pyiceberg.schema import Schema
 
@@ -27,16 +26,13 @@ from pyiceberg.types import (
     BinaryType, DecimalType, FixedType, ListType, MapType, StructType
 )
 
-from pyiceberg.partitioning import PartitionSpec, PartitionField
-from pyiceberg.transforms import DayTransform
-from pyiceberg.table.sorting import SortOrder, SortField
-from pyiceberg.transforms import IdentityTransform
+from pyiceberg.partitioning import PartitionSpec
+from pyiceberg.table.sorting import SortOrder
 
 
 
 import pyarrow as pa
-import uuid
-from datetime import date, time, datetime
+from datetime import date, datetime
 
 
 class BasePyIcebergConnection(BaseDBConnection):
@@ -640,7 +636,7 @@ class BasePyIcebergConnection(BaseDBConnection):
                         values = df.column(col_index).to_pylist()
                         converted = [datetime.fromisoformat(str(v)) if v is not None else None for v in values]
                         cast_arrays.append(pa.array(converted, type=field.type))
-                    except:
+                    except Exception:
                         # Fallback to regular casting
                         cast_arrays.append(df.column(col_index).cast(field.type, safe=True))
                 elif pa.types.is_date(field.type) and not pa.types.is_date(df.column(col_index).type):
@@ -649,7 +645,7 @@ class BasePyIcebergConnection(BaseDBConnection):
                         values = df.column(col_index).to_pylist()
                         converted = [date.fromisoformat(str(v)) if v is not None else None for v in values]
                         cast_arrays.append(pa.array(converted, type=field.type))
-                    except:
+                    except Exception:
                         cast_arrays.append(df.column(col_index).cast(field.type, safe=True))
                 elif pa.types.is_decimal(field.type):
                     # Decimal requires special handling
@@ -658,7 +654,7 @@ class BasePyIcebergConnection(BaseDBConnection):
                         from decimal import Decimal
                         converted = [Decimal(str(v)) if v is not None else None for v in values]
                         cast_arrays.append(pa.array(converted, type=field.type))
-                    except:
+                    except Exception:
                         cast_arrays.append(df.column(col_index).cast(field.type, safe=True))
                 else:
                     # Standard casting for other types

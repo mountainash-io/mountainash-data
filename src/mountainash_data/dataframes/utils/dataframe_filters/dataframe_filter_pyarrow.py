@@ -1,4 +1,3 @@
-import pyarrow as pa
 import pyarrow.compute as pc
 
 from typing import Callable

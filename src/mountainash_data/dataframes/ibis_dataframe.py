@@ -615,7 +615,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except:
+        except Exception:
             new_schema = None
             compatible = False
 
@@ -630,7 +630,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except:
+        except Exception:
             new_schema = None
             compatible = False
 
@@ -645,7 +645,7 @@ class IbisDataFrame(BaseDataFrame):
             compatible = True
             if original_schema != new_schema:
                 changed = True
-        except:
+        except Exception:
             new_schema = None
             compatible = False
 
@@ -791,13 +791,13 @@ class IbisDataFrame(BaseDataFrame):
 
         if self.ibis_backend_schema in set("duckdb"):
             cast_dict = {field: target_fields_types[field] for field in fields_diff_types}
-            print(f"CAST DICT: {cast_dict}")
+            # print(f"CAST DICT: {cast_dict}")
             df_ibis = df_ibis.try_cast(cast_dict)
         else:
 
             for field in fields_diff_types:
                 target_type = target_fields_types[field]
-                print(f"Casting field: {field} to {target_type}")
+                # print(f"Casting field: {field} to {target_type}")
                 df_ibis = ( df_ibis 
                                 .mutate(field = ibis._[field].cast(target_type ) )
                                 .drop(field)

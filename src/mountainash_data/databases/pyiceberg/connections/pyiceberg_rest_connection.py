@@ -1,7 +1,6 @@
 import typing as t
 # import catalog.backends.duckdb as ir_backend
 import contextlib
-import warnings
 from pydantic_settings import BaseSettings
 import ibis.expr.types.relations as ir 
 import uuid
@@ -9,7 +8,6 @@ import uuid
 # from ..constants import IBIS_DB_connection_mode
 
 from pyiceberg.catalog import Catalog
-from pyiceberg.catalog.rest import RestCatalog
 
 from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
@@ -19,10 +17,8 @@ from mountainash_settings import SettingsParameters
 
 from mountainash_settings.settings.auth.database import PyIcebergRestAuthSettings
 from mountainash_data.databases.pyiceberg import BasePyIcebergConnection
-from mountainash_data.databases import BaseDBConnection
 # from mountainash_data.databases.ibis import BaseIbisConnection
 
-import contextlib
 
 class PyIcebergRestConnection(BasePyIcebergConnection):
 

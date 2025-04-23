@@ -6,7 +6,6 @@ from ibis.expr.schema import SchemaLike
 from ibis.backends.sql import SQLBackend
 from mountainash_data.databases.base_db_connection import BaseDBConnection
 from abc import abstractmethod
-import uuid
 
 # from abc import abstractmethod
 from mountainash_settings import SettingsParameters
@@ -15,7 +14,6 @@ from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTIO
 from .constants import IBIS_DB_connection_mode
 from mountainash_data import BaseDataFrame, IbisDataFrame
 from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
-from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
 
 
 class BaseIbisConnection(BaseDBConnection):
