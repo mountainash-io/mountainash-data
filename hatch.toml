@@ -8,7 +8,9 @@ path = "src/mountainash_data/__version__.py"
 [build.targets.wheel]
 packages = ["src/mountainash_data"]
 
-
+#================
+# Env: build_github
+#================
 [envs.build_github]
 installer = "uv"
 dependencies = [
