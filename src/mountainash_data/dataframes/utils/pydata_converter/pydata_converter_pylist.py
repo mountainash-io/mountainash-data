@@ -44,7 +44,7 @@ class PyDataConverterPylist(BasePyDataConverter):
                 column_mapping: Optional[Dict[str, str|Dict[str,str]]] = None,
                 filter_unmapped: Optional[bool] = False) -> pl.DataFrame:
         
-        df =  pl.DataFrame(data)
+        df =  pl.DataFrame(data, strict=False)
 
         if column_mapping:
             # Create ColumnMapConfig

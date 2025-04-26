@@ -97,7 +97,7 @@ class DataFrameFactory:
             if not ibis_backend_schema:
                 ibis_backend_schema = get_default_ibis_backend_schema()
 
-            ibis_backend = init_ibis_connection(default_ibis_schema=ibis_backend_schema)
+            ibis_backend = init_ibis_connection(ibis_schema=ibis_backend_schema)
 
         #Pre-create an ibis table with the appropriate backend and tablename
         df = DataFrameUtils.cast_dataframe_to_ibis(df=df, ibis_backend=ibis_backend, tablename_prefix=tablename_prefix)

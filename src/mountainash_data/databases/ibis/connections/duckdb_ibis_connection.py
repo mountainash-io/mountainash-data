@@ -112,9 +112,31 @@ class DuckDB_IbisConnection(BaseIbisConnection):
 
         return super()._connect(connection_string, connection_kwargs)
 
-        # if connection_string is None:
-        #     raise ValueError(f"{self.db_backend_name}: Connection string is required to establish connection")
-            
-        # self._ibis_backend: t.Any = ibis.connect(connection_string, **connection_kwargs)
-    
-        # return self._ibis_backend
+    def disconnect(self):
+        """Close the DuckDB connection, ensuring the underlying connection is properly closed."""
+        if self.ibis_backend is not None:
+            try:
+                # Close the underlying DuckDB connection first
+                if hasattr(self.ibis_backend, 'con'):
+                    try:
+                        # Force close any open cursors
+                        if hasattr(self.ibis_backend.con, '_cursors'):
+                            for cursor in list(self.ibis_backend.con._cursors):
+                                try:
+                                    cursor.close()
+                                except Exception:
+                                    pass
+                        # Close the connection
+                        self.ibis_backend.con.close()
+                    except Exception as e:
+                        print(f"Warning: Error closing DuckDB connection: {str(e)}")
+            except Exception as e:
+                print(f"Warning: Error during DuckDB disconnect: {str(e)}")
+            finally:
+                # Then handle the ibis cleanup
+                try:
+                    super().disconnect()
+                except Exception as e:
+                    print(f"Warning: Error during Ibis backend disconnect: {str(e)}")
+                    # Force cleanup
+                    self._ibis_backend = None

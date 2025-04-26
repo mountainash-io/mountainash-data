@@ -54,7 +54,7 @@ class PolarsDataFrameUtils(BaseDataFrameStrategy):
             raise ValueError("n must be greater than or equal to 0")
 
         self.validate_dataframe_input(df=df)
-        return df.head(n=n)
+        return df.head(n)
 
     def _count(self, df: pl.DataFrame) -> int:
         dict_count =  df.select(pl.len()).rows(named=True) 

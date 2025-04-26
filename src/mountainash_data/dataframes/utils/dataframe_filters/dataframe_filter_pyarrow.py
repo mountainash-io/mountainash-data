@@ -1,4 +1,3 @@
-import pyarrow as pa
 import pyarrow.compute as pc
 
 from typing import Callable
@@ -34,7 +33,9 @@ class PyArrowFilterVisitor(FilterVisitor):
         else:
             
             if condition.operator == "in":
-               return  lambda table: pc.field(condition.column).isin(pa.array(condition.value))                
+               values_list = list(condition.value) if not isinstance(condition.value, list) else condition.value # Ensure it's a list
+               return  lambda table: pc.field(condition.column).isin(values_list)                
+            #    return  lambda table: pc.field(condition.column).isin(condition.value)                
             else:
                 # Column to value comparison
                 return lambda table: op_func(pc.field(condition.column), pc.scalar(condition.value))

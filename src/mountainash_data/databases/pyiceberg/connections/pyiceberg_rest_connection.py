@@ -1,20 +1,26 @@
 import typing as t
-import ibis.backends.duckdb as ir_backend
+# import catalog.backends.duckdb as ir_backend
 import contextlib
-import warnings
 from pydantic_settings import BaseSettings
 import ibis.expr.types.relations as ir 
 import uuid
 
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
+# from ..constants import IBIS_DB_connection_mode
+
+from pyiceberg.catalog import Catalog
 
 from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import MotherDuckAuthSettings
-# from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
+# from mountainash_settings.settings.auth.database import MotherDuckAuthSettings
+# # from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
+# from mountainash_data import DataFrameFactory, DataFrameUtils
 
-class MotherDuck_IbisConnection(BaseIbisConnection):
+from mountainash_settings.settings.auth.database import PyIcebergRestAuthSettings
+from mountainash_data.databases.pyiceberg import BasePyIcebergConnection
+# from mountainash_data.databases.ibis import BaseIbisConnection
+
+
+class PyIcebergRestConnection(BasePyIcebergConnection):
 
 
     def __init__(self,
@@ -22,8 +28,8 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
                  connection_mode: t.Optional[str] = None
                  ):
 
-        self._ibis_backend: t.Optional[ir_backend.Backend] = None
-        self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.CONNECTION_STRING
+        self._catalog_backend: t.Optional[Catalog] = None
+        # self._catalog_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.CONNECTION_STRING
 
         self.supports_upsert = True
 
@@ -31,46 +37,44 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
         
     #From BaseIbisConnection
     @property
-    def ibis_backend(self) -> t.Optional[ir_backend.Backend]:
-        return self._ibis_backend
+    def catalog_backend(self) -> t.Optional[Catalog]:
+        return self._catalog_backend
 
     @property
-    def ibis_connection_mode(self) -> str:
-        return self._ibis_connection_mode
+    def catalog_connection_mode(self) -> str:
+        return self._catalog_connection_mode
 
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.MOTHERDUCK.value
+        return CONST_DB_BACKEND.PYICEBERG.value
 
-    @property
-    def connection_string_scheme(self) -> str:
-        return "duckdb://md:"
+    # @property
+    # def connection_string_scheme(self) -> str:
+    #     return "duckdb://md:"
 
     @property
     def settings_class(self) -> t.Type[BaseSettings]:
-        return MotherDuckAuthSettings
+        return PyIcebergRestAuthSettings
 
 
 
     def _list_tables(self,                
-                like: str | None = None,
-                database: tuple[str, str] | str | None = None,
-                schema: str | None = None
+                namespace: str | None = None,
                     ) -> t.List[str]:
 
-        return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []        
+        return self.catalog_backend.list_tables(namespace=namespace) if self.catalog_backend is not None else []        
     
 
-    def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
+    # def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 
-        if self.ibis_backend is not None:
-            with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
-                for option_key, option_value in post_connection_options.items():
-                    try:
-                        cur.execute(f"SET @@session.{option_key} = '{option_value}'")
-                    except Exception as e:
-                        warnings.warn(f"Unable to set session {option_key} to UTC: {e}")
+    #     if self.catalog_backend is not None:
+    #         with contextlib.closing(self.catalog_backend.con.cursor()) as cur:
+    #             for option_key, option_value in post_connection_options.items():
+    #                 try:
+    #                     cur.execute(f"SET @@session.{option_key} = '{option_value}'")
+    #                 except Exception as e:
+    #                     warnings.warn(f"Unable to set session {option_key} to UTC: {e}")
 
 
     def _upsert(
@@ -114,7 +118,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
 
         upsert_sql = f"INSERT INTO {database}.{table_name}({sql_all_columns}) SELECT {sql_all_columns} FROM {staging_table_name} ON CONFLICT ({sql_natural_keys}) DO UPDATE SET {sql_value_fields}"
   
-        with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
+        with contextlib.closing(self.catalog_backend.con.cursor()) as cur:
 
             cur.execute("BEGIN TRANSACTION;")
             cur.register(staging_table_name, df)
@@ -158,7 +162,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
         """
         
         # Check if the index exists
-        index_exists = self.run_sql_as_ibis_dataframe(check_index_sql).get_column_as_list("index_exists")[0] > 0
+        index_exists = self.run_sql_as_catalog_dataframe(check_index_sql).get_column_as_list("index_exists")[0] > 0
 
         return index_exists
 
@@ -190,7 +194,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
             sql_natural_keys = ", ".join(natural_key_columns)
             create_index_sql = f"CREATE UNIQUE INDEX {index_name} ON {qualified_table} ({sql_natural_keys});"
 
-            with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
+            with contextlib.closing(self.catalog_backend.con.cursor()) as cur:
                 cur.execute(create_index_sql)
 
 

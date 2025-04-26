@@ -49,7 +49,7 @@ class PyDataConverterPydantic(BasePyDataConverter):
             data_dicts = [data.model_dump()]
 
         # Create DataFrame
-        df = pl.DataFrame(data_dicts)
+        df = pl.DataFrame(data_dicts, strict=False)
 
         if column_mapping:
             # Create ColumnMapConfig

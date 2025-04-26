@@ -4,22 +4,22 @@ import os
 from unittest import mock
 # from mountainash_data.databases.connections.ibis import Postgres_IbisConnection, SQLite_IbisConnection, DuckDB_IbisConnection, MSSQL_IbisConnection, MySQL_IbisConnection, Snowflake_IbisConnection
 from mountainash_data.databases.ibis import SQLite_IbisConnection, DuckDB_IbisConnection
-from mountainash_settings import SettingsParameters
-from mountainash_auth_settings.auth_settings import AuthSettings
+from mountainash_settings import SettingsParameters, MountainAshBaseSettings
+from mountainash_settings.settings.auth.database import DuckDBAuthSettings, SQLiteAuthSettings
 
 @pytest.fixture
 def mock_settings_parameters_1():
-    return SettingsParameters.create(settings_class = AuthSettings, namespace="mock", )
+    return SettingsParameters.create(settings_class = MountainAshBaseSettings, namespace="mock")
 
 @pytest.fixture
 def mock_settings_parameters_2():
     kwargs = {"USERNAME": "ngods", "PASSWORD": "ngods", "HOST": "host", "PORT": "5432"}
-    return SettingsParameters.create(settings_class = AuthSettings, namespace="mock_pg", kwargs=kwargs)
+    return SettingsParameters.create(settings_class = MountainAshBaseSettings, namespace="mock_pg", kwargs=kwargs)
 
 @pytest.fixture
 def mock_settings_parameters_3():
     kwargs = {"USERNAME": "ngods", "PASSWORD": "ngods", "HOST": "host", "PORT": "5432", "DATABASE_NAME": "database_name"}
-    return SettingsParameters.create(settings_class = AuthSettings, namespace="mock_mssql", kwargs=kwargs)
+    return SettingsParameters.create(settings_class = MountainAshBaseSettings, namespace="mock_mssql", kwargs=kwargs)
 
 ################
 # Connections
@@ -37,12 +37,18 @@ def mock_settings_parameters_3():
 #         yield DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
 
 @pytest.fixture
-def sqlite_connection(mock_settings_parameters_1):
-    return SQLite_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
+def sqlite_connection():
+
+    settings_parameters =  SettingsParameters.create(settings_class = SQLiteAuthSettings, namespace="SQLiteAuthSettings")
+
+    return SQLite_IbisConnection(db_auth_settings_parameters=settings_parameters)
 
 @pytest.fixture
-def duckdb_connection(mock_settings_parameters_1):
-    return DuckDB_IbisConnection(db_auth_settings_parameters=mock_settings_parameters_1)
+def duckdb_connection():
+
+    settings_parameters =  SettingsParameters.create(settings_class = DuckDBAuthSettings, namespace="DuckDBAuthSettings")
+
+    return DuckDB_IbisConnection(db_auth_settings_parameters=settings_parameters)
 
 
 

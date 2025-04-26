@@ -31,7 +31,10 @@ class PandasFilterVisitor(FilterVisitor):
         else:
 
             if condition.operator == "in":
-               return  lambda df: df[condition.column].isin(condition.value)          
+
+               values_list = list(condition.value) if not isinstance(condition.value, list) else condition.value # Ensure it's a list
+
+               return  lambda df: df[condition.column].isin(values_list)          
             else:            
                 # Column to value comparison
                 return lambda df: op_func(df[condition.column], condition.value)

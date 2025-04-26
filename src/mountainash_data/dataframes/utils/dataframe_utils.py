@@ -163,7 +163,7 @@ class DataFrameUtils:
         if col_mapping:
             pl_df =  ColumnMapper.apply_mapping(pl_df, col_mapping )
 
-        return cls.cast_dataframe_to_arrow(df=pl_df)
+        return cls.cast_dataframe_to_pyarrow(df=pl_df)
 
 
     @classmethod

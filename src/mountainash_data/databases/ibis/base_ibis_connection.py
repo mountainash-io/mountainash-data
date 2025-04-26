@@ -8,12 +8,12 @@ from mountainash_data.databases.base_db_connection import BaseDBConnection
 from abc import abstractmethod
 
 # from abc import abstractmethod
-from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
 from mountainash_settings import SettingsParameters
-from mountainash_data import BaseDataFrame, IbisDataFrame
-from mountainash_constants import CONST_DATAFRAME_FRAMEWORK
+from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTION_LAYER
+
 from .constants import IBIS_DB_connection_mode
-from mountainash_constants import CONST_DB_ABSTRACTION_LAYER
+from mountainash_data import BaseDataFrame, IbisDataFrame
+from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
 
 
 class BaseIbisConnection(BaseDBConnection):
@@ -43,6 +43,19 @@ class BaseIbisConnection(BaseDBConnection):
         """Connect via a connection string, kwargs or both."""
         pass
 
+    @property
+    @abstractmethod
+    def connection_string_scheme(self) -> str:
+        """Template string for database connection."""
+        pass
+
+    # @property
+    # @abstractmethod
+    # def supports_upsert(self) -> str:
+    #     """Whether upserts are supported"""
+    #     pass
+
+
 
 
     ###########################
@@ -55,9 +68,7 @@ class BaseIbisConnection(BaseDBConnection):
                 **kwargs) -> SQLBackend:
         
         """Connect with explicitly provided connection parameters"""
-        
-        # if not (connection_string or connection_kwargs):
-        #     raise ValueError("Either connection_string or connection_kwargs must be provided")
+       
         
         if self.ibis_backend is None:
 
@@ -73,7 +84,7 @@ class BaseIbisConnection(BaseDBConnection):
                 else:
                     self.connect_default(**kwargs)
 
-        return self._ibis_backend
+        return self.ibis_backend
 
 
     def connect_default(self, **kwargs) -> SQLBackend:
@@ -88,8 +99,6 @@ class BaseIbisConnection(BaseDBConnection):
             connection_string = self.format_connection_string(template=connection_string_template, params=connectionstring_params)
             connection_kwargs = self.get_connection_kwargs(db_abstraction_layer = self.db_abstraction_layer)
 
-            print(f"Connection String: {connection_string}")
-
             if self.ibis_connection_mode == IBIS_DB_connection_mode.CONNECTION_STRING:
                 self._connect(connection_string=connection_string, **kwargs)
 
@@ -101,7 +110,7 @@ class BaseIbisConnection(BaseDBConnection):
             elif self.ibis_connection_mode == IBIS_DB_connection_mode.HYBRID:
                 self._connect(connection_string=connection_string, connection_kwargs=connection_kwargs, **kwargs)
 
-        return self._ibis_backend
+        return self.ibis_backend
 
 
 
@@ -119,19 +128,15 @@ class BaseIbisConnection(BaseDBConnection):
         if connection_kwargs is None:
             connection_kwargs = {}
 
-        if kwargs is None:
-            kwargs = {}
-
         #combine connection_kwargs and kwargs
         connection_kwargs = {**connection_kwargs, **kwargs}
 
         if connection_string is None:
             raise ValueError(f"{self.db_backend_name}: Connection string is required to establish connection")
 
-
-        self._ibis_backend: t.Any = ibis.connect(connection_string, **connection_kwargs)
+        self._ibis_backend : t.Any = ibis.connect(connection_string, **connection_kwargs)
     
-        return self._ibis_backend
+        return self.ibis_backend
 
 
 
@@ -145,7 +150,7 @@ class BaseIbisConnection(BaseDBConnection):
     
         if self.ibis_backend is not None:
             self.ibis_backend.disconnect()
-            self._ibis_backend = None
+            self._ibis_backend  = None
 
     def is_connected(self) -> bool:
         """ Is the connection open?"""
@@ -219,8 +224,8 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        return self.ibis_backend.table(name=object_name, 
-                                       schema=schema,
+        return self.ibis_backend.table(object_name, 
+                                    #    schema=schema,
                                        database=database
                                        ) if self.ibis_backend is not None else None   
     
@@ -242,7 +247,12 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        self.ibis_backend.create_table(name=table_name, 
+        #TODO: set a flag to load data. Default is true, if not use the schema.
+        # if schema is None:
+        #     schema = DataFrameUtils.get_table_schema(df)
+
+
+        self.ibis_backend.create_table(table_name, 
                                        obj=df, 
                                        schema=schema, 
                                        database=database, 
@@ -260,7 +270,7 @@ class BaseIbisConnection(BaseDBConnection):
         self.connect()
 
         try: 
-            self.ibis_backend.drop_table(name=table_name, 
+            self.ibis_backend.drop_table(table_name, 
                                         database=database, 
                                         force=force)   if self.ibis_backend is not None else None    
             return True
@@ -281,10 +291,10 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        return self.ibis_backend.create_view(name=view_name, 
+        return self.ibis_backend.create_view(view_name, 
                                 obj=ibis_table_expr,
                                 database=database, 
-                                schema=schema, 
+                                # schema=schema, 
                                 overwrite=overwrite)  if self.ibis_backend is not None else None  
 
     def drop_view(
@@ -299,9 +309,9 @@ class BaseIbisConnection(BaseDBConnection):
 
         try: 
  
-            self.ibis_backend.drop_view(name=view_name, 
+            self.ibis_backend.drop_view(view_name, 
                                     database=database, 
-                                    schema=schema, 
+                                    # schema=schema, 
                                     force=force)  if self.ibis_backend is not None else None     
             return True
         except Exception:
@@ -331,7 +341,7 @@ class BaseIbisConnection(BaseDBConnection):
         self.connect()
 
         try: 
-            self.ibis_backend.insert(   table_name=table_name, 
+            self.ibis_backend.insert(   table_name, 
                                     obj=df, 
                                     schema=schema,
                                     database=database,
@@ -352,7 +362,7 @@ class BaseIbisConnection(BaseDBConnection):
         self.connect()
 
         self.ibis_backend.truncate_table(   
-                                    name=table_name, 
+                                    table_name, 
                                     schema=schema,
                                     database=database)  if self.ibis_backend is not None else None  
 
@@ -390,17 +400,20 @@ class BaseIbisConnection(BaseDBConnection):
         raise NotImplementedError(f"{self.db_backend_name}: Upsert is not implemented for this backend")
 
 
+
+
+
     ###########################
     # t.Optionally Implemented Functions
 
     def list_tables(self, 
-                like: str | None = None,
+                table_name: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
         self.connect()
-        return self._list_tables(like=like, database=database, schema=schema)    
+        return self._list_tables(like=table_name, database=database, schema=schema)    
 
     def _list_tables(self,                
                 like: str | None = None,
@@ -427,6 +440,16 @@ class BaseIbisConnection(BaseDBConnection):
         
         raise NotImplementedError
 
+
+    def table_exists(self, 
+                table_name: str | None = None,
+                database: tuple[str, str] | str | None = None,
+                schema: str | None = None
+                    ) -> bool:
+
+        tables = self.list_tables(table_name=table_name, database=database, schema=schema)
+
+        return True if table_name in tables else False
 
 
     # @abstractmethod

@@ -585,8 +585,13 @@ def test_outer_join_one(data_dict, framework, ibis_backend_schema,
     native_df_2 = create_native_dataframe(dataframe_framework=framework_2, data_dict=data_dict_2)
     ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
 
+    print(f"ibis_df: {ibis_df.as_dict()}")
+    print(f"ibis_df_2: {ibis_df_2.as_dict()}")
+    print(f"ibis_df_2: {ibis_df_2}")
+
 
     joined_df = ibis_df.outer_join(right=ibis_df_2, predicates=["A"], execute_on=execute_on)
+    print(f"joined_df: {joined_df.as_dict()}")
 
 
     with check:
@@ -617,8 +622,12 @@ def test_outer_join_two(data_dict, framework, ibis_backend_schema,
     ibis_df_2 = create_ibis_dataframe(df=native_df_2, ibis_backend_schema=ibis_backend_schema_2)
 
 
-    joined_df = ibis_df_2.outer_join(right=ibis_df, predicates=["A"], execute_on=execute_on)
+    print(f"ibis_df: {ibis_df.as_dict()}")
+    print(f"ibis_df_2: {ibis_df_2.as_dict()}")
+    print(f"ibis_df_2: {ibis_df_2}")
 
+    joined_df = ibis_df_2.outer_join(right=ibis_df, predicates=["A"], execute_on=execute_on)
+    print(f"joined_df: {joined_df.as_dict()}")
 
     with check:
         assert joined_df.materialise().shape == (4, 6)
