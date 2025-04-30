@@ -128,9 +128,6 @@ class BaseIbisConnection(BaseDBConnection):
         if connection_kwargs is None:
             connection_kwargs = {}
 
-        if kwargs is None:
-            kwargs = {}
-
         #combine connection_kwargs and kwargs
         connection_kwargs = {**connection_kwargs, **kwargs}
 

@@ -5,7 +5,6 @@ from .motherduck_ibis_connection import MotherDuck_IbisConnection
 
 # Define available connections and import them conditionally
 __all__ = [
-    "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",
     "MotherDuck_IbisConnection"
