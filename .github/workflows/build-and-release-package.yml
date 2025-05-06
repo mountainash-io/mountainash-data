@@ -380,8 +380,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.xml
-          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.xml
+          asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.json
+          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.json
           asset_content_type: application/xml
 
       - name: Upload SBOM (Direct)
@@ -390,12 +390,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.xml
-          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.xml
+          asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.json
+          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.json
           asset_content_type: application/xml
                                   
 
-      - name: Push to Wheels Repository
+      - name: Setup Wheels Repository
         run: |
           # Configure git
           git config --global user.name "GitHub Actions"
@@ -404,20 +404,47 @@ jobs:
           # Clone the wheels repository
           git clone https://x-access-token:${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}@github.com/${{ env.ORGNAME }}/mountainash-wheels.git wheels-repo
           
-          # Create package directory if it doesn't exist
-          mkdir -p releases/${{ env.PACKAGE_NAME }}
-          
-          # Copy the newly built wheel to the repository
-          cp ${{ steps.build.outputs.WHEEL_FILE }} releases/${{ env.PACKAGE_NAME }}/
-          
           # Go to the wheels repository
           cd releases
+          
+          # Create a new branch for this release
+          BRANCH_NAME="release/${{ env.PACKAGE_NAME }}-${{ env.VERSION }}"
+          git checkout -b $BRANCH_NAME
+          
+          # Create package directory if it doesn't exist
+          mkdir -p ${{ env.PACKAGE_NAME }}
+          
+          # Copy the newly built wheel to the repository
+          cp ../${{ steps.build.outputs.WHEEL_FILE }} ${{ env.PACKAGE_NAME }}/
           
           # Add the new wheel file
           git add .
           
           # Commit the changes
-          git commit -m "Add ${{ steps.build.outputs.WHEEL_FILENAME }} to wheels repository" || echo "No changes to commit"
+          git commit -m "Add ${{ steps.build.outputs.WHEEL_FILENAME }} to wheels repository"
           
-          # Push changes back to the repository
-          git push            
+          # Push the branch to the repository
+          git push -u origin $BRANCH_NAME
+
+      - name: Create Pull Request
+        id: create_pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
+          path: wheels-repo
+          commit-message: "Add ${{ env.PACKAGE_NAME }} v${{ env.VERSION }}"
+          committer: GitHub <noreply@github.com>
+          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+          branch: release/${{ env.PACKAGE_NAME }}-${{ env.VERSION }}
+          base: main
+          delete-branch: false
+          title: "Add ${{ env.PACKAGE_NAME }} v${{ env.VERSION }} to wheels repository"
+          body: |
+            This PR adds the following wheel file to the wheels repository:
+            - ${{ steps.build.outputs.WHEEL_FILENAME }}
+            
+            This was automatically generated from the release workflow of ${{ github.repository }}.
+          labels: |
+            automated
+            wheel
+          draft: false          
