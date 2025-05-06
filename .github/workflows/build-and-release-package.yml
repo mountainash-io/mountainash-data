@@ -393,3 +393,31 @@ jobs:
           asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.xml
           asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.xml
           asset_content_type: application/xml
+                                  
+
+      - name: Push to Wheels Repository
+        run: |
+          # Configure git
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+          # Clone the wheels repository
+          git clone https://x-access-token:${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}@github.com/${{ env.ORGNAME }}/mountainash-wheels.git wheels-repo
+          
+          # Create package directory if it doesn't exist
+          mkdir -p wheels/${{ env.PACKAGE_NAME }}
+          
+          # Copy the newly built wheel to the repository
+          cp ${{ steps.build.outputs.WHEEL_FILE }} wheels/${{ env.PACKAGE_NAME }}/
+          
+          # Go to the wheels repository
+          cd wheels
+          
+          # Add the new wheel file
+          git add .
+          
+          # Commit the changes
+          git commit -m "Add ${{ steps.build.outputs.WHEEL_FILENAME }} to wheels repository" || echo "No changes to commit"
+          
+          # Push changes back to the repository
+          git push            
