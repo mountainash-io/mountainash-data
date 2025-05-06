@@ -405,7 +405,7 @@ jobs:
           git clone https://x-access-token:${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}@github.com/${{ env.ORGNAME }}/mountainash-wheels.git wheels-repo
           
           # Go to the wheels repository
-          cd releases
+          cd wheels-repo
           
           # Create a new branch for this release
           BRANCH_NAME="release/${{ env.PACKAGE_NAME }}-${{ env.VERSION }}"
