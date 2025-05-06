@@ -407,8 +407,11 @@ jobs:
           # Go to the wheels repository
           cd wheels-repo
           
+          # Generate a unique branch name using a timestamp
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          BRANCH_NAME="release/${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-${TIMESTAMP}"
+          
           # Create a new branch for this release
-          BRANCH_NAME="release/${{ env.PACKAGE_NAME }}-${{ env.VERSION }}"
           git checkout -b $BRANCH_NAME
           
           # Create package directory if it doesn't exist
@@ -425,6 +428,9 @@ jobs:
           
           # Push the branch to the repository
           git push -u origin $BRANCH_NAME
+          
+          # Export the branch name for later steps
+          echo "WHEELS_BRANCH=${BRANCH_NAME}" >> $GITHUB_ENV
 
       - name: Create Pull Request
         run: |
@@ -448,7 +454,7 @@ jobs:
                 -d "{
                   \"title\": \"Add ${{ env.PACKAGE_NAME }} v${{ env.VERSION }} to wheels repository\",
                   \"body\": ${PR_BODY_ESCAPED},
-                  \"head\": \"release/${{ env.PACKAGE_NAME }}-${{ env.VERSION }}\",
+                  \"head\": \"${WHEELS_BRANCH}\",
                   \"base\": \"main\"
                 }")
               
