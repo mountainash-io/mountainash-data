@@ -405,13 +405,13 @@ jobs:
           git clone https://x-access-token:${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}@github.com/${{ env.ORGNAME }}/mountainash-wheels.git wheels-repo
           
           # Create package directory if it doesn't exist
-          mkdir -p wheels/${{ env.PACKAGE_NAME }}
+          mkdir -p releases/${{ env.PACKAGE_NAME }}
           
           # Copy the newly built wheel to the repository
-          cp ${{ steps.build.outputs.WHEEL_FILE }} wheels/${{ env.PACKAGE_NAME }}/
+          cp ${{ steps.build.outputs.WHEEL_FILE }} releases/${{ env.PACKAGE_NAME }}/
           
           # Go to the wheels repository
-          cd wheels
+          cd releases
           
           # Add the new wheel file
           git add .
