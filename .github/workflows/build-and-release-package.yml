@@ -326,8 +326,8 @@ jobs:
           hatch run ${{ env.BUILD_ENV }}:sbom-all
           hatch run ${{ env.BUILD_ENV }}:export-requirements
           hatch run ${{ env.BUILD_ENV }}:sbom-direct
-          mv ./sbom-full.xml ./${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.xml
-          mv ./sbom-direct.xml ./${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.xml
+          mv ./sbom-full.xml ./${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.json
+          mv ./sbom-direct.xml ./${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.json
 
       # ======================================================
       # PUBLISH
