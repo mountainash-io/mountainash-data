@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 **mountainash-data** is a Python package that provides unified database connections and dataframe abstractions for multiple backends via Ibis. It implements dataframe wrappers for native pandas, polars, and Ibis backends, enabling seamless cross-platform data operations.
