@@ -2,6 +2,7 @@ import pytest
 from pytest_check import check
 import pandas as pd
 import polars as pl
+from polars.exceptions import ShapeError
 import pyarrow as pa
 import ibis
 from datetime import datetime, date
@@ -128,7 +129,7 @@ class TestCreateDataFrame:
 
     def test_create_with_uneven_data(self, sample_data_uneven):
         """Test creation with uneven column lengths."""
-        with pytest.raises(pl.ShapeError):
+        with pytest.raises(ShapeError):
             DataFrameUtils.create_dataframe(
                 dataframe_framework=CONST_DATAFRAME_FRAMEWORK.POLARS.value,
                 data_dict=sample_data_uneven
@@ -234,7 +235,7 @@ class TestErrorCases:
         invalid_data = sample_data_clean.copy()
         invalid_data["invalid"] = [object(), object()]
 
-        with pytest.raises(pl.ShapeError):
+        with pytest.raises(ShapeError):
             DataFrameUtils.create_dataframe(
                 CONST_DATAFRAME_FRAMEWORK.POLARS.value,
                 invalid_data

@@ -423,6 +423,10 @@ class IbisDataFrame(BaseDataFrame):
         if dataframe_framework is None:
             dataframe_framework = CONST_DATAFRAME_FRAMEWORK.POLARS.value
 
+        # Handle shorthand aliases for better user experience
+        if dataframe_framework == "pyarrow":
+            dataframe_framework = CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value
+
         if dataframe_framework == CONST_DATAFRAME_FRAMEWORK.POLARS.value:
             return self.to_polars()
 
@@ -439,7 +443,15 @@ class IbisDataFrame(BaseDataFrame):
             return self._get_dataframe()
 
         else:
-            raise ValueError("Dataframe could not be not materialised")
+            valid_formats = [
+                CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                CONST_DATAFRAME_FRAMEWORK.PANDAS.value, 
+                CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value,
+                CONST_DATAFRAME_FRAMEWORK.PYARROW_RECORDBATCH.value,
+                CONST_DATAFRAME_FRAMEWORK.IBIS.value,
+                "pyarrow"  # shorthand alias
+            ]
+            raise ValueError(f"Invalid dataframe_framework '{dataframe_framework}'. Valid options are: {valid_formats}")
 
     def to_pyarrow(self) -> pa.Table:
 
@@ -1038,12 +1050,12 @@ class IbisDataFrame(BaseDataFrame):
                      ibis_expr: Optional[Any] = None,
                      filter_condition: Optional[FilterCondition] = None) -> ir.Table:
 
-        if ibis_expr and filter_condition:
+        if ibis_expr is not None and filter_condition is not None:
             raise ValueError("Only one of ibis_expr and filter_condition can be used")
 
-        if ibis_expr:          
+        if ibis_expr is not None:          
             return self.ibis_df.filter(ibis_expr)
-        if filter_condition:
+        if filter_condition is not None:
             return DataFrameUtils.filter(self.ibis_df, filter_condition)
 
         return self._get_dataframe()
