@@ -3,26 +3,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mountainash_data"
-dynamic = ["version"]
-description = 'Mountain Ash - Data'
-readme = "README.md"
-requires-python = ">=3.10"
-# license = "Proprietary"
-keywords = []
-authors = [
-    { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },
-]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-]
 dependencies = [
     "ibis-framework[polars,pandas,sqlite,duckdb] == 10.4.0",
+    # "hatchling",
+
 
     # "ibis-framework[mssql,snowflake,bigquery,pyspark,trino] == 10.4.0",
     # "psycopg2-binary==2.9.9",
@@ -41,7 +25,26 @@ dependencies = [
     "duckdb",
     "pandas>=2.2.0",
     "polars==1.16.0",
+    "psutil>=7.0.0",
 
+]
+keywords = []
+name = "mountainash_data"
+dynamic = ["version"]
+description = 'Mountain Ash - Data'
+readme = "README.md"
+requires-python = ">=3.10"
+# license = "Proprietary"
+authors = [
+    { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
 [project.optional-dependencies]
@@ -87,3 +90,8 @@ tests = ["tests", "*/mountainash-data/tests"]
 
 [tool.coverage.report]
 exclude_lines = ["no cov", "if __name__ == .__main__:", "if TYPE_CHECKING:"]
+
+
+[tool.pyright]
+venvPath = "/home/nathanielramm/git/mountainash-ide/mountainash-dev-local/.venv"
+venv = ".venv"

@@ -168,3 +168,13 @@ htmlcov/
 #Sonarlint settings
 .vscode/
 .sonarlint/
+
+#Rye
+**.**lock
+
+#testing artifacts
+junit.*
+coverage.*
+
+#hiivmind
+.hiivmind/*
