@@ -32,14 +32,14 @@ class StatusEnum(Enum):
 @pytest.fixture(scope="session")
 def comprehensive_data_types():
     """Complete data type coverage with realistic values and edge cases."""
-    
+
     # Set high precision for decimal calculations
     getcontext().prec = 28
-    
+
     base_date = date(2024, 1, 15)
     base_datetime = datetime(2024, 1, 15, 10, 30, 45, 123456, tzinfo=timezone.utc)
     base_time = time(14, 30, 15, 789012)
-    
+
     return {
         # Numeric Types
         "integers": [
@@ -48,19 +48,19 @@ def comprehensive_data_types():
             -2**31,     # Min 32-bit signed int
             None, 2**63 - 1  # Max 64-bit signed int
         ],
-        
+
         "floats": [
             0.0, 1.5, -3.14159, 2.718281828, 1e10, 1e-10,
             float('inf'), float('-inf'), float('nan'), None
         ],
-        
+
         "decimals": [
             Decimal('0.00'), Decimal('123.45'), Decimal('-987.65'),
             Decimal('0.123456789123456789'),  # High precision
             Decimal('999999999.99'), Decimal('1E-15'),
             None, Decimal('3.141592653589793238462643383279')  # Pi with high precision
         ],
-        
+
         # String Types
         "strings": [
             "Hello World", "", "   ", "Single word",
@@ -68,15 +68,15 @@ def comprehensive_data_types():
             "Unicode: 🚀 Café naïve résumé", "Very long string " * 50,
             None, "Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?"
         ],
-        
+
         "text_large": [
-            "Short", 
+            "Short",
             "Medium length text with some content that spans multiple words and sentences.",
             " ".join(["Lorem"] * 100),  # 100 words
             " ".join(["Ipsum"] * 1000),  # 1000 words
             None, "", "🌟" * 100  # 100 emoji
         ],
-        
+
         # Date and Time Types
         "dates": [
             base_date,
@@ -89,7 +89,7 @@ def comprehensive_data_types():
             date(1900, 1, 1),   # Century boundary
             date(2100, 2, 28)   # Non-leap century year
         ],
-        
+
         "datetimes": [
             base_datetime,
             base_datetime.replace(tzinfo=None),  # Naive datetime
@@ -101,7 +101,7 @@ def comprehensive_data_types():
             datetime(2024, 3, 10, 2, 30, 0),  # DST transition
             datetime(2024, 12, 31, 23, 59, 59, 999999)  # End of year
         ],
-        
+
         "times": [
             base_time,
             time(0, 0, 0),      # Midnight
@@ -112,7 +112,7 @@ def comprehensive_data_types():
             time(0, 0, 0, 1),   # 1 microsecond past midnight
             time(23, 59, 59, 999999),  # Last microsecond of day
         ],
-        
+
         "timedeltas": [
             timedelta(0),                    # Zero duration
             timedelta(days=1),               # One day
@@ -124,22 +124,22 @@ def comprehensive_data_types():
             None,
             timedelta(days=-1)               # Negative duration
         ],
-        
+
         # Boolean Types
         "booleans": [
             True, False, None, True, False,
             True, True, False, None, False
         ],
-        
+
         # UUID Types
         "uuids": [
-            uuid4(), uuid4(), 
+            uuid4(), uuid4(),
             UUID('550e8400-e29b-41d4-a716-446655440000'),  # Fixed UUID
             UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8'),  # Another fixed UUID
             None,
             uuid4(), uuid4(), uuid4(), None, uuid4()
         ],
-        
+
         # JSON/Dictionary Types
         "json_data": [
             '{"key": "value"}',
@@ -153,7 +153,7 @@ def comprehensive_data_types():
             '{"unicode": "🚀💻⚡"}',
             '{"large_number": 9007199254740991}'  # Max safe integer in JSON
         ],
-        
+
         # Binary/Bytes Types (represented as strings for cross-platform compatibility)
         "binary_data": [
             b"Hello World".hex(),
@@ -165,21 +165,21 @@ def comprehensive_data_types():
             b"A" * 1000,  # Large binary data
             b"\\r\\n\\t\\0".hex(),  # Control characters
         ],
-        
+
         # Enum Types (as strings)
         "status_enum": [
-            StatusEnum.ACTIVE.value,
-            StatusEnum.INACTIVE.value, 
-            StatusEnum.PENDING.value,
-            StatusEnum.SUSPENDED.value,
+            StatusEnum.ACTIVE,
+            StatusEnum.INACTIVE,
+            StatusEnum.PENDING,
+            StatusEnum.SUSPENDED,
             None,
-            StatusEnum.ACTIVE.value,
-            StatusEnum.PENDING.value,
-            StatusEnum.INACTIVE.value,
+            StatusEnum.ACTIVE,
+            StatusEnum.PENDING,
+            StatusEnum.INACTIVE,
             None,
-            StatusEnum.SUSPENDED.value
+            StatusEnum.SUSPENDED
         ],
-        
+
         # Array/List Types (as JSON strings)
         "arrays": [
             json.dumps([1, 2, 3, 4, 5]),
@@ -192,7 +192,7 @@ def comprehensive_data_types():
             json.dumps(["🚀", "🌟", "✨"]),  # Unicode in array
             json.dumps([{"nested": "object"}]),  # Object in array
         ],
-        
+
         # URL/URI Types
         "urls": [
             "https://www.example.com",
@@ -205,8 +205,8 @@ def comprehensive_data_types():
             "https://example.com/path?param=value&other=123",
             "ldap://ldap.example.com:389/cn=users,dc=example,dc=com",
         ],
-        
-        # File Path Types  
+
+        # File Path Types
         "file_paths": [
             "/home/user/documents/file.txt",
             "C:\\\\Users\\\\User\\\\Documents\\\\file.txt",  # Windows path
@@ -225,32 +225,32 @@ def comprehensive_data_types():
 def null_patterns_comprehensive():
     """Comprehensive null value patterns and missing data scenarios."""
     size = 20
-    
+
     return {
         "no_nulls": list(range(size)),
-        
+
         "all_nulls": [None] * size,
-        
+
         "sparse_nulls": [i if i % 10 != 0 else None for i in range(size)],  # Every 10th is null
-        
+
         "clustered_nulls": [None] * 5 + list(range(10)) + [None] * 5,  # Nulls at start and end
-        
+
         "alternating_nulls": [i if i % 2 == 0 else None for i in range(size)],
-        
+
         "mostly_nulls": [None] * 18 + [1, 2],  # Only 2 non-null values
-        
+
         "single_null": [1] * 9 + [None] + [1] * 10,  # One null in the middle
-        
+
         "random_nulls": [i if i % 3 != 0 else None for i in range(size)],  # ~33% nulls
-        
+
         # String null equivalents
         "string_null_equivalents": [
-            "value", None, "", "NULL", "null", "None", "N/A", 
+            "value", None, "", "NULL", "null", "None", "N/A",
             "n/a", "NA", "unknown", "undefined", "-", "?",
             " ", "  ", "\\t", "missing", "void", "<null>", "∅"
         ],
-        
-        # Numeric null equivalents  
+
+        # Numeric null equivalents
         "numeric_null_equivalents": [
             1, 2, None, -1, 0, 999999999, -999999999,
             float('nan'), float('inf'), float('-inf'),
@@ -269,13 +269,13 @@ def data_type_conversions():
             "invalid_numeric": ["abc", "12.34.56", "1,234", "1 2 3", "∞", "null"],
             "edge_cases": ["", " ", "NaN", "inf", "-inf", "+inf"]
         },
-        
+
         "string_to_boolean": {
             "true_values": ["true", "True", "TRUE", "yes", "Yes", "YES", "1", "on", "On"],
             "false_values": ["false", "False", "FALSE", "no", "No", "NO", "0", "off", "Off"],
             "ambiguous": ["maybe", "unknown", "", " ", "2", "-1", "null"]
         },
-        
+
         "string_to_date": {
             "iso_format": ["2024-01-15", "2024-12-31", "2000-02-29"],  # Leap year
             "us_format": ["01/15/2024", "12/31/2024", "02/29/2000"],
@@ -283,12 +283,12 @@ def data_type_conversions():
             "named_months": ["15-Jan-2024", "31-Dec-2024", "29-Feb-2000"],
             "invalid_dates": ["2024-02-30", "2024-13-01", "invalid", ""]
         },
-        
+
         "numeric_precision": {
             "integers": [1, 999999999999999999, -999999999999999999],
             "floats": [1.0, 1.23456789012345678901234567890],
             "decimals": [
-                Decimal('1'), 
+                Decimal('1'),
                 Decimal('1.23456789012345678901234567890'),
                 Decimal('999999999999999999.99999999999999999999')
             ],
@@ -298,11 +298,11 @@ def data_type_conversions():
                 float(Decimal('1.23456789012345678901234567890'))  # Precision loss in conversion
             ]
         },
-        
+
         "unicode_normalization": {
             "nfc_form": ["café", "naïve", "résumé"],  # Precomposed form
             "nfd_form": [
-                "cafe\\u0301",     # e + combining acute accent  
+                "cafe\\u0301",     # e + combining acute accent
                 "nai\\u0308ve",    # i + combining diaeresis
                 "re\\u0301sume\\u0301"  # e + combining acute accent (both e's)
             ],
@@ -311,32 +311,32 @@ def data_type_conversions():
     }
 
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 def temporal_data_comprehensive():
     """Comprehensive temporal data with various patterns and edge cases."""
     base_dt = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    
+
     return {
         # Regular time series - hourly for one week
         "hourly_series": {
             "timestamp": [base_dt + timedelta(hours=i) for i in range(168)],  # 24*7 hours
             "value": [100 + (10 * math.sin(i * 0.1)) + random.gauss(0, 2) for i in range(168)]
         },
-        
+
         # Irregular time series - missing some periods
         "irregular_series": {
             "timestamp": [
-                base_dt + timedelta(hours=i) 
-                for i in range(168) 
+                base_dt + timedelta(hours=i)
+                for i in range(168)
                 if i % 7 != 3  # Skip every 7th hour starting from hour 3
             ],
             "value": [
-                100 + (5 * math.sin(i * 0.2)) + random.gauss(0, 1.5) 
-                for i in range(168) 
+                100 + (5 * math.sin(i * 0.2)) + random.gauss(0, 1.5)
+                for i in range(168)
                 if i % 7 != 3
             ]
         },
-        
+
         # Daily aggregations
         "daily_aggregations": {
             "date": [base_dt.date() + timedelta(days=i) for i in range(30)],
@@ -345,7 +345,7 @@ def temporal_data_comprehensive():
             "daily_max": [random.uniform(300, 400) for _ in range(30)],
             "daily_min": [random.uniform(50, 99) for _ in range(30)]
         },
-        
+
         # Multi-timezone data
         "multi_timezone": {
             "utc_time": [base_dt + timedelta(hours=i) for i in range(24)],
@@ -362,7 +362,7 @@ def temporal_data_comprehensive():
                 for i in range(24)
             ]
         },
-        
+
         # Seasonal patterns (monthly data for 3 years)
         "seasonal_monthly": {
             "year_month": [
@@ -374,13 +374,13 @@ def temporal_data_comprehensive():
                 for i in range(36)
             ],
             "sales": [
-                10000 + 5000 * math.sin((i % 12) * math.pi / 6) + 
+                10000 + 5000 * math.sin((i % 12) * math.pi / 6) +
                 2000 * (1.05 ** (i // 12)) +  # Growth trend
                 random.gauss(0, 1000)
                 for i in range(36)
             ]
         },
-        
+
         # High-frequency data (per-second for one hour)
         "high_frequency": {
             "timestamp": [base_dt + timedelta(seconds=i) for i in range(3600)],
@@ -390,11 +390,11 @@ def temporal_data_comprehensive():
             ],
             "volume": [random.randint(1, 1000) for _ in range(3600)]
         },
-        
+
         # Business calendar patterns (weekdays only)
         "business_days": {
             "date": [
-                d for d in 
+                d for d in
                 [base_dt.date() + timedelta(days=i) for i in range(100)]
                 if d.weekday() < 5  # Monday=0, Friday=4
             ],
@@ -416,7 +416,7 @@ def complex_nested_data():
                 "id": 1,
                 "user": {
                     "name": "Alice Johnson",
-                    "email": "alice@example.com", 
+                    "email": "alice@example.com",
                     "preferences": {
                         "theme": "dark",
                         "notifications": {
@@ -447,13 +447,13 @@ def complex_nested_data():
                     }
                 },
                 "metadata": {
-                    "created_at": "2024-01-16T14:22:00Z", 
+                    "created_at": "2024-01-16T14:22:00Z",
                     "tags": ["basic"],
                     "scores": [78, 81, 85]
                 }
             }
         ],
-        
+
         "hierarchical_categories": [
             {
                 "id": 1,
@@ -481,20 +481,20 @@ def complex_nested_data():
                 ]
             }
         ],
-        
+
         "variable_schema": [
             # Records with different structures
             {"type": "user", "id": 1, "name": "Alice", "email": "alice@example.com"},
             {"type": "product", "id": 1, "title": "Laptop", "price": 999.99, "category": "Electronics"},
             {"type": "order", "id": 1, "user_id": 1, "product_id": 1, "quantity": 2, "total": 1999.98},
             {
-                "type": "event", 
-                "id": 1, 
+                "type": "event",
+                "id": 1,
                 "timestamp": "2024-01-15T10:30:00Z",
                 "data": {"action": "login", "ip": "192.168.1.1"}
             }
         ],
-        
+
         "arrays_of_objects": [
             {
                 "order_id": 1,
@@ -515,7 +515,7 @@ def complex_nested_data():
                 ],
                 "shipping": {
                     "address": "456 Oak Ave",
-                    "method": "express", 
+                    "method": "express",
                     "tracking": "TRK789012"
                 }
             }
@@ -527,7 +527,7 @@ def complex_nested_data():
 @pytest.fixture
 def data_type_factory():
     """Factory for generating data with specific type patterns."""
-    
+
     def generate_typed_data(
         data_type: str,
         size: int = 10,
@@ -535,51 +535,51 @@ def data_type_factory():
         **kwargs
     ) -> List[Any]:
         """Generate data of specified type with configurable null rate."""
-        
+
         import random
-        
+
         data = []
         for i in range(size):
             if random.random() < null_rate:
                 data.append(None)
                 continue
-                
+
             if data_type == "integer":
                 min_val = kwargs.get("min_val", -1000)
                 max_val = kwargs.get("max_val", 1000)
                 data.append(random.randint(min_val, max_val))
-                
+
             elif data_type == "float":
                 min_val = kwargs.get("min_val", -100.0)
                 max_val = kwargs.get("max_val", 100.0)
                 precision = kwargs.get("precision", 2)
                 data.append(round(random.uniform(min_val, max_val), precision))
-                
+
             elif data_type == "string":
                 length = kwargs.get("length", random.randint(3, 20))
                 chars = kwargs.get("chars", "abcdefghijklmnopqrstuvwxyz ")
                 data.append(''.join(random.choices(chars, k=length)))
-                
+
             elif data_type == "date":
                 start_date = kwargs.get("start_date", date(2020, 1, 1))
                 end_date = kwargs.get("end_date", date(2025, 12, 31))
                 days_range = (end_date - start_date).days
                 random_days = random.randint(0, days_range)
                 data.append(start_date + timedelta(days=random_days))
-                
+
             elif data_type == "datetime":
                 start_dt = kwargs.get("start_dt", datetime(2020, 1, 1, tzinfo=timezone.utc))
                 end_dt = kwargs.get("end_dt", datetime(2025, 12, 31, tzinfo=timezone.utc))
                 seconds_range = int((end_dt - start_dt).total_seconds())
                 random_seconds = random.randint(0, seconds_range)
                 data.append(start_dt + timedelta(seconds=random_seconds))
-                
+
             elif data_type == "boolean":
                 data.append(random.choice([True, False]))
-                
+
             elif data_type == "uuid":
                 data.append(uuid4())
-                
+
             elif data_type == "decimal":
                 precision = kwargs.get("precision", 4)
                 max_digits = kwargs.get("max_digits", 10)
@@ -587,12 +587,12 @@ def data_type_factory():
                 integer_part = random.randint(1, 10**(max_digits-precision))
                 decimal_part = random.randint(0, 10**precision - 1)
                 data.append(Decimal(f"{integer_part}.{decimal_part:0{precision}d}"))
-                
+
             else:
                 raise ValueError(f"Unsupported data type: {data_type}")
-                
+
         return data
-    
+
     return generate_typed_data
 
 
@@ -604,25 +604,25 @@ def mixed_type_scenarios():
             # Mix of int, float, string that could be numeric, and actual strings
             1, 2.5, "3", "4.7", "not_a_number", 5, None, "6.0", float('nan'), "inf"
         ],
-        
+
         "date_mixed": [
             # Mix of date objects, datetime objects, strings, and invalid dates
             date(2024, 1, 15),
             datetime(2024, 1, 16, 10, 30),
             "2024-01-17",
-            "01/18/2024", 
+            "01/18/2024",
             "invalid_date",
             None,
             "2024-01-19T10:30:00Z",
             date(2024, 1, 20)
         ],
-        
+
         "boolean_mixed": [
             # Various representations of boolean values
-            True, False, 1, 0, "true", "false", "yes", "no", 
+            True, False, 1, 0, "true", "false", "yes", "no",
             "Y", "N", None, "maybe", 2, -1
         ],
-        
+
         "container_mixed": [
             # Mix of different container types serialized as strings
             '{"key": "value"}',  # JSON object

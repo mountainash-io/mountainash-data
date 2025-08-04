@@ -77,10 +77,10 @@ class TestCreateDataFrame:
     """Tests for DataFrame creation functionality."""
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value,
-        CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS,
+        CONST_DATAFRAME_FRAMEWORK.PYARROW_TABLE
     ])
     def test_create_basic_dataframe(self, framework, sample_data_clean):
         """Test basic dataframe creation with clean data."""
@@ -92,9 +92,9 @@ class TestCreateDataFrame:
         assert set(DataFrameUtils.get_column_names(df)) == set(sample_data_clean.keys())
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS
     ])
     def test_create_with_column_mapping(self, framework, sample_data_clean, sample_column_mappings):
         """Test dataframe creation with column mappings."""
@@ -107,9 +107,9 @@ class TestCreateDataFrame:
         assert "text" in DataFrameUtils.get_column_names(df)
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS
     ])
     def test_create_with_mixed_types(self, framework, sample_data_mixed_types):
         """Test dataframe creation with mixed type data."""
@@ -131,7 +131,7 @@ class TestCreateDataFrame:
         """Test creation with uneven column lengths."""
         with pytest.raises(ShapeError):
             DataFrameUtils.create_dataframe(
-                dataframe_framework=CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                dataframe_framework=CONST_DATAFRAME_FRAMEWORK.POLARS,
                 data_dict=sample_data_uneven
             )
 
@@ -165,9 +165,9 @@ class TestColumnOperations:
     """Tests for column operations."""
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS
     ])
     def test_drop_columns(self, framework, sample_data_clean):
         """Test dropping columns."""
@@ -177,9 +177,9 @@ class TestColumnOperations:
         assert all(col not in DataFrameUtils.get_column_names(result) for col in columns_to_drop)
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS
     ])
     def test_select_columns(self, framework, sample_data_clean):
         """Test selecting columns."""
@@ -193,9 +193,9 @@ class TestDataExport:
     """Tests for data export functionality."""
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS
     ])
     def test_to_dict_of_lists(self, framework, sample_data_clean):
         """Test conversion to dictionary of lists."""
@@ -205,9 +205,9 @@ class TestDataExport:
         assert all(isinstance(v, list) for v in result.values())
 
     @pytest.mark.parametrize("framework", [
-        CONST_DATAFRAME_FRAMEWORK.PANDAS.value,
-        CONST_DATAFRAME_FRAMEWORK.POLARS.value,
-        CONST_DATAFRAME_FRAMEWORK.IBIS.value
+        CONST_DATAFRAME_FRAMEWORK.PANDAS,
+        CONST_DATAFRAME_FRAMEWORK.POLARS,
+        CONST_DATAFRAME_FRAMEWORK.IBIS
     ])
     def test_to_list_of_dicts(self, framework, sample_data_clean):
         """Test conversion to list of dictionaries."""
@@ -225,7 +225,7 @@ class TestErrorCases:
         invalid_mapping = {123: "column", "valid": None}
         with pytest.raises(ValueError):
             DataFrameUtils.create_dataframe(
-                CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                CONST_DATAFRAME_FRAMEWORK.POLARS,
                 sample_data_clean,
                 invalid_mapping
             )
@@ -237,7 +237,7 @@ class TestErrorCases:
 
         with pytest.raises(ShapeError):
             DataFrameUtils.create_dataframe(
-                CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+                CONST_DATAFRAME_FRAMEWORK.POLARS,
                 invalid_data
             )
 
@@ -253,7 +253,7 @@ class TestPerformance:
             for i in range(10)
         }
         df = DataFrameUtils.create_dataframe(
-            CONST_DATAFRAME_FRAMEWORK.POLARS.value,
+            CONST_DATAFRAME_FRAMEWORK.POLARS,
             large_data
         )
         assert DataFrameUtils.count(df) == 10000
