@@ -22,7 +22,7 @@ import pandas as pd
 import polars as pl
 
 # Mountain Ash imports
-from mountainash_data.dataframes.utils.dataframe_factory import DataFrameFactory
+from mountainash_dataframes.utils.dataframe_factory import DataFrameFactory
 
 # Matrix testing fixtures
 from fixtures.matrix_testing_fixtures import (

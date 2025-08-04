@@ -18,7 +18,7 @@ class TestPackageImports:
         """Test version follows expected format."""
         version_parts = mountainash_data.__version__.split('.')
         assert len(version_parts) >= 2, "Version should have at least major.minor"
-        
+
         # Test that major and minor are numeric
         assert version_parts[0].isdigit(), "Major version should be numeric"
         assert version_parts[1].isdigit(), "Minor version should be numeric"
@@ -27,29 +27,18 @@ class TestPackageImports:
         """Test that core classes can be imported."""
         # These imports should not raise errors
         from mountainash_data.databases.base_db_connection import BaseDBConnection
-        from mountainash_data.dataframes.base_dataframe import BaseDataFrame
-        from mountainash_data.dataframes.ibis_dataframe import IbisDataFrame
-        
+
         # Check classes are properly defined
         assert BaseDBConnection is not None
-        assert BaseDataFrame is not None  
-        assert IbisDataFrame is not None
 
     def test_database_connections_available(self):
         """Test that database connection classes can be imported."""
         from mountainash_data.databases.ibis.connections.sqlite_ibis_connection import SQLite_IbisConnection
         from mountainash_data.databases.ibis.connections.duckdb_ibis_connection import DuckDB_IbisConnection
-        
+
         assert SQLite_IbisConnection is not None
         assert DuckDB_IbisConnection is not None
 
-    def test_utils_available(self):
-        """Test that utility classes can be imported."""
-        from mountainash_data.dataframes.utils.dataframe_factory import DataFrameFactory
-        from mountainash_data.dataframes.utils.column_mapper.column_mapper import ColumnMapper
-        
-        assert DataFrameFactory is not None
-        assert ColumnMapper is not None
 
 
 class TestPackageStructure:
@@ -63,22 +52,17 @@ class TestPackageStructure:
     def test_submodules_exist(self):
         """Test that expected submodules exist."""
         import mountainash_data.databases
-        import mountainash_data.dataframes
-        
+
         assert hasattr(mountainash_data, 'databases')
-        assert hasattr(mountainash_data, 'dataframes')
 
     @pytest.mark.parametrize("module_name", [
         "databases.base_db_connection",
-        "databases.ibis.base_ibis_connection", 
-        "dataframes.base_dataframe",
-        "dataframes.ibis_dataframe",
-        "dataframes.utils.dataframe_factory"
+        "databases.ibis.base_ibis_connection",
     ])
     def test_module_importable(self, module_name: str):
         """Test that core modules can be imported."""
         from importlib import import_module
         full_module = f"mountainash_data.{module_name}"
-        
+
         module = import_module(full_module)
         assert module is not None
