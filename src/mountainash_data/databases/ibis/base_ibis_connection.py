@@ -12,8 +12,8 @@ from mountainash_settings import SettingsParameters
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTION_LAYER
 
 from ..constants import IBIS_DB_connection_mode
-from mountainash_data import BaseDataFrame, IbisDataFrame
-from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
+from mountainash_dataframes import BaseDataFrame, IbisDataFrame
+from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 
 
 class BaseIbisConnection(BaseDBConnection):

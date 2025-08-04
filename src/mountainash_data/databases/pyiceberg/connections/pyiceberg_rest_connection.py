@@ -11,13 +11,9 @@ from pyiceberg.catalog import Catalog
 
 from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
-# from mountainash_settings.settings.auth.database import MotherDuckAuthSettings
-# # from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
-# from mountainash_data import DataFrameFactory, DataFrameUtils
 
 from mountainash_settings.settings.auth.database import PyIcebergRestAuthSettings
 from mountainash_data.databases.pyiceberg import BasePyIcebergConnection
-# from mountainash_data.databases.ibis import BaseIbisConnection
 
 
 class PyIcebergRestConnection(BasePyIcebergConnection):

@@ -2,17 +2,6 @@ from .__version__ import __version__
 # import importlib.metadata
 # import sys
 
-from .dataframes import (   
-    BaseDataFrame,
-    IbisDataFrame,
-)
-
-from .dataframes.utils import (
-    DataFrameUtils
-)
-from .dataframes.utils.dataframe_factory import (
-    DataFrameFactory
-)
 
 # Import base and core ibis connections
 from .databases.ibis import (
@@ -25,14 +14,10 @@ from .databases.ibis import (
 # Start with the core exports
 __all__ = [
     "__version__",
-    "BaseDataFrame",
-    "IbisDataFrame",
     "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",
     "MotherDuck_IbisConnection",
-    "DataFrameFactory",
-    "DataFrameUtils"
 ]
 
 # Track which optional extras are installed
@@ -42,26 +27,26 @@ __all__ = [
 # try:
 #     # Get the distribution metadata for this package
 #     dist = importlib.metadata.distribution("mountainash_data")
-    
+
 #     # Check which optional extras are installed
 #     if "pyspark" in sys.modules:
 #         INSTALLED_EXTRAS.add("pyspark")
-    
+
 #     if any("snowflake" in req for req in dist.requires or []):
 #         INSTALLED_EXTRAS.add("snowflake")
-        
+
 #     if any("psycopg2" in req for req in dist.requires or []):
 #         INSTALLED_EXTRAS.add("postgres")
-        
+
 #     if any("pyodbc" in req for req in dist.requires or []):
 #         INSTALLED_EXTRAS.add("mssql")
-        
+
 #     if any("bigquery" in req for req in dist.requires or []):
 #         INSTALLED_EXTRAS.add("bigquery")
-        
+
 #     if any("trino" in req for req in dist.requires or []):
 #         INSTALLED_EXTRAS.add("trino")
-        
+
 #     # If the "all" extra was installed, include all extras
 #     if any(req.startswith("mountainash_data[all]") for req in dist.requires or []):
 #         INSTALLED_EXTRAS.update(["pyspark", "snowflake", "postgres", "mssql", "bigquery", "trino"])
@@ -111,4 +96,3 @@ __all__ = [
 #         __all__.append("Trino_IbisConnection")
 #     except ImportError:
 #         pass
-
