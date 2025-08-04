@@ -1,14 +1,16 @@
 import typing as t
-import ibis.backends.postgres as ir_backend
 import contextlib
 import warnings
+
+
+import ibis.backends.postgres as ir_backend
 from pydantic_settings import BaseSettings
 
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
-from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import PostgreSQLAuthSettings
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import PostgreSQLAuthSettings
 
 class Postgres_IbisConnection(BaseIbisConnection):
 
@@ -39,7 +41,7 @@ class Postgres_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.POSTGRES.value
+        return CONST_DB_BACKEND.POSTGRES
 
     @property
     def connection_string_scheme(self) -> str:
@@ -62,13 +64,13 @@ class Postgres_IbisConnection(BaseIbisConnection):
 
     #     if self.connection_mode == IBIS_DB_connection_mode.KWARGS:
     #         ibis_backend: SQLBackend = ibis.postgres.connect(**kwargs)
-    
+
     #     return ibis_backend
 
 
 
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None

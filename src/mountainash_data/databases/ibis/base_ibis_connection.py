@@ -1,7 +1,7 @@
 import typing as t # import t.Any, t.Dict, t.Optional
 
 import ibis
-import ibis.expr.types.relations as ir 
+import ibis.expr.types.relations as ir
 from ibis.expr.schema import SchemaLike
 from ibis.backends.sql import SQLBackend
 from mountainash_data.databases.base_db_connection import BaseDBConnection
@@ -11,7 +11,7 @@ from abc import abstractmethod
 from mountainash_settings import SettingsParameters
 from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTION_LAYER
 
-from .constants import IBIS_DB_connection_mode
+from ..constants import IBIS_DB_connection_mode
 from mountainash_data import BaseDataFrame, IbisDataFrame
 from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
 
@@ -22,13 +22,13 @@ class BaseIbisConnection(BaseDBConnection):
                  db_auth_settings_parameters: SettingsParameters,
                  ):
 
-        super().__init__(db_auth_settings_parameters=db_auth_settings_parameters, 
+        super().__init__(db_auth_settings_parameters=db_auth_settings_parameters,
                          )
 
 
-    @property 
+    @property
     def db_abstraction_layer(self) -> str:
-        return CONST_DB_ABSTRACTION_LAYER.IBIS.value
+        return CONST_DB_ABSTRACTION_LAYER.IBIS
 
 
     @property
@@ -62,14 +62,14 @@ class BaseIbisConnection(BaseDBConnection):
     # Core Functions
 
 
-    def connect(self, 
-                connection_string: t.Optional[str] = None, 
+    def connect(self,
+                connection_string: t.Optional[str] = None,
                 connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
                 **kwargs) -> SQLBackend:
-        
+
         """Connect with explicitly provided connection parameters"""
-       
-        
+
+
         if self.ibis_backend is None:
 
             if connection_string is not None:
@@ -114,15 +114,15 @@ class BaseIbisConnection(BaseDBConnection):
 
 
 
-    def _connect(self, 
-                 connection_string: t.Optional[str] = None, 
+    def _connect(self,
+                 connection_string: t.Optional[str] = None,
                  connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
                  **kwargs
                  ) -> SQLBackend:
         """
         Default Implementation to connect to the database using the provided connection string.
         By default this relies on the connection_string_scheme to determine the backend dynamically.
-        Over-ride in subclasses if a different implementation is necessary, such as using the custom backend directly. 
+        Over-ride in subclasses if a different implementation is necessary, such as using the custom backend directly.
         """
 
         if connection_kwargs is None:
@@ -135,19 +135,19 @@ class BaseIbisConnection(BaseDBConnection):
             raise ValueError(f"{self.db_backend_name}: Connection string is required to establish connection")
 
         self._ibis_backend : t.Any = ibis.connect(connection_string, **connection_kwargs)
-    
+
         return self.ibis_backend
 
 
 
     def close(self):
         """Close the connection to the database."""
-    
+
         self.disconnect()
 
     def disconnect(self):
         """Close the connection to the database."""
-    
+
         if self.ibis_backend is not None:
             self.ibis_backend.disconnect()
             self._ibis_backend  = None
@@ -159,15 +159,15 @@ class BaseIbisConnection(BaseDBConnection):
         else:
             return True
 
-    
+
 
 
     ## SQL Queries
 
-    def run_sql(self, 
+    def run_sql(self,
             query: str,
             schema: SchemaLike | None = None,
-            dialect: str | None = None,            
+            dialect: str | None = None,
         ) -> t.Optional[ir.Table]:
 
         self.connect()
@@ -175,8 +175,8 @@ class BaseIbisConnection(BaseDBConnection):
         return self.ibis_backend.sql(query=query,
                                      schema=schema,
                                      dialect=dialect
-                         )  if self.ibis_backend is not None else None  
-        
+                         )  if self.ibis_backend is not None else None
+
 
     def run_expr(
         self,
@@ -192,7 +192,7 @@ class BaseIbisConnection(BaseDBConnection):
                                      params=params,
                                      limit=limit,
                                      **kwargs
-                         )  if self.ibis_backend is not None else None  
+                         )  if self.ibis_backend is not None else None
 
 
     def to_sql(
@@ -211,7 +211,7 @@ class BaseIbisConnection(BaseDBConnection):
                                      limit=limit,
                                      pretty=pretty,
                                      **kwargs
-                         )  if self.ibis_backend is not None else None  
+                         )  if self.ibis_backend is not None else None
 
 
     ## Tables
@@ -224,14 +224,14 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        return self.ibis_backend.table(object_name, 
+        return self.ibis_backend.table(object_name,
                                     #    schema=schema,
                                        database=database
-                                       ) if self.ibis_backend is not None else None   
-    
-    
-    def create_table(self, 
-                     table_name: str, 
+                                       ) if self.ibis_backend is not None else None
+
+
+    def create_table(self,
+                     table_name: str,
                      df: ir.Table|t.Any,
                         # | pd.DataFrame
                         # | pa.Table
@@ -252,12 +252,12 @@ class BaseIbisConnection(BaseDBConnection):
         #     schema = DataFrameUtils.get_table_schema(df)
 
 
-        self.ibis_backend.create_table(table_name, 
-                                       obj=df, 
-                                       schema=schema, 
-                                       database=database, 
-                                       temp=temp, 
-                                       overwrite=overwrite)  if self.ibis_backend is not None else None    
+        self.ibis_backend.create_table(table_name,
+                                       obj=df,
+                                       schema=schema,
+                                       database=database,
+                                       temp=temp,
+                                       overwrite=overwrite)  if self.ibis_backend is not None else None
 
 
     def drop_table(
@@ -269,14 +269,14 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        try: 
-            self.ibis_backend.drop_table(table_name, 
-                                        database=database, 
-                                        force=force)   if self.ibis_backend is not None else None    
+        try:
+            self.ibis_backend.drop_table(table_name,
+                                        database=database,
+                                        force=force)   if self.ibis_backend is not None else None
             return True
         except Exception:
             return False
-            
+
 
 
     ## Views
@@ -291,11 +291,11 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        return self.ibis_backend.create_view(view_name, 
+        return self.ibis_backend.create_view(view_name,
                                 obj=ibis_table_expr,
-                                database=database, 
-                                # schema=schema, 
-                                overwrite=overwrite)  if self.ibis_backend is not None else None  
+                                database=database,
+                                # schema=schema,
+                                overwrite=overwrite)  if self.ibis_backend is not None else None
 
     def drop_view(
         self,
@@ -307,12 +307,12 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        try: 
- 
-            self.ibis_backend.drop_view(view_name, 
-                                    database=database, 
-                                    # schema=schema, 
-                                    force=force)  if self.ibis_backend is not None else None     
+        try:
+
+            self.ibis_backend.drop_view(view_name,
+                                    database=database,
+                                    # schema=schema,
+                                    force=force)  if self.ibis_backend is not None else None
             return True
         except Exception:
             return False
@@ -334,37 +334,37 @@ class BaseIbisConnection(BaseDBConnection):
         database: str | None = None,
         schema: str | None = None,
         overwrite: bool = False,
-    ) -> bool:    
+    ) -> bool:
 
         #TODO: Support more DataFrames
 
         self.connect()
 
-        try: 
-            self.ibis_backend.insert(   table_name, 
-                                    obj=df, 
+        try:
+            self.ibis_backend.insert(   table_name,
+                                    obj=df,
                                     schema=schema,
                                     database=database,
-                                    overwrite=overwrite)  if self.ibis_backend is not None else None  
+                                    overwrite=overwrite)  if self.ibis_backend is not None else None
             return True
         except Exception:
-            return False        
+            return False
 
 
 
     def truncate(
-        self, 
-        table_name: str, 
-        database: str | None = None, 
+        self,
+        table_name: str,
+        database: str | None = None,
         schema: str | None = None
     ) -> None:
 
         self.connect()
 
-        self.ibis_backend.truncate_table(   
-                                    table_name, 
+        self.ibis_backend.truncate_table(
+                                    table_name,
                                     schema=schema,
-                                    database=database)  if self.ibis_backend is not None else None  
+                                    database=database)  if self.ibis_backend is not None else None
 
 
     def upsert(
@@ -379,12 +379,12 @@ class BaseIbisConnection(BaseDBConnection):
 
         self.connect()
 
-        self._upsert(   table_name=table_name, 
-                        df=df, 
+        self._upsert(   table_name=table_name,
+                        df=df,
                         database=database,
                         schema=schema,
                         natural_key_columns=natural_key_columns,
-                        data_columns=data_columns)  if self.ibis_backend is not None else None  
+                        data_columns=data_columns)  if self.ibis_backend is not None else None
 
     # @abstractmethod
     def _upsert(
@@ -406,16 +406,16 @@ class BaseIbisConnection(BaseDBConnection):
     ###########################
     # t.Optionally Implemented Functions
 
-    def list_tables(self, 
+    def list_tables(self,
                 table_name: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
         self.connect()
-        return self._list_tables(like=table_name, database=database, schema=schema)    
+        return self._list_tables(like=table_name, database=database, schema=schema)
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like: str | None = None,
                 database: t.Any = None,
                 schema: str | None = None
@@ -424,24 +424,24 @@ class BaseIbisConnection(BaseDBConnection):
         raise NotImplementedError
 
 
-    def rename_table(self, 
+    def rename_table(self,
                 old_name: str,
                 new_name: str,
                 ) -> None:
 
         self.connect()
-        return self._rename_table(old_name=old_name, new_name=new_name)  if self.ibis_backend is not None else None     
+        return self._rename_table(old_name=old_name, new_name=new_name)  if self.ibis_backend is not None else None
 
 
-    def _rename_table(self, 
+    def _rename_table(self,
                 old_name: str,
                 new_name: str,
                 ) -> None:
-        
+
         raise NotImplementedError
 
 
-    def table_exists(self, 
+    def table_exists(self,
                 table_name: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
@@ -460,28 +460,28 @@ class BaseIbisConnection(BaseDBConnection):
 
     ###########################
     # Mountain Ash Abstractions
-    def table_as_ibis_dataframe(self, 
+    def table_as_ibis_dataframe(self,
         object_name: str,
         schema: str | None = None,
         database: tuple[str, str] | str | None = None,
         tablename_prefix: t.Optional[str] = None
 
         ) -> t.Optional[IbisDataFrame]:
-        
+
         """Get a table or view as a DataFrame."""
 
-        result: ibis.Table | None = self.table(object_name=object_name, 
+        result: ibis.Table | None = self.table(object_name=object_name,
                                                schema=schema,
                                                database=database)
 
         return IbisDataFrame(df=result,
-                            ibis_backend=self.ibis_backend,  
-                            tablename_prefix=tablename_prefix)   
+                            ibis_backend=self.ibis_backend,
+                            tablename_prefix=tablename_prefix)
 
-    def run_sql_as_ibis_dataframe(self, 
+    def run_sql_as_ibis_dataframe(self,
             query: str,
             schema: SchemaLike | None = None,
-            dialect: str | None = None, 
+            dialect: str | None = None,
             tablename_prefix: t.Optional[str] = None
             ) -> t.Optional[BaseDataFrame]:
         """Execute the given SQL statement."""
@@ -492,11 +492,11 @@ class BaseIbisConnection(BaseDBConnection):
                                                   )
 
         return IbisDataFrame(df=result,
-                            ibis_backend=self.ibis_backend,  
-                            tablename_prefix=tablename_prefix)       
+                            ibis_backend=self.ibis_backend,
+                            tablename_prefix=tablename_prefix)
 
 
-    def run_expr_as_ibis_dataframe(self, 
+    def run_expr_as_ibis_dataframe(self,
             ibis_expr: ir.Expr,
             params: t.Dict | None = None,
             limit: str | None = "default",
@@ -512,32 +512,32 @@ class BaseIbisConnection(BaseDBConnection):
                                                   )
 
         return IbisDataFrame(df=result,
-                            ibis_backend=self.ibis_backend,  
-                            tablename_prefix=tablename_prefix)     
+                            ibis_backend=self.ibis_backend,
+                            tablename_prefix=tablename_prefix)
 
-    #### Native Dataframe 
+    #### Native Dataframe
 
-    def table_as_native_dataframe(self, 
+    def table_as_native_dataframe(self,
         object_name: str,
         schema: str | None = None,
         database: tuple[str, str] | str | None = None,
         dataframe_framework: t.Optional[str] = CONST_DATAFRAME_FRAMEWORK.POLARS
 
         ) -> t.Optional[IbisDataFrame]:
-        
+
         """Get a table or view as a DataFrame."""
 
-        result: ibis.Table | None = self.table(object_name=object_name, 
+        result: ibis.Table | None = self.table(object_name=object_name,
                                                schema=schema,
                                                database=database)
 
         return DataFrameUtils.cast_dataframe(df=result, dataframe_framework=dataframe_framework)
 
 
-    def run_sql_as_native_dataframe(self, 
+    def run_sql_as_native_dataframe(self,
             query: str,
             schema: SchemaLike | None = None,
-            dialect: str | None = None, 
+            dialect: str | None = None,
             dataframe_framework: t.Optional[str] = CONST_DATAFRAME_FRAMEWORK.POLARS
             ) -> t.Optional[BaseDataFrame]:
         """Execute the given SQL statement."""
@@ -550,7 +550,7 @@ class BaseIbisConnection(BaseDBConnection):
         return DataFrameUtils.cast_dataframe(df=result, dataframe_framework=dataframe_framework)
 
 
-    def run_expr_as_materialised_dataframe(self, 
+    def run_expr_as_materialised_dataframe(self,
             ibis_expr: ir.Expr,
             params: t.Dict | None = None,
             limit: str | None = "default",
@@ -564,5 +564,5 @@ class BaseIbisConnection(BaseDBConnection):
                                                   limit=limit,
                                                   **kwargs
                                                   )
-        
+
         return DataFrameUtils.cast_dataframe(df=result, dataframe_framework=dataframe_framework)

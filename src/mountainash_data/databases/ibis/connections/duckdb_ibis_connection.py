@@ -1,13 +1,15 @@
 import typing as t
 import contextlib
 import warnings
+
 import ibis.backends.duckdb as ir_backend
 from pydantic_settings import BaseSettings
 
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
 
-from mountainash_constants import CONST_DB_BACKEND
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import DuckDBAuthSettings
+
 from mountainash_settings import SettingsParameters, get_settings
 from mountainash_settings.settings.auth.database import DuckDBAuthSettings
 
@@ -28,7 +30,7 @@ class DuckDB_IbisConnection(BaseIbisConnection):
         self._read_only = read_only
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters )
-        
+
 
 
 
@@ -45,7 +47,7 @@ class DuckDB_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.DUCKDB.value
+        return CONST_DB_BACKEND.DUCKDB
 
     @property
     def connection_string_scheme(self) -> str:
@@ -56,15 +58,15 @@ class DuckDB_IbisConnection(BaseIbisConnection):
         return DuckDBAuthSettings
 
     # ==============
-    # 
-    def _list_tables(self,                
+    #
+    def _list_tables(self,
                 like: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
         return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
-    
+
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 
@@ -77,8 +79,8 @@ class DuckDB_IbisConnection(BaseIbisConnection):
                         warnings.warn(f"Unable to set session {option_key} to UTC: {e}")
 
 
-    def _connect(self, 
-                 connection_string: t.Optional[str] = None, 
+    def _connect(self,
+                 connection_string: t.Optional[str] = None,
                  connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
                  **kwargs
                  ) -> ir_backend:

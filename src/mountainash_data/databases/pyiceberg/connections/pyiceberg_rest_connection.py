@@ -2,7 +2,7 @@ import typing as t
 # import catalog.backends.duckdb as ir_backend
 import contextlib
 from pydantic_settings import BaseSettings
-import ibis.expr.types.relations as ir 
+import ibis.expr.types.relations as ir
 import uuid
 
 # from ..constants import IBIS_DB_connection_mode
@@ -34,7 +34,7 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
         self.supports_upsert = True
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
-        
+
     #From BaseIbisConnection
     @property
     def catalog_backend(self) -> t.Optional[Catalog]:
@@ -47,7 +47,7 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.PYICEBERG.value
+        return CONST_DB_BACKEND.PYICEBERG
 
     # @property
     # def connection_string_scheme(self) -> str:
@@ -59,12 +59,12 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
 
 
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 namespace: str | None = None,
                     ) -> t.List[str]:
 
-        return self.catalog_backend.list_tables(namespace=namespace) if self.catalog_backend is not None else []        
-    
+        return self.catalog_backend.list_tables(namespace=namespace) if self.catalog_backend is not None else []
+
 
     # def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 
@@ -117,7 +117,7 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
         sql_value_fields = ", ".join([f"{col} = excluded.{col}" for col in data_columns]) if data_columns else ""
 
         upsert_sql = f"INSERT INTO {database}.{table_name}({sql_all_columns}) SELECT {sql_all_columns} FROM {staging_table_name} ON CONFLICT ({sql_natural_keys}) DO UPDATE SET {sql_value_fields}"
-  
+
         with contextlib.closing(self.catalog_backend.con.cursor()) as cur:
 
             cur.execute("BEGIN TRANSACTION;")
@@ -128,14 +128,14 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
 
 
     def unique_index_exists(
-        self, 
-        table_name: str, 
+        self,
+        table_name: str,
         natural_key_columns: list[str],
         database: str | None = None
     ) -> bool:
         """
         Ensures that an index exists on the specified natural key columns for a table in DuckDB.
-        
+
         Args:
             table_name: Name of the target table
             natural_key_columns: List of column names that form the natural key
@@ -144,31 +144,31 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
         """
         if not natural_key_columns:
             return
-            
+
         # Format the fully qualified table name
         qualified_table = table_name
         if database:
             qualified_table = f"{database}.{qualified_table}"
-        
+
         # Create a standardized index name
         index_name = self.create_unique_index_name(table_name, natural_key_columns)
-        
+
         # In DuckDB, we can check for indexes using the information_schema
         check_index_sql = f"""
-        SELECT COUNT(*) as index_exists 
-        FROM pg_catalog.pg_indexes 
-        WHERE indexname = '{index_name}' 
+        SELECT COUNT(*) as index_exists
+        FROM pg_catalog.pg_indexes
+        WHERE indexname = '{index_name}'
         AND tablename = '{table_name}'
         """
-        
+
         # Check if the index exists
         index_exists = self.run_sql_as_catalog_dataframe(check_index_sql).get_column_as_list("index_exists")[0] > 0
 
         return index_exists
 
     def create_unique_index(
-        self, 
-        table_name: str, 
+        self,
+        table_name: str,
         natural_key_columns: list[str],
         database: str | None = None
     ) -> bool:
@@ -187,7 +187,7 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
             qualified_table = table_name
             if database:
                 qualified_table = f"{database}.{qualified_table}"
-            
+
             # Create a standardized index name
             index_name = self.create_unique_index_name(table_name, natural_key_columns)
 
@@ -198,13 +198,12 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
                 cur.execute(create_index_sql)
 
 
-    def create_unique_index_name(self, 
-                            table_name: str, 
+    def create_unique_index_name(self,
+                            table_name: str,
                             natural_key_columns: list[str]) -> str:
 
         # Create a standardized index name
-        natural_key_columns.sort()        
-        unique_index_name = f"idx_{table_name}_{'_'.join(natural_key_columns)}" 
+        natural_key_columns.sort()
+        unique_index_name = f"idx_{table_name}_{'_'.join(natural_key_columns)}"
 
-        return unique_index_name                           
-
+        return unique_index_name

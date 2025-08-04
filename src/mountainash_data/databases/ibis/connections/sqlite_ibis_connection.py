@@ -1,14 +1,18 @@
 import typing as t
-import ibis.backends.sqlite as ir_backend
 import contextlib
 import warnings
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
+
+import ibis.backends.sqlite as ir_backend
 from pydantic_settings import BaseSettings
 
-from mountainash_constants import CONST_DB_BACKEND
+
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import SQLiteAuthSettings
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import SQLiteAuthSettings
+
+
 
 class SQLite_IbisConnection(BaseIbisConnection):
 
@@ -23,7 +27,7 @@ class SQLite_IbisConnection(BaseIbisConnection):
         self._ibis_backend: t.Optional[ir_backend.Backend] = None
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.CONNECTION_STRING
 
-        super().__init__(db_auth_settings_parameters=   db_auth_settings_parameters, 
+        super().__init__(db_auth_settings_parameters=   db_auth_settings_parameters,
                          )
 
     #From BaseIbisConnection
@@ -38,7 +42,7 @@ class SQLite_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.SQLITE.value
+        return CONST_DB_BACKEND.SQLITE
 
     @property
     def connection_string_scheme(self) -> str:
@@ -51,7 +55,7 @@ class SQLite_IbisConnection(BaseIbisConnection):
 
 
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like: str | None = None,
                 database: str | None = None,
                 schema: str | None = None

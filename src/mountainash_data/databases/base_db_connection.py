@@ -1,5 +1,4 @@
-from typing import Any, Optional
-import typing as t
+from typing import Optional, Any, Type, Dict
 from abc import ABC, abstractmethod
 
 from ibis.backends.sql import SQLBackend
@@ -14,9 +13,9 @@ from mountainash_settings.settings.auth.database import BaseDBAuthSettings
 class BaseDBConnection(ABC):
 
 
-    def __init__(self, 
+    def __init__(self,
                  db_auth_settings_parameters: SettingsParameters,
-                 read_only: bool = Optional[True]
+                 read_only: Optional[bool] = True
                  ):
 
         self.db_auth_settings_parameters: SettingsParameters = db_auth_settings_parameters
@@ -36,9 +35,9 @@ class BaseDBConnection(ABC):
 
         # if self.ssh_required:
         #     if ssh_auth_settings_parameters is None:
-        #         raise ValueError("SSH Auth settings are required for SSH connection")  
+        #         raise ValueError("SSH Auth settings are required for SSH connection")
 
-        #     #Just create the object, do not connect 
+        #     #Just create the object, do not connect
         #     self.ssh_client = SSH_Helper(auth_settings_parameters=ssh_auth_settings_parameters)
 
 
@@ -62,7 +61,7 @@ class BaseDBConnection(ABC):
 
     @property
     @abstractmethod
-    def settings_class(self) -> t.Type[BaseSettings]:
+    def settings_class(self) -> Type[BaseSettings]:
         """Settings class for database configuration."""
         pass
 
@@ -79,28 +78,28 @@ class BaseDBConnection(ABC):
     def disconnect(self):
         """Close the connection to the database."""
         pass
-    
+
     @abstractmethod
     def is_connected(self) -> bool:
         """ Is the connection open?"""
         pass
-    
+
 
     # @abstractmethod
-    # def run_sql(self, 
+    # def run_sql(self,
     #             sql: str):
     #     """Execute the given SQL statement."""
     #     pass
 
     # @abstractmethod
-    # def call_procedure(self, 
-    #                    procedure_name: str, 
+    # def call_procedure(self,
+    #                    procedure_name: str,
     #                    params: Optional[Dict[str, Any]] = None):
     #     """Call the specified stored procedure with the given parameters."""
     #     pass
 
     # @abstractmethod
-    # def get_dataframe_from_sql(self, 
+    # def get_dataframe_from_sql(self,
     #                             sql: str):
     #     """Execute the given SQL statement."""
     #     pass
@@ -116,7 +115,7 @@ class BaseDBConnection(ABC):
 
     # def prepare_connection_parameters(self) -> str:
     #     """Connect to the database using the provided connection string."""
-        
+
 
     #     if not self.connection_string:
     #         self.connection_string = get_settings(settings_parameters=self.db_auth_settings_parameters).CONNECTION_STRING
@@ -125,9 +124,9 @@ class BaseDBConnection(ABC):
     #         self.connection_string = self.template_connection_string
 
     #     return  self.format_connection_string(connection_string=self.connection_string)
-    
 
-    def get_connection_string_template(self, 
+
+    def get_connection_string_template(self,
                                      scheme: Optional[str] = None) -> str:
 
         if scheme is None:
@@ -137,36 +136,36 @@ class BaseDBConnection(ABC):
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
-        
+
         return obj_settings.get_connection_string_template(scheme=scheme)
 
-    def get_connection_string_params(self) -> t.Dict[str, Any]:
-       
+    def get_connection_string_params(self) -> Dict[str, Any]:
+
 
         obj_settings = get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
-        
+
         return obj_settings.get_connection_string_params()
 
 
-    def get_connection_kwargs(self, 
-                              db_abstraction_layer:str) -> t.Dict[str, Any]:
+    def get_connection_kwargs(self,
+                              db_abstraction_layer:str) -> Dict[str, Any]:
 
         obj_settings = get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
-        
+
         return obj_settings.get_connection_kwargs(db_abstraction_layer = db_abstraction_layer)
 
 
-    def format_connection_string(self, 
-                                 template: Optional[str] = None, 
-                                 params: Optional[t.Dict] = None
+    def format_connection_string(self,
+                                 template: Optional[str] = None,
+                                 params: Optional[Dict] = None
                                  ) -> str:
-        
+
         """Format connection string using template"""
 
         if not template:
@@ -177,7 +176,7 @@ class BaseDBConnection(ABC):
 
         # escaped_params = {k: quote_plus(str(v)) for k, v in params.items()}
         # safe_params = defaultdict(str, escaped_params)
-        
+
         try:
             return template.format_map(params)
         except Exception as e:
@@ -185,7 +184,7 @@ class BaseDBConnection(ABC):
 
 
 
-    # def format_connection_string(self, 
+    # def format_connection_string(self,
     #                              connection_string: Optional[str] = None) -> str:
     #     """Connect to the database using the provided connection string."""
 
@@ -213,4 +212,3 @@ class BaseDBConnection(ABC):
 
 
     #     return formatted_connection_string
-    

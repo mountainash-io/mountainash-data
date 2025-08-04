@@ -1,18 +1,23 @@
 import typing as t
-import ibis as ibis
-import ibis.backends.trino as ir_backend
 import contextlib
 import warnings
-from ..constants import IBIS_DB_connection_mode
-from ..base_ibis_connection import BaseIbisConnection
-from mountainash_constants import CONST_DB_BACKEND
-from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import TrinoAuthSettings
+
+
+import ibis as ibis
+import ibis.backends.trino as ir_backend
 from pydantic_settings import BaseSettings
+
+
+from mountainash_settings import SettingsParameters
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import TrinoAuthSettings
+
 
 class Trino_IbisConnection(BaseIbisConnection):
 
- 
+
 
     def __init__(self,
                  db_auth_settings_parameters: SettingsParameters,
@@ -24,9 +29,9 @@ class Trino_IbisConnection(BaseIbisConnection):
         self._ibis_backend: t.Optional[ir_backend.Backend] = None
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.HYBRID
 
-        super().__init__(db_auth_settings_parameters=db_auth_settings_parameters, 
+        super().__init__(db_auth_settings_parameters=db_auth_settings_parameters,
                          )
-   
+
     #From BaseIbisConnection
     @property
     def ibis_backend(self) -> t.Optional[ir_backend.Backend]:
@@ -39,7 +44,7 @@ class Trino_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.TRINO.value
+        return CONST_DB_BACKEND.TRINO
 
     @property
     def connection_string_scheme(self) -> str:
@@ -60,17 +65,17 @@ class Trino_IbisConnection(BaseIbisConnection):
 
     #     elif self.ibis_connection_mode == IBIS_DB_connection_mode.KWARGS:
     #         self.ibis_backend: SQLBackend = ibis.trino.connect(**kwargs)
-    
+
     #     return self.ibis_backend
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
         return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
-    
+
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 

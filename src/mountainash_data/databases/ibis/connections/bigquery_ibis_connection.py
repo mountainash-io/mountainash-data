@@ -2,12 +2,14 @@ import typing as t
 
 import ibis.backends.bigquery as ir_backend
 
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
-
-from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import BigQueryAuthSettings
+# from mountainash_settings.settings.auth.database import BigQueryAuthSettings
+
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import BigQueryAuthSettings
+
 
 from google.oauth2 import service_account
 import contextlib
@@ -27,7 +29,7 @@ class BigQuery_IbisConnection(BaseIbisConnection):
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.KWARGS
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
-       
+
     #From BaseIbisConnection
     @property
     def ibis_backend(self) -> t.Optional[ir_backend.Backend]:
@@ -40,7 +42,7 @@ class BigQuery_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.BIGQUERY.value
+        return CONST_DB_BACKEND.BIGQUERY
 
     @property
     def connection_string_scheme(self) -> str:
@@ -52,10 +54,10 @@ class BigQuery_IbisConnection(BaseIbisConnection):
 
 
 
-    def _connect(self, 
-                    connection_string: t.Optional[str] = None, 
+    def _connect(self,
+                    connection_string: t.Optional[str] = None,
                     **kwargs
-                    ):  
+                    ):
 
         # credentials = kwargs.get('credentials', None)
         credentials_info = kwargs.get('credentials_info', None)
@@ -68,17 +70,17 @@ class BigQuery_IbisConnection(BaseIbisConnection):
         else:
             ibis_backend = ir_backend.connect(project_id=project_id, dataset_id=dataset_id)
 
-        return ibis_backend                
+        return ibis_backend
 
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
         return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
-    
+
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 

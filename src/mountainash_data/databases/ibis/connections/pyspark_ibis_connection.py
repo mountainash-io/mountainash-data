@@ -4,12 +4,13 @@ import contextlib
 import warnings
 from pydantic_settings import BaseSettings
 
-from ..constants import IBIS_DB_connection_mode
-from ..base_ibis_connection import BaseIbisConnection
-from mountainash_constants import CONST_DB_BACKEND
+
 from mountainash_settings import SettingsParameters
-# from mountainash_settings.auth.database.providers import 
-from mountainash_settings.settings.auth.database import PySparkAuthSettings
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import PySparkAuthSettings
+
 
 class PySpark_IbisConnection(BaseIbisConnection):
 
@@ -41,7 +42,7 @@ class PySpark_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.PYSPARK.value
+        return CONST_DB_BACKEND.PYSPARK
 
     @property
     def connection_string_scheme(self) -> str:
@@ -55,14 +56,14 @@ class PySpark_IbisConnection(BaseIbisConnection):
 
 
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like:       str | None = None,
                 database:   str | None = None,
                 schema:     str | None = None
                     ) -> t.List[str]:
 
         return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []
-    
+
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 

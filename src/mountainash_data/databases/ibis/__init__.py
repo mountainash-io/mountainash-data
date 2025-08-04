@@ -1,5 +1,4 @@
 from .base_ibis_connection import BaseIbisConnection
-from .constants import IBIS_DB_connection_mode
 
 # Core connections that are always available
 from .connections.sqlite_ibis_connection import SQLite_IbisConnection
@@ -8,7 +7,6 @@ from .connections.motherduck_ibis_connection import MotherDuck_IbisConnection
 
 # Define base exports that are always available
 __all__ = [
-    "IBIS_DB_connection_mode",
     "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",

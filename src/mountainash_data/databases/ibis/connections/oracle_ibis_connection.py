@@ -2,11 +2,13 @@ import typing as t
 import ibis.backends.oracle as ir_backend
 from pydantic_settings import BaseSettings
 
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
-from mountainash_constants import CONST_DB_BACKEND
+
 from mountainash_settings import SettingsParameters
-# from mountainash_settings.auth.database.providers import 
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import MySQLAuthSettings
+
 
 class Oracle_IbisConnection(BaseIbisConnection):
 
@@ -33,7 +35,7 @@ class Oracle_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.ORACLE.value
+        return CONST_DB_BACKEND.ORACLE
 
     @property
     def connection_string_scheme(self) -> str:
@@ -42,4 +44,3 @@ class Oracle_IbisConnection(BaseIbisConnection):
     @property
     def settings_class(self) -> t.Type[BaseSettings]:
         return None #OracleAuthSettings
-

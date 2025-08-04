@@ -3,15 +3,16 @@ import ibis.backends.duckdb as ir_backend
 import contextlib
 import warnings
 from pydantic_settings import BaseSettings
-import ibis.expr.types.relations as ir 
+import ibis.expr.types.relations as ir
 import uuid
 
-from ..base_ibis_connection import BaseIbisConnection
-from ..constants import IBIS_DB_connection_mode
 
-from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import MotherDuckAuthSettings
+
+from ..base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...settings import MotherDuckAuthSettings
+
 # from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
 
 class MotherDuck_IbisConnection(BaseIbisConnection):
@@ -28,7 +29,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
         self.supports_upsert = True
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
-        
+
     #From BaseIbisConnection
     @property
     def ibis_backend(self) -> t.Optional[ir_backend.Backend]:
@@ -41,7 +42,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.MOTHERDUCK.value
+        return CONST_DB_BACKEND.MOTHERDUCK
 
     @property
     def connection_string_scheme(self) -> str:
@@ -53,14 +54,14 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
 
 
 
-    def _list_tables(self,                
+    def _list_tables(self,
                 like: str | None = None,
                 database: tuple[str, str] | str | None = None,
                 schema: str | None = None
                     ) -> t.List[str]:
 
-        return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []        
-    
+        return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []
+
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 
@@ -113,25 +114,27 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
         sql_value_fields = ", ".join([f"{col} = excluded.{col}" for col in data_columns]) if data_columns else ""
 
         upsert_sql = f"INSERT INTO {database}.{table_name}({sql_all_columns}) SELECT {sql_all_columns} FROM {staging_table_name} ON CONFLICT ({sql_natural_keys}) DO UPDATE SET {sql_value_fields}"
-  
-        with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
 
-            cur.execute("BEGIN TRANSACTION;")
-            cur.register(staging_table_name, df)
-            cur.execute(f"{upsert_sql}")
-            cur.unregister(staging_table_name)
-            cur.execute("COMMIT;")
+        if self.ibis_backend is not None:
+
+            with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
+
+                cur.execute("BEGIN TRANSACTION;")
+                cur.register(staging_table_name, df)
+                cur.execute(f"{upsert_sql}")
+                cur.unregister(staging_table_name)
+                cur.execute("COMMIT;")
 
 
     def unique_index_exists(
-        self, 
-        table_name: str, 
+        self,
+        table_name: str,
         natural_key_columns: list[str],
         database: str | None = None
-    ) -> bool:
+    ) -> bool|None:
         """
         Ensures that an index exists on the specified natural key columns for a table in DuckDB.
-        
+
         Args:
             table_name: Name of the target table
             natural_key_columns: List of column names that form the natural key
@@ -139,35 +142,36 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
             schema: Optional schema name
         """
         if not natural_key_columns:
-            return
-            
+            return None
+
         # Format the fully qualified table name
         qualified_table = table_name
         if database:
             qualified_table = f"{database}.{qualified_table}"
-        
+
         # Create a standardized index name
         index_name = self.create_unique_index_name(table_name, natural_key_columns)
-        
+
         # In DuckDB, we can check for indexes using the information_schema
         check_index_sql = f"""
-        SELECT COUNT(*) as index_exists 
-        FROM pg_catalog.pg_indexes 
-        WHERE indexname = '{index_name}' 
+        SELECT COUNT(*) as index_exists
+        FROM pg_catalog.pg_indexes
+        WHERE indexname = '{index_name}'
         AND tablename = '{table_name}'
         """
-        
+
         # Check if the index exists
-        index_exists = self.run_sql_as_ibis_dataframe(check_index_sql).get_column_as_list("index_exists")[0] > 0
+        index_exists_table = self.run_sql_as_ibis_dataframe(check_index_sql)
+        index_exists = index_exists_table.get_column_as_list("index_exists")[0] > 0 if index_exists_table is not None else False
 
         return index_exists
 
     def create_unique_index(
-        self, 
-        table_name: str, 
+        self,
+        table_name: str,
         natural_key_columns: list[str],
         database: str | None = None
-    ) -> bool:
+    ) -> bool|None:
 
 
         if isinstance(natural_key_columns, str):
@@ -183,7 +187,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
             qualified_table = table_name
             if database:
                 qualified_table = f"{database}.{qualified_table}"
-            
+
             # Create a standardized index name
             index_name = self.create_unique_index_name(table_name, natural_key_columns)
 
@@ -194,13 +198,12 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
                 cur.execute(create_index_sql)
 
 
-    def create_unique_index_name(self, 
-                            table_name: str, 
+    def create_unique_index_name(self,
+                            table_name: str,
                             natural_key_columns: list[str]) -> str:
 
         # Create a standardized index name
-        natural_key_columns.sort()        
-        unique_index_name = f"idx_{table_name}_{'_'.join(natural_key_columns)}" 
+        natural_key_columns.sort()
+        unique_index_name = f"idx_{table_name}_{'_'.join(natural_key_columns)}"
 
-        return unique_index_name                           
-
+        return unique_index_name
