@@ -23,11 +23,11 @@ import polars as pl
 import pyarrow as pa
 
 # Mountain Ash Data imports
-from mountainash_data import (
-    SQLite_IbisConnection,
-    DuckDB_IbisConnection,
-    MotherDuck_IbisConnection
-)
+# from mountainash_data import (
+#     SQLite_IbisConnection,
+#     DuckDB_IbisConnection,
+#     MotherDuck_IbisConnection
+# )
 from mountainash_dataframes.utils.dataframe_factory import DataFrameFactory
 from mountainash_dataframes.ibis_dataframe import IbisDataFrame
 
