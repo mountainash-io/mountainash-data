@@ -8,7 +8,7 @@ import polars as pl
 from mountainash_dataframes.utils.dataframe_factory import DataFrameFactory
 from mountainash_data.databases.ibis.connections.sqlite_ibis_connection import SQLite_IbisConnection
 from mountainash_data.databases.ibis.connections.duckdb_ibis_connection import DuckDB_IbisConnection
-from mountainash_dataframes.ibis_dataframe import IbisDataFrame
+from mountainash_dataframes import IbisDataFrame
 from mountainash_settings import SettingsParameters
 from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
 
@@ -90,7 +90,7 @@ class TestDataPipelineIntegration:
     @pytest.mark.integration
     def test_column_mapping_integration(self, sample_data_dict, column_mapping_config):
         """Test integration of column mapping with DataFrames."""
-        from mountainash_data.dataframes.utils.column_mapper.column_mapper import ColumnMapper
+        from mountainash_dataframes.utils.column_mapper.column_mapper import ColumnMapper
 
         # Create real DataFrame
         data = sample_data_dict["valid_simple"]

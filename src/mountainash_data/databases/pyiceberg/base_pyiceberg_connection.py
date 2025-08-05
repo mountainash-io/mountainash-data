@@ -15,8 +15,8 @@ from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTIO
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.rest import RestCatalog
 
-from mountainash_data import IbisDataFrame, DataFrameUtils
-# from mountainash_data.dataframes.utils.dataframe_utils import DataFrameUtils
+from mountainash_dataframes import IbisDataFrame, DataFrameUtils
+# from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 
 from pyiceberg.schema import Schema
 

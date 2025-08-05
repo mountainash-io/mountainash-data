@@ -29,7 +29,7 @@ import pyarrow as pa
 #     MotherDuck_IbisConnection
 # )
 from mountainash_dataframes.utils.dataframe_factory import DataFrameFactory
-from mountainash_dataframes.ibis_dataframe import IbisDataFrame
+from mountainash_dataframes import IbisDataFrame
 
 # Settings imports
 from mountainash_settings import SettingsParameters

@@ -7,7 +7,6 @@ from mountainash_settings import SettingsParameters
 
 from ..base_ibis_connection import BaseIbisConnection
 from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
-from ...settings import MySQLAuthSettings
 
 
 class Oracle_IbisConnection(BaseIbisConnection):

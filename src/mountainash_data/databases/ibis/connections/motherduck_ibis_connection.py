@@ -13,7 +13,7 @@ from ..base_ibis_connection import BaseIbisConnection
 from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
 from ...settings import MotherDuckAuthSettings
 
-# from mountainash_data.dataframes.utils.dataframe_filters import FilterCondition as fc
+# from mountainash_dataframes.utils.dataframe_filters import FilterCondition as fc
 
 class MotherDuck_IbisConnection(BaseIbisConnection):
 
