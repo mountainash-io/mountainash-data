@@ -16,18 +16,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - PyIceberg support for data lake operations
    - Connection factory pattern for backend instantiation
 
-2. **DataFrame Abstraction Layer** (`src/mountainash_data/dataframes/`)
-   - Unified dataframe interface (`BaseDataFrame`, `IbisDataFrame`)
-   - Cross-backend dataframe operations (filter, join, aggregate, etc.)
-   - Materialization to pandas, polars, and pyarrow formats
-   - Data type conversion and optimization utilities
-
-3. **Utilities and Helpers** (`src/mountainash_data/dataframes/utils/`)
-   - Column mapping and transformation (`column_mapper/`)
-   - Dataframe filtering strategies (`dataframe_filters/`)
-   - Backend-specific handlers (`dataframe_handlers/`)
-   - Python data structure converters (`pydata_converter/`)
-
 4. **Lineage and Metadata** (`src/mountainash_data/lineage/`)
    - OpenLineage integration for data lineage tracking
 
@@ -48,25 +36,29 @@ src/mountainash_data/
 │   │   │   └── [other backends...]
 │   │   └── ibis_connection_factory.py
 │   └── pyiceberg/               # PyIceberg support
-├── dataframes/                   # DataFrame abstraction layer
-│   ├── base_dataframe.py        # Abstract dataframe interface
-│   ├── ibis_dataframe.py        # Ibis dataframe implementation
-│   └── utils/                   # DataFrame utilities
-│       ├── column_mapper/       # Column mapping utilities
-│       ├── dataframe_filters/   # Filtering strategies
-│       ├── dataframe_handlers/  # Backend-specific handlers
-│       └── pydata_converter/    # Python data structure converters
 └── lineage/                     # Data lineage tracking
     └── openlineage_helper.py
 ```
 
 
 ## Build/Test/Lint Commands
-- Build: `hatch build`
-- Lint: `hatch run ruff:check` or `hatch run ruff:fix` to auto-fix
-- Tests: `hatch run test:test` or `hatch run test:cov` for coverage
-- Single test: `pytest tests/path/to/test_file.py::TestClass::test_function -v`
-- Type check: `hatch run mypy:check`
+
+### Core Commands
+- **Build**: `hatch build`
+- **Lint**: `hatch run ruff:check` or `hatch run ruff:fix` to auto-fix
+- **Type check**: `hatch run mypy:check`
+
+### Testing Commands
+- **Full test suite with coverage**: `hatch run test:test`
+- **Quick tests (no coverage)**: `hatch run test:test-quick`
+- **Target specific tests**: `hatch run test:test-target tests/path/to/test_file.py::TestClass::test_function`
+- **Test only changed files**: `hatch run test:test-changed`
+- **Performance benchmarks**: `hatch run test:test-perf`
+- **Test by markers**: `hatch run test:test-unit`, `hatch run test:test-integration`, `hatch run test:test-performance`
+
+### Code Quality Analysis
+- **Complexity analysis**: `hatch run radon:radon-cc` (cyclomatic complexity)
+- **Maintainability index**: `hatch run radon:radon-mi`
 
 ## Dependencies
 
@@ -94,13 +86,20 @@ src/mountainash_data/
 
 ### Internal Mountain Ash Dependencies
 - **mountainash-settings** - Settings management and configuration framework
+- **mountainash-constants** - Shared constants and configuration
+- **mountainash-dataframes** - DataFrame abstractions and utilities
+- **mountainash-utils-files** - File system utilities
+- **mountainash-utils-os** - Operating system utilities
+- **mountainash-utils-ssh** - SSH connection utilities
 
 ### Development Dependencies
-- pytest==8.3.5
-- pytest-check, pytest-cov, pytest-mock
-- ruff==0.3.7
-- mypy==1.10.1
-- radon==6.0.1
+- **pytest==8.3.5** with extended plugins:
+  - pytest-asyncio, pytest-check, pytest-cov, pytest-mock
+  - pytest-benchmark, pytest-clarity, pytest-timeout, pytest-picked
+  - pytest-json-report, pytest-metadata for enhanced reporting
+- **ruff==0.3.7** - Fast Python linter and formatter
+- **mypy==1.10.1** - Static type checker
+- **radon==6.0.1** - Code complexity analysis
 
 ## GitHub Actions Workflows
 
@@ -152,6 +151,14 @@ src/mountainash_data/
   - **column_mapper/**: Column mapping functionality tests
   - **pydata_converter/**: Python data structure converter tests
 
+### Test Markers
+Use pytest markers to run specific test categories:
+- `unit`: Unit tests (fast, isolated)
+- `integration`: Integration tests (slower, external dependencies)
+- `performance`: Performance and benchmark tests
+- `slow`: Tests that take longer to run
+- `smoke`: Quick tests to verify basic functionality
+
 ### Test Configuration
 - **pytest.ini**: Pytest configuration
 - **codecov.yml**: Code coverage configuration
@@ -184,10 +191,12 @@ src/mountainash_data/
 ## Development Environments
 
 ### Hatch Environments
-- `default`: Local development
-- `test`: Local testing with extended pytest plugins
-- `test_github`: GitHub Actions testing
-- `build_github`: GitHub Actions building
+- `default`: Basic local development environment
+- `dev`: Full local development with all Mountain Ash dependencies
+- `test`: Local testing with extended pytest plugins and coverage
+- `test_github`: GitHub Actions testing environment
+- `build_github`: GitHub Actions building and SBOM generation
+- `tower`: Minimal production-like environment
 - `ruff`: Linting and formatting
 - `radon`: Complexity analysis
 - `mypy`: Type checking
@@ -244,6 +253,20 @@ from mountainash_data.dataframes.utils.pydata_converter import DataFrameFactory
 # Convert Python data structures
 df = DataFrameFactory.create_from_list_of_dicts(data)
 ```
+
+## Development Workflow
+
+### Setting Up Development Environment
+1. **Use dev environment**: `hatch shell dev` (includes all Mountain Ash dependencies)
+2. **For testing only**: `hatch shell test` (includes extended pytest plugins)
+3. **Install package in editable mode**: `pip install -e .`
+
+### Daily Development Commands
+- **Run tests during development**: `hatch run test:test-quick`
+- **Full test suite before commits**: `hatch run test:test`
+- **Check code style**: `hatch run ruff:check`
+- **Auto-fix style issues**: `hatch run ruff:fix`
+- **Validate types**: `hatch run mypy:check`
 
 ## License
 MIT License

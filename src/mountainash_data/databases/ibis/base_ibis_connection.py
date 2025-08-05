@@ -9,9 +9,9 @@ from abc import abstractmethod
 
 # from abc import abstractmethod
 from mountainash_settings import SettingsParameters
-from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTION_LAYER
 
-from ..constants import IBIS_DB_connection_mode
+from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
+from ..constants import IBIS_DB_connection_mode,  CONST_DB_ABSTRACTION_LAYER
 from mountainash_dataframes import BaseDataFrame, IbisDataFrame
 from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 

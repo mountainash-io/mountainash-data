@@ -10,7 +10,10 @@ from time import sleep
 from pyiceberg.table import Table
 # from abc import abstractmethod
 from mountainash_settings import SettingsParameters
-from mountainash_constants import CONST_DATAFRAME_FRAMEWORK, CONST_DB_ABSTRACTION_LAYER
+
+from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
+
+from ..constants import  CONST_DB_ABSTRACTION_LAYER
 
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.rest import RestCatalog
