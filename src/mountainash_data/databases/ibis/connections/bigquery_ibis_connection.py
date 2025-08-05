@@ -3,7 +3,7 @@ import typing as t
 import ibis.backends.bigquery as ir_backend
 
 from mountainash_settings import SettingsParameters
-# from mountainash_settings.settings.auth.database import BigQueryAuthSettings
+# from mountainash_data.databases.settings import BigQueryAuthSettings
 
 
 from ..base_ibis_connection import BaseIbisConnection

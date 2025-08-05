@@ -12,7 +12,7 @@ from pyiceberg.catalog import Catalog
 from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
 
-from mountainash_settings.settings.auth.database import PyIcebergRestAuthSettings
+from mountainash_data.databases.settings import PyIcebergRestAuthSettings
 from mountainash_data.databases.pyiceberg import BasePyIcebergConnection
 
 

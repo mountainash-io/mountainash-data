@@ -11,7 +11,6 @@ from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
 from ...settings import DuckDBAuthSettings
 
 from mountainash_settings import SettingsParameters, get_settings
-from mountainash_settings.settings.auth.database import DuckDBAuthSettings
 
 
 
@@ -91,7 +90,7 @@ class DuckDB_IbisConnection(BaseIbisConnection):
         if kwargs is None:
             kwargs = {}
 
-        settings = get_settings(self.db_auth_settings_parameters)
+        settings: DuckDBAuthSettings = get_settings(self.db_auth_settings_parameters)
 
         if settings.DATABASE is None:
             kwargs["read_only"] = False

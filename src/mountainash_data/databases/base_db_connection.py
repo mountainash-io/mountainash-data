@@ -5,7 +5,7 @@ from ibis.backends.sql import SQLBackend
 from pydantic_settings import BaseSettings
 
 from mountainash_settings import SettingsParameters, get_settings
-from mountainash_settings.settings.auth.database import BaseDBAuthSettings
+from mountainash_data.databases.settings import BaseDBAuthSettings
 
 # from mountainash_utils_ssh import SSH_Helper
 # from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
@@ -25,8 +25,7 @@ class BaseDBConnection(ABC):
             raise ValueError("Settings class is required for the database connection")
 
         if not issubclass(db_auth_settings_parameters.settings_class, self.settings_class):
-            raise Exception("Settings must be for the correct class for the database connection")
-
+            raise Exception(f"Settings must be for the correct class for the database connection. Expected {self.settings_class}. Received {db_auth_settings_parameters.settings_class}")
 
 
         # self.connection_string:     Optional[str] = connection_string
