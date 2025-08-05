@@ -10,7 +10,7 @@ from mountainash_data.databases.ibis.connections.sqlite_ibis_connection import S
 from mountainash_data.databases.ibis.connections.duckdb_ibis_connection import DuckDB_IbisConnection
 from mountainash_dataframes.ibis_dataframe import IbisDataFrame
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
 
 
 class TestDataPipelineIntegration:

@@ -33,7 +33,7 @@ from mountainash_dataframes.ibis_dataframe import IbisDataFrame
 
 # Settings imports
 from mountainash_settings import SettingsParameters
-from mountainash_settings.settings.auth.database import (
+from mountainash_data.databases.settings import (
     SQLiteAuthSettings,
     DuckDBAuthSettings,
     MotherDuckAuthSettings
