@@ -54,7 +54,7 @@ class BaseDBConnection(ABC):
     @property
     @abstractmethod
     def db_backend_name(self) -> Any:
-        """Database connection object."""
+        """Database connection object name."""
         pass
 
 
@@ -131,7 +131,7 @@ class BaseDBConnection(ABC):
         if scheme is None:
             scheme = self.connection_string_scheme
 
-        obj_settings = get_settings(settings_parameters=self.db_auth_settings_parameters)
+        obj_settings: BaseDBAuthSettings = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
@@ -141,7 +141,7 @@ class BaseDBConnection(ABC):
     def get_connection_string_params(self) -> Dict[str, Any]:
 
 
-        obj_settings = get_settings(settings_parameters=self.db_auth_settings_parameters)
+        obj_settings: BaseDBAuthSettings = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
@@ -152,7 +152,7 @@ class BaseDBConnection(ABC):
     def get_connection_kwargs(self,
                               db_abstraction_layer:str) -> Dict[str, Any]:
 
-        obj_settings = get_settings(settings_parameters=self.db_auth_settings_parameters)
+        obj_settings: BaseDBAuthSettings  = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
