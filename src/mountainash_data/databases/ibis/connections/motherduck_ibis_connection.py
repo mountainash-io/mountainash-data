@@ -10,7 +10,7 @@ import uuid
 from mountainash_settings import SettingsParameters
 
 from ..base_ibis_connection import BaseIbisConnection
-from ...constants import IBIS_DB_connection_mode, CONST_DB_BACKEND
+from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND
 from ...settings import MotherDuckAuthSettings
 
 # from mountainash_dataframes.utils.dataframe_filters import FilterCondition as fc
@@ -24,7 +24,7 @@ class MotherDuck_IbisConnection(BaseIbisConnection):
                  ):
 
         self._ibis_backend: t.Optional[ir_backend.Backend] = None
-        self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.CONNECTION_STRING
+        self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_CONNECTION_MODE.CONNECTION_STRING
 
         self.supports_upsert = True
 

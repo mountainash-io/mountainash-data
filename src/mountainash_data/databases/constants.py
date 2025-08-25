@@ -1,14 +1,14 @@
 #path: mountainash_data/databases/constants.py
 
-from mountainash_constants import BaseConstant
+from mountainash_constants import BaseIdentityConstant, BaseValueConstant
 
-class IBIS_DB_connection_mode:
+class IBIS_DB_CONNECTION_MODE(BaseIdentityConstant):
     CONNECTION_STRING = "connection_string"
     KWARGS = "kwargs"
     HYBRID = "hybrid"
 
 
-class CONST_DB_PROVIDER_TYPE(BaseConstant):
+class CONST_DB_PROVIDER_TYPE(BaseIdentityConstant):
     """Database provider types"""
     MYSQL = "mysql"
     POSTGRESQL = "postgresql"
@@ -22,7 +22,7 @@ class CONST_DB_PROVIDER_TYPE(BaseConstant):
     TRINO = "trino"
     PYICEBERG_REST = "pyiceberg_rest"
 
-class CONST_DB_AUTH_METHOD(BaseConstant):
+class CONST_DB_AUTH_METHOD(BaseValueConstant):
     """Authentication methods"""
     PASSWORD = "password"
     OAUTH = "oauth"
@@ -33,7 +33,7 @@ class CONST_DB_AUTH_METHOD(BaseConstant):
     MANAGED_IDENTITY = "managed_identity"
     NONE = "none"
 
-class CONST_DB_SSL_MODE_MYSQL(BaseConstant):
+class CONST_DB_SSL_MODE_MYSQL(BaseValueConstant):
     """SSL modes for database connections"""
     DISABLED = "disabled"
     PREFER = "prefer"
@@ -41,7 +41,7 @@ class CONST_DB_SSL_MODE_MYSQL(BaseConstant):
     VERIFY_CA = "verify-ca"
     VERIFY_FULL = "verify-full"
 
-class CONST_DB_SSL_MODE_POSTGRES(BaseConstant):
+class CONST_DB_SSL_MODE_POSTGRES(BaseValueConstant):
     """SSL modes for database connections"""
     DISABLE = "disable"
     ALLOW = "allow"
@@ -50,21 +50,21 @@ class CONST_DB_SSL_MODE_POSTGRES(BaseConstant):
     VERIFY_CA = "verify-ca"
     VERIFY_FULL = "verify-full"
 
-class CONST_DB_CONNECTION_STATUS(BaseConstant):
+class CONST_DB_CONNECTION_STATUS(BaseValueConstant):
     """Database connection status"""
     UNTESTED = "untested"
     VALID = "valid"
     INVALID = "invalid"
     ERROR = "error"
 
-class CONST_DB_POOL_MODE(BaseConstant):
+class CONST_DB_POOL_MODE(BaseValueConstant):
     """Connection pool modes"""
     FIXED = "fixed"
     DYNAMIC = "dynamic"
     NONE = "none"
 
 
-class CONST_DB_ABSTRACTION_LAYER(BaseConstant):
+class CONST_DB_ABSTRACTION_LAYER(BaseIdentityConstant):
     """
     Enumeration for different database abstraction layers.
 
@@ -75,7 +75,7 @@ class CONST_DB_ABSTRACTION_LAYER(BaseConstant):
     IBIS =     "IBIS"
     PYICEBERG = "PYICEBERG"
 
-class CONST_DB_BACKEND(BaseConstant):
+class CONST_DB_BACKEND(BaseValueConstant):
     """
     Enumeration for different database backends.
 
@@ -110,7 +110,7 @@ class CONST_DB_BACKEND(BaseConstant):
     # PANDAS =       "PANDAS"
 
 
-class CONST_DB_BACKEND_IBIS_PREFIX(BaseConstant):
+class CONST_DB_BACKEND_IBIS_PREFIX(BaseValueConstant):
     """
     Enumeration for different database backends.
 
@@ -140,7 +140,7 @@ class CONST_DB_BACKEND_IBIS_PREFIX(BaseConstant):
     MSSQL =        "mssql:"
     MYSQL =        "mysql:"
 
-class CONST_DB_BACKEND_CAPABILITIES(BaseConstant):
+class CONST_DB_BACKEND_CAPABILITIES(BaseIdentityConstant):
     """
     Enumeration for different database backend capabilities.
 

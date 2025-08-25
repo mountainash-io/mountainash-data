@@ -11,7 +11,7 @@ from abc import abstractmethod
 from mountainash_settings import SettingsParameters
 
 from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
-from ..constants import IBIS_DB_connection_mode,  CONST_DB_ABSTRACTION_LAYER
+from ..constants import IBIS_DB_CONNECTION_MODE,  CONST_DB_ABSTRACTION_LAYER
 from mountainash_dataframes import BaseDataFrame, IbisDataFrame
 from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 
@@ -99,16 +99,18 @@ class BaseIbisConnection(BaseDBConnection):
             connection_string = self.format_connection_string(template=connection_string_template, params=connectionstring_params)
             connection_kwargs = self.get_connection_kwargs(db_abstraction_layer = self.db_abstraction_layer)
 
-            if self.ibis_connection_mode == IBIS_DB_connection_mode.CONNECTION_STRING:
+            if self.ibis_connection_mode == IBIS_DB_CONNECTION_MODE.CONNECTION_STRING:
                 self._connect(connection_string=connection_string, **kwargs)
 
-            elif self.ibis_connection_mode == IBIS_DB_connection_mode.KWARGS:
+            elif self.ibis_connection_mode == IBIS_DB_CONNECTION_MODE.KWARGS:
                 #combine connectionstring_params and connection_kwargs
                 connection_kwargs = {**connectionstring_params, **connection_kwargs}
                 self._connect(connection_string=self.connection_string_scheme, connection_kwargs=connection_kwargs, **kwargs)
 
-            elif self.ibis_connection_mode == IBIS_DB_connection_mode.HYBRID:
+            elif self.ibis_connection_mode == IBIS_DB_CONNECTION_MODE.HYBRID:
                 self._connect(connection_string=connection_string, connection_kwargs=connection_kwargs, **kwargs)
+
+        #TODO: Add check and logging
 
         return self.ibis_backend
 

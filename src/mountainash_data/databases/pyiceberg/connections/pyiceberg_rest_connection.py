@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 import ibis.expr.types.relations as ir
 import uuid
 
-# from ..constants import IBIS_DB_connection_mode
+# from ..constants import IBIS_DB_CONNECTION_MODE
 
 from pyiceberg.catalog import Catalog
 
@@ -25,7 +25,7 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
                  ):
 
         self._catalog_backend: t.Optional[Catalog] = None
-        # self._catalog_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_connection_mode.CONNECTION_STRING
+        # self._catalog_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_CONNECTION_MODE.CONNECTION_STRING
 
         self.supports_upsert = True
 

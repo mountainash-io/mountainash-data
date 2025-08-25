@@ -6,13 +6,13 @@ from upath import UPath
 from pydantic import Field, SecretStr, field_validator, model_validator
 import re
 
-from mountainash_constants import BaseConstant
+from mountainash_constants import BaseValueConstant
 from mountainash_settings import SettingsParameters
 
 from .base import BaseDBAuthSettings
 from ..constants import CONST_DB_PROVIDER_TYPE, CONST_DB_AUTH_METHOD
 
-class CONST_SNOWFLAKE_AUTHENTICATOR(BaseConstant):
+class CONST_SNOWFLAKE_AUTHENTICATOR(BaseValueConstant):
     SNOWFLAKE = "snowflake " #The Default
     OAUTH = "oauth"
     OKTA = "okta"
