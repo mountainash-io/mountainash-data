@@ -39,7 +39,14 @@ src/mountainash_data/
 └── lineage/                     # Data lineage tracking
     └── openlineage_helper.py
 ```
-
+### Optional Dependencies (extras)
+- **all**: Complete set of database backends
+- **mssql**: SQL Server support (pyodbc, ibis-framework[mssql])
+- **snowflake**: Snowflake support (snowflake-connector-python, ibis-framework[snowflake])
+- **postgres**: PostgreSQL support (psycopg2-binary, ibis-framework[postgres])
+- **bigquery**: Google BigQuery support (ibis-framework[bigquery])
+- **pyspark**: Apache Spark support (ibis-framework[pyspark])
+- **trino**: Trino support (ibis-framework[trino])
 
 ## Build/Test/Lint Commands
 
