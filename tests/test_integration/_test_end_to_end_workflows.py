@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 import polars as pl
 
-from mountainash_dataframes.utils.dataframe_factory import DataFrameFactory
+# from mountainash_dataframes.utils.dataframe_factory import DataFrameFactory
 from mountainash_data.databases.ibis.connections.sqlite_ibis_connection import SQLite_IbisConnection
 from mountainash_data.databases.ibis.connections.duckdb_ibis_connection import DuckDB_IbisConnection
 from mountainash_dataframes import IbisDataFrame

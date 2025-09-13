@@ -16,17 +16,12 @@ class PySparkMode():
 
 class PySparkAuthSettings(BaseDBAuthSettings):
     """ SQLite authentication settings
-
-
         Databricks options: https://docs.databricks.com/en/spark/conf.html
-
         Too many options to set. Configure your spark instanmce directly! https://spark.apache.org/docs/3.5.1/configuration.html#available-properties
-
-
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.SQLITE)
-    AUTH_METHOD: str = Field(default="none")  # SQLite uses file-based authentication
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.PYSPARK)
+    AUTH_METHOD: str = Field(default="none")
 
     # File Settings
     MODE: str = Field(default=None) #batch or streaming
@@ -51,6 +46,11 @@ class PySparkAuthSettings(BaseDBAuthSettings):
                         #  _dummy=_dummy,
                          **kwargs)
 
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.PYSPARK
 
     def _post_init(self, reinitialise: bool) -> None:
         """Initialize provider-specific settings"""

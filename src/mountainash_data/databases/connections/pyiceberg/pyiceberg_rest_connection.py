@@ -4,16 +4,16 @@ import contextlib
 from pydantic_settings import BaseSettings
 import ibis.expr.types.relations as ir
 import uuid
+from pyiceberg.catalog import Catalog
 
 # from ..constants import IBIS_DB_CONNECTION_MODE
 
-from pyiceberg.catalog import Catalog
 
-from mountainash_constants import CONST_DB_BACKEND
 from mountainash_settings import SettingsParameters
 
-from mountainash_data.databases.settings import PyIcebergRestAuthSettings
-from mountainash_data.databases.pyiceberg import BasePyIcebergConnection
+from ...constants import CONST_DB_BACKEND
+from ...settings import PyIcebergRestAuthSettings
+from .base_pyiceberg_connection import BasePyIcebergConnection
 
 
 class PyIcebergRestConnection(BasePyIcebergConnection):
@@ -55,11 +55,11 @@ class PyIcebergRestConnection(BasePyIcebergConnection):
 
 
 
-    def _list_tables(self,
-                namespace: str | None = None,
-                    ) -> t.List[str]:
+    # def _list_tables(self,
+    #             namespace: str | None = None,
+    #                 ) -> t.List[str]:
 
-        return self.catalog_backend.list_tables(namespace=namespace) if self.catalog_backend is not None else []
+    #     return self.catalog_backend.list_tables(namespace=namespace) if self.catalog_backend is not None else []
 
 
     # def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):

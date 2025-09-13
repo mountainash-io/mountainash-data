@@ -10,7 +10,7 @@ from mountainash_settings import SettingsParameters
 from .base import BaseDBAuthSettings
 from ..constants import (
     # CONST_STORAGE_PROVIDER_TYPE,
-    CONST_DB_AUTH_METHOD
+    CONST_DB_AUTH_METHOD, CONST_DB_PROVIDER_TYPE
 )
 
 class PyIcebergRestAuthSettings(BaseDBAuthSettings):
@@ -20,7 +20,7 @@ class PyIcebergRestAuthSettings(BaseDBAuthSettings):
     Handles authentication configuration for Cloudflare R2 storage.
     Does not perform actual authentication or connection.
     """
-    PROVIDER_TYPE: str = Field(default="PYICEBERG_REST")  # Need to add PYICEBERG_REST to CONST_STORAGE_PROVIDER_TYPE
+    # PROVIDER_TYPE: str = Field(default="PYICEBERG_REST")  # Need to add PYICEBERG_REST to CONST_STORAGE_PROVIDER_TYPE
 
     # R2 Settings
     WAREHOUSE: str = Field(...)  # Required - R2 bucket name
@@ -28,7 +28,7 @@ class PyIcebergRestAuthSettings(BaseDBAuthSettings):
     CATALOG_URI: str = Field(...)  # Required - R2 bucket name
 
     # Authentication Settings
-    AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.get('TOKEN') )
+    AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.TOKEN )
 
     # Connection Settings
     USE_SSL: bool = Field(default=False)
@@ -42,6 +42,12 @@ class PyIcebergRestAuthSettings(BaseDBAuthSettings):
         super().__init__(config_files=config_files,
                          settings_parameters=settings_parameters,
                          **kwargs)
+
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.PYICEBERG_REST
 
 
     def _init_provider_specific(self, reinitialise: bool) -> None:

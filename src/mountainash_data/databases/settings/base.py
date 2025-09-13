@@ -5,13 +5,14 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 
 
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
-from ..constants import CONST_DB_AUTH_METHOD
+
+from ..constants import CONST_DB_AUTH_METHOD, CONST_DB_ABSTRACTION_LAYER
 
 class BaseDBAuthSettings(MountainAshBaseSettings, ABC):
     """Base class for database authentication settings"""
 
     # Provider Configuration
-    PROVIDER_TYPE: str = Field(...)
+    # PROVIDER_TYPE: str = Field(...)
     AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.PASSWORD)
 
     # Connection Settings
@@ -122,13 +123,13 @@ class BaseDBAuthSettings(MountainAshBaseSettings, ABC):
         ...
 
     @abstractmethod
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...
 
     @abstractmethod
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

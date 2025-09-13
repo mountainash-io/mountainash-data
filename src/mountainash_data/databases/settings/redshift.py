@@ -16,7 +16,7 @@ from .exceptions import DBAuthValidationError
 class RedshiftAuthSettings(BaseDBAuthSettings):
     """Amazon Redshift authentication settings"""
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.REDSHIFT)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.REDSHIFT)
 
     # AWS Settings
     REGION: str = Field(...)
@@ -24,8 +24,8 @@ class RedshiftAuthSettings(BaseDBAuthSettings):
     IAM_ROLE_ARN: Optional[str] = Field(default=None)
 
     # Redshift-specific Settings
-    DATABASE: str = Field(...)
-    PORT: int = Field(default=5439)
+    # DATABASE: Optional[str] = Field(...)
+    PORT: Optional[int] = Field(default=5439)
     SCHEMA: Optional[str] = Field(default=None)
 
     # Authentication Settings
@@ -57,6 +57,11 @@ class RedshiftAuthSettings(BaseDBAuthSettings):
                          settings_parameters=settings_parameters,
                         #  _dummy=_dummy,
                          **kwargs)
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.REDSHIFT
 
 
     ## Field Validators ##
@@ -116,7 +121,7 @@ class RedshiftAuthSettings(BaseDBAuthSettings):
                 validation_type="cluster"
             )
 
-    def get_connection_string_template(self) -> str:
+    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
         """Generate Redshift connection string"""
 
         # if self.SERVERLESS:

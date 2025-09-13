@@ -17,7 +17,7 @@ class SQLiteAuthSettings(BaseDBAuthSettings):
         SQLite Prgamas: https://www.sqlite.org/pragma.html
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.SQLITE)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.SQLITE)
     AUTH_METHOD: str = Field(default="none")  # SQLite uses file-based authentication
 
     # File Settings
@@ -38,6 +38,11 @@ class SQLiteAuthSettings(BaseDBAuthSettings):
 
     def _post_init(self, reinitialise: bool) -> None:
         pass
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.SQLITE
 
 
     def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
@@ -61,19 +66,17 @@ class SQLiteAuthSettings(BaseDBAuthSettings):
         return args
 
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for SQLite"""
 
         kwargs = {}
 
-        if db_abstraction_layer == "ibis":
-            if self.TYPE_MAP:
-                kwargs["type_map"] = self.TYPE_MAP
-
+        if self.TYPE_MAP:
+            kwargs["type_map"] = self.TYPE_MAP
 
         return kwargs
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

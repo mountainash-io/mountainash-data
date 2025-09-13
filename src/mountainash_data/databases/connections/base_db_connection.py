@@ -7,6 +7,8 @@ from pydantic_settings import BaseSettings
 from mountainash_settings import SettingsParameters, get_settings
 from mountainash_data.databases.settings import BaseDBAuthSettings
 
+from ..constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
+
 # from mountainash_utils_ssh import SSH_Helper
 # from mountainash_constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
 
@@ -19,7 +21,6 @@ class BaseDBConnection(ABC):
                  ):
 
         self.db_auth_settings_parameters: SettingsParameters = db_auth_settings_parameters
-
 
         if db_auth_settings_parameters.settings_class is None:
             raise ValueError("Settings class is required for the database connection")
@@ -47,8 +48,14 @@ class BaseDBConnection(ABC):
 
     @property
     @abstractmethod
-    def db_abstraction_layer(self) -> str:
+    def db_abstraction_layer(self) -> CONST_DB_ABSTRACTION_LAYER:
         """Database abstraction layer identifier."""
+        pass
+
+    @property
+    @abstractmethod
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
         pass
 
     @property
@@ -69,7 +76,7 @@ class BaseDBConnection(ABC):
     # Abstract Methods
 
     @abstractmethod
-    def connect(self) -> SQLBackend:
+    def connect(self) -> Optional[SQLBackend]:
         """Connect to the database using the provided connection string."""
         pass
 
@@ -149,15 +156,14 @@ class BaseDBConnection(ABC):
         return obj_settings.get_connection_string_params()
 
 
-    def get_connection_kwargs(self,
-                              db_abstraction_layer:str) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
 
         obj_settings: BaseDBAuthSettings  = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if not isinstance(obj_settings, BaseDBAuthSettings):
             raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
 
-        return obj_settings.get_connection_kwargs(db_abstraction_layer = db_abstraction_layer)
+        return obj_settings.get_connection_kwargs()
 
 
     def format_connection_string(self,

@@ -6,8 +6,8 @@ import ibis.backends.duckdb as ir_backend
 from pydantic_settings import BaseSettings
 
 
-from ..base_ibis_connection import BaseIbisConnection
-from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND
+from .base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND, CONST_DB_PROVIDER_TYPE
 from ...settings import DuckDBAuthSettings
 
 from mountainash_settings import SettingsParameters, get_settings
@@ -15,7 +15,6 @@ from mountainash_settings import SettingsParameters, get_settings
 
 
 class DuckDB_IbisConnection(BaseIbisConnection):
-
 
     def __init__(self,
                  db_auth_settings_parameters: SettingsParameters,
@@ -28,9 +27,13 @@ class DuckDB_IbisConnection(BaseIbisConnection):
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_CONNECTION_MODE.CONNECTION_STRING
         self._read_only = read_only
 
-        super().__init__(db_auth_settings_parameters=db_auth_settings_parameters )
+        super().__init__( db_auth_settings_parameters=db_auth_settings_parameters )
 
 
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.MOTHERDUCK
 
 
 
@@ -58,13 +61,13 @@ class DuckDB_IbisConnection(BaseIbisConnection):
 
     # ==============
     #
-    def _list_tables(self,
-                like: str | None = None,
-                database: tuple[str, str] | str | None = None,
-                schema: str | None = None
-                    ) -> t.List[str]:
+    # def _list_tables(self,
+    #             like: str | None = None,
+    #             database: tuple[str, str] | str | None = None,
+    #             schema: str | None = None
+    #                 ) -> t.List[str]:
 
-        return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
+    #     return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
 
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
@@ -82,7 +85,7 @@ class DuckDB_IbisConnection(BaseIbisConnection):
                  connection_string: t.Optional[str] = None,
                  connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
                  **kwargs
-                 ) -> ir_backend:
+                 ) -> ir_backend.Backend:
 
         if connection_kwargs is None:
             connection_kwargs = {}

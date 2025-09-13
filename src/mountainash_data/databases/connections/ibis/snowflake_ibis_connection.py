@@ -8,8 +8,8 @@ from pydantic_settings import BaseSettings
 
 from mountainash_settings import SettingsParameters
 
-from ..base_ibis_connection import BaseIbisConnection
-from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND
+from .base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND, CONST_DB_PROVIDER_TYPE
 from ...settings import SnowflakeAuthSettings
 
 
@@ -25,6 +25,11 @@ class Snowflake_IbisConnection(BaseIbisConnection):
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_CONNECTION_MODE.HYBRID
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.SNOWFLAKE
 
     #From BaseIbisConnection
     @property
@@ -51,22 +56,22 @@ class Snowflake_IbisConnection(BaseIbisConnection):
 
 
 
-    def _list_tables(self,
-                like:       str | None = None,
-                database:   tuple[str, str] | str | None = None,
-                schema:     str | None = None
-                    ) -> t.List[str]:
+    # def _list_tables(self,
+    #             like:       str | None = None,
+    #             database:   tuple[str, str] | str | None = None,
+    #             schema:     str | None = None
+    #                 ) -> t.List[str]:
 
-        return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []
+    #     return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []
 
 
 
-    def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
+    # def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):
 
-        if self.ibis_backend is not None:
-            with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
-                for option_key, option_value in post_connection_options.items():
-                    try:
-                        cur.execute(f"SET @@session.{option_key} = '{option_value}'")
-                    except Exception as e:
-                        warnings.warn(f"Unable to set session {option_key} to UTC: {e}")
+    #     if self.ibis_backend is not None:
+    #         with contextlib.closing(self.ibis_backend.con.cursor()) as cur:
+    #             for option_key, option_value in post_connection_options.items():
+    #                 try:
+    #                     cur.execute(f"SET @@session.{option_key} = '{option_value}'")
+    #                 except Exception as e:
+    #                     warnings.warn(f"Unable to set session {option_key} to UTC: {e}")

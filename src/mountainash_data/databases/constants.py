@@ -1,28 +1,33 @@
 #path: mountainash_data/databases/constants.py
 
-from mountainash_constants import BaseIdentityConstant, BaseValueConstant
+from enum import Enum,StrEnum, auto
+from mountainash_constants import identity_enum_helpers, value_enum_helpers
 
-class IBIS_DB_CONNECTION_MODE(BaseIdentityConstant):
+
+class IBIS_DB_CONNECTION_MODE(StrEnum):
     CONNECTION_STRING = "connection_string"
     KWARGS = "kwargs"
     HYBRID = "hybrid"
 
 
-class CONST_DB_PROVIDER_TYPE(BaseIdentityConstant):
+class CONST_DB_PROVIDER_TYPE(Enum):
     """Database provider types"""
-    MYSQL = "mysql"
-    POSTGRESQL = "postgresql"
-    MSSQL = "mssql"
-    SNOWFLAKE = "snowflake"
-    BIGQUERY = "bigquery"
-    REDSHIFT = "redshift"
-    SQLITE = "sqlite"
-    DUCKDB = "duckdb"
-    MOTHERDUCK = "motherduck"
-    TRINO = "trino"
-    PYICEBERG_REST = "pyiceberg_rest"
+    MYSQL = auto()
+    POSTGRESQL = auto()
+    MSSQL = auto()
+    SNOWFLAKE = auto()
+    BIGQUERY = auto()
+    REDSHIFT = auto()
+    SQLITE =auto()
+    DUCKDB =auto()
+    MOTHERDUCK = auto()
+    TRINO = auto()
+    PYICEBERG_REST = auto()
+    ORACLE = auto()
+    PYSPARK = auto()
 
-class CONST_DB_AUTH_METHOD(BaseValueConstant):
+
+class CONST_DB_AUTH_METHOD(StrEnum):
     """Authentication methods"""
     PASSWORD = "password"
     OAUTH = "oauth"
@@ -33,7 +38,7 @@ class CONST_DB_AUTH_METHOD(BaseValueConstant):
     MANAGED_IDENTITY = "managed_identity"
     NONE = "none"
 
-class CONST_DB_SSL_MODE_MYSQL(BaseValueConstant):
+class CONST_DB_SSL_MODE_MYSQL(StrEnum):
     """SSL modes for database connections"""
     DISABLED = "disabled"
     PREFER = "prefer"
@@ -41,7 +46,7 @@ class CONST_DB_SSL_MODE_MYSQL(BaseValueConstant):
     VERIFY_CA = "verify-ca"
     VERIFY_FULL = "verify-full"
 
-class CONST_DB_SSL_MODE_POSTGRES(BaseValueConstant):
+class CONST_DB_SSL_MODE_POSTGRES(StrEnum):
     """SSL modes for database connections"""
     DISABLE = "disable"
     ALLOW = "allow"
@@ -50,21 +55,21 @@ class CONST_DB_SSL_MODE_POSTGRES(BaseValueConstant):
     VERIFY_CA = "verify-ca"
     VERIFY_FULL = "verify-full"
 
-class CONST_DB_CONNECTION_STATUS(BaseValueConstant):
+class CONST_DB_CONNECTION_STATUS(StrEnum):
     """Database connection status"""
     UNTESTED = "untested"
     VALID = "valid"
     INVALID = "invalid"
     ERROR = "error"
 
-class CONST_DB_POOL_MODE(BaseValueConstant):
+class CONST_DB_POOL_MODE(StrEnum):
     """Connection pool modes"""
     FIXED = "fixed"
     DYNAMIC = "dynamic"
     NONE = "none"
 
 
-class CONST_DB_ABSTRACTION_LAYER(BaseIdentityConstant):
+class CONST_DB_ABSTRACTION_LAYER(Enum):
     """
     Enumeration for different database abstraction layers.
 
@@ -72,10 +77,10 @@ class CONST_DB_ABSTRACTION_LAYER(BaseIdentityConstant):
         - IBIS (str): Ibis database abstraction layer.
         - FUGUE (str): Fugue database abstraction layer.
     """
-    IBIS =     "IBIS"
-    PYICEBERG = "PYICEBERG"
+    IBIS =     auto()
+    PYICEBERG = auto()
 
-class CONST_DB_BACKEND(BaseValueConstant):
+class CONST_DB_BACKEND(StrEnum):
     """
     Enumeration for different database backends.
 
@@ -110,7 +115,7 @@ class CONST_DB_BACKEND(BaseValueConstant):
     # PANDAS =       "PANDAS"
 
 
-class CONST_DB_BACKEND_IBIS_PREFIX(BaseValueConstant):
+class CONST_DB_BACKEND_IBIS_PREFIX(StrEnum):
     """
     Enumeration for different database backends.
 
@@ -140,7 +145,7 @@ class CONST_DB_BACKEND_IBIS_PREFIX(BaseValueConstant):
     MSSQL =        "mssql:"
     MYSQL =        "mysql:"
 
-class CONST_DB_BACKEND_CAPABILITIES(BaseIdentityConstant):
+class CONST_DB_BACKEND_CAPABILITIES(Enum):
     """
     Enumeration for different database backend capabilities.
 

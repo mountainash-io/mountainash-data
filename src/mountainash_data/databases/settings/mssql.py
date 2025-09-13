@@ -43,8 +43,8 @@ class MSSQLAuthSettings(BaseDBAuthSettings):
     https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver15&tabs=alpine18-install%2Calpine17-install%2Cdebian8-install%2Credhat7-13-install%2Crhel7-offline
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.MSSQL)
-    PORT: int = Field(default=1433)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.MSSQL)
+    PORT: Optional[int] = Field(default=1433)
 
     # Authentication Settings
     AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.PASSWORD)  # password, windows, azure_active_directory
@@ -103,6 +103,10 @@ class MSSQLAuthSettings(BaseDBAuthSettings):
                          **kwargs)
 
 
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.MSSQL
 
     ## Field Validators ##
     @field_validator("DRIVER")
@@ -113,7 +117,6 @@ class MSSQLAuthSettings(BaseDBAuthSettings):
         except ValueError:
             raise DBAuthValidationError(
                 f"Invalid driver. Must be one of: {[e for e in MSSQLDriverType]}",
-                provider=CONST_DB_PROVIDER_TYPE.MSSQL,
                 validation_type="driver"
             )
 
@@ -125,7 +128,6 @@ class MSSQLAuthSettings(BaseDBAuthSettings):
         except ValueError:
             raise DBAuthValidationError(
                 f"Invalid protocol. Must be one of: {[e for e in MSSQLAuthProtocol]}",
-                provider=CONST_DB_PROVIDER_TYPE.MSSQL,
                 validation_type="protocol"
             )
 
@@ -202,7 +204,7 @@ class MSSQLAuthSettings(BaseDBAuthSettings):
         #             provider=self.PROVIDER_TYPE
         #         )
 
-    def get_connection_string_template(self) -> str:
+    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
 
         template =  "mssql://"
 
@@ -381,11 +383,11 @@ class MSSQLAuthSettings(BaseDBAuthSettings):
 
         return {k: v for k, v in args.items() if v is not None}
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for MSSQL"""
         return {}
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

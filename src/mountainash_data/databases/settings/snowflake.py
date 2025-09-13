@@ -6,13 +6,17 @@ from upath import UPath
 from pydantic import Field, SecretStr, field_validator, model_validator
 import re
 
-from mountainash_constants import BaseValueConstant
+from enum import Enum,StrEnum
+from mountainash_constants import identity_enum_helpers, value_enum_helpers
+
 from mountainash_settings import SettingsParameters
 
 from .base import BaseDBAuthSettings
 from ..constants import CONST_DB_PROVIDER_TYPE, CONST_DB_AUTH_METHOD
 
-class CONST_SNOWFLAKE_AUTHENTICATOR(BaseValueConstant):
+
+@value_enum_helpers
+class CONST_SNOWFLAKE_AUTHENTICATOR(StrEnum):
     SNOWFLAKE = "snowflake " #The Default
     OAUTH = "oauth"
     OKTA = "okta"
@@ -36,7 +40,7 @@ class SnowflakeAuthSettings(BaseDBAuthSettings):
 
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.SNOWFLAKE)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.SNOWFLAKE)
     AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.PASSWORD)
     CONNECTION_NAME: Optional[str] = Field(default=None)
 
@@ -80,6 +84,11 @@ class SnowflakeAuthSettings(BaseDBAuthSettings):
                          **kwargs)
 
 
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.SNOWFLAKE
+
     #Single Field Validators
     @field_validator("ACCOUNT")
     @classmethod
@@ -115,7 +124,7 @@ class SnowflakeAuthSettings(BaseDBAuthSettings):
         """Validate validate_account_formatted"""
 
         precondition: bool = value is not None
-        test: bool = value in CONST_SNOWFLAKE_AUTHENTICATOR.get_values_set()
+        test: bool = value in CONST_SNOWFLAKE_AUTHENTICATOR.member_values()
         valid: bool = (not precondition) | test
 
         if not valid:
@@ -224,7 +233,7 @@ class SnowflakeAuthSettings(BaseDBAuthSettings):
 
         return {k: v for k, v in args.items() if v is not None}
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for Snowflake"""
 
 
@@ -265,7 +274,7 @@ class SnowflakeAuthSettings(BaseDBAuthSettings):
 
         return {k: v for k, v in args.items() if v is not None}
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

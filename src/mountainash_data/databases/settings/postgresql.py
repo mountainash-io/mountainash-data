@@ -57,7 +57,7 @@ class PostgreSQLAuthSettings(BaseDBAuthSettings):
 
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.POSTGRESQL)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.POSTGRESQL)
     PORT: Optional[int] = Field(default=5432)
 
     PASSFILE: Optional[str] = Field(default=None)
@@ -126,7 +126,10 @@ class PostgreSQLAuthSettings(BaseDBAuthSettings):
                         #  _dummy=_dummy,
                          **kwargs)
 
-
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.BIGQUERY
 
 
     ## Field Validators ##

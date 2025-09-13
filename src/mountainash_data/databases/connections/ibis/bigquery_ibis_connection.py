@@ -6,8 +6,8 @@ from mountainash_settings import SettingsParameters
 # from mountainash_data.databases.settings import BigQueryAuthSettings
 
 
-from ..base_ibis_connection import BaseIbisConnection
-from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND
+from .base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND, CONST_DB_PROVIDER_TYPE
 from ...settings import BigQueryAuthSettings
 
 
@@ -19,7 +19,6 @@ from pydantic_settings import BaseSettings
 
 class BigQuery_IbisConnection(BaseIbisConnection):
 
-
     def __init__(self,
                  db_auth_settings_parameters: SettingsParameters,
                  connection_mode: t.Optional[str] = None
@@ -30,9 +29,15 @@ class BigQuery_IbisConnection(BaseIbisConnection):
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
 
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.BIGQUERY
+
+
     #From BaseIbisConnection
     @property
-    def ibis_backend(self) -> t.Optional[ir_backend.Backend]:
+    def ibis_backend(self) -> t.Optional[ir_backend.SQLBackend]:
         return self._ibis_backend
 
     @property
@@ -55,14 +60,15 @@ class BigQuery_IbisConnection(BaseIbisConnection):
 
 
     def _connect(self,
-                    connection_string: t.Optional[str] = None,
-                    **kwargs
-                    ):
+        connection_string: t.Optional[str] = None,
+        connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
+        **kwargs
+        ) -> ir_backend.SQLBackend:
 
         # credentials = kwargs.get('credentials', None)
-        credentials_info = kwargs.get('credentials_info', None)
-        dataset_id = kwargs.get('dataset_id', None)
-        project_id = kwargs.get('project_id', None)
+        credentials_info = connection_kwargs.get('credentials_info', None) if connection_kwargs else None
+        dataset_id = connection_kwargs.get('dataset_id', "") if connection_kwargs else ""
+        project_id = connection_kwargs.get('project_id', None) if connection_kwargs else None
 
         if credentials_info:
             credentials = service_account.Credentials.from_service_account_info(credentials_info)
@@ -73,13 +79,13 @@ class BigQuery_IbisConnection(BaseIbisConnection):
         return ibis_backend
 
 
-    def _list_tables(self,
-                like: str | None = None,
-                database: tuple[str, str] | str | None = None,
-                schema: str | None = None
-                    ) -> t.List[str]:
+    # def _list_tables(self,
+    #             like: str | None = None,
+    #             database: tuple[str, str] | str | None = None,
+    #             schema: str | None = None
+    #                 ) -> t.List[str]:
 
-        return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
+    #     return self.ibis_backend.list_tables(like=like, database=database, schema=schema) if self.ibis_backend is not None else []
 
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):

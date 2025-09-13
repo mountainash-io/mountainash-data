@@ -20,8 +20,8 @@ class MySQLAuthSettings(BaseDBAuthSettings):
     New options are defined here https://dev.mysql.com/doc/c-api/8.4/en/mysql-options.html
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.MYSQL)
-    PORT: int = Field(default=3306)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.MYSQL)
+    PORT: Optional[int] = Field(default=3306)
 
     # MySQL-specific Settings
     CHARSET: str = Field(default="utf8mb4")
@@ -68,6 +68,11 @@ class MySQLAuthSettings(BaseDBAuthSettings):
                         #  _dummy=_dummy,
                          **kwargs)
 
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.BIGQUERY
 
     @field_validator("CHARSET")
     @classmethod
@@ -187,7 +192,7 @@ class MySQLAuthSettings(BaseDBAuthSettings):
 
 
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for MySQL"""
 
         args = {}
@@ -245,7 +250,7 @@ class MySQLAuthSettings(BaseDBAuthSettings):
         return args
 
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         options = {}

@@ -5,9 +5,9 @@ from pydantic_settings import BaseSettings
 
 from mountainash_settings import SettingsParameters
 
-from ..base_ibis_connection import BaseIbisConnection
-from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND
-
+from .base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND, CONST_DB_PROVIDER_TYPE
+from ...settings import OracleAuthSettings
 
 class Oracle_IbisConnection(BaseIbisConnection):
 
@@ -21,6 +21,12 @@ class Oracle_IbisConnection(BaseIbisConnection):
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_CONNECTION_MODE.CONNECTION_STRING
 
         super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
+
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.ORACLE
 
     #From BaseIbisConnection
     @property

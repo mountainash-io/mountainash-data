@@ -18,7 +18,7 @@ class TrinoAuthSettings(BaseDBAuthSettings):
 
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.TRINO)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.TRINO)
     AUTH_METHOD: str = Field(default=None)  # Trino supports "password" or None
 
     SOURCE: Optional[str] =             Field(default=None, alias="source")
@@ -58,8 +58,15 @@ class TrinoAuthSettings(BaseDBAuthSettings):
                          **kwargs)
 
 
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.TRINO
+
     def _post_init(self, reinitialise: bool) -> None:
         pass
+
+
 
     def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
 
@@ -101,7 +108,7 @@ class TrinoAuthSettings(BaseDBAuthSettings):
         return args
 
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for SQLite"""
 
         kwargs = {}
@@ -115,7 +122,7 @@ class TrinoAuthSettings(BaseDBAuthSettings):
 
         return kwargs
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

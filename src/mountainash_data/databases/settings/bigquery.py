@@ -21,7 +21,7 @@ class BigQueryAuthSettings(BaseDBAuthSettings):
 
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.BIGQUERY)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.BIGQUERY)
 
     # Project Settings
     PROJECT_ID: str = Field(...)
@@ -57,6 +57,12 @@ class BigQueryAuthSettings(BaseDBAuthSettings):
                          **kwargs)
 
 
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.BIGQUERY
+
+
     @field_validator("PROJECT_ID")
     @classmethod
     def validate_project_id(cls, value: Optional[str]) -> Optional[str]:
@@ -75,7 +81,7 @@ class BigQueryAuthSettings(BaseDBAuthSettings):
     def _post_init(self, reinitialise: bool) -> None:
         pass
 
-    def get_connection_string_template(self) -> str:
+    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
 
         # "bigquery://{project_id}/{dataset_id}"
 
@@ -96,7 +102,7 @@ class BigQueryAuthSettings(BaseDBAuthSettings):
         return args
 
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for BigQuery"""
 
         args = {}
@@ -116,7 +122,7 @@ class BigQueryAuthSettings(BaseDBAuthSettings):
 
         return {k: v for k, v in args.items() if v is not None}
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

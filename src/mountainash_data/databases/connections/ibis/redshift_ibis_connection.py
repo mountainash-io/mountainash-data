@@ -1,34 +1,35 @@
 import typing as t
 import contextlib
 import warnings
-
-import ibis.backends.sqlite as ir_backend
+import ibis.backends.postgres as ir_backend
 from pydantic_settings import BaseSettings
 
 
 from mountainash_settings import SettingsParameters
 
-from ..base_ibis_connection import BaseIbisConnection
-from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND
-from ...settings import SQLiteAuthSettings
+from .base_ibis_connection import BaseIbisConnection
+from ...constants import IBIS_DB_CONNECTION_MODE, CONST_DB_BACKEND, CONST_DB_PROVIDER_TYPE
+from ...settings import RedshiftAuthSettings
 
 
-
-class SQLite_IbisConnection(BaseIbisConnection):
+class Redshift_IbisConnection(BaseIbisConnection):
 
 
     def __init__(self,
-                 db_auth_settings_parameters:   SettingsParameters,
+                 db_auth_settings_parameters: SettingsParameters,
                  connection_mode: t.Optional[str] = None
-                #  ssh_auth_settings_parameters:  Optional[SettingsParameters] = None,
-                #  connection_string:             Optional[str] = None
                  ):
 
         self._ibis_backend: t.Optional[ir_backend.Backend] = None
         self._ibis_connection_mode: str = connection_mode if connection_mode is not None else IBIS_DB_CONNECTION_MODE.CONNECTION_STRING
 
-        super().__init__(db_auth_settings_parameters=   db_auth_settings_parameters,
-                         )
+
+        super().__init__(db_auth_settings_parameters=db_auth_settings_parameters)
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.REDSHIFT
 
     #From BaseIbisConnection
     @property
@@ -42,26 +43,26 @@ class SQLite_IbisConnection(BaseIbisConnection):
     #From BaseDBConnection
     @property
     def db_backend_name(self) -> str:
-        return CONST_DB_BACKEND.SQLITE
+        return CONST_DB_BACKEND.REDSHIFT
 
     @property
     def connection_string_scheme(self) -> str:
-        return "sqlite://"
+        return "postgres://"
 
     @property
     def settings_class(self) -> t.Type[BaseSettings]:
-        return SQLiteAuthSettings
+        return RedshiftAuthSettings
 
 
 
 
-    def _list_tables(self,
-                like: str | None = None,
-                database: str | None = None,
-                schema: str | None = None
-                    ) -> t.List[str]:
+    # def _list_tables(self,
+    #             like:       str | None = None,
+    #             database:   str | None = None,
+    #             schema:     str | None = None
+    #                 ) -> t.List[str]:
 
-        return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []
+    #     return self.ibis_backend.list_tables(like=like, database=database) if self.ibis_backend is not None else []
 
 
     def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):

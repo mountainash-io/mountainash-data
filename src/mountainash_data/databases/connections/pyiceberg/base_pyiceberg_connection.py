@@ -7,14 +7,12 @@ from mountainash_data.databases.base_db_connection import BaseDBConnection
 from abc import abstractmethod
 from time import sleep
 
-from pyiceberg.table import Table
 # from abc import abstractmethod
 from mountainash_settings import SettingsParameters
-
 from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
+from ...constants import  CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
 
-from ..constants import  CONST_DB_ABSTRACTION_LAYER
-
+from pyiceberg.table import Table
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.rest import RestCatalog
 
@@ -49,9 +47,14 @@ class BasePyIcebergConnection(BaseDBConnection):
         self._schema_cache = {}
 
     @property
-    def db_abstraction_layer(self) -> str:
+    def db_abstraction_layer(self) -> CONST_DB_ABSTRACTION_LAYER:
         return CONST_DB_ABSTRACTION_LAYER.PYICEBERG
 
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.PYICEBERG_REST
 
     @property
     @abstractmethod
@@ -149,7 +152,7 @@ class BasePyIcebergConnection(BaseDBConnection):
             # CREDENTIAL = f"{get_settings(r2_bronze_storage_settings_parameters).ACCESS_KEY_ID}:{get_settings(r2_bronze_storage_settings_parameters).SECRET_ACCESS_KEY}"
             # TOKEN = get_settings(r2_bronze_storage_settings_parameters).TOKEN
 
-            connection_kwargs = self.get_connection_kwargs(db_abstraction_layer = self.db_abstraction_layer)
+            connection_kwargs = self.get_connection_kwargs()
 
             self._catalog_backend: RestCatalog = RestCatalog(**connection_kwargs)
             # self._connect(connection_kwargs=connection_kwargs, **kwargs)

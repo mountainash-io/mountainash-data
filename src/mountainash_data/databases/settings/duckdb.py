@@ -22,7 +22,7 @@ class DuckDBAuthSettings(BaseDBAuthSettings):
 
     """
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.DUCKDB)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.DUCKDB)
     AUTH_METHOD: str = Field(default="none")  # DuckDB uses file-based authentication
 
     # File Settings
@@ -56,6 +56,11 @@ class DuckDBAuthSettings(BaseDBAuthSettings):
                          settings_parameters=settings_parameters,
                         #  _dummy=_dummy,
                          **kwargs)
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.DUCKDB
 
 
     @field_validator("MEMORY_LIMIT")
@@ -101,7 +106,7 @@ class DuckDBAuthSettings(BaseDBAuthSettings):
 
         return {k: v for k, v in args.items() if v is not None}
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for DuckDB"""
         args =  {}
 
@@ -124,7 +129,7 @@ class DuckDBAuthSettings(BaseDBAuthSettings):
 
         return args
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...

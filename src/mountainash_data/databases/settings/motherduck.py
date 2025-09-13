@@ -14,7 +14,7 @@ from ..constants import CONST_DB_PROVIDER_TYPE, CONST_DB_AUTH_METHOD
 class MotherDuckAuthSettings(BaseDBAuthSettings):
     """DuckDB authentication settings"""
 
-    PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.MOTHERDUCK)
+    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.MOTHERDUCK)
     AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.TOKEN)  # DuckDB uses file-based authentication
 
     # File Settings
@@ -35,6 +35,11 @@ class MotherDuckAuthSettings(BaseDBAuthSettings):
                         #  _dummy=_dummy,
                          **kwargs)
 
+
+    @property
+    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+        """Database provider identifier."""
+        return CONST_DB_PROVIDER_TYPE.MOTHERDUCK
 
     @field_validator("DATABASE")
     @classmethod
@@ -95,11 +100,11 @@ class MotherDuckAuthSettings(BaseDBAuthSettings):
         return params
 
 
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_connection_kwargs(self) -> Dict[str, Any]:
         """Get connection arguments for DuckDB"""
         return {}
 
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
+    def get_post_connection_options(self) -> Dict[str, Any]:
 
         """Get connection arguments as dictionary"""
         ...
