@@ -2,9 +2,9 @@ from typing import Optional, Any, Type, Dict
 from abc import ABC, abstractmethod
 
 from ibis.backends.sql import SQLBackend
-from pydantic_settings import BaseSettings
+# from pydantic_settings import BaseSettings
 
-from mountainash_settings import SettingsParameters, get_settings
+from mountainash_settings import SettingsParameters, get_settings, MountainAshBaseSettings
 from mountainash_data.databases.settings import BaseDBAuthSettings
 
 from ..constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
@@ -67,7 +67,7 @@ class BaseDBConnection(ABC):
 
     @property
     @abstractmethod
-    def settings_class(self) -> Type[BaseSettings]:
+    def settings_class(self) -> Type[MountainAshBaseSettings]:
         """Settings class for database configuration."""
         pass
 
@@ -138,30 +138,42 @@ class BaseDBConnection(ABC):
         if scheme is None:
             scheme = self.connection_string_scheme
 
-        obj_settings: BaseDBAuthSettings = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
+        settings_class = self.db_auth_settings_parameters.settings_class
 
-        if not isinstance(obj_settings, BaseDBAuthSettings):
-            raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
+        if settings_class is None:
+            raise ValueError("Settings class is required for the database connection")
+
+        obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
+
+        # if not isinstance(obj_settings, BaseDBAuthSettings):
+        #     raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
 
         return obj_settings.get_connection_string_template(scheme=scheme)
 
     def get_connection_string_params(self) -> Dict[str, Any]:
 
+        settings_class = self.db_auth_settings_parameters.settings_class
+        if settings_class is None:
+            raise ValueError("Settings class is required for the database connection")
 
-        obj_settings: BaseDBAuthSettings = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
+        obj_settings: BaseDBAuthSettings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
-        if not isinstance(obj_settings, BaseDBAuthSettings):
-            raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
+        # if not isinstance(obj_settings, BaseDBAuthSettings):
+        #     raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
 
         return obj_settings.get_connection_string_params()
 
 
     def get_connection_kwargs(self) -> Dict[str, Any]:
 
-        obj_settings: BaseDBAuthSettings  = BaseDBAuthSettings.get_settings(settings_parameters=self.db_auth_settings_parameters)
+        settings_class = self.db_auth_settings_parameters.settings_class
+        if settings_class is None:
+            raise ValueError("Settings class is required for the database connection")
 
-        if not isinstance(obj_settings, BaseDBAuthSettings):
-            raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
+        obj_settings: BaseDBAuthSettings  = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
+
+        # if not isinstance(obj_settings, BaseDBAuthSettings):
+        #     raise ValueError(f"Expected BaseDBAuthSettings but got {type(obj_settings)}")
 
         return obj_settings.get_connection_kwargs()
 
