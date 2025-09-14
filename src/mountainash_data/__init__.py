@@ -4,11 +4,11 @@ from .__version__ import __version__
 
 
 # Import base and core ibis connections
-from .databases.ibis import (
+from .databases.connections import (
     BaseIbisConnection,
     SQLite_IbisConnection,
     DuckDB_IbisConnection,
-    MotherDuck_IbisConnection
+    MotherDuck_IbisConnection,
 )
 
 # Start with the core exports
