@@ -26,15 +26,15 @@ class TestPackageImports:
     def test_core_imports_available(self):
         """Test that core classes can be imported."""
         # These imports should not raise errors
-        from mountainash_data.databases.base_db_connection import BaseDBConnection
+        from mountainash_data.databases import BaseDBConnection
 
         # Check classes are properly defined
         assert BaseDBConnection is not None
 
     def test_database_connections_available(self):
         """Test that database connection classes can be imported."""
-        from mountainash_data.databases.ibis.connections.sqlite_ibis_connection import SQLite_IbisConnection
-        from mountainash_data.databases.ibis.connections.duckdb_ibis_connection import DuckDB_IbisConnection
+        from mountainash_data.databases import SQLite_IbisConnection
+        from mountainash_data.databases import DuckDB_IbisConnection
 
         assert SQLite_IbisConnection is not None
         assert DuckDB_IbisConnection is not None
@@ -56,8 +56,8 @@ class TestPackageStructure:
         assert hasattr(mountainash_data, 'databases')
 
     @pytest.mark.parametrize("module_name", [
-        "databases.base_db_connection",
-        "databases.ibis.base_ibis_connection",
+        "databases.connections.base_db_connection",
+        "databases.connections.ibis",
     ])
     def test_module_importable(self, module_name: str):
         """Test that core modules can be imported."""

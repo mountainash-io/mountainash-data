@@ -3,7 +3,7 @@ import ibis
 import os
 from unittest import mock
 
-from mountainash_data.databases.ibis import SQLite_IbisConnection, DuckDB_IbisConnection
+from mountainash_data.databases import SQLite_IbisConnection, DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
 from mountainash_data.databases.settings import DuckDBAuthSettings, SQLiteAuthSettings
 

@@ -3,10 +3,10 @@
 import pytest
 from pathlib import Path
 
-from mountainash_data.databases.base_db_connection import BaseDBConnection
-from mountainash_data.databases.ibis.base_ibis_connection import BaseIbisConnection
-from mountainash_data.databases.ibis.connections.sqlite_ibis_connection import SQLite_IbisConnection
-from mountainash_data.databases.ibis.connections.duckdb_ibis_connection import DuckDB_IbisConnection
+from mountainash_data.databases import BaseDBConnection
+from mountainash_data.databases import BaseIbisConnection
+from mountainash_data.databases import SQLite_IbisConnection
+from mountainash_data.databases import DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters
 from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
 
