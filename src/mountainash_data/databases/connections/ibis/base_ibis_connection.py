@@ -12,7 +12,6 @@ from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
 
 from ..base_db_connection import BaseDBConnection
 from ...constants import IBIS_DB_CONNECTION_MODE,  CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
-# from mountainash_dataframes import BaseDataFrame, IbisDataFrame
 # from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 
 
