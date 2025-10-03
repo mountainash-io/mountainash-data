@@ -1,7 +1,4 @@
 from .__version__ import __version__
-# import importlib.metadata
-# import sys
-
 
 # Import base and core ibis connections
 from .databases.connections import (
@@ -11,13 +8,30 @@ from .databases.connections import (
     MotherDuck_IbisConnection,
 )
 
+# Import factory infrastructure
+from .factories import (
+    ConnectionFactory,
+    OperationsFactory,
+    SettingsFactory,
+)
+
+# Import high-level API
+from .database_utils import DatabaseUtils
+
 # Start with the core exports
 __all__ = [
     "__version__",
+    # Core connections
     "BaseIbisConnection",
     "SQLite_IbisConnection",
     "DuckDB_IbisConnection",
     "MotherDuck_IbisConnection",
+    # Factories
+    "ConnectionFactory",
+    "OperationsFactory",
+    "SettingsFactory",
+    # High-level API
+    "DatabaseUtils",
 ]
 
 # Track which optional extras are installed
