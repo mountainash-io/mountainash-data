@@ -1,26 +1,23 @@
+from typing import TYPE_CHECKING
+import lazy_loader
+
+# Base PyIceberg connection (always available)
 from .base_pyiceberg_connection import BasePyIcebergConnection
-from .connections import PyIcebergRestConnection
-# import importlib.util
 
-__all__ = (
+# Type hints for PyIceberg connections (zero runtime cost)
+if TYPE_CHECKING:
+    from .pyiceberg_rest_connection import PyIcebergRestConnection
 
+# Lazy loading for PyIceberg connections (imported only when used)
+__getattr__, __dir__, __all__ = lazy_loader.attach(
+    __name__,
+    submodules=[],
+    submod_attrs={
+        'pyiceberg_rest_connection': ['PyIcebergRestConnection'],
+    }
+)
+
+# Manually extend __all__ to include base export
+__all__ = [
     "BasePyIcebergConnection",
-    "PyIcebergRestConnection"
-
-    )
-
-
-# # Helper function to conditionally import and add to __all__
-# def _conditional_import(module_path, class_name):
-#     """Import a class only if its module is available."""
-#     try:
-#         module = importlib.import_module(module_path)
-#         if hasattr(module, class_name):
-#             globals()[class_name] = getattr(module, class_name)
-#             __all__.append(class_name)
-#     except ImportError:
-#         pass
-
-# Import optional connections if available
-# _conditional_import(".base_pyiceberg_connection", "BasePyIcebergConnection")
-# _conditional_import(".connections", "PyIcebergRestConnection")
+] + list(__all__)
