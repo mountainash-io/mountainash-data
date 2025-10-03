@@ -3,7 +3,7 @@ import typing as t # import t.Any, t.Dict, t.Optional
 import ibis.expr.types.relations as ir
 # from catalog.expr.schema import SchemaLike
 # from catalog.backends.sql import SQLBackend
-from mountainash_data.databases.base_db_connection import BaseDBConnection
+from mountainash_data.databases import BaseDBConnection
 from abc import abstractmethod
 from time import sleep
 

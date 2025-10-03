@@ -38,7 +38,7 @@ class BaseIbisOperations(ABC):
 
     @classmethod
     def run_sql(cls,
-            ibis_backend: ibis.SQLBackend,
+            ibis_backend: SQLBackend,
             query: str,
             /,
             *,
@@ -64,7 +64,7 @@ class BaseIbisOperations(ABC):
         cls,
         ibis_backend: ibis.BaseBackend,
         ibis_expr: ir.Expr,
-        /
+        /,
         params: t.Dict | None = None,
         limit: str | None = "default",
         **kwargs: t.Any,
@@ -85,7 +85,7 @@ class BaseIbisOperations(ABC):
         cls,
         ibis_backend: ibis.BaseBackend,
         expr: ir.Expr,
-        /
+        /,
         params=None,
         limit: str | None = None,
         pretty: bool = False,
@@ -110,7 +110,7 @@ class BaseIbisOperations(ABC):
         cls,
         ibis_backend: ibis.BaseBackend,
         object_name: str,
-        /
+        /,
         schema: str | None = None,
         database: tuple[str, str] | str | None = None
         ) -> t.Optional[ir.Table]:
@@ -130,7 +130,7 @@ class BaseIbisOperations(ABC):
                     ibis_backend: ibis.BaseBackend,
                      table_name: str,
                      df: ir.Table|t.Any,
-                     /
+                     /,
                      schema: t.Optional[ibis.Schema] = None,
                      database: str | None = None,
                      temp: bool = False,
@@ -181,7 +181,7 @@ class BaseIbisOperations(ABC):
         ibis_backend: ibis.BaseBackend,
         view_name: str,
         ibis_table_expr: ir.Table,
-        /
+        /,
         database: str | None = None,
         schema: str | None = None,
         overwrite: bool = False,
@@ -203,7 +203,7 @@ class BaseIbisOperations(ABC):
         cls,
         ibis_backend: ibis.BaseBackend,
         view_name: str,
-        /
+        /,
         database: str | None = None,
         schema: str | None = None,
         force: bool = False,
@@ -227,9 +227,9 @@ class BaseIbisOperations(ABC):
     @classmethod
     def insert(
         cls,
-        ibis_backend: ibis.SQLBackend,
+        ibis_backend: SQLBackend,
         table_name: str,
-        /
+        /,
         df: ir.Table|t.Any,
         database: str | None = None,
         schema: str | None = None,
@@ -254,9 +254,9 @@ class BaseIbisOperations(ABC):
     @classmethod
     def truncate(
         cls,
-        ibis_backend: ibis.SQLBackend,
+        ibis_backend: SQLBackend,
         table_name: str,
-        /
+        /,
         database: str | None = None,
         schema: str | None = None
     ) -> None:
@@ -274,10 +274,10 @@ class BaseIbisOperations(ABC):
     @classmethod
     def upsert(
         cls,
-        ibis_backend: ibis.SQLBackend,
+        ibis_backend: SQLBackend,
         table_name: str,
         df: ir.Table|t.Any,
-        /
+        /,
         database: str | None = None,
         schema: str | None = None,
         natural_key_columns: list[str] | None = None,
@@ -305,7 +305,7 @@ class BaseIbisOperations(ABC):
     @abstractmethod
     def _upsert(
         cls,
-        ibis_backend: ibis.SQLBackend,
+        ibis_backend: SQLBackend,
         table_name: str,
         df: ir.Table|t.Any,
         natural_key_columns: list[str] | None = None,
@@ -325,7 +325,7 @@ class BaseIbisOperations(ABC):
 
     @classmethod
     def list_tables(cls,
-                ibis_backend: ibis.Backend,
+                ibis_backend: ibis.BaseBackend,
                 table_name: str | None = None,
                 database: tuple[str, str] | str | None = None
                     ) -> t.List[str]:
@@ -339,7 +339,7 @@ class BaseIbisOperations(ABC):
     # @classmethod
     # @abstractmethod
     # def _list_tables(cls,
-    #             ibis_backend: ibis.Backend,
+    #             ibis_backend: ibis.BaseBackend,
     #             like: str | None = None,
     #             database: t.Any = None
     #             # schema: str | None = None
@@ -416,7 +416,7 @@ class BaseIbisOperations(ABC):
 
     # @classmethod
     # def run_sql_as_ibis_dataframe(self,
-    #         ibis_backend: ibis.SQLBackend,
+    #         ibis_backend: SQLBackend,
     #         query: str,
     #         schema: SchemaLike | None = None,
     #         dialect: str | None = None,
@@ -434,7 +434,7 @@ class BaseIbisOperations(ABC):
 
     # @classmethod
     # def run_expr_as_ibis_dataframe(self,
-    #         ibis_backend: ibis.SQLBackend,
+    #         ibis_backend: SQLBackend,
     #         ibis_expr: ir.Expr,
     #         params: t.Dict | None = None,
     #         limit: str | None = "default",
@@ -456,7 +456,7 @@ class BaseIbisOperations(ABC):
 
     # @classmethod
     # def table_as_native_dataframe(self,
-    #     ibis_backend: ibis.SQLBackend,
+    #     ibis_backend: SQLBackend,
     #     object_name: str,
     #     schema: str | None = None,
     #     database: tuple[str, str] | str | None = None,
@@ -475,7 +475,7 @@ class BaseIbisOperations(ABC):
 
     # @classmethod
     # def run_sql_as_native_dataframe(self,
-    #         ibis_backend: ibis.SQLBackend,
+    #         ibis_backend: SQLBackend,
     #         query: str,
     #         schema: SchemaLike | None = None,
     #         dialect: str | None = None,
@@ -493,7 +493,7 @@ class BaseIbisOperations(ABC):
 
     # @classmethod
     # def run_expr_as_materialised_dataframe(self,
-    #         ibis_backend: ibis.SQLBackend,
+    #         ibis_backend: SQLBackend,
     #         ibis_expr: ir.Expr,
     #         params: t.Dict | None = None,
     #         limit: str | None = "default",
