@@ -39,6 +39,11 @@ class OperationsFactory(
         operations.create_table(backend, "my_table", dataframe)
     """
 
+    # Each subclass needs its own dictionaries to avoid sharing with other factories
+    _strategy_cache = {}
+    _strategy_modules = {}
+    _strategy_classes = {}
+
     @classmethod
     def _configure_strategy_mapping(cls) -> None:
         """
@@ -60,22 +65,24 @@ class OperationsFactory(
             CONST_DB_PROVIDER_TYPE.REDSHIFT: "mountainash_data.databases.operations.ibis",
             CONST_DB_PROVIDER_TYPE.ORACLE: "mountainash_data.databases.operations.ibis",
             # PyIceberg operations (if they exist)
-            # CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.databases.operations.pyiceberg",
+            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.databases.operations.pyiceberg",
         }
 
         cls._strategy_classes = {
-            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "PostgresIbisOperations",
-            CONST_DB_PROVIDER_TYPE.SQLITE: "SQLiteIbisOperations",
-            CONST_DB_PROVIDER_TYPE.DUCKDB: "DuckDBIbisOperations",
-            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "MotherDuckIbisOperations",
-            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "SnowflakeIbisOperations",
-            CONST_DB_PROVIDER_TYPE.BIGQUERY: "BigQueryIbisOperations",
-            CONST_DB_PROVIDER_TYPE.MSSQL: "MSSQLIbisOperations",
-            CONST_DB_PROVIDER_TYPE.MYSQL: "MySQLIbisOperations",
-            CONST_DB_PROVIDER_TYPE.TRINO: "TrinoIbisOperations",
-            CONST_DB_PROVIDER_TYPE.PYSPARK: "PySparkIbisOperations",
-            CONST_DB_PROVIDER_TYPE.REDSHIFT: "RedshiftIbisOperations",
-            CONST_DB_PROVIDER_TYPE.ORACLE: "OracleIbisOperations",
+            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "Postgres_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.SQLITE: "SQLite_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.DUCKDB: "DuckDB_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "MotherDuck_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "Snowflake_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.BIGQUERY: "BigQuery_IbisConnection",
+            CONST_DB_PROVIDER_TYPE.MSSQL: "MSSQL_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.MYSQL: "MySQL_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.TRINO: "Trino_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.PYSPARK: "PySpark_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.REDSHIFT: "Redshift_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.ORACLE: "Oracle_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "PyIcebergRestOperations",
+
         }
 
     @classmethod

@@ -1,7 +1,6 @@
 #path: mountainash_data/databases/constants.py
 
 from enum import Enum,StrEnum, auto
-from mountainash_constants import identity_enum_helpers, value_enum_helpers
 
 
 class IBIS_DB_CONNECTION_MODE(StrEnum):
@@ -167,3 +166,27 @@ class CONST_DB_BACKEND_CAPABILITIES(Enum):
     WRITE_CSV =        "WRITE_CSV"
     WRITE_JSON =       "WRITE_JSON"
     WRITE_DELTA =      "WRITE_DELTA"
+
+
+class CONST_INDEX_TYPE(StrEnum):
+    """
+    Index types supported across databases.
+
+    Attributes:
+        - BTREE (str): B-tree index (default for most databases)
+        - HASH (str): Hash index (PostgreSQL)
+    """
+    BTREE = "BTREE"
+    HASH = "HASH"
+
+
+class CONST_CONFLICT_ACTION(StrEnum):
+    """
+    Actions on conflict for upsert operations.
+
+    Attributes:
+        - UPDATE (str): ON CONFLICT DO UPDATE - update existing rows
+        - NOTHING (str): ON CONFLICT DO NOTHING - skip conflicting rows
+    """
+    UPDATE = "UPDATE"
+    NOTHING = "NOTHING"
