@@ -3,21 +3,19 @@ import typing as t # import t.Any, t.Dict, t.Optional
 from abc import abstractmethod, ABC
 
 import ibis
-from ibis.backends.sql.compilers.pyspark import p
 import ibis.expr.types.relations as ir
 from ibis.expr.schema import SchemaLike
 from ibis.backends.sql import SQLBackend
 # from mountainash_data.databases.base_db_connection import BaseDBConnection
-from abc import abstractmethod
 
 # from abc import abstractmethod
 from mountainash_settings import SettingsParameters
 
-from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
-from sqlglot.expressions import PrimaryKeyColumnConstraint
-from ...constants import IBIS_DB_CONNECTION_MODE,  CONST_DB_ABSTRACTION_LAYER, CONST_DB_BACKEND
+from ...constants import (
+    CONST_DB_BACKEND,
+    CONST_CONFLICT_ACTION
+)
 # from mountainash_dataframes import BaseDataFrame, IbisDataFrame
-from mountainash_dataframes import DataFrameUtils
 
 
 class BaseIbisOperations(ABC):
@@ -48,7 +46,7 @@ class BaseIbisOperations(ABC):
 
         try:
 
-            return ibis_backend.sql(query=query,
+            return ibis_backend.sql(query,
                                         schema=schema,
                                         dialect=dialect
                             )
@@ -241,12 +239,11 @@ class BaseIbisOperations(ABC):
         try:
             ibis_backend.insert(   table_name,
                                     obj=df,
-                                    schema=schema,
                                     database=database,
                                     overwrite=overwrite)  if ibis_backend is not None else None
             return True
-        except Exception:
-            print(f"Error inserting into table {table_name}")
+        except Exception as e:
+            print(f"Error inserting into table {table_name}: {e}")
             return False
 
 
@@ -278,12 +275,27 @@ class BaseIbisOperations(ABC):
         table_name: str,
         df: ir.Table|t.Any,
         /,
+        conflict_columns: list[str] | str,
+        update_columns: list[str] | str | None = None,
+        conflict_action: str = CONST_CONFLICT_ACTION.UPDATE,
+        update_condition: str | None = None,
         database: str | None = None,
         schema: str | None = None,
-        natural_key_columns: list[str] | None = None,
-        data_columns: list[str] | None = None
         ) -> None:
+        """
+        Perform an upsert (INSERT ON CONFLICT) operation.
 
+        Args:
+            ibis_backend: The Ibis backend connection
+            table_name: Target table name
+            df: Data to upsert (Ibis table or compatible dataframe)
+            conflict_columns: Columns to check for conflicts (ON CONFLICT)
+            update_columns: Columns to update on conflict (None = all except conflict_columns)
+            conflict_action: Action on conflict - UPDATE or NOTHING
+            update_condition: Optional WHERE clause for conditional updates
+            database: Optional database name
+            schema: Optional schema name
+        """
 
         try:
 
@@ -291,14 +303,16 @@ class BaseIbisOperations(ABC):
                 ibis_backend,
                 table_name,
                 df,
-                            database=database,
-                            schema=schema,
-                            natural_key_columns=natural_key_columns,
-                            data_columns=data_columns)  if ibis_backend is not None else None
+                conflict_columns=conflict_columns,
+                update_columns=update_columns,
+                conflict_action=conflict_action,
+                update_condition=update_condition,
+                database=database,
+                schema=schema)  if ibis_backend is not None else None
 
         except Exception as e:
             print(f"Error upserting into table {table_name}: {e}")
-            return None
+            raise
 
 
     @classmethod
@@ -308,16 +322,251 @@ class BaseIbisOperations(ABC):
         ibis_backend: SQLBackend,
         table_name: str,
         df: ir.Table|t.Any,
-        natural_key_columns: list[str] | None = None,
-        data_columns: list[str] | None = None,
+        *,
+        conflict_columns: list[str] | str,
+        update_columns: list[str] | str | None = None,
+        conflict_action: str = CONST_CONFLICT_ACTION.UPDATE,
+        update_condition: str | None = None,
         database: str | None = None,
         schema: str | None = None,
-
     ) -> None:
+        """
+        Provider-specific upsert implementation.
+
+        Scenarios supported:
+        1. Simple upsert: conflict_columns + update_columns
+        2. Insert-ignore: conflict_action="NOTHING"
+        3. Conditional update: update_condition specified
+        4. Auto-detect columns: update_columns=None
+        """
 
         raise NotImplementedError(f"{cls.db_backend_name}: Upsert is not implemented for this backend")
 
 
+    # ===========================
+    # INDEX MANAGEMENT
+    # ===========================
+
+    @classmethod
+    @abstractmethod
+    def create_index(
+        cls,
+        ibis_backend: SQLBackend,
+        table_name: str,
+        columns: list[str] | str,
+        *,
+        index_name: str | None = None,
+        unique: bool = False,
+        index_type: str | None = None,
+        where_condition: str | None = None,
+        database: str | None = None,
+        if_not_exists: bool = True
+    ) -> bool:
+        """
+        Create an index on specified columns.
+
+        Args:
+            ibis_backend: The Ibis backend connection
+            table_name: Target table name
+            columns: Column(s) to index
+            index_name: Optional custom index name (auto-generated if None)
+            unique: Create unique index
+            index_type: Index type (BTREE, HASH, etc.) - support varies by database
+            where_condition: WHERE clause for partial indexes
+            database: Optional database name
+            if_not_exists: Use IF NOT EXISTS clause
+
+        Returns:
+            True if successful, False otherwise
+        """
+        raise NotImplementedError(f"{cls.db_backend_name}: create_index is not implemented for this backend")
+
+    @classmethod
+    def create_unique_index(
+        cls,
+        ibis_backend: SQLBackend,
+        table_name: str,
+        columns: list[str] | str,
+        *,
+        index_name: str | None = None,
+        where_condition: str | None = None,
+        database: str | None = None
+    ) -> bool:
+        """
+        Convenience method for creating unique indexes.
+
+        Args:
+            ibis_backend: The Ibis backend connection
+            table_name: Target table name
+            columns: Column(s) to index
+            index_name: Optional custom index name
+            where_condition: WHERE clause for partial indexes
+            database: Optional database name
+
+        Returns:
+            True if successful, False otherwise
+        """
+        return cls.create_index(
+            ibis_backend, table_name, columns,
+            index_name=index_name, unique=True,
+            where_condition=where_condition, database=database
+        )
+
+    @classmethod
+    @abstractmethod
+    def drop_index(
+        cls,
+        ibis_backend: SQLBackend,
+        index_name: str,
+        *,
+        table_name: str | None = None,
+        database: str | None = None,
+        if_exists: bool = True
+    ) -> bool:
+        """
+        Drop an index.
+
+        Args:
+            ibis_backend: The Ibis backend connection
+            index_name: Name of index to drop
+            table_name: Optional table name (required by some databases)
+            database: Optional database name
+            if_exists: Use IF EXISTS clause
+
+        Returns:
+            True if successful, False otherwise
+        """
+        raise NotImplementedError(f"{cls.db_backend_name}: drop_index is not implemented for this backend")
+
+    @classmethod
+    @abstractmethod
+    def index_exists(
+        cls,
+        ibis_backend: SQLBackend,
+        index_name: str,
+        *,
+        table_name: str | None = None,
+        database: str | None = None
+    ) -> bool:
+        """
+        Check if an index exists.
+
+        Args:
+            ibis_backend: The Ibis backend connection
+            index_name: Name of index to check
+            table_name: Optional table name for narrower search
+            database: Optional database name
+
+        Returns:
+            True if index exists, False otherwise
+        """
+        raise NotImplementedError(f"{cls.db_backend_name}: index_exists is not implemented for this backend")
+
+    @classmethod
+    @abstractmethod
+    def list_indexes(
+        cls,
+        ibis_backend: SQLBackend,
+        table_name: str,
+        *,
+        database: str | None = None
+    ) -> list[dict]:
+        """
+        List all indexes for a table.
+
+        Args:
+            ibis_backend: The Ibis backend connection
+            table_name: Target table name
+            database: Optional database name
+
+        Returns:
+            List of dicts with keys: name, columns, unique, type
+        """
+        raise NotImplementedError(f"{cls.db_backend_name}: list_indexes is not implemented for this backend")
+
+
+    # ===========================
+    # HELPER METHODS
+    # ===========================
+
+    @classmethod
+    def _generate_index_name(
+        cls,
+        table_name: str,
+        columns: list[str],
+        *,
+        unique: bool = False,
+        suffix: str | None = None
+    ) -> str:
+        """
+        Generate standardized index name.
+
+        Args:
+            table_name: Target table name
+            columns: Columns in the index
+            unique: Whether this is a unique index
+            suffix: Optional suffix to add
+
+        Returns:
+            Generated index name
+        """
+        sorted_cols = sorted(columns)
+        prefix = "uidx" if unique else "idx"
+        col_part = "_".join(sorted_cols)
+        parts = [prefix, table_name, col_part]
+        if suffix:
+            parts.append(suffix)
+        return "_".join(parts)
+
+    @classmethod
+    def _format_qualified_table(
+        cls,
+        table_name: str,
+        *,
+        database: str | None = None,
+        schema: str | None = None
+    ) -> str:
+        """
+        Format fully qualified table name.
+
+        Args:
+            table_name: Base table name
+            database: Optional database name
+            schema: Optional schema name
+
+        Returns:
+            Qualified table name (e.g., "database.schema.table" or "database.table")
+        """
+        parts = []
+        if database:
+            parts.append(database)
+        if schema:
+            parts.append(schema)
+        parts.append(table_name)
+        return ".".join(parts)
+
+    @classmethod
+    def _normalize_columns(
+        cls,
+        columns: list[str] | str
+    ) -> list[str]:
+        """
+        Normalize column input to list.
+
+        Args:
+            columns: Column name(s) as string or list
+
+        Returns:
+            List of column names
+
+        Raises:
+            ValueError: If columns is empty
+        """
+        if isinstance(columns, str):
+            return [columns]
+        if not columns:
+            raise ValueError("At least one column must be specified")
+        return list(columns)
 
 
     ###########################
