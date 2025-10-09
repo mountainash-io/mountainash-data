@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 dependencies = [
-    "ibis-framework[polars,pandas,sqlite,duckdb] == 10.4.0",
+    "ibis-framework[polars,sqlite,duckdb]==10.4.0",
     # "hatchling",
 
 
@@ -18,13 +18,13 @@ dependencies = [
     "universal_pathlib==0.2.2",
     "openlineage-python==1.17.1",
     "xarray==2024.11.0",
-    "pyarrow==17.0.0",
+    "pyarrow>=17.0.0",
     "pyarrow-hotfix>=0.4,<1",
     "sqlalchemy",
 
-    "duckdb",
+    "duckdb>=0.10.3, <1.3.0",
     "pandas>=2.2.0",
-    "polars==1.16.0",
+    "polars>=1.16.0",
     "psutil>=7.0.0",
     "lazy_loader"
 
@@ -54,18 +54,18 @@ all = [
     "pyodbc==5.2.0",
     "snowflake-connector-python==3.12.3",
     "distutils",
-    "ibis-framework[mssql,snowflake,postgres,pyspark,trino] == 10.4.0",
-    # "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino] == 10.4.0",
+    "ibis-framework[mssql,snowflake,postgres,pyspark,trino]>=10.8.0",
+    # "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino]>=10.8.0",
 ]
-mssql = ["pyodbc==5.2.0", "ibis-framework[mssql] == 10.4.0"]
+mssql = ["pyodbc==5.2.0", "ibis-framework[mssql]>=10.8.0"]
 snowflake = [
     "snowflake-connector-python==3.12.3",
-    "ibis-framework[snowflake] == 10.4.0",
+    "ibis-framework[snowflake]>=10.8.0",
 ]
-postgres = ["psycopg2-binary==2.9.9", "ibis-framework[postgres] == 10.4.0"]
-bigquery = ["ibis-framework[bigquery] == 10.4.0"]
-pyspark = ["distutils", "ibis-framework[pyspark] == 10.4.0"]
-trino = ["ibis-framework[trino] == 10.4.0"]
+postgres = ["psycopg2-binary==2.9.9", "ibis-framework[postgres]>=10.8.0"]
+bigquery = ["ibis-framework[bigquery]>=10.8.0"]
+pyspark = ["distutils", "ibis-framework[pyspark]>=10.8.0"]
+trino = ["ibis-framework[trino]>=10.8.0"]
 
 
 [project.urls]
