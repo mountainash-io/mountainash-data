@@ -3,7 +3,6 @@ import typing as t # import t.Any, t.Dict, t.Optional
 import ibis.expr.types.relations as ir
 # from catalog.expr.schema import SchemaLike
 # from catalog.backends.sql import SQLBackend
-from mountainash_data.databases import BaseDBConnection
 from abc import abstractmethod
 from time import sleep
 
@@ -12,7 +11,7 @@ from mountainash_settings import SettingsParameters
 from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
 from ...constants import  CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
 
-from abc import abstractmethod, ABC
+from abc import ABC
 from pyiceberg.table import Table
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.rest import RestCatalog

@@ -61,7 +61,7 @@ class PyIcebergRestOperations(BasePyIcebergOperations):
                 namespace: str | None = None,
                     ) -> t.List[str]:
 
-        return self.catalog_backend.list_tables(namespace=namespace) if self.catalog_backend is not None else []
+        return cls.catalog_backend.list_tables(namespace=namespace) if cls.catalog_backend is not None else []
 
 
     # def set_post_connection_options(self, post_connection_options: t.Dict[str, t.Any]):

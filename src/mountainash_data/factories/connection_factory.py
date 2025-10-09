@@ -39,6 +39,11 @@ class ConnectionFactory(
         backend = connection.connect()
     """
 
+    # Each subclass needs its own dictionaries to avoid sharing with other factories
+    _strategy_cache = {}
+    _strategy_modules = {}
+    _strategy_classes = {}
+
     @classmethod
     def _configure_strategy_mapping(cls) -> None:
         """

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from ibis.backends.sql import SQLBackend
 from pydantic_settings import BaseSettings
 
-from mountainash_settings import SettingsParameters, get_settings
+from mountainash_settings import SettingsParameters
 from mountainash_data.databases.settings import BaseDBAuthSettings
 
 # from mountainash_utils_ssh import SSH_Helper

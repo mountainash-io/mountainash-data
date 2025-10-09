@@ -6,7 +6,7 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
 
-from ..constants import CONST_DB_AUTH_METHOD, CONST_DB_ABSTRACTION_LAYER
+from ..constants import CONST_DB_AUTH_METHOD
 
 class BaseDBAuthSettings(MountainAshBaseSettings, ABC):
     """Base class for database authentication settings"""

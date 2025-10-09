@@ -1,14 +1,11 @@
 import typing as t # import t.Any, t.Dict, t.Optional
 
 import ibis
-import ibis.expr.types.relations as ir
-from ibis.expr.schema import SchemaLike
 from ibis.backends.sql import SQLBackend
 from abc import abstractmethod
 
 # from abc import abstractmethod
 from mountainash_settings import SettingsParameters
-from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
 
 from ..base_db_connection import BaseDBConnection
 from ...constants import IBIS_DB_CONNECTION_MODE,  CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE

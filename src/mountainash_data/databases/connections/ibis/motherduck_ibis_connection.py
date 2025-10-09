@@ -3,8 +3,6 @@ import ibis.backends.duckdb as ir_backend
 import contextlib
 import warnings
 from pydantic_settings import BaseSettings
-import ibis.expr.types.relations as ir
-import uuid
 
 
 from mountainash_settings import SettingsParameters

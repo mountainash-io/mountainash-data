@@ -1,6 +1,4 @@
 import typing as t
-import contextlib
-import warnings
 
 
 import ibis as ibis

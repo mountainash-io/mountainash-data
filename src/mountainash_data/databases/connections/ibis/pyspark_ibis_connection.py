@@ -1,7 +1,5 @@
 import typing as t
 import ibis.backends.pyspark as ir_backend
-import contextlib
-import warnings
 from pydantic_settings import BaseSettings
 
 

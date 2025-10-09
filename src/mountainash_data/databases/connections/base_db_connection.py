@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from ibis.backends.sql import SQLBackend
 # from pydantic_settings import BaseSettings
 
-from mountainash_settings import SettingsParameters, get_settings, MountainAshBaseSettings
+from mountainash_settings import SettingsParameters, MountainAshBaseSettings
 from mountainash_data.databases.settings import BaseDBAuthSettings
 
 from ..constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE

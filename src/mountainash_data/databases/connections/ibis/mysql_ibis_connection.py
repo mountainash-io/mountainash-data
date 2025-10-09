@@ -1,6 +1,4 @@
 import typing  as t
-import contextlib
-import warnings
 
 from pydantic_settings import BaseSettings
 import ibis.backends.mysql as ir_backend
