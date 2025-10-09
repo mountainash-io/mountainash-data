@@ -1,23 +1,23 @@
-from typing import TYPE_CHECKING
+# from typing import TYPE_CHECKING
 import lazy_loader
-
-# Base operations class (always available)
 from .base_ibis_operations import BaseIbisOperations
 
+# Base operations class (always available)
+
 # Type hints for optional operations (zero runtime cost)
-if TYPE_CHECKING:
-    from .postgres_ibis_operations import Postgres_IbisOperations
-    from .snowflake_ibis_operations import Snowflake_IbisOperations
-    from .bigquery_ibis_operations import BigQuery_IbisConnection
-    from .pyspark_ibis_operations import PySpark_IbisOperations
-    from .trino_ibis_operations import Trino_IbisOperations
-    from .mssql_ibis_operations import MSSQL_IbisOperations
-    from .mysql_ibis_operations import MySQL_IbisOperations
-    from .redshift_ibis_operations import Redshift_IbisOperations
-    from .oracle_ibis_operations import Oracle_IbisOperations
-    from .duckdb_ibis_operations import DuckDB_IbisOperations
-    from .motherduck_ibis_operations import MotherDuck_IbisOperations
-    from .sqlite_ibis_operations import SQLite_IbisOperations
+# if TYPE_CHECKING:
+#     from .postgres_ibis_operations import Postgres_IbisOperations
+#     from .snowflake_ibis_operations import Snowflake_IbisOperations
+#     from .bigquery_ibis_operations import BigQuery_IbisConnection
+#     from .pyspark_ibis_operations import PySpark_IbisOperations
+#     from .trino_ibis_operations import Trino_IbisOperations
+#     from .mssql_ibis_operations import MSSQL_IbisOperations
+#     from .mysql_ibis_operations import MySQL_IbisOperations
+#     from .redshift_ibis_operations import Redshift_IbisOperations
+#     from .oracle_ibis_operations import Oracle_IbisOperations
+#     from .duckdb_ibis_operations import DuckDB_IbisOperations
+#     from .motherduck_ibis_operations import MotherDuck_IbisOperations
+#     from .sqlite_ibis_operations import SQLite_IbisOperations
 
 # Lazy loading for operations (imported only when used)
 __getattr__, __dir__, __all__ = lazy_loader.attach(
@@ -39,7 +39,5 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
     }
 )
 
+
 # Manually extend __all__ to include base export
-__all__ = [
-    "BaseIbisOperations",
-] + list(__all__)
