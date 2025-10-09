@@ -57,9 +57,9 @@ class PyIcebergRestOperations(BasePyIcebergOperations):
     @classmethod
     def _list_tables(cls,
                 catalog_backend: Catalog,
-                /
+                /,
                 namespace: str | None = None,
-                    ) -> t.List[str]:
+                ) -> t.List[str]:
 
         return cls.catalog_backend.list_tables(namespace=namespace) if cls.catalog_backend is not None else []
 
