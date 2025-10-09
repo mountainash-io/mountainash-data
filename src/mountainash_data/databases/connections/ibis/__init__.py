@@ -1,7 +1,7 @@
 # from typing import TYPE_CHECKING
 import lazy_loader
 
-from .base_ibis_connection import BaseIbisConnection
+# from .base_ibis_connection import BaseIbisConnection
 
 # Core connections that are always available (eager loading)
 # from .duckdb_ibis_connection import DuckDB_IbisConnection
@@ -27,6 +27,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
     __name__,
     submodules=[],
     submod_attrs={
+        'base_ibis_connection': ['BaseIbisConnection'],
         'sqlite_ibis_connection': ['SQLite_IbisConnection'],
         'duckdb_ibis_connection': ['DuckDB_IbisConnection'],
         'motherduck_ibis_connection': ['MotherDuck_IbisConnection'],
