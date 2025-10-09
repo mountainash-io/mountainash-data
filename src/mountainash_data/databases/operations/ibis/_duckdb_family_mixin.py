@@ -18,9 +18,9 @@ from ibis.backends.sql import SQLBackend
 from mountainash_dataframes import DataFrameUtils
 
 from ...constants import CONST_CONFLICT_ACTION, CONST_INDEX_TYPE
+from ._base_ibis_mixin import _BaseIbisMixin
 
-
-class _DuckDBFamilyOperationsMixin:
+class _DuckDBFamilyOperationsMixin(_BaseIbisMixin):
     """
     Shared operations for DuckDB-family databases.
 
@@ -306,7 +306,7 @@ class _DuckDBFamilyOperationsMixin:
                     # Clean up temp table
                     try:
                         ibis_backend.drop_table(staging_table, force=True)
-                    except:
+                    except Exception:
                         pass  # Temp table may auto-drop
 
         except Exception as e:
