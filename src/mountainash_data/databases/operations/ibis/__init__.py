@@ -1,6 +1,6 @@
 # from typing import TYPE_CHECKING
 import lazy_loader
-from .base_ibis_operations import BaseIbisOperations
+# from .base_ibis_operations import BaseIbisOperations
 
 # Base operations class (always available)
 
@@ -24,6 +24,7 @@ __getattr__, __dir__, __all__ = lazy_loader.attach(
     __name__,
     submodules=[],
     submod_attrs={
+        'base_ibis_operations': ['BaseIbisOperations'],
         'postgres_ibis_operations': ['Postgres_IbisOperations'],
         'snowflake_ibis_operations': ['Snowflake_IbisOperations'],
         'bigquery_ibis_operations': ['BigQuery_IbisConnection'],
