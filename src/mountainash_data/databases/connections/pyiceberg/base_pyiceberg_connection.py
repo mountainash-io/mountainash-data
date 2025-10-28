@@ -16,7 +16,7 @@ from pyiceberg.table import Table
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.rest import RestCatalog
 
-from mountainash_dataframes import IbisDataFrame, DataFrameUtils
+from mountainash_dataframes import SupportedDataFrames, DataFrameUtils
 # from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 
 from pyiceberg.schema import Schema
@@ -533,7 +533,7 @@ class BasePyIcebergConnection(BaseDBConnection):
 
 
     def prepare_dataframe_for_iceberg(self,
-                                        df: IbisDataFrame|t.Any,
+                                        df: SupportedDataFrames,
                                         target_schema: t.Optional[Schema] = None,
                                         target_table: t.Optional[Table] = None):
         """
@@ -548,12 +548,12 @@ class BasePyIcebergConnection(BaseDBConnection):
         """
 
         if target_schema is None and target_table is None:
-            return DataFrameUtils.cast_dataframe_to_pyarrow(df=df)
+            return DataFrameUtils.to_pyarrow(df=df)
 
         if target_schema is None and target_table is not None:
             target_schema = target_table.schema()
 
-        df = DataFrameUtils.cast_dataframe_to_pyarrow(df=df)
+        df = DataFrameUtils.to_pyarrow(df=df)
 
         pa_schema = pa.schema([])
 
@@ -770,14 +770,28 @@ class BasePyIcebergConnection(BaseDBConnection):
         # database: tuple[str, str] | str | None = None,
         tablename_prefix: t.Optional[str] = None
 
-        ) -> t.Optional[IbisDataFrame]:
+        ) -> t.Optional[SupportedDataFrames]:
 
         """Get a table or view as a DataFrame."""
 
         result: Table | None = self.table(table_name=table_name )
 
-        return IbisDataFrame(df=result.to_polars(),
-                            tablename_prefix=tablename_prefix)
+        return DataFrameUtils.to_ibis(result)
+
+
+    def table_as_polars_dataframe(self,
+        table_name: str,
+        # schema: str | None = None,
+        # database: tuple[str, str] | str | None = None,
+        tablename_prefix: t.Optional[str] = None
+
+        ) -> t.Optional[SupportedDataFrames]:
+
+        """Get a table or view as a DataFrame."""
+
+        result: Table | None = self.table(table_name=table_name )
+
+        return DataFrameUtils.to_polars(result)
 
     # def run_sql_as_ibis_dataframe(self,
     #         query: str,
@@ -811,11 +825,6 @@ class BasePyIcebergConnection(BaseDBConnection):
     #                                               limit=limit,
     #                                               **kwargs
     #                                               )
-
-        return IbisDataFrame(df=result,
-                            catalog_backend=self.catalog_backend,
-                            tablename_prefix=tablename_prefix)
-
     #### Native Dataframe
 
     def table_as_native_dataframe(self,
@@ -824,16 +833,21 @@ class BasePyIcebergConnection(BaseDBConnection):
         database: tuple[str, str] | str | None = None,
         dataframe_framework: t.Optional[str] = CONST_DATAFRAME_FRAMEWORK.POLARS
 
-        ) -> t.Optional[IbisDataFrame]:
+        ) -> t.Optional[SupportedDataFrames]:
 
         """Get a table or view as a DataFrame."""
 
-        result: Table | None = self.table(object_name=object_name,
+        result: Table | None = self.table(object_name,
                                             #    schema=schema,
                                             #    database=database
                                                )
+        if result is None:
+            return None
 
-        return DataFrameUtils.cast_dataframe(df=result, dataframe_framework=dataframe_framework)
+        if dataframe_framework is None:
+            dataframe_framework = CONST_DATAFRAME_FRAMEWORK.POLARS
+
+        return DataFrameUtils.cast_dataframe(result, dataframe_framework=dataframe_framework)
 
 
     # def run_sql_as_native_dataframe(self,
