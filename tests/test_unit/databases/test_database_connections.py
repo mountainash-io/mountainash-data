@@ -229,7 +229,7 @@ class TestConnectionFactory:
         conn2 = SQLite_IbisConnection(db_auth_settings_parameters=settings_params2)
 
         assert conn1 != conn2
-        assert conn1.db_auth_settings_parameters != conn2.db_auth_settings_parameters
+        assert conn1.db_auth_settings_parameters.kwargs != conn2.db_auth_settings_parameters.kwargs
 
         # Test they can both connect and work independently
         backend1 = conn1.connect()
@@ -258,7 +258,7 @@ class TestConnectionFactory:
         conn2 = DuckDB_IbisConnection(db_auth_settings_parameters=settings_params2)
 
         assert conn1 != conn2
-        assert conn1.db_auth_settings_parameters != conn2.db_auth_settings_parameters
+        assert conn1.db_auth_settings_parameters.kwargs != conn2.db_auth_settings_parameters.kwargs
 
         # Test they can both connect and work independently
         backend1 = conn1.connect()
