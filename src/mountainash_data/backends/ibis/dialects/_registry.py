@@ -383,26 +383,43 @@ _KWARGS = "kwargs"
 _HYBRID = "hybrid"
 
 
-# Stub entries — capability hook functions (get_index_exists_sql, get_list_indexes_sql)
-# are imported and wired in Task 4.5 after operations.py is created.
+# Import capability hook functions from operations module.
+# These are the per-dialect index SQL functions. No circular imports since
+# operations.py does not import from _registry.py.
+from mountainash_data.backends.ibis.operations import (  # noqa: E402
+    duckdb_get_index_exists_sql,
+    duckdb_get_list_indexes_sql,
+    sqlite_get_index_exists_sql,
+    sqlite_get_list_indexes_sql,
+    motherduck_get_index_exists_sql,
+    motherduck_get_list_indexes_sql,
+)
+
+
 DIALECTS: dict[str, DialectSpec] = {
     "sqlite": DialectSpec(
         ibis_backend_name="sqlite",
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="sqlite://",
         connection_builder=_build_sqlite_connection,
+        get_index_exists_sql=sqlite_get_index_exists_sql,
+        get_list_indexes_sql=sqlite_get_list_indexes_sql,
     ),
     "duckdb": DialectSpec(
         ibis_backend_name="duckdb",
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="duckdb://",
         connection_builder=_build_duckdb_connection,
+        get_index_exists_sql=duckdb_get_index_exists_sql,
+        get_list_indexes_sql=duckdb_get_list_indexes_sql,
     ),
     "motherduck": DialectSpec(
         ibis_backend_name="duckdb",
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="duckdb://md:",
         connection_builder=_build_motherduck_connection,
+        get_index_exists_sql=motherduck_get_index_exists_sql,
+        get_list_indexes_sql=motherduck_get_list_indexes_sql,
     ),
     "postgres": DialectSpec(
         ibis_backend_name="postgres",
