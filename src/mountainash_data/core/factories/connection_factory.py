@@ -51,22 +51,23 @@ class ConnectionFactory(
 
         Maps backend types to connection module paths and class names.
         """
-        # Ibis-based connections
+        # Ibis-based connections — point directly at backends.ibis.connection
+        # (bypasses the databases.connections.ibis shim chain from Phase 4)
         cls._strategy_modules = {
-            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.SQLITE: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.DUCKDB: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.BIGQUERY: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.MSSQL: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.MYSQL: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.TRINO: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.PYSPARK: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.REDSHIFT: "mountainash_data.databases.connections.ibis",
-            CONST_DB_PROVIDER_TYPE.ORACLE: "mountainash_data.databases.connections.ibis",
-            # PyIceberg connections
-            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.databases.connections.pyiceberg",
+            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.SQLITE: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.DUCKDB: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.BIGQUERY: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.MSSQL: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.MYSQL: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.TRINO: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.PYSPARK: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.REDSHIFT: "mountainash_data.backends.ibis.connection",
+            CONST_DB_PROVIDER_TYPE.ORACLE: "mountainash_data.backends.ibis.connection",
+            # Iceberg connections — point directly at backends.iceberg
+            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.backends.iceberg.catalogs.rest",
         }
 
         cls._strategy_classes = {
@@ -82,7 +83,7 @@ class ConnectionFactory(
             CONST_DB_PROVIDER_TYPE.PYSPARK: "PySpark_IbisConnection",
             CONST_DB_PROVIDER_TYPE.REDSHIFT: "Redshift_IbisConnection",
             CONST_DB_PROVIDER_TYPE.ORACLE: "Oracle_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "PyIcebergRestConnection",
+            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "IcebergRestConnection",
         }
 
     @classmethod

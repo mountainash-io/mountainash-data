@@ -117,23 +117,31 @@ class TestOperationsFactoryConfiguration:
         assert CONST_DB_PROVIDER_TYPE.DUCKDB in OperationsFactory._strategy_classes
 
     def test_sqlite_strategy_mapping(self):
-        """Test SQLite operations strategy configuration."""
+        """Test SQLite operations strategy configuration.
+
+        Updated in Phase 5 Task 5.2: module path now points directly at
+        backends.ibis.operations (bypassing the databases.operations.ibis shim chain).
+        """
         factory = OperationsFactory()
 
         module_path = OperationsFactory._strategy_modules.get(CONST_DB_PROVIDER_TYPE.SQLITE)
         class_name = OperationsFactory._strategy_classes.get(CONST_DB_PROVIDER_TYPE.SQLITE)
 
-        assert "mountainash_data.databases.operations.ibis" in module_path
+        assert "mountainash_data.backends.ibis.operations" in module_path
         assert "Operations" in class_name
 
     def test_duckdb_strategy_mapping(self):
-        """Test DuckDB operations strategy configuration."""
+        """Test DuckDB operations strategy configuration.
+
+        Updated in Phase 5 Task 5.2: module path now points directly at
+        backends.ibis.operations (bypassing the databases.operations.ibis shim chain).
+        """
         factory = OperationsFactory()
 
         module_path = OperationsFactory._strategy_modules.get(CONST_DB_PROVIDER_TYPE.DUCKDB)
         class_name = OperationsFactory._strategy_classes.get(CONST_DB_PROVIDER_TYPE.DUCKDB)
 
-        assert "mountainash_data.databases.operations.ibis" in module_path
+        assert "mountainash_data.backends.ibis.operations" in module_path
         assert "Operations" in class_name
 
 

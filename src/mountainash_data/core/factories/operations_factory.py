@@ -51,21 +51,25 @@ class OperationsFactory(
 
         Maps backend types to operations module paths and class names.
         """
+        # All ibis backends point directly at backends.ibis.operations
+        # (bypasses the databases.operations.ibis shim chain from Phase 4).
+        # Per-backend ops classes (SQLite_IbisOperations, etc.) are in the
+        # same module; POSTGRESQL/SNOWFLAKE/etc. fall back to BaseIbisOperations.
         cls._strategy_modules = {
-            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.SQLITE: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.DUCKDB: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.BIGQUERY: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.MSSQL: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.MYSQL: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.TRINO: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.PYSPARK: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.REDSHIFT: "mountainash_data.databases.operations.ibis",
-            CONST_DB_PROVIDER_TYPE.ORACLE: "mountainash_data.databases.operations.ibis",
-            # PyIceberg operations (if they exist)
-            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.databases.operations.pyiceberg",
+            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.SQLITE: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.DUCKDB: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.BIGQUERY: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.MSSQL: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.MYSQL: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.TRINO: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.PYSPARK: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.REDSHIFT: "mountainash_data.backends.ibis.operations",
+            CONST_DB_PROVIDER_TYPE.ORACLE: "mountainash_data.backends.ibis.operations",
+            # Iceberg REST — operations are merged into IcebergRestConnection
+            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.backends.iceberg.catalogs.rest",
         }
 
         cls._strategy_classes = {
@@ -81,8 +85,7 @@ class OperationsFactory(
             CONST_DB_PROVIDER_TYPE.PYSPARK: "BaseIbisOperations",
             CONST_DB_PROVIDER_TYPE.REDSHIFT: "BaseIbisOperations",
             CONST_DB_PROVIDER_TYPE.ORACLE: "BaseIbisOperations",
-            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "PyIcebergRestOperations",
-
+            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "IcebergRestConnection",
         }
 
     @classmethod

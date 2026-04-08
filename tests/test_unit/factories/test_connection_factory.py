@@ -136,23 +136,31 @@ class TestConnectionFactoryConfiguration:
         assert CONST_DB_PROVIDER_TYPE.DUCKDB in ConnectionFactory._strategy_classes
 
     def test_sqlite_strategy_mapping(self):
-        """Test SQLite strategy configuration."""
+        """Test SQLite strategy configuration.
+
+        Updated in Phase 5 Task 5.2: module path now points directly at
+        backends.ibis.connection (bypassing the databases.connections.ibis shim chain).
+        """
         factory = ConnectionFactory()
 
         module_path = ConnectionFactory._strategy_modules.get(CONST_DB_PROVIDER_TYPE.SQLITE)
         class_name = ConnectionFactory._strategy_classes.get(CONST_DB_PROVIDER_TYPE.SQLITE)
 
-        assert module_path == "mountainash_data.databases.connections.ibis"
+        assert module_path == "mountainash_data.backends.ibis.connection"
         assert class_name == "SQLite_IbisConnection"
 
     def test_duckdb_strategy_mapping(self):
-        """Test DuckDB strategy configuration."""
+        """Test DuckDB strategy configuration.
+
+        Updated in Phase 5 Task 5.2: module path now points directly at
+        backends.ibis.connection (bypassing the databases.connections.ibis shim chain).
+        """
         factory = ConnectionFactory()
 
         module_path = ConnectionFactory._strategy_modules.get(CONST_DB_PROVIDER_TYPE.DUCKDB)
         class_name = ConnectionFactory._strategy_classes.get(CONST_DB_PROVIDER_TYPE.DUCKDB)
 
-        assert module_path == "mountainash_data.databases.connections.ibis"
+        assert module_path == "mountainash_data.backends.ibis.connection"
         assert class_name == "DuckDB_IbisConnection"
 
 
