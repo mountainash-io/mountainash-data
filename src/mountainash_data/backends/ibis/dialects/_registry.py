@@ -49,16 +49,14 @@ def _build_sqlite_connection(**config: t.Any) -> t.Any:
     """Build a sqlite ibis connection.
 
     Salvaged from databases/connections/ibis/sqlite_ibis_connection.py.
-    Connection scheme was 'sqlite://' — uses ibis.connect with a connection
-    string like 'sqlite:///path/to/db.sqlite' or ':memory:'.
-    Accepts 'database' kwarg for the file path (or ':memory:').
+    Connection scheme was 'sqlite://' — uses ibis.sqlite.connect().
+    Accepts 'database' kwarg for the file path (or ':memory:' for in-memory).
     """
     import ibis
 
     database = config.get("database", ":memory:")
-    connection_string = f"sqlite:///{database}" if not database.startswith("sqlite://") else database
-    # ibis.connect handles sqlite:// prefix
-    return ibis.connect(connection_string)
+    # ibis.sqlite.connect accepts file path or ':memory:' directly
+    return ibis.sqlite.connect(database)
 
 
 def _build_duckdb_connection(**config: t.Any) -> t.Any:
