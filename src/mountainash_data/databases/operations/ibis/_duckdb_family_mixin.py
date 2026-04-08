@@ -15,7 +15,7 @@ import uuid
 import ibis.expr.types.relations as ir
 from ibis.backends.sql import SQLBackend
 
-from mountainash_dataframes import DataFrameUtils
+import mountainash as ma
 
 from ...constants import CONST_CONFLICT_ACTION, CONST_INDEX_TYPE
 from ._base_ibis_mixin import _BaseIbisMixin
@@ -130,7 +130,7 @@ class _DuckDBFamilyOperationsMixin(_BaseIbisMixin):
         if result is None:
             return False
 
-        count = DataFrameUtils.get_column_as_list(result, "count")[0]
+        count = ma.relation(result).to_dict()["count"][0]
         return count > 0
 
     @classmethod
@@ -153,7 +153,7 @@ class _DuckDBFamilyOperationsMixin(_BaseIbisMixin):
             return []
 
         # Convert Ibis table to list of dicts
-        return DataFrameUtils.to_list_of_dictionaries(result)
+        return ma.relation(result).to_dicts()
 
     @classmethod
     def _get_index_exists_sql(
@@ -217,7 +217,7 @@ class _DuckDBFamilyOperationsMixin(_BaseIbisMixin):
         conflict_cols = cls._normalize_columns(conflict_columns)
 
         # Auto-detect columns from dataframe
-        all_columns = DataFrameUtils.column_names(df)
+        all_columns = ma.relation(df).columns
 
         if update_columns is None:
             # Default: update all columns except conflict columns
