@@ -69,18 +69,18 @@ class OperationsFactory(
         }
 
         cls._strategy_classes = {
-            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "Postgres_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "BaseIbisOperations",
             CONST_DB_PROVIDER_TYPE.SQLITE: "SQLite_IbisOperations",
             CONST_DB_PROVIDER_TYPE.DUCKDB: "DuckDB_IbisOperations",
             CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "MotherDuck_IbisOperations",
-            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "Snowflake_IbisOperations",
-            CONST_DB_PROVIDER_TYPE.BIGQUERY: "BigQuery_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.MSSQL: "MSSQL_IbisOperations",
-            CONST_DB_PROVIDER_TYPE.MYSQL: "MySQL_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "BaseIbisOperations",
+            CONST_DB_PROVIDER_TYPE.BIGQUERY: "BaseIbisOperations",
+            CONST_DB_PROVIDER_TYPE.MSSQL: "BaseIbisOperations",
+            CONST_DB_PROVIDER_TYPE.MYSQL: "BaseIbisOperations",
             CONST_DB_PROVIDER_TYPE.TRINO: "Trino_IbisOperations",
-            CONST_DB_PROVIDER_TYPE.PYSPARK: "PySpark_IbisOperations",
-            CONST_DB_PROVIDER_TYPE.REDSHIFT: "Redshift_IbisOperations",
-            CONST_DB_PROVIDER_TYPE.ORACLE: "Oracle_IbisOperations",
+            CONST_DB_PROVIDER_TYPE.PYSPARK: "BaseIbisOperations",
+            CONST_DB_PROVIDER_TYPE.REDSHIFT: "BaseIbisOperations",
+            CONST_DB_PROVIDER_TYPE.ORACLE: "BaseIbisOperations",
             CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "PyIcebergRestOperations",
 
         }
