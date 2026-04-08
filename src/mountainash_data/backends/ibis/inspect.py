@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import typing as t
 
 from mountainash_data.core.inspection import (
-    CatalogInfo,
     ColumnInfo,
-    NamespaceInfo,
     TableInfo,
 )
 

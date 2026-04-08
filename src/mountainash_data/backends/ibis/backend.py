@@ -11,10 +11,8 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
-from mountainash_data.core.protocol import Backend, Connection
 from mountainash_data.core.inspection import (
     CatalogInfo,
-    ColumnInfo,
     NamespaceInfo,
     TableInfo,
 )

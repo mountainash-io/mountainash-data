@@ -738,7 +738,7 @@ class BaseIbisOperations(ABC):
         database: str | None = None,
         schema: str | None = None,
     ) -> None:
-        raise NotImplementedError(f"Upsert is not implemented for this backend")
+        raise NotImplementedError("Upsert is not implemented for this backend")
 
     # ===========================
     # INDEX MANAGEMENT
@@ -759,7 +759,7 @@ class BaseIbisOperations(ABC):
         database: str | None = None,
         if_not_exists: bool = True
     ) -> bool:
-        raise NotImplementedError(f"create_index is not implemented for this backend")
+        raise NotImplementedError("create_index is not implemented for this backend")
 
     @classmethod
     def create_unique_index(
@@ -789,7 +789,7 @@ class BaseIbisOperations(ABC):
         database: str | None = None,
         if_exists: bool = True
     ) -> bool:
-        raise NotImplementedError(f"drop_index is not implemented for this backend")
+        raise NotImplementedError("drop_index is not implemented for this backend")
 
     @classmethod
     @abstractmethod
@@ -801,7 +801,7 @@ class BaseIbisOperations(ABC):
         table_name: str | None = None,
         database: str | None = None
     ) -> bool:
-        raise NotImplementedError(f"index_exists is not implemented for this backend")
+        raise NotImplementedError("index_exists is not implemented for this backend")
 
     @classmethod
     @abstractmethod
@@ -812,7 +812,7 @@ class BaseIbisOperations(ABC):
         *,
         database: str | None = None
     ) -> list[dict]:
-        raise NotImplementedError(f"list_indexes is not implemented for this backend")
+        raise NotImplementedError("list_indexes is not implemented for this backend")
 
     # ===========================
     # t.Optionally Implemented Functions

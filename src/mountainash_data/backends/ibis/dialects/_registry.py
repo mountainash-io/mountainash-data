@@ -130,7 +130,7 @@ def _build_postgres_connection(**config: t.Any) -> t.Any:
     password = config.get("password", None)
     database = config.get("database", None)
 
-    conn_str = f"postgres://"
+    conn_str = "postgres://"
     if user and password:
         conn_str += f"{user}:{password}@"
     elif user:
@@ -340,7 +340,7 @@ def _build_trino_connection(**config: t.Any) -> t.Any:
     catalog = config.get("catalog", None)
     schema = config.get("schema", None)
 
-    conn_str = f"trino://"
+    conn_str = "trino://"
     if user:
         conn_str += f"{user}@"
     conn_str += f"{host}:{port}"

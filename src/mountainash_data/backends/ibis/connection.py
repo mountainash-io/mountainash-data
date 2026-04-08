@@ -3,12 +3,17 @@ import typing as t # import t.Any, t.Dict, t.Optional
 import ibis
 from ibis.backends.sql import SQLBackend
 from abc import abstractmethod
+from pydantic_settings import BaseSettings as _BaseSettings
 
-# from abc import abstractmethod
 from mountainash_settings import SettingsParameters
 
 from mountainash_data.core.connection import BaseDBConnection
-from mountainash_data.core.constants import IBIS_DB_CONNECTION_MODE, CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.constants import (
+    IBIS_DB_CONNECTION_MODE,
+    CONST_DB_ABSTRACTION_LAYER,
+    CONST_DB_PROVIDER_TYPE,
+    CONST_DB_BACKEND as _CONST_DB_BACKEND,
+)
 # from mountainash_dataframes.utils.dataframe_utils import DataFrameUtils
 
 
@@ -182,10 +187,6 @@ class BaseIbisConnection(BaseDBConnection):
 # that BaseIbisConnection requires from BaseDBConnection.
 # ===========================================================================
 
-from pydantic_settings import BaseSettings as _BaseSettings
-from mountainash_data.core.constants import CONST_DB_BACKEND as _CONST_DB_BACKEND
-
-
 class SQLite_IbisConnection(BaseIbisConnection):
     """SQLite ibis connection — concrete subclass for factory compatibility."""
 
@@ -266,8 +267,6 @@ class DuckDB_IbisConnection(BaseIbisConnection):
     def _connect(self, connection_string: t.Optional[str] = None,
                  connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
                  **kwargs) -> t.Any:
-        import contextlib
-        import warnings
         from mountainash_data.core.settings import DuckDBAuthSettings
 
         if connection_kwargs is None:
