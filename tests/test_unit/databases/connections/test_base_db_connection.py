@@ -1,7 +1,7 @@
 """Tests for BaseDBConnection abstract base class."""
 
 import pytest
-from mountainash_data.databases import BaseDBConnection
+from mountainash_data.core.connection import BaseDBConnection
 
 
 @pytest.mark.unit

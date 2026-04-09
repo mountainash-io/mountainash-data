@@ -1,10 +1,11 @@
 """Tests for ConnectionFactory."""
 
 import pytest
-from mountainash_data.factories.connection_factory import ConnectionFactory
-from mountainash_data.databases import BaseDBConnection, SQLite_IbisConnection, DuckDB_IbisConnection
-from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.factories.connection_factory import ConnectionFactory
+from mountainash_data.core.connection import BaseDBConnection
+from mountainash_data.backends.ibis.connection import SQLite_IbisConnection, DuckDB_IbisConnection
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
 

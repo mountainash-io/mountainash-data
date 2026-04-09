@@ -3,9 +3,9 @@ import ibis
 import os
 from unittest import mock
 
-from mountainash_data.databases import SQLite_IbisConnection, DuckDB_IbisConnection
+from mountainash_data.backends.ibis.connection import SQLite_IbisConnection, DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
-from mountainash_data.databases.settings import DuckDBAuthSettings, SQLiteAuthSettings
+from mountainash_data.core.settings import DuckDBAuthSettings, SQLiteAuthSettings
 
 @pytest.fixture
 def mock_settings_parameters_1():

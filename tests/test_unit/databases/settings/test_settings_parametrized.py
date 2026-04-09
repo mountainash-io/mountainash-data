@@ -1,7 +1,7 @@
 """Parametrized tests for database settings across all backends."""
 
 import pytest
-from mountainash_data.databases.settings import (
+from mountainash_data.core.settings import (
     BaseDBAuthSettings,
     SQLiteAuthSettings,
     DuckDBAuthSettings,
@@ -9,7 +9,7 @@ from mountainash_data.databases.settings import (
     BigQueryAuthSettings,
     SnowflakeAuthSettings,
 )
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
 
@@ -140,7 +140,7 @@ class TestSettingsWithConnections:
 
     def test_settings_work_with_connection_factory(self, settings_class, db_config):
         """Test that settings work with ConnectionFactory."""
-        from mountainash_data.factories import ConnectionFactory
+        from mountainash_data.core.factories import ConnectionFactory
 
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
@@ -154,7 +154,7 @@ class TestSettingsWithConnections:
 
     def test_settings_enable_backend_connection(self, settings_class, db_config):
         """Test that settings enable actual backend connection."""
-        from mountainash_data.database_utils import DatabaseUtils
+        from mountainash_data.core.utils import DatabaseUtils
 
         settings_params = SettingsParameters.create(
             settings_class=settings_class,

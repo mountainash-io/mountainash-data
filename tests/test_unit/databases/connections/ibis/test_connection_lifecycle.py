@@ -1,12 +1,12 @@
 """Parametrized tests for Ibis connection lifecycle across backends."""
 
 import pytest
-from mountainash_data.databases import (
+from mountainash_data.backends.ibis.connection import (
     SQLite_IbisConnection,
     DuckDB_IbisConnection,
-    BaseDBConnection
 )
-from mountainash_data.databases.settings import (
+from mountainash_data.core.connection import BaseDBConnection
+from mountainash_data.core.settings import (
     SQLiteAuthSettings,
     DuckDBAuthSettings
 )
@@ -204,7 +204,7 @@ class TestConnectionWithFactory:
 
     def test_factory_creates_correct_connection(self, settings_class, db_config):
         """Test that factory creates correct connection type."""
-        from mountainash_data.factories import ConnectionFactory
+        from mountainash_data.core.factories import ConnectionFactory
 
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
@@ -218,7 +218,7 @@ class TestConnectionWithFactory:
 
     def test_factory_connection_can_connect(self, settings_class, db_config):
         """Test that factory-created connection can connect."""
-        from mountainash_data.factories import ConnectionFactory
+        from mountainash_data.core.factories import ConnectionFactory
 
         settings_params = SettingsParameters.create(
             settings_class=settings_class,

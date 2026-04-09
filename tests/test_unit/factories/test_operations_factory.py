@@ -1,10 +1,10 @@
 """Tests for OperationsFactory."""
 
 import pytest
-from mountainash_data.factories.operations_factory import OperationsFactory
-from mountainash_data.databases.operations.ibis.base_ibis_operations import BaseIbisOperations
-from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.factories.operations_factory import OperationsFactory
+from mountainash_data.backends.ibis.operations import BaseIbisOperations
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
 
@@ -197,7 +197,7 @@ class TestOperationsFactoryIntegration:
 
     def test_operations_work_with_actual_backend(self, temp_sqlite_db):
         """Test that factory-created operations work with real backend."""
-        from mountainash_data.database_utils import DatabaseUtils
+        from mountainash_data.core.utils import DatabaseUtils
 
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
