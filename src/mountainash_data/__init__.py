@@ -1,112 +1,51 @@
-from .__version__ import __version__
+"""mountainash-data: physical access to backend data services.
 
-# Import base and core ibis connections
-from .databases.connections import (
-    BaseIbisConnection,
-    SQLite_IbisConnection,
-    DuckDB_IbisConnection,
-    MotherDuck_IbisConnection,
+Public API:
+    Backend, Connection — protocols (core.protocol)
+    IbisBackend — ibis-style relational backends (backends.ibis.backend)
+    IcebergBackend — iceberg-style table-format catalogs (backends.iceberg.backend)
+    CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo — inspection model
+    DatabaseUtils — high-level facade
+    ConnectionFactory, OperationsFactory, SettingsFactory — factories
+    *Settings classes — see mountainash_data.core.settings
+"""
+
+from mountainash_data.__version__ import __version__
+from mountainash_data.core.protocol import Backend, Connection
+from mountainash_data.core.inspection import (
+    CatalogInfo,
+    ColumnInfo,
+    NamespaceInfo,
+    TableInfo,
 )
-
-# Import factory infrastructure
-from .factories import (
+from mountainash_data.core.utils import DatabaseUtils
+from mountainash_data.core.factories import (
     ConnectionFactory,
     OperationsFactory,
     SettingsFactory,
 )
+from mountainash_data.backends.ibis.backend import IbisBackend
 
-# Import high-level API
-from .database_utils import DatabaseUtils
+# IcebergBackend requires the optional pyiceberg dependency.
+# It is imported lazily so that consumers without pyiceberg installed
+# still get the rest of the package.
+try:
+    from mountainash_data.backends.iceberg.backend import IcebergBackend
+except ImportError:
+    IcebergBackend = None  # type: ignore[assignment,misc]
 
-# Start with the core exports
 __all__ = [
     "__version__",
-    # Core connections
-    "BaseIbisConnection",
-    "SQLite_IbisConnection",
-    "DuckDB_IbisConnection",
-    "MotherDuck_IbisConnection",
-    # Factories
+    "Backend",
+    "Connection",
+    "CatalogInfo",
+    "ColumnInfo",
+    "NamespaceInfo",
+    "TableInfo",
+    "DatabaseUtils",
     "ConnectionFactory",
     "OperationsFactory",
     "SettingsFactory",
-    # High-level API
-    "DatabaseUtils",
+    "IbisBackend",
+    "IcebergBackend",
 ]
-
-# Track which optional extras are installed
-# This will be used by other modules to conditionally import/export their components
-# INSTALLED_EXTRAS = set()
-
-# try:
-#     # Get the distribution metadata for this package
-#     dist = importlib.metadata.distribution("mountainash_data")
-
-#     # Check which optional extras are installed
-#     if "pyspark" in sys.modules:
-#         INSTALLED_EXTRAS.add("pyspark")
-
-#     if any("snowflake" in req for req in dist.requires or []):
-#         INSTALLED_EXTRAS.add("snowflake")
-
-#     if any("psycopg2" in req for req in dist.requires or []):
-#         INSTALLED_EXTRAS.add("postgres")
-
-#     if any("pyodbc" in req for req in dist.requires or []):
-#         INSTALLED_EXTRAS.add("mssql")
-
-#     if any("bigquery" in req for req in dist.requires or []):
-#         INSTALLED_EXTRAS.add("bigquery")
-
-#     if any("trino" in req for req in dist.requires or []):
-#         INSTALLED_EXTRAS.add("trino")
-
-#     # If the "all" extra was installed, include all extras
-#     if any(req.startswith("mountainash_data[all]") for req in dist.requires or []):
-#         INSTALLED_EXTRAS.update(["pyspark", "snowflake", "postgres", "mssql", "bigquery", "trino"])
-# except Exception:
-#     # If we can't determine extras, continue with core functionality
-#     pass
-
-# # Now conditionally import the optional connections based on installed extras
-# if "pyspark" in INSTALLED_EXTRAS:
-#     try:
-#         from .databases.ibis import PySpark_IbisConnection
-#         __all__.append("PySpark_IbisConnection")
-#     except ImportError:
-#         pass
-
-# if "snowflake" in INSTALLED_EXTRAS:
-#     try:
-#         from .databases.ibis import Snowflake_IbisConnection
-#         __all__.append("Snowflake_IbisConnection")
-#     except ImportError:
-#         pass
-
-# if "postgres" in INSTALLED_EXTRAS:
-#     try:
-#         from .databases.ibis import Postgres_IbisConnection
-#         __all__.append("Postgres_IbisConnection")
-#     except ImportError:
-#         pass
-
-# if "mssql" in INSTALLED_EXTRAS:
-#     try:
-#         from .databases.ibis import MSSQL_IbisConnection
-#         __all__.append("MSSQL_IbisConnection")
-#     except ImportError:
-#         pass
-
-# if "bigquery" in INSTALLED_EXTRAS:
-#     try:
-#         from .databases.ibis import BigQuery_IbisConnection
-#         __all__.append("BigQuery_IbisConnection")
-#     except ImportError:
-#         pass
-
-# if "trino" in INSTALLED_EXTRAS:
-#     try:
-#         from .databases.ibis import Trino_IbisConnection
-#         __all__.append("Trino_IbisConnection")
-#     except ImportError:
-#         pass

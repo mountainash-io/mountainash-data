@@ -8,8 +8,8 @@ Tests cover:
 
 import pytest
 import polars as pl
-from mountainash_data.database_utils import DatabaseUtils
-from mountainash_data.databases.constants import CONST_CONFLICT_ACTION
+from mountainash_data.core.utils import DatabaseUtils
+from mountainash_data.core.constants import CONST_CONFLICT_ACTION
 
 
 @pytest.mark.integration

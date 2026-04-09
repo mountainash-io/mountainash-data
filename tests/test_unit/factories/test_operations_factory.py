@@ -1,10 +1,10 @@
 """Tests for OperationsFactory."""
 
 import pytest
-from mountainash_data.factories.operations_factory import OperationsFactory
-from mountainash_data.databases.operations.ibis.base_ibis_operations import BaseIbisOperations
-from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.factories.operations_factory import OperationsFactory
+from mountainash_data.backends.ibis.operations import BaseIbisOperations
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
 
@@ -117,23 +117,31 @@ class TestOperationsFactoryConfiguration:
         assert CONST_DB_PROVIDER_TYPE.DUCKDB in OperationsFactory._strategy_classes
 
     def test_sqlite_strategy_mapping(self):
-        """Test SQLite operations strategy configuration."""
+        """Test SQLite operations strategy configuration.
+
+        Updated in Phase 5 Task 5.2: module path now points directly at
+        backends.ibis.operations (bypassing the databases.operations.ibis shim chain).
+        """
         factory = OperationsFactory()
 
         module_path = OperationsFactory._strategy_modules.get(CONST_DB_PROVIDER_TYPE.SQLITE)
         class_name = OperationsFactory._strategy_classes.get(CONST_DB_PROVIDER_TYPE.SQLITE)
 
-        assert "mountainash_data.databases.operations.ibis" in module_path
+        assert "mountainash_data.backends.ibis.operations" in module_path
         assert "Operations" in class_name
 
     def test_duckdb_strategy_mapping(self):
-        """Test DuckDB operations strategy configuration."""
+        """Test DuckDB operations strategy configuration.
+
+        Updated in Phase 5 Task 5.2: module path now points directly at
+        backends.ibis.operations (bypassing the databases.operations.ibis shim chain).
+        """
         factory = OperationsFactory()
 
         module_path = OperationsFactory._strategy_modules.get(CONST_DB_PROVIDER_TYPE.DUCKDB)
         class_name = OperationsFactory._strategy_classes.get(CONST_DB_PROVIDER_TYPE.DUCKDB)
 
-        assert "mountainash_data.databases.operations.ibis" in module_path
+        assert "mountainash_data.backends.ibis.operations" in module_path
         assert "Operations" in class_name
 
 
@@ -189,7 +197,7 @@ class TestOperationsFactoryIntegration:
 
     def test_operations_work_with_actual_backend(self, temp_sqlite_db):
         """Test that factory-created operations work with real backend."""
-        from mountainash_data.database_utils import DatabaseUtils
+        from mountainash_data.core.utils import DatabaseUtils
 
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
