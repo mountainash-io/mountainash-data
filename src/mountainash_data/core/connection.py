@@ -5,7 +5,7 @@ from ibis.backends.sql import SQLBackend
 # from pydantic_settings import BaseSettings
 
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
-from mountainash_data.databases.settings import BaseDBAuthSettings
+from mountainash_data.core.settings import BaseDBAuthSettings
 
 from mountainash_data.core.constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
 
