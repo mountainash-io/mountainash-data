@@ -31,10 +31,10 @@ installer = "uv"
 dependencies = [
     "cyclonedx-bom==4.5.0",
 
-    "mountainash_settings @     {root:uri}/../mountainash-settings",
-    "mountainash @              {root:uri}/../mountainash",
-    "mountainash_utils_files @  {root:uri}/../mountainash-utils-files",
-    "mountainash_utils_ssh @    {root:uri}/../mountainash-utils-ssh",
+    "mountainash_settings @     {root:uri}/temp/mountainash-settings",
+    "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_utils_files @  {root:uri}/temp/mountainash-utils-files",
+    "mountainash_utils_ssh @    {root:uri}/temp/mountainash-utils-ssh",
 
 ]
 [envs.build_github.scripts]
