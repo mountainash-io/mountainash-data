@@ -1,29 +1,28 @@
 name: Pytest
 
-on: 
+on:
   pull_request_target:
     paths:
-      - 'src/mountainash_data/**'          
+      - "src/mountainash_data/**"
   workflow_dispatch:
     inputs:
       fallback_branch:
-        description: 'Fallback branch to use'
+        description: "Fallback branch to use"
         required: true
-        default: 'develop'
+        default: "develop"
         type: choice
         options:
-        - develop
-        - main
+          - develop
+          - main
 
 jobs:
-
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        python-version: [ "3.12"] #, "3.8", "3.9", "3.10","3.11",]
+        python-version: ["3.12"] #, "3.8", "3.9", "3.10","3.11",]
 
     steps:
       # Current Branch
@@ -47,7 +46,6 @@ jobs:
           ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
 
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -57,7 +55,7 @@ jobs:
       - name: Display SQLite version
         run: |
           python -c "import sqlite3; print(f'SQLite version: {sqlite3.sqlite_version}')"
-      
+
       # Checkout Mountain Ash Dependencies
       - name: Load Dependencies
         id: deps
@@ -73,7 +71,7 @@ jobs:
           default-branch: ${{ env.FALLBACK_BRANCH }}
           token: ${{ secrets.CLONE_PRIVATE_REPOS_TOKEN }}
           org-name: ${{ env.ORGNAME }}
-            
+
       # Install Hatch
       - name: Install Hatch
         run: pip install hatch
@@ -99,4 +97,4 @@ jobs:
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}     
+          token: ${{ secrets.CODECOV_TOKEN }}
