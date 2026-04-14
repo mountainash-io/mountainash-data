@@ -7,7 +7,6 @@ from pydantic import Field, SecretStr, field_validator, model_validator
 import re
 
 from enum import StrEnum
-from mountainash_constants import value_enum_helpers
 
 from mountainash_settings import SettingsParameters
 
@@ -15,7 +14,7 @@ from .base import BaseDBAuthSettings
 from ..constants import CONST_DB_PROVIDER_TYPE, CONST_DB_AUTH_METHOD
 
 
-@value_enum_helpers
+# @value_enum_helpers
 class CONST_SNOWFLAKE_AUTHENTICATOR(StrEnum):
     SNOWFLAKE = "snowflake " #The Default
     OAUTH = "oauth"

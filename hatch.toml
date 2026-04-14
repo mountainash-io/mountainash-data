@@ -16,14 +16,10 @@ packages = ["src/mountainash_data"]
 python = "3.12" #,  "3.11",, "3.10" ] # "3.8", "3.9","3.9",
 installer = "uv"
 dependencies = [
-
-    "mountainash_constants @      {root:uri}/../mountainash-constants",
-    "mountainash_settings @       {root:uri}/../mountainash-settings",
-    "mountainash_dataframes @       {root:uri}/../mountainash-dataframes",
-
-    "mountainash_utils_files @        {root:uri}/../mountainash-utils-files",
-    # "mountainash_utils_os @           {root:uri}/../mountainash-utils-os",
-    "mountainash_utils_ssh @          {root:uri}/../mountainash-utils-ssh",
+    "mountainash_settings @     {root:uri}/../mountainash-settings",
+    "mountainash @              {root:uri}/../mountainash",
+    "mountainash_utils_files @  {root:uri}/../mountainash-utils-files",
+    "mountainash_utils_ssh @    {root:uri}/../mountainash-utils-ssh",
 
 ]
 
@@ -35,13 +31,10 @@ installer = "uv"
 dependencies = [
     "cyclonedx-bom==4.5.0",
 
-    "mountainash_constants @      {root:uri}/temp/mountainash-constants",
-    "mountainash_settings @       {root:uri}/temp/mountainash-settings",
-    "mountainash_dataframes @       {root:uri}/temp/mountainash-dataframes",
-
-    "mountainash_utils_files @        {root:uri}/temp/mountainash-utils-files",
-    # "mountainash_utils_os @           {root:uri}/temp/mountainash-utils-os",
-    "mountainash_utils_ssh @          {root:uri}/temp/mountainash-utils-ssh",
+    "mountainash_settings @     {root:uri}/../mountainash-settings",
+    "mountainash @              {root:uri}/../mountainash",
+    "mountainash_utils_files @  {root:uri}/../mountainash-utils-files",
+    "mountainash_utils_ssh @    {root:uri}/../mountainash-utils-ssh",
 
 ]
 [envs.build_github.scripts]
@@ -86,14 +79,11 @@ dependencies = [
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
 
+    "mountainash_settings @     {root:uri}/temp/mountainash-settings",
+    "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_utils_files @  {root:uri}/temp/mountainash-utils-files",
+    "mountainash_utils_ssh @    {root:uri}/temp/mountainash-utils-ssh",
 
-    "mountainash_constants @      {root:uri}/temp/mountainash-constants",
-    "mountainash_settings @       {root:uri}/temp/mountainash-settings",
-    "mountainash_dataframes @       {root:uri}/temp/mountainash-dataframes",
-
-    "mountainash_utils_files @        {root:uri}/temp/mountainash-utils-files",
-    # "mountainash_utils_os @           {root:uri}/temp/mountainash-utils-os",
-    "mountainash_utils_ssh @          {root:uri}/temp/mountainash-utils-ssh",
 
 ]
 [envs.test_github.scripts]
@@ -127,14 +117,11 @@ dependencies = [
     "psutil>=7.0.0",
 
 
-    "mountainash_constants @      {root:uri}/../mountainash-constants",
-    "mountainash_settings @       {root:uri}/../mountainash-settings",
-    "mountainash_dataframes @       {root:uri}/../mountainash-dataframes",
-    "mountainash @                   {root:uri}/../mountainash-expressions",
+    "mountainash_settings @     {root:uri}/../mountainash-settings",
+    "mountainash @              {root:uri}/../mountainash",
+    "mountainash_utils_files @  {root:uri}/../mountainash-utils-files",
+    "mountainash_utils_ssh @    {root:uri}/../mountainash-utils-ssh",
 
-    "mountainash_utils_files @        {root:uri}/../mountainash-utils-files",
-    # "mountainash_utils_os @           {root:uri}/../mountainash-utils-os",
-    "mountainash_utils_ssh @          {root:uri}/../mountainash-utils-ssh",
 
 ]
 [envs.test.scripts]
