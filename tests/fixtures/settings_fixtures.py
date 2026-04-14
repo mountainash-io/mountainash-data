@@ -1,13 +1,13 @@
 """Settings fixtures for all backend types."""
 
 import pytest
-from mountainash_data.databases.settings import (
+from mountainash_data.core.settings import (
     SQLiteAuthSettings,
     DuckDBAuthSettings,
     PostgreSQLAuthSettings,
     BaseDBAuthSettings
 )
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
 
