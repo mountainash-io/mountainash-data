@@ -25,20 +25,18 @@ class TestPackageImports:
 
     def test_core_imports_available(self):
         """Test that core classes can be imported."""
-        # These imports should not raise errors
-        from mountainash_data.databases import BaseDBConnection
+        from mountainash_data.core.connection import BaseDBConnection
 
         # Check classes are properly defined
         assert BaseDBConnection is not None
 
     def test_database_connections_available(self):
         """Test that database connection classes can be imported."""
-        from mountainash_data.databases import SQLite_IbisConnection
-        from mountainash_data.databases import DuckDB_IbisConnection
+        from mountainash_data.backends.ibis.connection import SQLite_IbisConnection
+        from mountainash_data.backends.ibis.connection import DuckDB_IbisConnection
 
         assert SQLite_IbisConnection is not None
         assert DuckDB_IbisConnection is not None
-
 
 
 class TestPackageStructure:
@@ -49,15 +47,17 @@ class TestPackageStructure:
         import mountainash_data
         assert hasattr(mountainash_data, '__file__')
 
-    def test_submodules_exist(self):
-        """Test that expected submodules exist."""
-        import mountainash_data.databases
+    def test_new_submodules_exist(self):
+        """Test that the new core and backends submodules exist."""
+        import mountainash_data.core
+        import mountainash_data.backends
 
-        assert hasattr(mountainash_data, 'databases')
+        assert hasattr(mountainash_data, 'core')
+        assert hasattr(mountainash_data, 'backends')
 
     @pytest.mark.parametrize("module_name", [
-        "databases.connections.base_db_connection",
-        "databases.connections.ibis",
+        "core.connection",
+        "backends.ibis.connection",
     ])
     def test_module_importable(self, module_name: str):
         """Test that core modules can be imported."""
@@ -66,3 +66,20 @@ class TestPackageStructure:
 
         module = import_module(full_module)
         assert module is not None
+
+    def test_public_api_ibis_backend(self):
+        """Test that IbisBackend is available from the top-level package."""
+        from mountainash_data import IbisBackend
+        assert IbisBackend is not None
+
+    def test_public_api_factories(self):
+        """Test that factories are available from the top-level package."""
+        from mountainash_data import ConnectionFactory, OperationsFactory, SettingsFactory
+        assert ConnectionFactory is not None
+        assert OperationsFactory is not None
+        assert SettingsFactory is not None
+
+    def test_public_api_database_utils(self):
+        """Test that DatabaseUtils is available from the top-level package."""
+        from mountainash_data import DatabaseUtils
+        assert DatabaseUtils is not None

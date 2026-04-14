@@ -339,7 +339,7 @@
 
   # models/load_api_data.py
   def model(dbt, session):
-      from mountainash_dataframes.convert import PydataConverterFactory
+      from mountainash_dataframes.ingress import PydataConverterFactory
       from dataclasses import dataclass
       import requests
 
@@ -354,8 +354,8 @@
       records = [APIRecord(**item) for item in api_data]
 
       # Convert to DataFrame automatically
-      factory = PydataConverterFactory()
-      df = factory.convert(records)
+      <!--factory = PydataConverterFactory()-->
+      df = PydataConverter.convert(records)
 
       # Return as Ibis for dbt
       from mountainash_dataframes import DataFrameUtils
@@ -457,7 +457,7 @@
 
   # seeds/reference_data_loader.py
   def seed(dbt, session):
-      from mountainash_dataframes.convert import PydataConverterFactory
+      from mountainash_dataframes.ingress import PydataConverterFactory
       from pydantic import BaseModel
 
       class CountryCode(BaseModel):
@@ -472,8 +472,8 @@
           # ... more records
       ]
 
-      factory = PydataConverterFactory()
-      df = factory.convert(reference_data)
+      <!--factory = PydataConverterFactory()-->
+      df = PydataConverter.convert(reference_data)
 
       from mountainash_dataframes import DataFrameUtils
       return DataFrameUtils.to_ibis(df=df, ibis_backend=session)
@@ -1603,7 +1603,7 @@
   - ✅ Python data → DataFrame conversion (PydataConverterFactory)
   - ✅ DataFrame → dataclass export (DataclassExportFactory)
   - ✅ Join operations (DataFrameJoinFactory)
-  - ✅ Reshape operations (DataFrameReshapeFactory)
+  - ✅ Select operations (DataFrameSelectFactory)
   - ✅ Filter expressions (FilterExpressionStrategyFactory)
 
   Current Filter Expressions Module:

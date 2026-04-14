@@ -4,46 +4,76 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**mountainash-data** is a Python package that provides unified database connections and dataframe abstractions for multiple backends via Ibis. It implements dataframe wrappers for native pandas, polars, and Ibis backends, enabling seamless cross-platform data operations.
+**mountainash-data** provides physical access to backend data services — relational databases via Ibis, and Iceberg table-format catalogs via PyIceberg. It collapses what was previously 13 per-dialect connection classes into a data-driven `DialectSpec` registry, exposes clean `Backend` / `Connection` protocols, and provides factories and a high-level facade (`DatabaseUtils`).
 
 ## Architecture
 
 ### Core Components
 
-1. **Database Connections Layer** (`src/mountainash_data/databases/`)
-   - Base database connection abstraction (`BaseDBConnection`)
-   - Ibis-based connections supporting multiple backends (SQLite, DuckDB, PostgreSQL, SQL Server, etc.)
-   - PyIceberg support for data lake operations
-   - Connection factory pattern for backend instantiation
+1. **Protocol layer** (`src/mountainash_data/core/protocol.py`)
+   - `Backend` protocol — what every backend must implement (`connect()`)
+   - `Connection` protocol — what every connection must implement (`list_tables()`, `inspect_table()`, `to_relation()`, `close()`)
 
-4. **Lineage and Metadata** (`src/mountainash_data/lineage/`)
-   - OpenLineage integration for data lineage tracking
+2. **Inspection model** (`src/mountainash_data/core/inspection.py`)
+   - `CatalogInfo`, `NamespaceInfo`, `TableInfo`, `ColumnInfo` — shared physical metadata dataclasses
+
+3. **Settings** (`src/mountainash_data/core/settings/`)
+   - Per-dialect pydantic settings (SQLite, DuckDB, PostgreSQL, …)
+   - Base class: `BaseDBAuthSettings`
+
+4. **Factories** (`src/mountainash_data/core/factories/`)
+   - `ConnectionFactory` — settings → connection
+   - `OperationsFactory` — settings → operations
+   - `SettingsFactory` — URL / backend-type → settings
+
+5. **High-level facade** (`src/mountainash_data/core/utils.py`)
+   - `DatabaseUtils` — one-stop methods for the most common workflows
+
+6. **Ibis backend** (`src/mountainash_data/backends/ibis/`)
+   - `IbisBackend` — new-style entry point (dialect string + raw kwargs)
+   - `BaseIbisConnection` + 12 per-dialect subclasses in `connection.py`
+   - `BaseIbisOperations` + per-dialect subclasses in `operations.py`
+   - `DialectSpec` registry in `dialects/`
+
+7. **Iceberg backend** (`src/mountainash_data/backends/iceberg/`)
+   - `IcebergBackend` — catalog-type registry (currently: `"rest"`)
+   - Connection, operations, and inspection classes
+   - Requires optional `pyiceberg` dependency
 
 ### Package Structure
 
 ```
 src/mountainash_data/
-├── __init__.py                    # Main package exports
-├── __version__.py                 # Version information
-├── databases/                     # Database connection layer
-│   ├── base_db_connection.py     # Abstract base connection
-│   ├── ibis/                     # Ibis-based connections
-│   │   ├── base_ibis_connection.py
-│   │   ├── connections/          # Specific backend implementations
-│   │   │   ├── sqlite_ibis_connection.py
-│   │   │   ├── duckdb_ibis_connection.py
-│   │   │   ├── postgres_ibis_connection.py
-│   │   │   └── [other backends...]
-│   │   └── ibis_connection_factory.py
-│   └── pyiceberg/               # PyIceberg support
-└── lineage/                     # Data lineage tracking
-    └── openlineage_helper.py
+├── __init__.py                  # Public API surface
+├── __version__.py               # Version information
+├── core/
+│   ├── protocol.py              # Backend / Connection protocols
+│   ├── inspection.py            # Shared physical metadata model
+│   ├── connection.py            # BaseDBConnection abstract class
+│   ├── utils.py                 # DatabaseUtils high-level facade
+│   ├── constants.py             # CONST_DB_PROVIDER_TYPE and friends
+│   ├── settings/                # Per-dialect auth settings (pydantic)
+│   └── factories/               # ConnectionFactory, OperationsFactory, SettingsFactory
+└── backends/
+    ├── ibis/
+    │   ├── backend.py           # IbisBackend + IbisConnection (new-style)
+    │   ├── connection.py        # BaseIbisConnection + dialect subclasses
+    │   ├── operations.py        # BaseIbisOperations + dialect subclasses
+    │   ├── inspect.py           # Ibis-specific inspection helpers
+    │   └── dialects/            # DialectSpec registry (data-driven)
+    └── iceberg/
+        ├── backend.py           # IcebergBackend + catalog registry
+        ├── connection.py        # IcebergConnectionBase
+        ├── operations.py        # IcebergOperationsBase
+        ├── inspect.py           # Iceberg inspection helpers
+        └── catalogs/            # Per-catalog implementations
 ```
+
 ### Optional Dependencies (extras)
-- **all**: Complete set of database backends
+- **pyiceberg**: Required for `IcebergBackend`
+- **postgres**: PostgreSQL support (psycopg2-binary, ibis-framework[postgres])
 - **mssql**: SQL Server support (pyodbc, ibis-framework[mssql])
 - **snowflake**: Snowflake support (snowflake-connector-python, ibis-framework[snowflake])
-- **postgres**: PostgreSQL support (psycopg2-binary, ibis-framework[postgres])
 - **bigquery**: Google BigQuery support (ibis-framework[bigquery])
 - **pyspark**: Apache Spark support (ibis-framework[pyspark])
 - **trino**: Trino support (ibis-framework[trino])
@@ -78,18 +108,8 @@ src/mountainash_data/
 - **xarray** ==2024.11.0 - N-dimensional arrays
 - **rich** >=12.4.4,<14 - Rich text and beautiful formatting
 - **universal_pathlib** ==0.2.2 - Universal pathlib interface
-- **openlineage-python** ==1.17.1 - Data lineage tracking
 - **sqlalchemy** - SQL toolkit and ORM
 - **duckdb** - In-process SQL OLAP database
-
-### Optional Dependencies (extras)
-- **all**: Complete set of database backends
-- **mssql**: SQL Server support (pyodbc, ibis-framework[mssql])
-- **snowflake**: Snowflake support (snowflake-connector-python, ibis-framework[snowflake])
-- **postgres**: PostgreSQL support (psycopg2-binary, ibis-framework[postgres])
-- **bigquery**: Google BigQuery support (ibis-framework[bigquery])
-- **pyspark**: Apache Spark support (ibis-framework[pyspark])
-- **trino**: Trino support (ibis-framework[trino])
 
 ### Internal Mountain Ash Dependencies
 - **mountainash-settings** - Settings management and configuration framework
@@ -112,9 +132,6 @@ src/mountainash_data/
 
 ### Testing Workflows
 - **python-run-pytest.yml**: Runs pytest on pull requests targeting Python 3.12/Ubuntu 24.04
-  - Includes coverage reporting to Codecov
-  - Integrates with Mountain Ash dependency management
-  - Supports workflow dispatch with fallback branches
 - **python-run-ruff.yml**: Code linting and formatting checks
 - **python-run-radon.yml**: Complexity analysis and code quality metrics
 
@@ -122,20 +139,11 @@ src/mountainash_data/
 - **build-and-release-package.yml**: Automated release workflow
   - Supports production, RC, and beta releases
   - Generates SBOMs (Software Bill of Materials)
-  - Creates releases in GitHub and mountainash-wheels repository
-- **main-release-branch-validation.yml**: Validates release branches
-- **main-release-build-dependencies.yml**: Manages build dependencies
 
 ### Branch Strategy
-- `main`: Production releases (only release/* and hotfix/* branches)
+- `main`: Production releases
 - `develop`: Development and RC releases
 - `feature/*`, `bugfix/*`, `hotfix/*`: Feature branches
-- Protected branches require code owner approval
-
-### Quality Gates
-- **SonarCloud**: Code quality analysis
-- **Codecov**: Code coverage reporting
-- **GitHub Actions**: Automated testing and validation
 
 ## Code Style Guidelines
 - Formatting: Uses ruff for formatting and linting
@@ -150,50 +158,72 @@ src/mountainash_data/
 ## Testing Structure
 
 ### Test Organization
-- **tests/**: Main test directory
-  - **test_ibis_backends.py**: Database backend connection tests
-  - **test_dataframe_utils.py**: DataFrame utility function tests
-  - **test_dataframe_filters.py**: DataFrame filtering tests
-  - **test_polars_dataframe.py**: Polars-specific DataFrame tests
-  - **column_mapper/**: Column mapping functionality tests
-  - **pydata_converter/**: Python data structure converter tests
+```
+tests/
+├── conftest.py                    # Shared fixtures
+├── fixtures/
+│   ├── settings_fixtures.py       # Auth settings fixtures
+│   ├── database_fixtures.py       # Database/backend fixtures
+│   └── dataframe_fixtures.py      # DataFrame fixtures
+├── test_unit/
+│   ├── core/                      # Protocol, inspection tests
+│   ├── backends/ibis/             # IbisBackend tests
+│   ├── backends/iceberg/          # IcebergBackend tests
+│   ├── factories/                 # Factory tests
+│   ├── databases/                 # Legacy-path tests (updated to new paths)
+│   ├── test_database_utils.py     # DatabaseUtils tests
+│   └── test_mountainash_data.py   # Package-level import tests
+└── test_integration/
+    └── test_end_to_end_workflows.py
+```
 
 ### Test Markers
-Use pytest markers to run specific test categories:
 - `unit`: Unit tests (fast, isolated)
 - `integration`: Integration tests (slower, external dependencies)
 - `performance`: Performance and benchmark tests
 - `slow`: Tests that take longer to run
 - `smoke`: Quick tests to verify basic functionality
 
-### Test Configuration
-- **pytest.ini**: Pytest configuration
-- **codecov.yml**: Code coverage configuration
-- **coverage.toml**: Coverage reporting settings
-
 ### Test Backends
-- SQLite and DuckDB for local testing
-- Mock connections for other backends
-- Integration with Mountain Ash settings framework
+- SQLite and DuckDB for local testing (in-memory where possible)
+- Mock connections for optional backends
 
-## Documentation
+## Usage Patterns
 
-### Core Documentation
-- **README.md**: Project overview and basic usage
-- **CONTRIBUTING.md**: Contribution guidelines
-- **TESTING.md**: Testing procedures and guidelines
-- **RELEASE.md**: Release process documentation
+```python
+from mountainash_data import IbisBackend, IcebergBackend
+from mountainash_data.core.settings import PostgreSQLAuthSettings
 
-### Requirements Documentation
-- **docs/adapter_requirements.md**: Data structure adapter requirements
-- **docs/hierarchy_builder_requirements.md**: Hierarchy builder specifications
-- **docs/hierachy_flattener_requirements.md**: Hierarchy flattener requirements
+# Ibis backend (new-style, direct)
+backend = IbisBackend(dialect="sqlite", database=":memory:")
+conn = backend.connect()
+try:
+    tables = conn.list_tables()
+    info = conn.inspect_table("users")
+    relation = conn.to_relation("users")  # → mountainash-expressions Relation
+finally:
+    conn.close()
 
-### Notebooks
-- **notebooks/**: Jupyter notebooks for exploration and examples
-  - **db.ipynb**: Database connection examples
-  - **ibis.ipynb**: Ibis framework usage
-  - **pyarrow.ipynb**: PyArrow integration examples
+# Ibis backend (settings-driven, via DatabaseUtils)
+from mountainash_data import DatabaseUtils
+from mountainash_data.core.settings import SQLiteAuthSettings
+from mountainash_settings import SettingsParameters
+
+settings_params = SettingsParameters.create(
+    settings_class=SQLiteAuthSettings,
+    kwargs={"DATABASE": ":memory:"}
+)
+connection = DatabaseUtils.create_connection(settings_params)
+ibis_backend = connection.connect()
+
+# Iceberg backend (requires pyiceberg)
+ice = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+ice_conn = ice.connect()
+try:
+    namespaces = ice_conn.list_namespaces()
+finally:
+    ice_conn.close()
+```
 
 ## Development Environments
 
@@ -228,52 +258,6 @@ Uses CalVer (Calendar Versioning) with semantic versioning:
 - **hatch.toml**: Hatch build tool configuration
 - **sonar-project.properties**: SonarCloud analysis configuration
 - **pyproject.toml**: Python project configuration and dependencies
-
-## Usage Patterns
-
-### Database Connections
-```python
-from mountainash_data import SQLite_IbisConnection, DuckDB_IbisConnection
-from mountainash_settings import SettingsParameters
-
-# Create connection
-settings = SettingsParameters.create(settings_class=SQLiteAuthSettings)
-conn = SQLite_IbisConnection(db_auth_settings_parameters=settings)
-backend = conn.connect()
-```
-
-### DataFrame Operations
-```python
-from mountainash_data import IbisDataFrame, DataFrameFactory
-
-# Create dataframe
-df = IbisDataFrame(ibis_table)
-
-# Cross-backend operations
-result = df.filter(expression).materialise('polars')
-```
-
-### Data Conversion
-```python
-from mountainash_data.dataframes.utils.pydata_converter import DataFrameFactory
-
-# Convert Python data structures
-df = DataFrameFactory.create_from_list_of_dicts(data)
-```
-
-## Development Workflow
-
-### Setting Up Development Environment
-1. **Use dev environment**: `hatch shell dev` (includes all Mountain Ash dependencies)
-2. **For testing only**: `hatch shell test` (includes extended pytest plugins)
-3. **Install package in editable mode**: `pip install -e .`
-
-### Daily Development Commands
-- **Run tests during development**: `hatch run test:test-quick`
-- **Full test suite before commits**: `hatch run test:test`
-- **Check code style**: `hatch run ruff:check`
-- **Auto-fix style issues**: `hatch run ruff:fix`
-- **Validate types**: `hatch run mypy:check`
 
 ## License
 MIT License

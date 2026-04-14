@@ -3,12 +3,12 @@
 import pytest
 from pathlib import Path
 
-from mountainash_data.databases import BaseDBConnection
-from mountainash_data.databases import BaseIbisConnection
-from mountainash_data.databases import SQLite_IbisConnection
-from mountainash_data.databases import DuckDB_IbisConnection
+from mountainash_data.core.connection import BaseDBConnection
+from mountainash_data.backends.ibis.connection import BaseIbisConnection
+from mountainash_data.backends.ibis.connection import SQLite_IbisConnection
+from mountainash_data.backends.ibis.connection import DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters
-from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
 
 
 class TestBaseDBConnection:
@@ -229,7 +229,7 @@ class TestConnectionFactory:
         conn2 = SQLite_IbisConnection(db_auth_settings_parameters=settings_params2)
 
         assert conn1 != conn2
-        assert conn1.db_auth_settings_parameters != conn2.db_auth_settings_parameters
+        assert conn1.db_auth_settings_parameters.kwargs != conn2.db_auth_settings_parameters.kwargs
 
         # Test they can both connect and work independently
         backend1 = conn1.connect()
@@ -258,7 +258,7 @@ class TestConnectionFactory:
         conn2 = DuckDB_IbisConnection(db_auth_settings_parameters=settings_params2)
 
         assert conn1 != conn2
-        assert conn1.db_auth_settings_parameters != conn2.db_auth_settings_parameters
+        assert conn1.db_auth_settings_parameters.kwargs != conn2.db_auth_settings_parameters.kwargs
 
         # Test they can both connect and work independently
         backend1 = conn1.connect()

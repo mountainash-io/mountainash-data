@@ -1,13 +1,13 @@
 """Tests for SettingsFactory."""
 
 import pytest
-from mountainash_data.factories.settings_factory import SettingsFactory
-from mountainash_data.databases.settings import (
+from mountainash_data.core.factories.settings_factory import SettingsFactory
+from mountainash_data.core.settings import (
     SQLiteAuthSettings,
     DuckDBAuthSettings,
     BaseDBAuthSettings
 )
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 
 
 @pytest.mark.unit
@@ -209,7 +209,7 @@ class TestSettingsFactoryIntegration:
 
     def test_settings_factory_to_connection_workflow(self, temp_sqlite_db):
         """Test workflow: factory creates settings → settings create connection."""
-        from mountainash_data.database_utils import DatabaseUtils
+        from mountainash_data.core.utils import DatabaseUtils
 
         # Factory creates settings
         url = f"sqlite:///{temp_sqlite_db}"

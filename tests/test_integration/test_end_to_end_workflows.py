@@ -2,9 +2,9 @@
 
 import pytest
 from pathlib import Path
-from mountainash_data.database_utils import DatabaseUtils
-from mountainash_data.databases.settings import SQLiteAuthSettings, DuckDBAuthSettings
-from mountainash_data.databases.constants import CONST_DB_PROVIDER_TYPE
+from mountainash_data.core.utils import DatabaseUtils
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
 
@@ -61,7 +61,7 @@ class TestFactoryDrivenWorkflow:
 
     def test_settings_factory_to_connection_workflow(self):
         """Test Settings Factory → Connection Factory workflow."""
-        from mountainash_data.factories import SettingsFactory, ConnectionFactory
+        from mountainash_data.core.factories import SettingsFactory, ConnectionFactory
 
         # Create settings from backend type
         settings = SettingsFactory.from_backend_type(
@@ -88,7 +88,7 @@ class TestFactoryDrivenWorkflow:
 
     def test_url_detection_to_connection_workflow(self):
         """Test URL detection → Settings → Connection workflow."""
-        from mountainash_data.factories import SettingsFactory, ConnectionFactory
+        from mountainash_data.core.factories import SettingsFactory, ConnectionFactory
 
         url = "sqlite:///:memory:"
 
