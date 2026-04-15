@@ -70,17 +70,31 @@ Each report lives at `./<backend>.md` and contains:
 
 | Backend | Report | Core missing | Core mismatch | Advanced missing | Advanced mismatch | Extra | Stale links |
 |---|---|---|---|---|---|---|---|
-| sqlite | [sqlite.md](./sqlite.md) | — | — | — | — | — | — |
-| duckdb | [duckdb.md](./duckdb.md) | — | — | — | — | — | — |
-| motherduck | [motherduck.md](./motherduck.md) | — | — | — | — | — | — |
-| postgresql | [postgresql.md](./postgresql.md) | — | — | — | — | — | — |
-| mysql | [mysql.md](./mysql.md) | — | — | — | — | — | — |
-| mssql | [mssql.md](./mssql.md) | — | — | — | — | — | — |
-| snowflake | [snowflake.md](./snowflake.md) | — | — | — | — | — | — |
-| bigquery | [bigquery.md](./bigquery.md) | — | — | — | — | — | — |
-| redshift | [redshift.md](./redshift.md) | — | — | — | — | — | — |
-| pyspark | [pyspark.md](./pyspark.md) | — | — | — | — | — | — |
-| trino | [trino.md](./trino.md) | — | — | — | — | — | — |
-| pyiceberg_rest | [pyiceberg_rest.md](./pyiceberg_rest.md) | — | — | — | — | — | — |
+| sqlite | [sqlite.md](./sqlite.md) | 0 | 0 | 8 | 0 | 7 | 0 |
+| duckdb | [duckdb.md](./duckdb.md) | 0 | 1 | 12 | 2 | 7 | 0 |
+| motherduck | [motherduck.md](./motherduck.md) | 0 | 2 | many (via duckdb) | 1 | 6 | 0 |
+| postgresql | [postgresql.md](./postgresql.md) | 0 | 5 | ~20 | ~12 | 1 | 0 |
+| mysql | [mysql.md](./mysql.md) | 0 | 3 | ~8 | 2 | 0 | 0 |
+| mssql | [mssql.md](./mssql.md) | 1 | 4 | ~15 | 1 | 1 | 0 |
+| snowflake | [snowflake.md](./snowflake.md) | 0 | 4 | ~15 | 1 | 1 | 0 |
+| bigquery | [bigquery.md](./bigquery.md) | 4 | 3 | 3 | 0 | 8 | 0 |
+| redshift | [redshift.md](./redshift.md) | 1 | 5 | ~15 | 2 | 3 | 0 |
+| pyspark | [pyspark.md](./pyspark.md) | 1 | 3 | out-of-scope | 3 | 8 | 0 |
+| trino | [trino.md](./trino.md) | 0 | 5 | 1 | 8 | 1 | 0 |
+| pyiceberg_rest | [pyiceberg_rest.md](./pyiceberg_rest.md) | 2 | 3 | 9 | 0 | 6 | 0 |
+
+## Cross-cutting findings
+
+Patterns that emerged across multiple backends:
+
+- **`db_provider_type` copy-paste bugs**: `postgresql.py` and `mysql.py` both return `CONST_DB_PROVIDER_TYPE.BIGQUERY` instead of their own provider. Real defects.
+- **Plumbing gap**: Nearly every backend declares Fields that `get_connection_kwargs()` then silently drops. postgres, trino, snowflake, mssql, bigquery all have orphan fields.
+- **SecretStr not unwrapped**: Passwords and tokens are passed as `SecretStr` objects rather than via `.get_secret_value()` in most cloud backends (snowflake, mssql, redshift, pyiceberg_rest).
+- **Enums defined but unused**: postgresql (4), snowflake (1), mssql (2), pyspark (1) all have constant classes that aren't enforced as field types.
+- **Base-class composition**: `HOST`/`PORT`/`USERNAME`/`PASSWORD`/`TOKEN` leak into every class via `BaseDBAuthSettings`, including file/cloud/catalog classes where they're meaningless.
+- **Docstring drift**: pyspark docstring says "SQLite authentication settings"; pyiceberg_rest says "Cloudflare R2"; several classes have stale `#path:` comments pointing at `mountainash_settings/...` paths that don't match the current layout.
+- **Dead validators**: redshift's `_init_provider_specific` is never called (base class hook is `_post_init`); its serverless/cluster validation never runs.
+
+Counts are filled in as each per-backend audit completes.
 
 Counts are filled in as each per-backend audit completes.
