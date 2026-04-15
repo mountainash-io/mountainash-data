@@ -45,6 +45,19 @@ class TestAuthToDriverKwargs:
         )
         assert auth_to_driver_kwargs(auth) == {"credential": "cid:csec"}
 
+    def test_oauth2_token_wins_over_client_credentials(self):
+        """Policy: if both token and client_credentials are set, token wins."""
+        auth = OAuth2Auth(
+            token=SecretStr("t"),
+            client_id="c",
+            client_secret=SecretStr("s"),
+        )
+        assert auth_to_driver_kwargs(auth) == {"token": "t"}
+
+    def test_oauth2_empty_returns_empty(self):
+        """OAuth2 with neither token nor client-credentials yields no kwargs."""
+        assert auth_to_driver_kwargs(OAuth2Auth()) == {}
+
     def test_iam_with_keys(self):
         auth = IAMAuth(
             access_key_id="AKIA...",
@@ -62,6 +75,10 @@ class TestAuthToDriverKwargs:
         assert auth_to_driver_kwargs(auth) == {
             "iam_role_arn": "arn:aws:iam::123:role/x"
         }
+
+    def test_iam_empty_returns_empty(self):
+        """IAM with no explicit fields falls through to ambient credentials."""
+        assert auth_to_driver_kwargs(IAMAuth()) == {}
 
     def test_unknown_auth_type_raises(self):
         class WeirdAuth(AuthSpec):

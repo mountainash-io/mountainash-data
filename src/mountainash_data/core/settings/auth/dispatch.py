@@ -46,6 +46,7 @@ def _oauth2(auth: OAuth2Auth) -> dict[str, t.Any]:
 
 
 def _iam(auth: IAMAuth) -> dict[str, t.Any]:
+    """Empty dict means 'use ambient AWS credentials' (env vars, instance profile, SSO)."""
     out: dict[str, t.Any] = {}
     if auth.role_arn is not None:
         out["iam_role_arn"] = auth.role_arn
