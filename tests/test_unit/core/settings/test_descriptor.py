@@ -1,7 +1,7 @@
 """Unit tests for settings descriptor primitives."""
 
 import pytest
-from typing import Literal, Optional
+from dataclasses import FrozenInstanceError
 
 from mountainash_data.core.settings.descriptor import (
     BackendDescriptor,
@@ -25,7 +25,7 @@ class TestParameterSpec:
 
     def test_parameter_spec_is_frozen(self):
         spec = ParameterSpec(name="FOO", type=str, tier="core")
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             spec.name = "BAR"  # type: ignore[misc]
 
     def test_parameter_spec_with_default(self):
@@ -36,9 +36,15 @@ class TestParameterSpec:
         spec = ParameterSpec(name="PASSWORD", type=str, tier="core", secret=True)
         assert spec.secret is True
 
-    def test_parameter_spec_tier_must_be_valid(self):
-        spec = ParameterSpec(name="FOO", type=str, tier="core")
-        assert spec.tier in {"core", "advanced"}
+    def test_parameter_spec_accepts_advanced_tier(self):
+        spec = ParameterSpec(name="X", type=str, tier="advanced")
+        assert spec.tier == "advanced"
+
+    def test_missing_sentinel_is_falsy_and_singleton(self):
+        from mountainash_data.core.settings.descriptor import _Missing
+        assert bool(MISSING) is False
+        assert repr(MISSING) == "MISSING"
+        assert _Missing() is MISSING
 
 
 @pytest.mark.unit
@@ -60,5 +66,5 @@ class TestBackendDescriptor:
         desc = BackendDescriptor(
             name="sqlite", provider_type="sqlite", parameters=[], auth_modes=[]
         )
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             desc.name = "mysql"  # type: ignore[misc]

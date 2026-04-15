@@ -9,7 +9,7 @@ to configure pydantic fields and driver mappings for a given backend. A
 from __future__ import annotations
 
 import typing as t
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 __all__ = ["MISSING", "ParameterSpec", "BackendDescriptor"]
 
