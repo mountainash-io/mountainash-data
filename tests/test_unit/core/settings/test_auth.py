@@ -4,7 +4,6 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from mountainash_data.core.settings.auth import (
-    AuthSpec,
     AzureADAuth,
     CertificateAuth,
     IAMAuth,
@@ -58,6 +57,17 @@ class TestAuthDiscriminator:
     def test_noauth_has_no_fields(self):
         auth = NoAuth()
         assert auth.kind == "none"
+
+    def test_auth_is_frozen(self):
+        """Mutation of an AuthSpec instance must raise."""
+        auth = NoAuth()
+        with pytest.raises(ValidationError):
+            auth.kind = "password"  # type: ignore[misc]
+
+    def test_auth_rejects_unknown_fields(self):
+        """Unknown kwargs must raise because model_config.extra == 'forbid'."""
+        with pytest.raises(ValidationError):
+            NoAuth(bogus="x")  # type: ignore[call-arg]
 
 
 @pytest.mark.unit

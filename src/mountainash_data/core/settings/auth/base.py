@@ -10,10 +10,12 @@ __all__ = ["AuthSpec"]
 class AuthSpec(BaseModel):
     """Abstract tagged base for authentication specifications.
 
-    Each concrete subclass sets a ``kind`` Literal used as the pydantic
-    discriminator value when composed into a union.
+    Each concrete subclass declares its own ``kind: Literal["..."]`` field;
+    this base intentionally does not declare one. When composed into a
+    :class:`pydantic.Field` discriminated union, pydantic looks up ``kind``
+    on each member, not on a shared base, so removing it here also closes
+    Pyright's ``reportIncompatibleVariableOverride`` warnings on every
+    subclass.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-
-    kind: str
