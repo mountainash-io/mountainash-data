@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import typing as t
 
+from urllib.parse import quote
+
 from pydantic import SecretStr
 from pydantic.fields import FieldInfo
 
@@ -115,6 +117,12 @@ class ConnectionProfile(MountainAshBaseSettings):
             val = getattr(self, spec.name, None)
             if val is None:
                 continue
+            # The isinstance guard accommodates both construction paths:
+            # (a) pydantic's normal validation coerces a string default
+            # into SecretStr; we unwrap here. (b) MountainAshBaseSettings'
+            # ``update_settings_from_dict`` uses ``setattr`` directly and
+            # bypasses pydantic coercion — a raw ``str`` arrives and
+            # passes through unchanged.
             if isinstance(val, SecretStr):
                 val = val.get_secret_value()
             if spec.transform is not None:
@@ -131,15 +139,27 @@ class ConnectionProfile(MountainAshBaseSettings):
     def to_driver_kwargs(self) -> dict[str, t.Any]:
         """Build the final driver kwargs dict.
 
-        Order:
-            1. 1:1 parameter mappings from descriptor.
-            2. Auth dispatch (may overwrite 1:1 outputs).
-            3. Per-backend adapter, if any (may overwrite auth outputs).
+        If ``__adapter__`` is set, it is responsible for the full pipeline —
+        it typically calls :meth:`_default_driver_kwargs` and
+        :meth:`_auth_to_driver_kwargs` itself, then layers any composite
+        mappings (nested dicts, wrapper objects, driver-specific auth
+        adapters). Its return value is used verbatim.
+
+        Otherwise the default is: 1:1 parameter mappings from the descriptor,
+        then auth dispatch overlaid on top.
         """
+        adapter = type(self).__dict__.get("__adapter__")
+        if adapter is None:
+            # Walk MRO in case adapter is defined on a parent shell class
+            for base in type(self).__mro__[1:]:
+                candidate = base.__dict__.get("__adapter__")
+                if candidate is not None:
+                    adapter = candidate
+                    break
+        if adapter is not None:
+            return adapter(self)
         kwargs = self._default_driver_kwargs()
         kwargs.update(self._auth_to_driver_kwargs())
-        if self.__adapter__ is not None:
-            kwargs = self.__adapter__(self)
         return kwargs
 
     # --- Connection string ----------------------------------------------------
@@ -160,12 +180,14 @@ class ConnectionProfile(MountainAshBaseSettings):
         database = getattr(self, "DATABASE", None)
         url = scheme
         auth = getattr(self, "auth", None)
-        if auth is not None and getattr(auth, "username", None):
-            url += str(auth.username)
-            pw = getattr(auth, "password", None)
-            if isinstance(pw, SecretStr):
-                url += f":{pw.get_secret_value()}"
-            url += "@"
+        if auth is not None:
+            username = getattr(auth, "username", None)
+            if username:
+                url += quote(str(username), safe="")
+                pw = getattr(auth, "password", None)
+                if isinstance(pw, SecretStr):
+                    url += ":" + quote(pw.get_secret_value(), safe="")
+                url += "@"
         if host is not None:
             url += str(host)
         if port is not None:

@@ -86,3 +86,70 @@ class TestConnectionProfile:
         p = P(auth=NoAuth())
         with pytest.raises(NotImplementedError):
             p.to_connection_string()
+
+    # --- Item 4: adapter replaces pipeline output --------------------------------
+
+    def test_adapter_replaces_pipeline_output(self):
+        """When __adapter__ is set, it owns the full kwargs pipeline."""
+        def _adapter(profile: "ConnectionProfile") -> dict:
+            # Adapter can still call the default helpers if it wants
+            kwargs = profile._default_driver_kwargs()
+            kwargs["adapter_added"] = True
+            return kwargs
+
+        class AdaptedProfile(ConnectionProfile):
+            __descriptor__ = DUMMY_DESCRIPTOR
+            __adapter__ = staticmethod(_adapter)
+
+        p = AdaptedProfile(HOST="h", auth=NoAuth())
+        kwargs = p.to_driver_kwargs()
+        assert kwargs["host"] == "h"
+        assert kwargs["adapter_added"] is True
+
+    def test_adapter_can_return_fresh_dict(self):
+        """Adapter return value is used verbatim; it need not extend defaults."""
+        class FreshProfile(ConnectionProfile):
+            __descriptor__ = DUMMY_DESCRIPTOR
+            __adapter__ = staticmethod(lambda self: {"only_key": "only_val"})
+
+        p = FreshProfile(HOST="h", auth=NoAuth())
+        assert p.to_driver_kwargs() == {"only_key": "only_val"}
+
+    # --- Item 5: ParameterSpec.transform is applied ------------------------------
+
+    def test_parameter_spec_transform_is_applied(self):
+        """transform= is applied at the kwargs boundary."""
+        desc = BackendDescriptor(
+            name="tf",
+            provider_type="tf",
+            auth_modes=[NoAuth],
+            parameters=[
+                ParameterSpec(
+                    name="FLAG", type=bool, tier="core",
+                    default=True, driver_key="flag",
+                    transform=lambda v: 1 if v else 0,
+                ),
+            ],
+        )
+
+        class P(ConnectionProfile):
+            __descriptor__ = desc
+
+        p = P(auth=NoAuth())
+        assert p.to_driver_kwargs() == {"flag": 1}
+
+        p2 = P(FLAG=False, auth=NoAuth())
+        assert p2.to_driver_kwargs() == {"flag": 0}
+
+    # --- Item 6: URL-encoded password in to_connection_string --------------------
+
+    def test_to_connection_string_url_encodes_password(self):
+        """Password special chars must be URL-encoded, not passed raw."""
+        p = DummyProfile(
+            HOST="h",
+            auth=PasswordAuth(username="user@corp", password=SecretStr("p@ss:w/ord")),
+        )
+        url = p.to_connection_string()
+        # '@' in username → %40; ':', '@', '/' in password → %3A, %40, %2F
+        assert "user%40corp" in url
+        assert "p%40ss%3Aw%2Ford" in url
