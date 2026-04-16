@@ -5,7 +5,7 @@ from unittest import mock
 
 from mountainash_data.backends.ibis.connection import SQLite_IbisConnection, DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
-from mountainash_data.core.settings import DuckDBAuthSettings, SQLiteAuthSettings
+from mountainash_data.core.settings import DuckDBAuthSettings, SQLiteAuthSettings, NoAuth
 
 @pytest.fixture
 def mock_settings_parameters_1():
@@ -39,14 +39,14 @@ def mock_settings_parameters_3():
 @pytest.fixture
 def sqlite_connection():
 
-    settings_parameters =  SettingsParameters.create(settings_class = SQLiteAuthSettings, namespace="SQLiteAuthSettings")
+    settings_parameters =  SettingsParameters.create(settings_class = SQLiteAuthSettings, namespace="SQLiteAuthSettings", kwargs={"auth": NoAuth()})
 
     return SQLite_IbisConnection(db_auth_settings_parameters=settings_parameters)
 
 @pytest.fixture
 def duckdb_connection():
 
-    settings_parameters =  SettingsParameters.create(settings_class = DuckDBAuthSettings, namespace="DuckDBAuthSettings")
+    settings_parameters =  SettingsParameters.create(settings_class = DuckDBAuthSettings, namespace="DuckDBAuthSettings", kwargs={"auth": NoAuth()})
 
     return DuckDB_IbisConnection(db_auth_settings_parameters=settings_parameters)
 

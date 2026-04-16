@@ -6,7 +6,7 @@ from mountainash_data.core.utils import DatabaseUtils
 from mountainash_data.core.connection import BaseDBConnection
 from mountainash_data.backends.ibis.connection import SQLite_IbisConnection, DuckDB_IbisConnection
 from mountainash_data.backends.ibis.operations import BaseIbisOperations
-from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings, NoAuth
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
@@ -45,7 +45,7 @@ class TestDatabaseUtilsCreateConnection:
         """Test that created connection can actually connect."""
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         connection = DatabaseUtils.create_connection(settings_params)
@@ -95,7 +95,7 @@ class TestDatabaseUtilsCreateBackend:
         """Test that create_backend returns connected backend."""
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         backend = DatabaseUtils.create_backend(settings_params)
@@ -110,7 +110,7 @@ class TestDatabaseUtilsCreateBackend:
         """Test create_backend with DuckDB in-memory."""
         settings_params = SettingsParameters.create(
             settings_class=DuckDBAuthSettings,
-            kwargs={"DATABASE": ":memory:"}
+            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
         )
 
         backend = DatabaseUtils.create_backend(settings_params)

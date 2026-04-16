@@ -115,6 +115,23 @@ class SettingsFactory:
             )
 
         settings_class = cls.SETTINGS_CLASS_MAP[backend_type]
+
+        # Auto-inject auth=NoAuth() for ConnectionProfile subclasses that only
+        # support NoAuth and haven't been passed an auth kwarg by the caller.
+        if "auth" not in kwargs:
+            try:
+                from ..settings.profile import ConnectionProfile
+                from ..settings.auth import NoAuth
+                if (
+                    isinstance(settings_class, type)
+                    and issubclass(settings_class, ConnectionProfile)
+                ):
+                    descriptor = getattr(settings_class, "__descriptor__", None)
+                    if descriptor is not None and descriptor.auth_modes == [NoAuth]:
+                        kwargs["auth"] = NoAuth()
+            except Exception:
+                pass
+
         return settings_class(**kwargs)
 
     @classmethod

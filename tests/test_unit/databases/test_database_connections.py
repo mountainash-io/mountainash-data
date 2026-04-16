@@ -8,7 +8,7 @@ from mountainash_data.backends.ibis.connection import BaseIbisConnection
 from mountainash_data.backends.ibis.connection import SQLite_IbisConnection
 from mountainash_data.backends.ibis.connection import DuckDB_IbisConnection
 from mountainash_settings import SettingsParameters
-from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings, NoAuth
 
 
 class TestBaseDBConnection:
@@ -47,7 +47,7 @@ class TestSQLiteIbisConnection:
         """Test SQLite connection can be initialized."""
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         conn = SQLite_IbisConnection(db_auth_settings_parameters=settings_params)
@@ -59,7 +59,7 @@ class TestSQLiteIbisConnection:
         """Test SQLite connect method."""
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         conn = SQLite_IbisConnection(db_auth_settings_parameters=settings_params)
@@ -80,7 +80,7 @@ class TestSQLiteIbisConnection:
         """Test SQLite connection with in-memory database."""
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": ":memory:"}
+            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
         )
 
         conn = SQLite_IbisConnection(db_auth_settings_parameters=settings_params)
@@ -127,7 +127,7 @@ class TestDuckDBIbisConnection:
         """Test DuckDB connection can be initialized."""
         settings_params = SettingsParameters.create(
             settings_class=DuckDBAuthSettings,
-            kwargs={"DATABASE": ":memory:"}
+            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
         )
 
         conn = DuckDB_IbisConnection(db_auth_settings_parameters=settings_params)
@@ -139,7 +139,7 @@ class TestDuckDBIbisConnection:
         """Test DuckDB connect method."""
         settings_params = SettingsParameters.create(
             settings_class=DuckDBAuthSettings,
-            kwargs={"DATABASE": ":memory:"}
+            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
         )
 
         conn = DuckDB_IbisConnection(db_auth_settings_parameters=settings_params)
@@ -168,7 +168,7 @@ class TestDuckDBIbisConnection:
         """Test DuckDB connection with in-memory database."""
         settings_params = SettingsParameters.create(
             settings_class=DuckDBAuthSettings,
-            kwargs={"DATABASE": None}  # None triggers memory mode for DuckDB
+            kwargs={"DATABASE": None, "auth": NoAuth()}  # None triggers memory mode for DuckDB
         )
 
         conn = DuckDB_IbisConnection(db_auth_settings_parameters=settings_params)
@@ -216,13 +216,13 @@ class TestConnectionFactory:
         settings_params1 = SettingsParameters.create(
             namespace="settings_params1",
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         settings_params2 = SettingsParameters.create(
             namespace="settings_params2",
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": ":memory:"}
+            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
         )
 
         conn1 = SQLite_IbisConnection(db_auth_settings_parameters=settings_params1)
@@ -245,13 +245,13 @@ class TestConnectionFactory:
         settings_params1 = SettingsParameters.create(
             namespace="settings_params1",
             settings_class=DuckDBAuthSettings,
-            kwargs={"DATABASE": ":memory:"}
+            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
         )
 
         settings_params2 = SettingsParameters.create(
             namespace="settings_params2",
             settings_class=DuckDBAuthSettings,
-            kwargs={"DATABASE": None}
+            kwargs={"DATABASE": None, "auth": NoAuth()}
         )
 
         conn1 = DuckDB_IbisConnection(db_auth_settings_parameters=settings_params1)

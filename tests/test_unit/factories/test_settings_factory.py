@@ -5,7 +5,7 @@ from mountainash_data.core.factories.settings_factory import SettingsFactory
 from mountainash_data.core.settings import (
     SQLiteAuthSettings,
     DuckDBAuthSettings,
-    BaseDBAuthSettings
+    ConnectionProfile,
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 
@@ -169,8 +169,8 @@ class TestSettingsFactoryConfiguration:
         )
 
         assert type(sqlite_settings) != type(duckdb_settings)
-        assert isinstance(sqlite_settings, BaseDBAuthSettings)
-        assert isinstance(duckdb_settings, BaseDBAuthSettings)
+        assert isinstance(sqlite_settings, ConnectionProfile)
+        assert isinstance(duckdb_settings, ConnectionProfile)
 
     def test_factory_lazy_loads_settings_classes(self):
         """Test that settings classes are loaded lazily."""
