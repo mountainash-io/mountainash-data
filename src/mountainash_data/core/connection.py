@@ -143,8 +143,8 @@ class BaseDBConnection(ABC):
         obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if isinstance(obj_settings, ConnectionProfile):
-            # New API: to_connection_string() returns full URL; extract scheme portion
-            # as a template so downstream format_connection_string still works.
+            # scheme parameter is intentionally ignored for ConnectionProfile —
+            # to_connection_string() uses the descriptor's connection_string_scheme.
             return obj_settings.to_connection_string()
 
         # Legacy fallback for BaseDBAuthSettings subclasses not yet migrated
@@ -180,7 +180,7 @@ class BaseDBConnection(ABC):
         if settings_class is None:
             raise ValueError("Settings class is required for the database connection")
 
-        obj_settings: ConnectionProfile = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
+        obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
 
         if isinstance(obj_settings, ConnectionProfile):
             return obj_settings.to_driver_kwargs()

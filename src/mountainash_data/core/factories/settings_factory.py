@@ -129,7 +129,7 @@ class SettingsFactory:
                     descriptor = getattr(settings_class, "__descriptor__", None)
                     if descriptor is not None and descriptor.auth_modes == [NoAuth]:
                         kwargs["auth"] = NoAuth()
-            except Exception:
+            except (ImportError, AttributeError):
                 pass
 
         return settings_class(**kwargs)
