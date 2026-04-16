@@ -15,7 +15,10 @@ def build_driver_kwargs(profile: "PySparkAuthSettings") -> dict[str, t.Any]:
     """
     kwargs: dict[str, t.Any] = {}
     if profile.MODE is not None:
-        kwargs["mode"] = profile.MODE.value
+        # StrEnum coerces to its string value; raw str passes through unchanged.
+        # Handles both pydantic-coerced and setattr-bypass construction paths
+        # (see MountainAshBaseSettings.update_settings_from_dict).
+        kwargs["mode"] = str(profile.MODE)
     if profile.SESSION is not None:
         kwargs["session"] = profile.SESSION
     if profile.APPLICATION_NAME is not None:

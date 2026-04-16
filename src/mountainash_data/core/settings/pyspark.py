@@ -13,8 +13,6 @@ from __future__ import annotations
 import typing as t
 from enum import StrEnum
 
-from pydantic import field_validator
-
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import pyspark as _adapter
 from .auth import NoAuth
@@ -26,8 +24,6 @@ __all__ = ["PySparkAuthSettings", "PySparkMode", "PYSPARK_DESCRIPTOR"]
 
 
 class PySparkMode(StrEnum):
-    """PySpark execution mode."""
-
     BATCH = "batch"
     STREAMING = "streaming"
 
@@ -39,84 +35,40 @@ PYSPARK_DESCRIPTOR = BackendDescriptor(
     ibis_dialect="pyspark",
     auth_modes=[NoAuth],
     parameters=[
-        ParameterSpec(
-            name="SESSION",
-            type=t.Optional[t.Any],
-            tier="core",
-            default=None,
-        ),
-        ParameterSpec(
-            name="MODE",
-            type=PySparkMode,
-            tier="core",
-            default=PySparkMode.BATCH,
-        ),
-        ParameterSpec(
-            name="SPARK_MASTER",
-            type=t.Optional[str],
-            tier="advanced",
-            default=None,
-        ),
-        ParameterSpec(
-            name="APPLICATION_NAME",
-            type=t.Optional[str],
-            tier="advanced",
-            default=None,
-        ),
-        ParameterSpec(
-            name="WAREHOUSE_DIR",
-            type=t.Optional[str],
-            tier="advanced",
-            default=None,
-        ),
-        ParameterSpec(
-            name="PARTITIONS",
-            type=t.Optional[int],
-            tier="advanced",
-            default=None,
-        ),
+        ParameterSpec(name="SESSION", type=t.Optional[t.Any], tier="core",
+                      default=None),
+        ParameterSpec(name="MODE", type=PySparkMode, tier="core",
+                      default=PySparkMode.BATCH),
+        ParameterSpec(name="SPARK_MASTER", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="APPLICATION_NAME", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="WAREHOUSE_DIR", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="PARTITIONS", type=t.Optional[int], tier="advanced",
+                      default=None),
     ],
 )
 
 
 @register(PYSPARK_DESCRIPTOR)
 class PySparkAuthSettings(ConnectionProfile):
-    """PySpark authentication and configuration settings.
-
-    Supports batch and streaming modes, with optional Spark configuration
-    via master, application name, warehouse directory, and partition settings.
-    """
-
     __descriptor__ = PYSPARK_DESCRIPTOR
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)
 
     def __setattr__(self, name: str, value: t.Any) -> None:
-        """Override to handle enum coercion for MODE field.
+        """Coerce MODE strings to PySparkMode enum.
 
         The parent __init__ calls update_settings_from_dict() which uses setattr()
         directly, bypassing pydantic validators. This override ensures MODE strings
         are coerced to PySparkMode enums.
         """
         if name == "MODE" and value is not None and not isinstance(value, PySparkMode):
-            value = self._coerce_mode(value)
+            try:
+                value = PySparkMode(value)
+            except ValueError:
+                raise ValueError(
+                    f"MODE must be one of {[mode.value for mode in PySparkMode]}, "
+                    f"got {value!r}"
+                )
         super().__setattr__(name, value)
-
-    @field_validator("MODE", check_fields=False)
-    @classmethod
-    def _coerce_mode(cls, v: t.Any) -> PySparkMode:
-        """Coerce string/enum to PySparkMode enum.
-
-        Handles both pydantic validation path and setattr() bypass path.
-        """
-        if v is None:
-            return None
-        if isinstance(v, PySparkMode):
-            return v
-        # String coercion
-        try:
-            return PySparkMode(v)
-        except ValueError:
-            raise ValueError(
-                f"MODE must be one of {[mode.value for mode in PySparkMode]}, "
-                f"got {v!r}"
-            )
