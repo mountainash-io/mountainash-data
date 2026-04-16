@@ -22,7 +22,7 @@ __all__ = ["MotherDuckAuthSettings", "MOTHERDUCK_DESCRIPTOR"]
 MOTHERDUCK_DESCRIPTOR = BackendDescriptor(
     name="motherduck",
     provider_type=CONST_DB_PROVIDER_TYPE.MOTHERDUCK,
-    connection_string_scheme="duckdb://md:",
+    connection_string_scheme="duckdb://md:",  # md:<db>?motherduck_token=...
     ibis_dialect="duckdb",
     rides_on="duckdb",
     auth_modes=[TokenAuth],
