@@ -97,4 +97,6 @@ Patterns that emerged across multiple backends:
 
 Counts are filled in as each per-backend audit completes.
 
-Counts are filled in as each per-backend audit completes.
+## Status (post-refactor, 2026-04-15)
+
+The settings-registry refactor (see `docs/superpowers/specs/2026-04-15-settings-registry-design.md` and `docs/superpowers/plans/2026-04-15-settings-registry.md`) consumed most "core mismatch" and many "core missing" findings in the tables above. Remaining items are tracked as per-backend Phase-4 follow-up plans.
