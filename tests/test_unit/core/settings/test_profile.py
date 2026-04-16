@@ -141,6 +141,68 @@ class TestConnectionProfile:
         p2 = P(FLAG=False, auth=NoAuth())
         assert p2.to_driver_kwargs() == {"flag": 0}
 
+    # --- ParameterSpec.validator wired via AfterValidator -------------------------
+
+    def test_parameter_spec_validator_rejects_bad_input(self):
+        """validator= on ParameterSpec is wired as a pydantic AfterValidator."""
+        def _must_be_positive(v: int) -> int:
+            if v <= 0:
+                raise ValueError("must be positive")
+            return v
+
+        desc = BackendDescriptor(
+            name="val",
+            provider_type="val",
+            auth_modes=[NoAuth],
+            parameters=[
+                ParameterSpec(
+                    name="COUNT", type=int, tier="core",
+                    validator=_must_be_positive,
+                ),
+            ],
+        )
+
+        class P(ConnectionProfile):
+            __descriptor__ = desc
+
+        # Valid value passes
+        p = P(COUNT=5, auth=NoAuth())
+        assert p.COUNT == 5
+
+        # Invalid value rejected at construction
+        with pytest.raises(ValidationError, match="must be positive"):
+            P(COUNT=-1, auth=NoAuth())
+
+    def test_parameter_spec_validator_allows_valid_input(self):
+        """validator= passes valid values through unchanged."""
+        def _must_be_positive(v: int) -> int:
+            if v <= 0:
+                raise ValueError("must be positive")
+            return v
+
+        desc = BackendDescriptor(
+            name="val2",
+            provider_type="val2",
+            auth_modes=[NoAuth],
+            parameters=[
+                ParameterSpec(
+                    name="N", type=int, tier="core",
+                    default=10, validator=_must_be_positive,
+                ),
+            ],
+        )
+
+        class P(ConnectionProfile):
+            __descriptor__ = desc
+
+        # Default (10) passes validator
+        p = P(auth=NoAuth())
+        assert p.N == 10
+
+        # Explicit valid value passes
+        p2 = P(N=42, auth=NoAuth())
+        assert p2.N == 42
+
     # --- Item 6: URL-encoded password in to_connection_string --------------------
 
     def test_to_connection_string_url_encodes_password(self):

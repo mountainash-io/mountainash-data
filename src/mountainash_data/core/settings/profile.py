@@ -13,7 +13,7 @@ import typing as t
 
 from urllib.parse import quote
 
-from pydantic import SecretStr
+from pydantic import AfterValidator, SecretStr
 from pydantic.fields import FieldInfo
 
 from mountainash_settings import MountainAshBaseSettings
@@ -54,6 +54,8 @@ class ConnectionProfile(MountainAshBaseSettings):
         # 1. Descriptor parameters → pydantic fields
         for spec in desc.parameters:
             ptype: t.Any = SecretStr if spec.secret else spec.type
+            if spec.validator is not None:
+                ptype = t.Annotated[ptype, AfterValidator(spec.validator)]
             if spec.default is MISSING:
                 info = FieldInfo(
                     annotation=ptype,
