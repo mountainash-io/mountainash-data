@@ -14,7 +14,7 @@ from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import mysql as _adapter
-from .auth import PasswordAuth
+from mountainash_settings.auth import PasswordAuth
 from .descriptor import BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register

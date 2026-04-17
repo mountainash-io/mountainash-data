@@ -10,8 +10,8 @@ if t.TYPE_CHECKING:
 
 def build_driver_kwargs(profile: "MySQLAuthSettings") -> dict[str, t.Any]:
     """Assemble driver kwargs, including ssl={} dict if any SSL fields are set."""
-    kwargs = profile._default_driver_kwargs()
-    kwargs.update(profile._auth_to_driver_kwargs())
+    kwargs = profile._default_kwargs()
+    kwargs.update(profile._auth_kwargs())
 
     if profile.SSL_MODE is not None:
         kwargs["ssl_mode"] = str(profile.SSL_MODE)

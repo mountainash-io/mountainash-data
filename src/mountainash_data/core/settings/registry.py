@@ -19,6 +19,8 @@ if t.TYPE_CHECKING:
 __all__ = [
     "DATABASES_REGISTRY",
     "REGISTRY",
+    "_reset_for_tests",
+    "_snapshot_for_tests",
     "get_descriptor",
     "get_settings_class",
     "register",
@@ -65,3 +67,16 @@ class _RegistryDictView(Mapping):
 
 
 REGISTRY = _RegistryDictView()
+
+
+# Test seams — thin wrappers around the Registry instance methods so test
+# modules can import them as module-level names.
+
+def _snapshot_for_tests() -> tuple[dict, dict]:
+    """Return a snapshot of the registry state for test isolation."""
+    return DATABASES_REGISTRY._snapshot_for_tests()
+
+
+def _reset_for_tests(descriptors_snapshot: dict, classes_snapshot: dict) -> None:
+    """Restore registry state from a prior snapshot (test-only)."""
+    DATABASES_REGISTRY._reset_for_tests(descriptors_snapshot, classes_snapshot)

@@ -12,7 +12,7 @@ from pydantic import SecretStr
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import pyiceberg_rest as _adapter
-from .auth import OAuth2Auth, TokenAuth
+from mountainash_settings.auth import OAuth2Auth, TokenAuth
 from .descriptor import BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register

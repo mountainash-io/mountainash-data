@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.core.settings.auth import OAuth2Auth, TokenAuth
+from mountainash_settings.auth import OAuth2Auth, TokenAuth
 
 if t.TYPE_CHECKING:
     from mountainash_data.core.settings.pyiceberg_rest import (
@@ -13,7 +13,7 @@ if t.TYPE_CHECKING:
 
 
 def build_driver_kwargs(profile: "PyIcebergRestAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_driver_kwargs()
+    kwargs = profile._default_kwargs()
 
     # S3 family
     for field, key in [

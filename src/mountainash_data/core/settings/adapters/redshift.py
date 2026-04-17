@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.core.settings.auth import IAMAuth, PasswordAuth
+from mountainash_settings.auth import IAMAuth, PasswordAuth
 
 if t.TYPE_CHECKING:
     from mountainash_data.core.settings.redshift import RedshiftAuthSettings
 
 
 def build_driver_kwargs(profile: "RedshiftAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_driver_kwargs()
+    kwargs = profile._default_kwargs()
 
     auth = profile.auth
     if isinstance(auth, PasswordAuth):

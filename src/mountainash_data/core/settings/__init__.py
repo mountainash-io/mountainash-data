@@ -17,7 +17,7 @@ from .registry import (
 )
 
 # Auth union members
-from .auth import (
+from mountainash_settings.auth import (
     AuthSpec,
     AzureADAuth,
     CertificateAuth,
