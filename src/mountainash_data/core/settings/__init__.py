@@ -10,6 +10,7 @@ from __future__ import annotations
 from .descriptor import MISSING, BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import (
+    DATABASES_REGISTRY,
     REGISTRY,
     get_descriptor,
     get_settings_class,
@@ -49,7 +50,8 @@ from .pyiceberg_rest import PyIcebergRestAuthSettings
 __all__ = [
     # primitives
     "MISSING", "BackendDescriptor", "ParameterSpec", "ConnectionProfile",
-    "REGISTRY", "get_descriptor", "get_settings_class", "register",
+    "DATABASES_REGISTRY", "REGISTRY",
+    "get_descriptor", "get_settings_class", "register",
     # auth
     "AuthSpec", "NoAuth", "PasswordAuth", "TokenAuth", "JWTAuth",
     "OAuth2Auth", "ServiceAccountAuth", "IAMAuth", "WindowsAuth",
