@@ -5,7 +5,6 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.core.settings.auth import (
-    AuthSpec,
     JWTAuth,
     KerberosAuth,
     NoAuth,
