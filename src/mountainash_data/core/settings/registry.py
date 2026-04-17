@@ -1,105 +1,82 @@
-"""Module-level registry of backend descriptors and settings classes.
+"""Module-level registry of database backend descriptors.
 
-Registration happens at import time only; runtime re-registration is
-unsupported. Mutating ``REGISTRY`` directly bypasses the duplicate-name
-check — always use :func:`register`.
+Backed by :class:`mountainash_settings.profiles.Registry` — a per-domain
+registry class. The old module-level ``REGISTRY`` dict is preserved as a
+property-style alias for any downstream consumer that imports it directly.
 """
 
 from __future__ import annotations
 
 import typing as t
+from collections.abc import Mapping
 
-from .descriptor import BackendDescriptor
-from .profile import ConnectionProfile
+from mountainash_settings.profiles import Registry
 
-__all__ = ["REGISTRY", "register", "get_descriptor", "get_settings_class"]
+if t.TYPE_CHECKING:
+    from mountainash_settings.profiles import ProfileDescriptor
+    from .profile import ConnectionProfile
 
-REGISTRY: dict[str, BackendDescriptor] = {}
-_CLASSES: dict[str, type[ConnectionProfile]] = {}
+__all__ = [
+    "DATABASES_REGISTRY",
+    "REGISTRY",
+    "_reset_for_tests",
+    "_snapshot_for_tests",
+    "get_descriptor",
+    "get_settings_class",
+    "register",
+]
 
+DATABASES_REGISTRY = Registry("databases")
 
-T = t.TypeVar("T", bound=ConnectionProfile)
-
-
-def register(
-    descriptor: BackendDescriptor,
-) -> t.Callable[[type[T]], type[T]]:
-    """Class decorator that registers a :class:`ConnectionProfile` subclass.
-
-    Raises:
-        ValueError: if ``descriptor.name`` is already registered.
-
-    Note:
-        Subclasses must still declare ``__descriptor__ = desc`` in the class
-        body for pydantic field materialization — ``ConnectionProfile``'s
-        ``__pydantic_init_subclass__`` hook reads ``__descriptor__`` at class
-        creation time, before this decorator runs. The decorator's
-        ``cls.__descriptor__`` assignment is a post-hoc safety net only.
-    """
-    if descriptor.name in REGISTRY:
-        existing = _CLASSES.get(descriptor.name)
-        where = (
-            f"{existing.__module__}.{existing.__qualname__}"
-            if existing is not None
-            else "<unknown class>"
-        )
-        raise ValueError(
-            f"Backend {descriptor.name!r} is already registered by {where}"
-        )
-
-    def _wrap(cls: type[T]) -> type[T]:
-        REGISTRY[descriptor.name] = descriptor
-        _CLASSES[descriptor.name] = cls
-        cls.__descriptor__ = descriptor  # optional: class body usually sets this; this line is a no-op safety net
-        return cls
-
-    return _wrap
+register = DATABASES_REGISTRY.decorator()
 
 
-def get_descriptor(name: str) -> BackendDescriptor:
-    """Return the :class:`BackendDescriptor` for ``name``.
-
-    Raises:
-        KeyError: if ``name`` is not registered.
-    """
-    try:
-        return REGISTRY[name]
-    except KeyError:
-        known = ", ".join(sorted(REGISTRY)) or "<none>"
-        raise KeyError(
-            f"No backend registered under {name!r}. Known: {known}"
-        ) from None
+def get_descriptor(name: str) -> "ProfileDescriptor":
+    return DATABASES_REGISTRY.get_descriptor(name)
 
 
-def get_settings_class(name: str) -> type[ConnectionProfile]:
-    """Return the registered settings class for ``name``.
-
-    Raises:
-        KeyError: if ``name`` is not registered.
-    """
-    try:
-        return _CLASSES[name]
-    except KeyError:
-        known = ", ".join(sorted(_CLASSES)) or "<none>"
-        raise KeyError(
-            f"No settings class registered under {name!r}. Known: {known}"
-        ) from None
+def get_settings_class(name: str) -> type["ConnectionProfile"]:
+    return DATABASES_REGISTRY.get_settings_class(name)  # type: ignore[return-value]
 
 
-def _reset_for_tests(
-    registry_snapshot: dict[str, BackendDescriptor],
-    classes_snapshot: dict[str, type[ConnectionProfile]],
-) -> None:
-    """Restore REGISTRY and _CLASSES to snapshots (test-only helper)."""
-    REGISTRY.clear()
-    REGISTRY.update(registry_snapshot)
-    _CLASSES.clear()
-    _CLASSES.update(classes_snapshot)
+# Backwards-compatibility alias — preserves ``from ... import REGISTRY`` imports.
+# Read-only from the outside; mutations should go through ``@register``.
+class _RegistryDictView(Mapping):
+    """Dict-like view that delegates to DATABASES_REGISTRY.descriptors."""
+
+    def __contains__(self, name: object) -> bool:
+        return isinstance(name, str) and name in DATABASES_REGISTRY
+
+    def __getitem__(self, name: str) -> "ProfileDescriptor":
+        return DATABASES_REGISTRY.get_descriptor(name)
+
+    def __iter__(self) -> t.Iterator[str]:
+        return iter(DATABASES_REGISTRY.descriptors)
+
+    def __len__(self) -> int:
+        return len(DATABASES_REGISTRY)
+
+    def items(self) -> t.ItemsView[str, "ProfileDescriptor"]:
+        return DATABASES_REGISTRY.descriptors.items()
+
+    def keys(self) -> t.KeysView[str]:
+        return DATABASES_REGISTRY.descriptors.keys()
+
+    def values(self) -> t.ValuesView["ProfileDescriptor"]:
+        return DATABASES_REGISTRY.descriptors.values()
 
 
-def _snapshot_for_tests() -> tuple[
-    dict[str, BackendDescriptor],
-    dict[str, type[ConnectionProfile]],
-]:
-    """Return a copy of REGISTRY and _CLASSES for later restore."""
-    return REGISTRY.copy(), _CLASSES.copy()
+REGISTRY = _RegistryDictView()
+
+
+# Test seams — thin wrappers around the Registry instance methods so test
+# modules can import them as module-level names.
+
+def _snapshot_for_tests() -> tuple[dict, dict]:
+    """Return a snapshot of the registry state for test isolation."""
+    return DATABASES_REGISTRY._snapshot_for_tests()
+
+
+def _reset_for_tests(descriptors_snapshot: dict, classes_snapshot: dict) -> None:
+    """Restore registry state from a prior snapshot (test-only)."""
+    DATABASES_REGISTRY._reset_for_tests(descriptors_snapshot, classes_snapshot)

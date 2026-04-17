@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import snowflake as _adapter
-from .auth import CertificateAuth, OAuth2Auth, PasswordAuth, TokenAuth
+from mountainash_settings.auth import CertificateAuth, OAuth2Auth, PasswordAuth, TokenAuth
 from .descriptor import BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register

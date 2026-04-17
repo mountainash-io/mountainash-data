@@ -18,9 +18,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - `CatalogInfo`, `NamespaceInfo`, `TableInfo`, `ColumnInfo` — shared physical metadata dataclasses
 
 3. **Settings** (`src/mountainash_data/core/settings/`)
-   - Declarative per-backend descriptors (`BackendDescriptor` + `ParameterSpec` list).
-   - Typed discriminated-union auth via `AuthSpec` subclasses (`PasswordAuth`, `OAuth2Auth`, `IAMAuth`, …).
-   - Backend shell classes register themselves via `@register` and expose `to_driver_kwargs()` + `to_connection_string()`.
+   - Database-flavored layer over `mountainash-settings`'s `profiles` and
+     `auth` sub-packages.
+   - `BackendDescriptor` is a typed `ProfileDescriptor` subclass adding
+     `default_port` / `connection_string_scheme` / `ibis_dialect` / `rides_on`;
+     every backend is a two-line shell registered via `@register`.
+   - `ConnectionProfile` adds `to_driver_kwargs()` and `to_connection_string()`
+     on top of the generic `DescriptorProfile` base.
+   - `AuthSpec` subclasses (`PasswordAuth`, `OAuth2Auth`, `IAMAuth`, …) live
+     upstream in `mountainash_settings.auth` and are re-exported from
+     `mountainash_data.core.settings` for downstream compatibility.
    - Composite driver mappings live in `settings/adapters/<backend>.py`.
 
 4. **Factories** (`src/mountainash_data/core/factories/`)

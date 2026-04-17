@@ -13,7 +13,7 @@ from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import bigquery as _adapter
-from .auth import NoAuth, ServiceAccountAuth
+from mountainash_settings.auth import NoAuth, ServiceAccountAuth
 from .descriptor import BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register

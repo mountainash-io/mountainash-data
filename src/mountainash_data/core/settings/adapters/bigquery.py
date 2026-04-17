@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.core.settings.auth import NoAuth, ServiceAccountAuth
+from mountainash_settings.auth import NoAuth, ServiceAccountAuth
 
 if t.TYPE_CHECKING:
     from mountainash_data.core.settings.bigquery import BigQueryAuthSettings
 
 
 def build_driver_kwargs(profile: "BigQueryAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_driver_kwargs()
+    kwargs = profile._default_kwargs()
 
     auth = profile.auth
     if isinstance(auth, ServiceAccountAuth):

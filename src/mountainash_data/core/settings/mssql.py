@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import mssql as _adapter
-from .auth import AzureADAuth, PasswordAuth, WindowsAuth
+from mountainash_settings.auth import AzureADAuth, PasswordAuth, WindowsAuth
 from .descriptor import BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register

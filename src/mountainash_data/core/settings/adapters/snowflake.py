@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.core.settings.auth import (
+from mountainash_settings.auth import (
     CertificateAuth,
     OAuth2Auth,
     PasswordAuth,
@@ -16,7 +16,7 @@ if t.TYPE_CHECKING:
 
 
 def build_driver_kwargs(profile: "SnowflakeAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_driver_kwargs()
+    kwargs = profile._default_kwargs()
 
     # Session parameters
     session_params: dict[str, t.Any] = {}

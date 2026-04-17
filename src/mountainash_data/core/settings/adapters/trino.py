@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.core.settings.auth import (
+from mountainash_settings.auth import (
     JWTAuth,
     KerberosAuth,
     NoAuth,
@@ -16,7 +16,7 @@ if t.TYPE_CHECKING:
 
 
 def build_driver_kwargs(profile: "TrinoAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_driver_kwargs()
+    kwargs = profile._default_kwargs()
     auth = profile.auth
     if isinstance(auth, PasswordAuth):
         from trino.auth import BasicAuthentication

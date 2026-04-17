@@ -15,7 +15,7 @@ from pathlib import Path
 from pydantic import SecretStr
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .auth import NoAuth, PasswordAuth
+from mountainash_settings.auth import NoAuth, PasswordAuth
 from .descriptor import BackendDescriptor, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
