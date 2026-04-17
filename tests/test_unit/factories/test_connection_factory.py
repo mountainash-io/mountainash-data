@@ -4,7 +4,7 @@ import pytest
 from mountainash_data.core.factories.connection_factory import ConnectionFactory
 from mountainash_data.core.connection import BaseDBConnection
 from mountainash_data.backends.ibis.connection import SQLite_IbisConnection, DuckDB_IbisConnection
-from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings, NoAuth
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
@@ -74,7 +74,7 @@ class TestConnectionFactoryGetConnection:
         """Test that returned connection instance can actually connect."""
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         connection = ConnectionFactory.get_connection(settings_params)
@@ -204,7 +204,7 @@ class TestConnectionFactoryIntegration:
         # Create settings
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         # Get connection from factory

@@ -1,51 +1,62 @@
+"""Backend settings — declarative descriptor + registry.
 
-from .base import BaseDBAuthSettings
+The *AuthSettings classes below are stable import anchors; internally each
+class body is a two-line shell (``__descriptor__`` + ``__adapter__``).
+"""
 
-# from .constants import CONST_DB_PROVIDER_TYPE, CONST_DB_AUTH_METHOD, CONST_DB_CONNECTION_STATUS, CONST_DB_POOL_MODE
-from .exceptions import DBAuthConfigError, DBAuthConnectionError, DBAuthValidationError, DBAuthSecurityError
-from .templates import DBAuthTemplates
+from __future__ import annotations
 
+# Core primitives
+from .descriptor import MISSING, BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import (
+    REGISTRY,
+    get_descriptor,
+    get_settings_class,
+    register,
+)
+
+# Auth union members
+from .auth import (
+    AuthSpec,
+    AzureADAuth,
+    CertificateAuth,
+    IAMAuth,
+    JWTAuth,
+    KerberosAuth,
+    NoAuth,
+    OAuth2Auth,
+    PasswordAuth,
+    ServiceAccountAuth,
+    TokenAuth,
+    WindowsAuth,
+)
+
+# Per-backend settings classes (these import-register themselves).
+from .sqlite import SQLiteAuthSettings
+from .duckdb import DuckDBAuthSettings
+from .motherduck import MotherDuckAuthSettings
+from .postgresql import PostgreSQLAuthSettings
+from .mysql import MySQLAuthSettings
+from .mssql import MSSQLAuthSettings
+from .snowflake import SnowflakeAuthSettings
 from .bigquery import BigQueryAuthSettings
 from .redshift import RedshiftAuthSettings
-from .snowflake import SnowflakeAuthSettings
-from .duckdb import DuckDBAuthSettings
-from .sqlite import SQLiteAuthSettings
-from .mssql import MSSQLAuthSettings
-from .mysql import MySQLAuthSettings
-from .postgresql import PostgreSQLAuthSettings
-from .motherduck import MotherDuckAuthSettings
 from .pyspark import PySparkAuthSettings
 from .trino import TrinoAuthSettings
 from .pyiceberg_rest import PyIcebergRestAuthSettings
 
-
 __all__ = [
-    "BaseDBAuthSettings",
-    # "CONST_DB_PROVIDER_TYPE",
-    # "CONST_DB_AUTH_METHOD",
-    # "CONST_DB_CONNECTION_STATUS",
-    # "CONST_DB_POOL_MODE",
-
-    "DBAuthConfigError",
-    "DBAuthConnectionError",
-    "DBAuthValidationError",
-    "DBAuthSecurityError",
-
-    # "DBAuthFactory",
-    "DBAuthTemplates",
-
-    "BigQueryAuthSettings",
-    "RedshiftAuthSettings",
-    "SnowflakeAuthSettings",
-    "DuckDBAuthSettings",
-    "SQLiteAuthSettings",
-    "MSSQLAuthSettings",
-    "MySQLAuthSettings",
-    "PostgreSQLAuthSettings",
-    "MotherDuckAuthSettings",
-    "BigQueryAuthSettings",
-    "PySparkAuthSettings",
-    "TrinoAuthSettings",
-    "PyIcebergRestAuthSettings"
-
-    ]
+    # primitives
+    "MISSING", "BackendDescriptor", "ParameterSpec", "ConnectionProfile",
+    "REGISTRY", "get_descriptor", "get_settings_class", "register",
+    # auth
+    "AuthSpec", "NoAuth", "PasswordAuth", "TokenAuth", "JWTAuth",
+    "OAuth2Auth", "ServiceAccountAuth", "IAMAuth", "WindowsAuth",
+    "AzureADAuth", "KerberosAuth", "CertificateAuth",
+    # backends
+    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
+    "PostgreSQLAuthSettings", "MySQLAuthSettings", "MSSQLAuthSettings",
+    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
+    "PySparkAuthSettings", "TrinoAuthSettings", "PyIcebergRestAuthSettings",
+]

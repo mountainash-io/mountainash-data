@@ -1,135 +1,94 @@
-#path: mountainash_settings/auth/database/providers/file/duckdb.py
+"""DuckDB backend settings.
 
-from typing import Optional, List, Any, Dict, Tuple
-from upath import UPath
+Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/duckdb.md``.
+Driver: https://duckdb.org/docs/current/configuration/overview.html
+Ibis: ``ibis.backends.duckdb.do_connect(database=':memory:', read_only=False,
+       extensions=None, **config)``
+"""
+
+from __future__ import annotations
+
 import re
+import typing as t
 
-from pydantic import Field, field_validator
+from pydantic import field_validator
 
-from mountainash_settings import SettingsParameters
-
-from .base import BaseDBAuthSettings
 from ..constants import CONST_DB_PROVIDER_TYPE
+from .auth import NoAuth
+from .descriptor import BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import register
+
+__all__ = ["DuckDBAuthSettings", "DUCKDB_DESCRIPTOR"]
+
+_MEMORY_LIMIT_RE = re.compile(r"^(?:\d+(?:\.\d+)?\s*[KMG]i?B|\d+%)$", re.IGNORECASE)
 
 
-class DuckDBAuthSettings(BaseDBAuthSettings):
-    """DuckDB authentication settings
-
-    Ibis DuckDB: https://ibis-project.org/backends/duckdb
-    https://duckdb.org/docs/configuration/overview.html
-
-    Geospatial: https://duckdb.org/docs/extensions/spatial.html#st_read—read-spatial-data-from-files
-
-    """
-
-    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.DUCKDB)
-    AUTH_METHOD: str = Field(default="none")  # DuckDB uses file-based authentication
-
-    # File Settings
-    READ_ONLY: bool = Field(default=True)
-
-    # # Configuration Settings
-    THREADS: Optional[int] = Field(default=None)
-    MEMORY_LIMIT: Optional[str] = Field(default=None)  # e.g., "4GB"
-    # TEMP_DIRECTORY: Optional[str] = Field(default=None)
-
-    # # Extension Settings
-    EXTENSIONS: List[str] = Field(default_factory=list)
-    # ALLOW_UNSIGNED_EXTENSIONS: bool = Field(default=False)
-
-    # # Performance Settings
-    # PAGE_SIZE: Optional[int] = Field(default=None)  # in bytes
-    # COMPRESSION: Optional[str] = Field(default="auto")
-    # ACCESS_MODE: Optional[str] = Field(default=None)  # "AUTOMATIC", "DIRECT_IO"
-
-    #Attach external database(s)
-    ATTACH_PATH: Optional[str|List[str]] = Field(default=None)
-
-    def __init__(self,
-                 config_files: Optional[str|UPath|List[str|UPath]|Tuple[str|UPath]] = None,
-                 settings_parameters:   Optional[SettingsParameters] = None,
-                #  _dummy: Optional[bool] = False,
-                 **kwargs) -> None:
-
-
-        super().__init__(config_files=config_files,
-                         settings_parameters=settings_parameters,
-                        #  _dummy=_dummy,
-                         **kwargs)
-
-    @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
-        """Database provider identifier."""
-        return CONST_DB_PROVIDER_TYPE.DUCKDB
-
-
-    @field_validator("MEMORY_LIMIT")
-    @classmethod
-    def validate_memory_limit(cls, value: Optional[str]) -> Optional[str]:
-        """Validate validate_memory_limit"""
-
-        regex: str = r'^\d+[KMG]B$'
-        precondition: bool = value is not None
-        test: bool = bool(re.match(regex, value)) if precondition else True
-        valid: bool = (not precondition) | test
-
-        if not valid:
-            raise ValueError("Memory limit must match the format: number + unit (KB, MB, GB).")
-
+def _validate_memory_limit(value: t.Any) -> t.Any:
+    if value is None:
         return value
+    if not _MEMORY_LIMIT_RE.match(str(value)):
+        raise ValueError(
+            "MEMORY_LIMIT must match e.g. '500MB', '1.5GB', '1024KiB', or '80%'"
+        )
+    return value
 
 
-    def _post_init(self, reinitialise: bool) -> None:
-        """Initialize provider-specific settings"""
-        ...
+DUCKDB_DESCRIPTOR = BackendDescriptor(
+    name="duckdb",
+    provider_type=CONST_DB_PROVIDER_TYPE.DUCKDB,
+    connection_string_scheme="duckdb://",
+    ibis_dialect="duckdb",
+    auth_modes=[NoAuth],
+    parameters=[
+        ParameterSpec(
+            name="DATABASE",
+            type=t.Optional[str],
+            tier="core",
+            default=None,
+            driver_key="database",
+            description="Path to the DuckDB file, or ':memory:' for in-memory.",
+        ),
+        ParameterSpec(
+            name="READ_ONLY",
+            type=bool,
+            tier="core",
+            default=False,
+            driver_key="read_only",
+            description="Open database in read-only mode.",
+        ),
+        ParameterSpec(
+            name="EXTENSIONS",
+            type=list[str],
+            tier="core",
+            default=[],
+            driver_key="extensions",
+            description="List of extensions to load (e.g., ['httpfs', 'json']).",
+        ),
+        ParameterSpec(
+            name="THREADS",
+            type=t.Optional[int],
+            tier="advanced",
+            default=None,
+            description="Number of threads to use. Passed to config dict (Phase 4).",
+        ),
+        ParameterSpec(
+            name="MEMORY_LIMIT",
+            type=t.Optional[str],
+            tier="advanced",
+            default=None,
+            validator=_validate_memory_limit,
+            description="Memory limit as string: '500MB', '1.5GB', '1024KiB', or '80%'.",
+        ),
+    ],
+)
 
 
-    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
-        """Generate DuckDB connection string"""
+@register(DUCKDB_DESCRIPTOR)
+class DuckDBAuthSettings(ConnectionProfile):
+    __descriptor__ = DUCKDB_DESCRIPTOR
 
-        template = f"{scheme}"
-
-        if self.DATABASE:
-            template += "{database}"
-
-        return template
-
-    def get_connection_string_params(self) -> Dict[str, Any]:
-        """Get connection arguments for DuckDB"""
-        args = {}
-        # args["scheme"] = scheme if scheme else "duckdb://"
-
-        if self.DATABASE is not None:
-            args["database"] = UPath(self.DATABASE).expanduser()
-        else:
-            args["database"] = ":memory:"
-
-        return {k: v for k, v in args.items() if v is not None}
-
-    def get_connection_kwargs(self) -> Dict[str, Any]:
-        """Get connection arguments for DuckDB"""
-        args =  {}
-
-        if self.DATABASE:
-            args["database"] = self.DATABASE
-        if self.READ_ONLY:
-            args["read_only"] = self.READ_ONLY
-
-        # values for config parameter
-        config = {}
-        if self.THREADS:
-            config["threads"] = self.THREADS
-        if self.MEMORY_LIMIT:
-            config["memory_limit"] = self.MEMORY_LIMIT
-        if self.EXTENSIONS:
-            config["extensions"] = self.EXTENSIONS
-
-        if config:
-            args["config"] = config
-
-        return args
-
-    def get_post_connection_options(self) -> Dict[str, Any]:
-
-        """Get connection arguments as dictionary"""
-        ...
+    @field_validator("MEMORY_LIMIT", check_fields=False)
+    @classmethod
+    def _mem_limit(cls, v: t.Any) -> t.Any:
+        return _validate_memory_limit(v)

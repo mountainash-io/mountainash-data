@@ -5,7 +5,8 @@ from mountainash_data.core.settings import (
     SQLiteAuthSettings,
     DuckDBAuthSettings,
     PostgreSQLAuthSettings,
-    BaseDBAuthSettings
+    ConnectionProfile,
+    NoAuth,
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
@@ -16,7 +17,7 @@ def sqlite_settings_params(temp_sqlite_db):
     """Create SQLite settings parameters for testing."""
     return SettingsParameters.create(
         settings_class=SQLiteAuthSettings,
-        kwargs={"DATABASE": str(temp_sqlite_db)}
+        kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
     )
 
 
@@ -25,7 +26,7 @@ def sqlite_memory_settings_params():
     """Create SQLite in-memory settings parameters for testing."""
     return SettingsParameters.create(
         settings_class=SQLiteAuthSettings,
-        kwargs={"DATABASE": ":memory:"}
+        kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
     )
 
 
@@ -34,7 +35,7 @@ def duckdb_settings_params():
     """Create DuckDB settings parameters for testing."""
     return SettingsParameters.create(
         settings_class=DuckDBAuthSettings,
-        kwargs={"DATABASE": ":memory:"}
+        kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
     )
 
 
@@ -43,7 +44,7 @@ def duckdb_file_settings_params(temp_duckdb_db):
     """Create DuckDB file-based settings parameters for testing."""
     return SettingsParameters.create(
         settings_class=DuckDBAuthSettings,
-        kwargs={"DATABASE": str(temp_duckdb_db)}
+        kwargs={"DATABASE": str(temp_duckdb_db), "auth": NoAuth()}
     )
 
 
@@ -86,6 +87,10 @@ def settings_factory_helper():
         # Set default DATABASE if not provided
         if "DATABASE" not in kwargs:
             kwargs["DATABASE"] = ":memory:"
+
+        # Set default auth if not provided
+        if "auth" not in kwargs:
+            kwargs["auth"] = NoAuth()
 
         return SettingsParameters.create(
             settings_class=settings_class,

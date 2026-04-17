@@ -1,112 +1,74 @@
-#path: mountainash_settings/auth/database/providers/file/sqlite.py
+"""PySpark backend settings.
 
-from typing import Optional, List, Any, Dict, Tuple
-from upath import UPath
+Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/pyspark.md``.
+Ibis: ``ibis.backends.pyspark.do_connect(session=None, mode='batch', **kwargs)``
+where kwargs flow to ``SparkSession.builder.config(**kwargs)``.
 
-from pydantic import Field
+The docstring of the prior class read 'SQLite authentication settings' — a
+copy-paste from ``sqlite.py``. Corrected here.
+"""
 
-from mountainash_settings import SettingsParameters
+from __future__ import annotations
 
-from .base import BaseDBAuthSettings
+import typing as t
+from enum import StrEnum
+
 from ..constants import CONST_DB_PROVIDER_TYPE
+from .adapters import pyspark as _adapter
+from .auth import NoAuth
+from .descriptor import BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import register
 
-class PySparkMode():
+__all__ = ["PySparkAuthSettings", "PySparkMode", "PYSPARK_DESCRIPTOR"]
+
+
+class PySparkMode(StrEnum):
     BATCH = "batch"
     STREAMING = "streaming"
 
-class PySparkAuthSettings(BaseDBAuthSettings):
-    """ SQLite authentication settings
-        Databricks options: https://docs.databricks.com/en/spark/conf.html
-        Too many options to set. Configure your spark instanmce directly! https://spark.apache.org/docs/3.5.1/configuration.html#available-properties
-    """
 
-    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.PYSPARK)
-    AUTH_METHOD: str = Field(default="none")
-
-    # File Settings
-    MODE: str = Field(default=None) #batch or streaming
-
-    SPARK_MASTER: str = Field(default=None)
-    APPLICATION_NAME: str = Field(default=None)
-    WAREHOUSE_DIR: str = Field(default=None)
-
-
-    # Databricks options
-    PARTITIONS: int = Field(default={})
-
-    def __init__(self,
-                 config_files: Optional[str|UPath|List[str|UPath]|Tuple[str|UPath]] = None,
-                 settings_parameters:   Optional[SettingsParameters] = None,
-                #  _dummy: Optional[bool] = False,
-                 **kwargs) -> None:
+PYSPARK_DESCRIPTOR = BackendDescriptor(
+    name="pyspark",
+    provider_type=CONST_DB_PROVIDER_TYPE.PYSPARK,
+    connection_string_scheme=None,  # SparkSession, not URL
+    ibis_dialect="pyspark",
+    auth_modes=[NoAuth],
+    parameters=[
+        ParameterSpec(name="SESSION", type=t.Optional[t.Any], tier="core",
+                      default=None),
+        ParameterSpec(name="MODE", type=PySparkMode, tier="core",
+                      default=PySparkMode.BATCH),
+        ParameterSpec(name="SPARK_MASTER", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="APPLICATION_NAME", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="WAREHOUSE_DIR", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="PARTITIONS", type=t.Optional[int], tier="advanced",
+                      default=None),
+    ],
+)
 
 
-        super().__init__(config_files=config_files,
-                         settings_parameters=settings_parameters,
-                        #  _dummy=_dummy,
-                         **kwargs)
+@register(PYSPARK_DESCRIPTOR)
+class PySparkAuthSettings(ConnectionProfile):
+    __descriptor__ = PYSPARK_DESCRIPTOR
+    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
 
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        """Coerce MODE strings to PySparkMode enum.
 
-    @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
-        """Database provider identifier."""
-        return CONST_DB_PROVIDER_TYPE.PYSPARK
-
-    def _post_init(self, reinitialise: bool) -> None:
-        """Initialize provider-specific settings"""
-        pass
-
-    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
-
-        """Generate PySpark connection string"""
-        #"pyspark://{warehouse-dir}?spark.app.name=CountingSheep&spark.master=local[2]""
-        template = f"{scheme}"
-
-        if self.WAREHOUSE_DIR:
-            template += "{warehouse_dir}"
-
-        if self.APPLICATION_NAME:
-            template += "{spark_app_name}"
-
-        if self.SPARK_MASTER:
-            template += "{spark_master}"
-
-        return template
-
-    def get_connection_string_params(self) -> Dict[str, Any]:
-        """Get connection arguments for PySpark"""
-        args = {}
-
-
-        if self.SPARK_MASTER:
-            args["spark_master"] = self.SPARK_MASTER
-
-        if self.APPLICATION_NAME:
-            args["spark_app_name"] = self.APPLICATION_NAME
-
-        if self.WAREHOUSE_DIR:
-            args["warehouse_dir"] = self.WAREHOUSE_DIR
-
-
-        return args
-
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
-        """Get connection arguments for PySpark"""
-        kwargs =  {}
-
-        if self.MODE:
-            kwargs["mode"] = self.MODE
-
-
-
-        return kwargs
-
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
-
-        """Get post connection arguments as dictionary"""
-        options = {}
-
-        if self.PARTITIONS:
-            options["spark.sql.shuffle.partitions"] = self.PARTITIONS
-
-        return options
+        The parent __init__ calls update_settings_from_dict() which uses setattr()
+        directly, bypassing pydantic validators. This override ensures MODE strings
+        are coerced to PySparkMode enums.
+        """
+        if name == "MODE" and value is not None and not isinstance(value, PySparkMode):
+            try:
+                value = PySparkMode(value)
+            except ValueError:
+                raise ValueError(
+                    f"MODE must be one of {[mode.value for mode in PySparkMode]}, "
+                    f"got {value!r}"
+                )
+        super().__setattr__(name, value)
