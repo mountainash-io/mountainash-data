@@ -3,7 +3,7 @@
 import pytest
 from mountainash_data.core.factories.operations_factory import OperationsFactory
 from mountainash_data.backends.ibis.operations import BaseIbisOperations
-from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings
+from mountainash_data.core.settings import SQLiteAuthSettings, DuckDBAuthSettings, NoAuth
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
 
@@ -201,7 +201,7 @@ class TestOperationsFactoryIntegration:
 
         settings_params = SettingsParameters.create(
             settings_class=SQLiteAuthSettings,
-            kwargs={"DATABASE": str(temp_sqlite_db)}
+            kwargs={"DATABASE": str(temp_sqlite_db), "auth": NoAuth()}
         )
 
         # Get operations from factory

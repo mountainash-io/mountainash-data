@@ -1,128 +1,71 @@
-#path: mountainash_settings/auth/database/providers/cloud/bigquery.py
+"""BigQuery backend settings.
 
-from typing import Optional, List, Any, Dict, Tuple
-from upath import UPath
+Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/bigquery.md``.
+Ibis: ``ibis.backends.bigquery.do_connect``
+"""
 
-from pydantic import Field, field_validator
+from __future__ import annotations
 
-from mountainash_settings import SettingsParameters
+import re
+import typing as t
 
-from .base import BaseDBAuthSettings
+from pydantic import field_validator
+
 from ..constants import CONST_DB_PROVIDER_TYPE
+from .adapters import bigquery as _adapter
+from mountainash_settings.auth import NoAuth, ServiceAccountAuth
+from .descriptor import BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import register
+
+__all__ = ["BigQueryAuthSettings", "BIGQUERY_DESCRIPTOR"]
+
+_PROJECT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
 
-
-class BigQueryAuthSettings(BaseDBAuthSettings):
-    """BigQuery authentication settings
-
-    Ibis BigQuery: https://ibis-project.org/backends/bigquery
-    Auth Optiopns: https://cloud.google.com/sdk/docs/authorizing
-    External data souyrces: https://cloud.google.com/bigquery/external-data-sources
-
-    """
-
-    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.BIGQUERY)
-
-    # Project Settings
-    PROJECT_ID: str = Field(...)
-    DATASET_ID: Optional[str] = Field(default=None)
-
-    LOCATION: Optional[str] = Field(default=None)
-    APPLICATION_NAME: Optional[str] = Field(default=None)
-    PARTITION_COLUMN: Optional[str] = Field(default=None)
-
-    # # Authentication Settings
-    SERVICE_ACCOUNT_INFO: Optional[Dict[str, Any]] = Field(default=None)
-    # SERVICE_ACCOUNT_FILE: Optional[str] = Field(default=None)
-
-    # # Client Settings
-    # DEFAULT_QUERY_JOB_CONFIG: Optional[Dict[str, Any]] = Field(default=None)
-    # MAXIMUM_BYTES_BILLED: Optional[int] = Field(default=None)
-    # API_ENDPOINT: Optional[str] = Field(default=None)
-
-    # # Performance Settings
-    # NUM_RETRIES: int = Field(default=3)
-    # RETRIES_WITH_LOGGING: Optional[List[int]] = Field(default=[1, 5, 10])
-
-    def __init__(self,
-                 config_files: Optional[str|UPath|List[str|UPath]|Tuple[str|UPath]] = None,
-                 settings_parameters:   Optional[SettingsParameters] = None,
-                #  _dummy: Optional[bool] = False,
-                 **kwargs) -> None:
+def _validate_project_id(value: str) -> str:
+    if not _PROJECT_ID_RE.match(value):
+        raise ValueError(
+            "PROJECT_ID must be 6-30 chars, lowercase/digits/hyphens, "
+            "not starting or ending with a hyphen"
+        )
+    return value
 
 
-        super().__init__(config_files=config_files,
-                         settings_parameters=settings_parameters,
-                        #  _dummy=_dummy,
-                         **kwargs)
+BIGQUERY_DESCRIPTOR = BackendDescriptor(
+    name="bigquery",
+    provider_type=CONST_DB_PROVIDER_TYPE.BIGQUERY,
+    connection_string_scheme="bigquery://",
+    ibis_dialect="bigquery",
+    auth_modes=[ServiceAccountAuth, NoAuth],
+    parameters=[
+        ParameterSpec(name="PROJECT_ID", type=str, tier="core",
+                      driver_key="project_id"),
+        ParameterSpec(name="DATASET_ID", type=t.Optional[str], tier="core",
+                      default=None, driver_key="dataset_id"),
+        ParameterSpec(name="LOCATION", type=t.Optional[str], tier="advanced",
+                      default=None, driver_key="location"),
+        ParameterSpec(name="APPLICATION_NAME", type=t.Optional[str],
+                      tier="advanced", default=None,
+                      driver_key="application_name"),
+        ParameterSpec(name="PARTITION_COLUMN", type=str, tier="advanced",
+                      default="PARTITIONTIME", driver_key="partition_column"),
+        ParameterSpec(name="AUTH_LOCAL_WEBSERVER", type=bool, tier="core",
+                      default=True, driver_key="auth_local_webserver"),
+        ParameterSpec(name="AUTH_EXTERNAL_DATA", type=bool, tier="core",
+                      default=False, driver_key="auth_external_data"),
+        ParameterSpec(name="AUTH_CACHE", type=str, tier="core",
+                      default="default", driver_key="auth_cache"),
+    ],
+)
 
 
-    @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
-        """Database provider identifier."""
-        return CONST_DB_PROVIDER_TYPE.BIGQUERY
+@register(BIGQUERY_DESCRIPTOR)
+class BigQueryAuthSettings(ConnectionProfile):
+    __descriptor__ = BIGQUERY_DESCRIPTOR
+    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
 
-
-    @field_validator("PROJECT_ID")
+    @field_validator("PROJECT_ID", check_fields=False)
     @classmethod
-    def validate_project_id(cls, value: Optional[str]) -> Optional[str]:
-        """Validate validate_auth_method"""
-
-        precondition: bool = value is not None
-        test: bool = (6 <= len(value) <= 30) if value else False
-        valid: bool = (not precondition) | test
-
-        if not valid:
-            raise ValueError("PROJECT_ID must be between 6 and 30 characters.")
-
-        return value
-
-
-    def _post_init(self, reinitialise: bool) -> None:
-        pass
-
-    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
-
-        # "bigquery://{project_id}/{dataset_id}"
-
-        template = "{scheme}{project_id}/{dataset_id}"
-
-        return template
-
-    def get_connection_string_params(self, scheme: Optional[str] = None) -> Dict[str, Any]:
-
-        args = {}
-        args["scheme"] = scheme if scheme else "bigquery://"
-
-        if self.PROJECT_ID:
-            args["project_id"] =  self.PROJECT_ID
-        if self.DATASET_ID:
-            args["dataset_id"] =  self.DATASET_ID
-
-        return args
-
-
-    def get_connection_kwargs(self) -> Dict[str, Any]:
-        """Get connection arguments for BigQuery"""
-
-        args = {}
-        if self.SERVICE_ACCOUNT_INFO:
-            args["credentials"] =  self.SERVICE_ACCOUNT_INFO
-
-        if self.APPLICATION_NAME:
-            args["application_name"] =  self.APPLICATION_NAME
-
-        if self.LOCATION:
-            args["location"] =  self.LOCATION
-
-        if self.PARTITION_COLUMN:
-            args["partition_column"] =  self.PARTITION_COLUMN
-
-
-
-        return {k: v for k, v in args.items() if v is not None}
-
-    def get_post_connection_options(self) -> Dict[str, Any]:
-
-        """Get connection arguments as dictionary"""
-        ...
+    def _pid(cls, v: str) -> str:
+        return _validate_project_id(v)

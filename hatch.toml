@@ -15,6 +15,7 @@ packages = ["src/mountainash_data"]
 [envs.dev]
 python = "3.12" #,  "3.11",, "3.10" ] # "3.8", "3.9","3.9",
 installer = "uv"
+path = ".venv"
 dependencies = [
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",

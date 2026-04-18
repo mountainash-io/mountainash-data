@@ -1,101 +1,63 @@
-#path: mountainash_settings/auth/storage/providers/cloud/r2.py
+"""PyIceberg REST catalog backend settings.
 
-from typing import Optional, Dict, Any, List, Tuple
+Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/pyiceberg_rest.md``.
+Driver: https://py.iceberg.apache.org/configuration/
+"""
 
-from upath import UPath
-from pydantic import Field
+from __future__ import annotations
 
-from mountainash_settings import SettingsParameters
+import typing as t
 
-from .base import BaseDBAuthSettings
-from ..constants import (
-    # CONST_STORAGE_PROVIDER_TYPE,
-    CONST_DB_AUTH_METHOD, CONST_DB_PROVIDER_TYPE
+from pydantic import SecretStr
+
+from ..constants import CONST_DB_PROVIDER_TYPE
+from .adapters import pyiceberg_rest as _adapter
+from mountainash_settings.auth import OAuth2Auth, TokenAuth
+from .descriptor import BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import register
+
+
+PYICEBERG_REST_DESCRIPTOR = BackendDescriptor(
+    name="pyiceberg_rest",
+    provider_type=CONST_DB_PROVIDER_TYPE.PYICEBERG_REST,
+    connection_string_scheme=None,  # uri= kwarg, not URL form
+    auth_modes=[TokenAuth, OAuth2Auth],
+    parameters=[
+        ParameterSpec(name="CATALOG_NAME", type=str, tier="core",
+                      driver_key="name"),
+        ParameterSpec(name="CATALOG_URI", type=str, tier="core",
+                      driver_key="uri"),
+        ParameterSpec(name="WAREHOUSE", type=t.Optional[str], tier="core",
+                      default=None, driver_key="warehouse"),
+        ParameterSpec(name="VERIFY_SSL", type=bool, tier="advanced",
+                      default=True, driver_key="verify-ssl"),
+        # S3 family (adapter emits dotted keys)
+        ParameterSpec(name="S3_REGION", type=t.Optional[str], tier="advanced",
+                      default=None),
+        ParameterSpec(name="S3_ENDPOINT", type=t.Optional[str],
+                      tier="advanced", default=None),
+        ParameterSpec(name="S3_ACCESS_KEY_ID", type=t.Optional[str],
+                      tier="advanced", default=None),
+        ParameterSpec(name="S3_SECRET_ACCESS_KEY",
+                      type=t.Optional[SecretStr], tier="advanced",
+                      default=None),
+        ParameterSpec(name="S3_SESSION_TOKEN", type=t.Optional[SecretStr],
+                      tier="advanced", default=None),
+        # SigV4
+        ParameterSpec(name="REST_SIGV4_ENABLED", type=t.Optional[bool],
+                      tier="advanced", default=None),
+        ParameterSpec(name="REST_SIGNING_REGION", type=t.Optional[str],
+                      tier="advanced", default=None),
+        ParameterSpec(name="REST_SIGNING_NAME", type=t.Optional[str],
+                      tier="advanced", default=None),
+        ParameterSpec(name="HEADERS", type=t.Optional[dict[str, str]],
+                      tier="advanced", default=None),
+    ],
 )
 
-class PyIcebergRestAuthSettings(BaseDBAuthSettings):
-    """
-    Cloudflare R2 storage authentication settings.
 
-    Handles authentication configuration for Cloudflare R2 storage.
-    Does not perform actual authentication or connection.
-    """
-    # PROVIDER_TYPE: str = Field(default="PYICEBERG_REST")  # Need to add PYICEBERG_REST to CONST_STORAGE_PROVIDER_TYPE
-
-    # R2 Settings
-    WAREHOUSE: str = Field(...)  # Required - R2 bucket name
-    CATALOG_NAME: str = Field(...)  # Required - R2 bucket name
-    CATALOG_URI: str = Field(...)  # Required - R2 bucket name
-
-    # Authentication Settings
-    AUTH_METHOD: str = Field(default=CONST_DB_AUTH_METHOD.TOKEN )
-
-    # Connection Settings
-    USE_SSL: bool = Field(default=False)
-    VERIFY_SSL: bool = Field(default=True)
-
-    def __init__(self,
-                 config_files: Optional[str|UPath|List[str|UPath]|Tuple[str|UPath]] = None,
-                 settings_parameters: Optional[SettingsParameters] = None,
-                 **kwargs) -> None:
-
-        super().__init__(config_files=config_files,
-                         settings_parameters=settings_parameters,
-                         **kwargs)
-
-
-    @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
-        """Database provider identifier."""
-        return CONST_DB_PROVIDER_TYPE.PYICEBERG_REST
-
-
-    def _init_provider_specific(self, reinitialise: bool) -> None:
-        """Initialize provider-specific settings"""
-        # Validate authentication requirements
-        pass
-
-
-    def get_connection_url(self) -> Dict[str, Any]:
-        return None
-
-    def get_connection_kwargs(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
-        """Get connection arguments as dictionary"""
-        args = {}#  super().get_connection_kwargs()
-
-        # Add R2-specific arguments
-        args.update({
-            "name": self.CATALOG_NAME,
-            "warehouse": self.WAREHOUSE,
-            "uri": self.CATALOG_URI,
-            "token": self.TOKEN,
-        })
-
-        return {k: v for k, v in args.items() if v is not None}
-
-
-    ########################
-    # Abstract Methods
-    def _post_init(self, reinitialise: bool) -> None:
-        """Initialize provider-specific settings"""
-        pass
-
-    # @abstractmethod
-    # def get_connection_string(self, variant: Optional[str]) -> str:
-    #     """Generate connection string from settings"""
-    #     pass
-
-    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
-        """Get connection arguments as dictionary"""
-        ...
-
-
-    def get_connection_string_params(self) -> Dict[str, Any]:
-        """Get connection string params as a dictionary"""
-        ...
-
-
-    def get_post_connection_options(self, db_abstraction_layer: Optional[str] = None) -> Dict[str, Any]:
-
-        """Get connection arguments as dictionary"""
-        ...
+@register(PYICEBERG_REST_DESCRIPTOR)
+class PyIcebergRestAuthSettings(ConnectionProfile):
+    __descriptor__ = PYICEBERG_REST_DESCRIPTOR
+    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

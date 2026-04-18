@@ -8,15 +8,16 @@ from mountainash_data.backends.ibis.connection import (
 from mountainash_data.core.connection import BaseDBConnection
 from mountainash_data.core.settings import (
     SQLiteAuthSettings,
-    DuckDBAuthSettings
+    DuckDBAuthSettings,
+    NoAuth,
 )
 from mountainash_settings import SettingsParameters
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("connection_class,settings_class,db_config", [
-    (SQLite_IbisConnection, SQLiteAuthSettings, {"DATABASE": ":memory:"}),
-    (DuckDB_IbisConnection, DuckDBAuthSettings, {"DATABASE": ":memory:"}),
+    (SQLite_IbisConnection, SQLiteAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
+    (DuckDB_IbisConnection, DuckDBAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
 ])
 class TestConnectionLifecycle:
     """Test connection lifecycle for all Ibis backends."""
@@ -123,8 +124,8 @@ class TestConnectionLifecycle:
 
 @pytest.mark.integration
 @pytest.mark.parametrize("connection_class,settings_class,db_config", [
-    (SQLite_IbisConnection, SQLiteAuthSettings, {"DATABASE": ":memory:"}),
-    (DuckDB_IbisConnection, DuckDBAuthSettings, {"DATABASE": ":memory:"}),
+    (SQLite_IbisConnection, SQLiteAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
+    (DuckDB_IbisConnection, DuckDBAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
 ])
 class TestConnectionFunctionality:
     """Test actual backend functionality for all Ibis backends."""
@@ -196,8 +197,8 @@ class TestConnectionFunctionality:
 
 @pytest.mark.unit
 @pytest.mark.parametrize("settings_class,db_config", [
-    (SQLiteAuthSettings, {"DATABASE": ":memory:"}),
-    (DuckDBAuthSettings, {"DATABASE": ":memory:"}),
+    (SQLiteAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
+    (DuckDBAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
 ])
 class TestConnectionWithFactory:
     """Test connections work with factory pattern."""

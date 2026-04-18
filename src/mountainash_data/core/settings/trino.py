@@ -1,128 +1,81 @@
-#path: mountainash_settings/auth/database/providers/file/sqlite.py
+"""Trino backend settings.
 
-from typing import Optional, List, Any, Dict, Tuple
-from upath import UPath
+Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/trino.md``.
+Driver: https://github.com/trinodb/trino-python-client/blob/master/trino/dbapi.py
+Ibis: ``ibis.backends.trino.do_connect``
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from mountainash_settings import SettingsParameters
+import typing as t
+from pathlib import Path
 
-from .base import BaseDBAuthSettings
 from ..constants import CONST_DB_PROVIDER_TYPE
+from .adapters import trino as _adapter
+from mountainash_settings.auth import JWTAuth, KerberosAuth, NoAuth, PasswordAuth
+from .descriptor import BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import register
 
 
-class TrinoAuthSettings(BaseDBAuthSettings):
-    """ Trino authentication settings
-
-    Extra connection settings: https://github.com/trinodb/trino-python-client/blob/master/trino/dbapi.py
-
-    """
-
-    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.TRINO)
-    AUTH_METHOD: str = Field(default=None)  # Trino supports "password" or None
-
-    SOURCE: Optional[str] =             Field(default=None, alias="source")
-    CATALOG: Optional[str] =            Field(default=None, alias="catalog")
-    SCHEMA: Optional[str] =             Field(default=None, alias="schema")
-    SESSION_PROPERTIES: Optional[str] = Field(default=None, alias="session_properties")
-
-    #Client Session Params
-    HTTP_HEADERS: Optional[str] =       Field(default=None, alias="http_headers")
-    HTTP_SCHEME: Optional[str] =        Field(default="https", alias="http_scheme")
-    HTTP_SESSION: Optional[str] =       Field(default=None, alias="http_session")
-    AUTH: Optional[str] =               Field(default=None, alias="auth")
-    EXTRA_CREDENTIAL: Optional[str] =   Field(default=None, alias="extra_credential")
-    MAX_ATTEMPTS: Optional[int] =       Field(default=None, alias="max_attempts")
-    REQUEST_TIMEOUT: Optional[int] =    Field(default=None, alias="request_timeout")
-    ISOLATION_LEVEL: Optional[str] =    Field(default=None, alias="isolation_level")
-    VERIFY: Optional[bool] =            Field(default=True, alias="verify")
-    CLIENT_TAGS: Optional[str] =        Field(default=None, alias="client_tags")
-    LEGACY_PRIMITIVE_TYPES: Optional[bool] =    Field(default=False, alias="legacy_primitive_types")
-    LEGACY_PREPARED_STATEMENTS: Optional[str] = Field(default=None, alias="legacy_prepared_statements")
-    ROLES: Optional[str] =              Field(default=None, alias="roles")
-    TIMEZONE: Optional[str] =           Field(default=None, alias="timezone")
-
-
-
-
-    def __init__(self,
-                 config_files: Optional[str|UPath|List[str|UPath]|Tuple[str|UPath]] = None,
-                 settings_parameters:   Optional[SettingsParameters] = None,
-                #  _dummy: Optional[bool] = False,
-                 **kwargs) -> None:
-
-
-        super().__init__(config_files=config_files,
-                         settings_parameters=settings_parameters,
-                        #  _dummy=_dummy,
-                         **kwargs)
-
-
-    @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
-        """Database provider identifier."""
-        return CONST_DB_PROVIDER_TYPE.TRINO
-
-    def _post_init(self, reinitialise: bool) -> None:
-        pass
-
-
-
-    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
-
-        #ibis.connect(f"trino://user@localhost:8080/{catalog}/{schema}")
-
-        """Generate Trino connection string"""
-        template =  f"{scheme}"
-
-        if self.USERNAME is not None:
-            template += "{user}"
-        if self.HOST is not None:
-            template += "@{host}"
-        if self.PORT is not None:
-            template += ":{port}"
-        if self.CATALOG is not None:
-            template += "/{catalog}"
-        if self.SCHEMA is not None:
-            template += "/{schema}"
-
-     #   "trino://user@localhost:8080/{catalog}/{schema}"
-
-        return template
-
-    def get_connection_string_params(self) -> Dict[str, Any]:
-        """Get connection arguments for Trino"""
-
-        args = {}
-        if self.USERNAME is not None:
-            args["user"] =      self.USERNAME
-        if self.HOST is not None:
-            args["host"] =      self.HOST
-        if self.PORT is not None:
-            args["port"] =      str(self.PORT)
-        if self.CATALOG is not None:
-            args["catalog"] =  self.CATALOG
-        if self.SCHEMA is not None:
-            args["schema"] =  self.SCHEMA
-
-        return args
+TRINO_DESCRIPTOR = BackendDescriptor(
+    name="trino",
+    provider_type=CONST_DB_PROVIDER_TYPE.TRINO,
+    default_port=8080,
+    connection_string_scheme="trino://",
+    ibis_dialect="trino",
+    auth_modes=[PasswordAuth, JWTAuth, KerberosAuth, NoAuth],
+    parameters=[
+        ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
+        ParameterSpec(name="PORT", type=int, tier="core", default=8080,
+                      driver_key="port"),
+        ParameterSpec(name="CATALOG", type=str, tier="core", driver_key="catalog"),
+        ParameterSpec(name="SCHEMA", type=t.Optional[str], tier="core",
+                      default=None, driver_key="schema"),
+        ParameterSpec(name="HTTP_SCHEME", type=str, tier="core",
+                      default="https", driver_key="http_scheme"),
+        ParameterSpec(name="VERIFY", type=t.Optional[t.Union[bool, Path]],
+                      tier="core", default=True, driver_key="verify",
+                      transform=lambda v: str(v) if isinstance(v, Path) else v),
+        ParameterSpec(name="SOURCE", type=t.Optional[str], tier="advanced",
+                      default=None, driver_key="source"),
+        ParameterSpec(name="TIMEZONE", type=t.Optional[str], tier="advanced",
+                      default=None, driver_key="timezone"),
+        ParameterSpec(name="MAX_ATTEMPTS", type=t.Optional[int],
+                      tier="advanced", default=None,
+                      driver_key="max_attempts"),
+        ParameterSpec(name="REQUEST_TIMEOUT", type=t.Optional[float],
+                      tier="advanced", default=None,
+                      driver_key="request_timeout"),
+        ParameterSpec(name="SESSION_PROPERTIES",
+                      type=t.Optional[dict[str, str]], tier="advanced",
+                      default=None, driver_key="session_properties"),
+        ParameterSpec(name="HTTP_HEADERS", type=t.Optional[dict[str, str]],
+                      tier="advanced", default=None,
+                      driver_key="http_headers"),
+        ParameterSpec(name="EXTRA_CREDENTIAL",
+                      type=t.Optional[list[tuple[str, str]]], tier="advanced",
+                      default=None, driver_key="extra_credential"),
+        ParameterSpec(name="CLIENT_TAGS", type=t.Optional[list[str]],
+                      tier="advanced", default=None,
+                      driver_key="client_tags"),
+        ParameterSpec(name="ROLES",
+                      type=t.Optional[t.Union[dict[str, str], str]],
+                      tier="advanced", default=None, driver_key="roles"),
+        ParameterSpec(name="LEGACY_PRIMITIVE_TYPES", type=t.Optional[bool],
+                      tier="advanced", default=None,
+                      driver_key="legacy_primitive_types"),
+        ParameterSpec(name="LEGACY_PREPARED_STATEMENTS",
+                      type=t.Optional[bool], tier="advanced",
+                      default=None,
+                      driver_key="legacy_prepared_statements"),
+        ParameterSpec(name="ENCODING", type=t.Optional[t.Union[str, list[str]]],
+                      tier="advanced", default=None, driver_key="encoding"),
+    ],
+)
 
 
-    def get_connection_kwargs(self) -> Dict[str, Any]:
-        """Get connection arguments for SQLite"""
-
-        kwargs = {}
-
-        if self.SOURCE:
-            kwargs["source"] =  self.SOURCE
-        if self.HTTP_SCHEME:
-            kwargs["http_scheme"] =  self.HTTP_SCHEME
-        if self.AUTH_METHOD == "password" and self.PASSWORD:
-            kwargs["password"] = self.PASSWORD
-
-        return kwargs
-
-    def get_post_connection_options(self) -> Dict[str, Any]:
-
-        """Get connection arguments as dictionary"""
-        ...
+@register(TRINO_DESCRIPTOR)
+class TrinoAuthSettings(ConnectionProfile):
+    __descriptor__ = TRINO_DESCRIPTOR
+    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

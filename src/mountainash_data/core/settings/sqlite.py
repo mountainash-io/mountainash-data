@@ -1,82 +1,50 @@
-#path: mountainash_settings/auth/database/providers/file/sqlite.py
+"""SQLite backend settings.
 
-from typing import Optional, List, Any, Dict, Tuple
-from upath import UPath
+Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/sqlite.md``.
+Driver: https://docs.python.org/3/library/sqlite3.html#sqlite3.connect
+Ibis: ``ibis.backends.sqlite.do_connect(database, type_map=None)``
+"""
 
-from pydantic import Field
+from __future__ import annotations
 
-from mountainash_settings import SettingsParameters
+import typing as t
 
-from .base import BaseDBAuthSettings
 from ..constants import CONST_DB_PROVIDER_TYPE
+from mountainash_settings.auth import NoAuth
+from .descriptor import BackendDescriptor, ParameterSpec
+from .profile import ConnectionProfile
+from .registry import register
+
+__all__ = ["SQLiteAuthSettings", "SQLITE_DESCRIPTOR"]
 
 
-class SQLiteAuthSettings(BaseDBAuthSettings):
-    """ SQLite authentication settings
-
-        SQLite Prgamas: https://www.sqlite.org/pragma.html
-    """
-
-    # PROVIDER_TYPE: str = Field(default=CONST_DB_PROVIDER_TYPE.SQLITE)
-    AUTH_METHOD: str = Field(default="none")  # SQLite uses file-based authentication
-
-    # File Settings
-    TYPE_MAP: Optional[Dict[str, Any]] = Field(default=None)  # Custom type mapping
-
-    def __init__(self,
-                 config_files: Optional[str|UPath|List[str|UPath]|Tuple[str|UPath]] = None,
-                 settings_parameters:   Optional[SettingsParameters] = None,
-                #  _dummy: Optional[bool] = False,
-                 **kwargs) -> None:
-
-
-        super().__init__(config_files=config_files,
-                         settings_parameters=settings_parameters,
-                        #  _dummy=_dummy,
-                         **kwargs)
-
-
-    def _post_init(self, reinitialise: bool) -> None:
-        pass
-
-    @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
-        """Database provider identifier."""
-        return CONST_DB_PROVIDER_TYPE.SQLITE
+SQLITE_DESCRIPTOR = BackendDescriptor(
+    name="sqlite",
+    provider_type=CONST_DB_PROVIDER_TYPE.SQLITE,
+    connection_string_scheme="sqlite://",
+    ibis_dialect="sqlite",
+    auth_modes=[NoAuth],
+    parameters=[
+        ParameterSpec(
+            name="DATABASE",
+            type=t.Optional[str],
+            tier="core",
+            default=None,
+            driver_key="database",
+            description="Path to the SQLite file, or ':memory:' for in-memory.",
+        ),
+        ParameterSpec(
+            name="TYPE_MAP",
+            type=t.Optional[dict[str, t.Any]],
+            tier="advanced",
+            default=None,
+            driver_key="type_map",
+            description="Optional SQLite column-type → Ibis dtype overrides.",
+        ),
+    ],
+)
 
 
-    def get_connection_string_template(self, scheme: Optional[str] = None) -> str:
-
-        """Generate SQLite connection string"""
-        template =  f"{scheme}"
-
-        if self.DATABASE is not None:
-            template += "{database}"
-
-        return template
-
-    def get_connection_string_params(self) -> Dict[str, Any]:
-        """Get connection arguments for SQLite"""
-
-        args = {}
-
-        if self.DATABASE is not None:
-            args["database"] = UPath(self.DATABASE).expanduser()
-
-        return args
-
-
-    def get_connection_kwargs(self) -> Dict[str, Any]:
-        """Get connection arguments for SQLite"""
-
-        kwargs = {}
-
-        if self.TYPE_MAP:
-            kwargs["type_map"] = self.TYPE_MAP
-
-        return kwargs
-
-    def get_post_connection_options(self) -> Dict[str, Any]:
-
-        """Get connection arguments as dictionary"""
-        ...
+@register(SQLITE_DESCRIPTOR)
+class SQLiteAuthSettings(ConnectionProfile):
+    __descriptor__ = SQLITE_DESCRIPTOR

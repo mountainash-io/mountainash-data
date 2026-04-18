@@ -18,8 +18,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - `CatalogInfo`, `NamespaceInfo`, `TableInfo`, `ColumnInfo` — shared physical metadata dataclasses
 
 3. **Settings** (`src/mountainash_data/core/settings/`)
-   - Per-dialect pydantic settings (SQLite, DuckDB, PostgreSQL, …)
-   - Base class: `BaseDBAuthSettings`
+   - Database-flavored layer over `mountainash-settings`'s `profiles` and
+     `auth` sub-packages.
+   - `BackendDescriptor` is a typed `ProfileDescriptor` subclass adding
+     `default_port` / `connection_string_scheme` / `ibis_dialect` / `rides_on`;
+     every backend is a two-line shell registered via `@register`.
+   - `ConnectionProfile` adds `to_driver_kwargs()` and `to_connection_string()`
+     on top of the generic `DescriptorProfile` base.
+   - `AuthSpec` subclasses (`PasswordAuth`, `OAuth2Auth`, `IAMAuth`, …) live
+     upstream in `mountainash_settings.auth` and are re-exported from
+     `mountainash_data.core.settings` for downstream compatibility.
+   - Composite driver mappings live in `settings/adapters/<backend>.py`.
 
 4. **Factories** (`src/mountainash_data/core/factories/`)
    - `ConnectionFactory` — settings → connection
@@ -192,9 +201,25 @@ tests/
 
 ```python
 from mountainash_data import IbisBackend, IcebergBackend
-from mountainash_data.core.settings import PostgreSQLAuthSettings
+from mountainash_data.core.settings import (
+    SQLiteAuthSettings,
+    NoAuth,
+    PostgreSQLAuthSettings,
+    PasswordAuth,
+)
 
-# Ibis backend (new-style, direct)
+sqlite = SQLiteAuthSettings(DATABASE=":memory:", auth=NoAuth())
+pg = PostgreSQLAuthSettings(
+    HOST="db.example",
+    DATABASE="app",
+    auth=PasswordAuth(username="app", password="s3cret"),
+)
+
+kwargs = pg.to_driver_kwargs()           # → dict ready for Ibis
+url = pg.to_connection_string()          # → "postgresql://app:s3cret@db.example:5432/app"
+print(pg.provider_type, pg.backend)
+
+# Ibis backend (direct)
 backend = IbisBackend(dialect="sqlite", database=":memory:")
 conn = backend.connect()
 try:
@@ -203,18 +228,6 @@ try:
     relation = conn.to_relation("users")  # → mountainash-expressions Relation
 finally:
     conn.close()
-
-# Ibis backend (settings-driven, via DatabaseUtils)
-from mountainash_data import DatabaseUtils
-from mountainash_data.core.settings import SQLiteAuthSettings
-from mountainash_settings import SettingsParameters
-
-settings_params = SettingsParameters.create(
-    settings_class=SQLiteAuthSettings,
-    kwargs={"DATABASE": ":memory:"}
-)
-connection = DatabaseUtils.create_connection(settings_params)
-ibis_backend = connection.connect()
 
 # Iceberg backend (requires pyiceberg)
 ice = IcebergBackend(catalog="rest", uri="http://localhost:8181")

@@ -80,7 +80,7 @@ class IcebergConnectionBase(BaseDBConnection):
         return CONST_DB_ABSTRACTION_LAYER.PYICEBERG
 
     @property
-    def db_provider_type(self) -> CONST_DB_PROVIDER_TYPE:
+    def provider_type(self) -> CONST_DB_PROVIDER_TYPE:
         """Database provider identifier."""
         return CONST_DB_PROVIDER_TYPE.PYICEBERG_REST
 
@@ -105,7 +105,15 @@ class IcebergConnectionBase(BaseDBConnection):
     def connect_default(self, **kwargs: t.Any) -> Catalog:
         """Connect using credentials from the configured settings class."""
         if self.catalog_backend is None:
-            connection_kwargs = self.get_connection_kwargs()
+            settings_class = self.db_auth_settings_parameters.settings_class
+            if settings_class is None:
+                raise ValueError("Settings class is required for the database connection")
+            obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
+            from mountainash_data.core.settings import ConnectionProfile
+            if isinstance(obj_settings, ConnectionProfile):
+                connection_kwargs = obj_settings.to_driver_kwargs()
+            else:
+                connection_kwargs = obj_settings.get_connection_kwargs()
             self._catalog_backend: RestCatalog = RestCatalog(**connection_kwargs)
         return self.catalog_backend
 
