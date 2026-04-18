@@ -55,20 +55,3 @@ PYSPARK_DESCRIPTOR = BackendDescriptor(
 class PySparkAuthSettings(ConnectionProfile):
     __descriptor__ = PYSPARK_DESCRIPTOR
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)
-
-    def __setattr__(self, name: str, value: t.Any) -> None:
-        """Coerce MODE strings to PySparkMode enum.
-
-        The parent __init__ calls update_settings_from_dict() which uses setattr()
-        directly, bypassing pydantic validators. This override ensures MODE strings
-        are coerced to PySparkMode enums.
-        """
-        if name == "MODE" and value is not None and not isinstance(value, PySparkMode):
-            try:
-                value = PySparkMode(value)
-            except ValueError:
-                raise ValueError(
-                    f"MODE must be one of {[mode.value for mode in PySparkMode]}, "
-                    f"got {value!r}"
-                )
-        super().__setattr__(name, value)
