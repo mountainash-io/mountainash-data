@@ -177,4 +177,5 @@ junit.*
 coverage.*
 
 #hiivmind
-.hiivmind/*
+.hiivmind/github/user.yaml
+.benchmarks/
