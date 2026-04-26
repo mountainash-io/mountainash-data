@@ -1,11 +1,10 @@
-from typing import Optional, Any, Type, Dict
+from typing import Optional, Any, Type
 from abc import ABC, abstractmethod
 
 from ibis.backends.sql import SQLBackend
 # from pydantic_settings import BaseSettings
 
 from mountainash_settings import SettingsParameters, MountainAshBaseSettings
-from mountainash_data.core.settings import ConnectionProfile
 
 from mountainash_data.core.constants import CONST_DB_ABSTRACTION_LAYER, CONST_DB_PROVIDER_TYPE
 
@@ -117,131 +116,3 @@ class BaseDBConnection(ABC):
 
         if self.ssh_required:
             self.ssh_client.connect_ssh()
-
-
-    # def prepare_connection_parameters(self) -> str:
-    #     """Connect to the database using the provided connection string."""
-
-
-    #     if not self.connection_string:
-    #         self.connection_string = get_settings(settings_parameters=self.db_auth_settings_parameters).CONNECTION_STRING
-
-    #     if not self.connection_string:
-    #         self.connection_string = self.template_connection_string
-
-    #     return  self.format_connection_string(connection_string=self.connection_string)
-
-
-    def get_connection_string_template(self,
-                                     scheme: Optional[str] = None) -> str:
-        """Deprecated: use to_connection_string() on the settings object directly."""
-        settings_class = self.db_auth_settings_parameters.settings_class
-
-        if settings_class is None:
-            raise ValueError("Settings class is required for the database connection")
-
-        obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
-
-        if isinstance(obj_settings, ConnectionProfile):
-            # scheme parameter is intentionally ignored for ConnectionProfile —
-            # to_connection_string() uses the descriptor's connection_string_scheme.
-            return obj_settings.to_connection_string()
-
-        # Legacy fallback for BaseDBAuthSettings subclasses not yet migrated
-        if hasattr(obj_settings, "get_connection_string_template"):
-            return obj_settings.get_connection_string_template(scheme=scheme)
-
-        raise NotImplementedError(
-            f"{type(obj_settings)} has no connection string template method"
-        )
-
-    def get_connection_string_params(self) -> Dict[str, Any]:
-        """Deprecated: connection params are now embedded in to_connection_string()."""
-        settings_class = self.db_auth_settings_parameters.settings_class
-        if settings_class is None:
-            raise ValueError("Settings class is required for the database connection")
-
-        obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
-
-        if isinstance(obj_settings, ConnectionProfile):
-            # New API: no separate params dict; return empty so callers that
-            # do template.format(**params) still work (template is already full URL).
-            return {}
-
-        # Legacy fallback
-        if hasattr(obj_settings, "get_connection_string_params"):
-            return obj_settings.get_connection_string_params()
-
-        return {}
-
-    def get_connection_kwargs(self) -> Dict[str, Any]:
-        """Deprecated: prefer calling to_driver_kwargs() on the settings directly."""
-        settings_class = self.db_auth_settings_parameters.settings_class
-        if settings_class is None:
-            raise ValueError("Settings class is required for the database connection")
-
-        obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
-
-        if isinstance(obj_settings, ConnectionProfile):
-            return obj_settings.to_driver_kwargs()
-
-        # Legacy fallback
-        if hasattr(obj_settings, "get_connection_kwargs"):
-            return obj_settings.get_connection_kwargs()
-
-        raise NotImplementedError(
-            f"{type(obj_settings)} has no connection kwargs method"
-        )
-
-    def format_connection_string(self,
-                                 template: Optional[str] = None,
-                                 params: Optional[Dict] = None
-                                 ) -> str:
-
-        """Format connection string using template"""
-
-        if not template:
-            template = self.get_connection_string_template()
-
-        if not params:
-            params = self.get_connection_string_params()
-
-        if not params:
-            # New API: template is already the full connection string
-            return template
-
-        try:
-            return template.format_map(params)
-        except Exception as e:
-            raise ValueError(f"Failed to format connection string: {str(e)}")
-
-
-
-    # def format_connection_string(self,
-    #                              connection_string: Optional[str] = None) -> str:
-    #     """Connect to the database using the provided connection string."""
-
-    #     if connection_string is None:
-    #         raise ValueError("BaseDBConnection: Connection string or a template is not provided. Use the CONNECTION_STRING field in the auth settings, provide it via the constructor, or override the template_connection_string value.")
-
-    #     # Apply settings parameters to the template
-    #     formatted_connection_string = get_settings(settings_parameters=self.db_auth_settings_parameters).format_template_from_settings(template_str=connection_string)
-
-    #     # encoded_connection_string = quote_plus(string=formatted_connection_string)
-    #     url = urlparse(formatted_connection_string)
-    #     print(url)
-
-    #     database, *schema = url.path[1:].split("/", 1)
-    #     # query_params = parse_qs(url.query)
-    #     connect_args = {
-    #         "user": url.username,
-    #         "password": url.password or "",
-    #         "host": url.hostname,
-    #         "database": database or "",
-    #         "schema": schema[0] if schema else "",
-    #         "port": url.port,
-    #     }
-    #     print(connect_args)
-
-
-    #     return formatted_connection_string

@@ -101,65 +101,38 @@ class BaseIbisConnection(BaseDBConnection):
 
     def connect_default(self, **kwargs) -> SQLBackend:
         """Connect using default configuration"""
-        # Implementation for connecting with default parameters
 
         if self.ibis_backend is None:
 
-            # For new-style ConnectionProfile settings, use to_driver_kwargs()
-            # and connect via ibis dialect module directly (avoids URL parsing issues).
             settings_class = self.db_auth_settings_parameters.settings_class
             if settings_class is not None:
-                from mountainash_data.core.settings import ConnectionProfile
                 obj_settings = settings_class.get_settings(
                     settings_parameters=self.db_auth_settings_parameters
                 )
-                if isinstance(obj_settings, ConnectionProfile):
-                    driver_kwargs = obj_settings.to_driver_kwargs()
-                    # Filter out empty lists/sequences that some drivers reject.
-                    # (e.g. ibis.duckdb.connect() does not accept extensions=[])
-                    driver_kwargs = {k: v for k, v in driver_kwargs.items()
-                                     if not (isinstance(v, (list, tuple)) and len(v) == 0)}
-                    driver_kwargs.update(kwargs)
-                    # Use the ibis dialect string to call ibis.<dialect>.connect(**driver_kwargs)
-                    descriptor = getattr(obj_settings, "__descriptor__", None)
-                    ibis_dialect = descriptor.ibis_dialect if descriptor else None
-                    if ibis_dialect:
-                        dialect_backend = getattr(ibis, ibis_dialect, None)
-                        if dialect_backend is not None:
-                            self._ibis_backend = dialect_backend.connect(**driver_kwargs)
-                            if self.ibis_backend is None:
-                                raise Exception(f"Unable to establish default connection to {self.db_backend_name}")
-                            return self.ibis_backend
-                    # Fallback: build KWARGS-mode connection
-                    self._connect(
-                        connection_string=self.connection_string_scheme,
-                        connection_kwargs=driver_kwargs if driver_kwargs else None,
-                    )
-                    if self.ibis_backend is None:
-                        raise Exception(f"Unable to establish default connection to {self.db_backend_name}")
-                    return self.ibis_backend
-
-            # Legacy path for BaseDBAuthSettings subclasses
-            connection_string_template = self.get_connection_string_template(scheme=self.connection_string_scheme)
-            connectionstring_params = self.get_connection_string_params()
-
-            connection_string = self.format_connection_string(template=connection_string_template, params=connectionstring_params)
-            connection_kwargs = self.get_connection_kwargs()
-
-            if self.ibis_connection_mode == IBIS_DB_CONNECTION_MODE.CONNECTION_STRING:
-                self._connect(connection_string=connection_string, **kwargs)
-
-            elif self.ibis_connection_mode == IBIS_DB_CONNECTION_MODE.KWARGS:
-                #combine connectionstring_params and connection_kwargs
-                connection_kwargs = {**connectionstring_params, **connection_kwargs}
-                self._connect(connection_string=self.connection_string_scheme, connection_kwargs=connection_kwargs, **kwargs)
-
-            elif self.ibis_connection_mode == IBIS_DB_CONNECTION_MODE.HYBRID:
-                self._connect(connection_string=connection_string, connection_kwargs=connection_kwargs, **kwargs)
-
-        #TODO: Add check and logging
-        if self.ibis_backend is None:
-            raise Exception(f"Unable to establish default connection to {self.db_backend_name}")
+                driver_kwargs = obj_settings.to_driver_kwargs()
+                # Filter out empty lists/sequences that some drivers reject.
+                # (e.g. ibis.duckdb.connect() does not accept extensions=[])
+                driver_kwargs = {k: v for k, v in driver_kwargs.items()
+                                 if not (isinstance(v, (list, tuple)) and len(v) == 0)}
+                driver_kwargs.update(kwargs)
+                # Use the ibis dialect string to call ibis.<dialect>.connect(**driver_kwargs)
+                descriptor = getattr(obj_settings, "__descriptor__", None)
+                ibis_dialect = descriptor.ibis_dialect if descriptor else None
+                if ibis_dialect:
+                    dialect_backend = getattr(ibis, ibis_dialect, None)
+                    if dialect_backend is not None:
+                        self._ibis_backend = dialect_backend.connect(**driver_kwargs)
+                        if self.ibis_backend is None:
+                            raise Exception(f"Unable to establish default connection to {self.db_backend_name}")
+                        return self.ibis_backend
+                # Fallback: build KWARGS-mode connection
+                self._connect(
+                    connection_string=self.connection_string_scheme,
+                    connection_kwargs=driver_kwargs if driver_kwargs else None,
+                )
+                if self.ibis_backend is None:
+                    raise Exception(f"Unable to establish default connection to {self.db_backend_name}")
+                return self.ibis_backend
 
         return self.ibis_backend
 
