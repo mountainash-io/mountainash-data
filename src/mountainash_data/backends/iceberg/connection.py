@@ -109,11 +109,7 @@ class IcebergConnectionBase(BaseDBConnection):
             if settings_class is None:
                 raise ValueError("Settings class is required for the database connection")
             obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
-            from mountainash_data.core.settings import ConnectionProfile
-            if isinstance(obj_settings, ConnectionProfile):
-                connection_kwargs = obj_settings.to_driver_kwargs()
-            else:
-                connection_kwargs = obj_settings.get_connection_kwargs()
+            connection_kwargs = obj_settings.to_driver_kwargs()
             self._catalog_backend: RestCatalog = RestCatalog(**connection_kwargs)
         return self.catalog_backend
 
