@@ -10,8 +10,6 @@ from __future__ import annotations
 import typing as t
 from urllib.parse import quote
 
-from pydantic import SecretStr
-
 from mountainash_settings.profiles import DescriptorProfile
 
 __all__ = ["ConnectionProfile"]
@@ -76,7 +74,7 @@ class ConnectionProfile(DescriptorProfile):
             if username:
                 url += quote(str(username), safe="")
                 pw = getattr(auth, "password", None)
-                if isinstance(pw, SecretStr):
+                if pw is not None:
                     url += ":" + quote(pw.get_secret_value(), safe="")
                 url += "@"
         if host is not None:
