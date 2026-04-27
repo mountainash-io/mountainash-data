@@ -192,3 +192,25 @@ def test_get_connection_accessor():
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
         conn = backend.get_connection()
         assert isinstance(conn, IbisConnection)
+
+
+# ---------------------------------------------------------------------------
+# DialectSpec hooks
+# ---------------------------------------------------------------------------
+
+def test_duckdb_dialect_has_upsert_hook():
+    """DuckDB DialectSpec must have upsert_hook wired."""
+    spec = DIALECTS["duckdb"]
+    assert spec.upsert_hook is not None
+
+
+def test_sqlite_dialect_has_create_index_hook():
+    """SQLite DialectSpec must have create_index_hook wired."""
+    spec = DIALECTS["sqlite"]
+    assert spec.create_index_hook is not None
+
+
+def test_postgres_dialect_has_no_upsert_hook():
+    """Postgres DialectSpec has no upsert_hook (not DuckDB family)."""
+    spec = DIALECTS["postgres"]
+    assert spec.upsert_hook is None

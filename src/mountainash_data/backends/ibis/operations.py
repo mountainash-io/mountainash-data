@@ -213,6 +213,151 @@ def motherduck_list_tables(
 
 
 # ===========================================================================
+# STANDALONE HOOK FUNCTIONS
+# Extracted from _DuckDBFamilyOperationsMixin for DialectSpec wiring.
+# ===========================================================================
+
+def duckdb_family_create_index(
+    ibis_conn: t.Any,
+    table_name: str,
+    columns: list[str] | str,
+    *,
+    index_name: str | None = None,
+    unique: bool = False,
+    index_type: str | None = None,
+    where_condition: str | None = None,
+    database: str | None = None,
+    if_not_exists: bool = True,
+) -> None:
+    """Create an index using DuckDB/SQLite syntax."""
+    columns_list = _normalize_columns(columns)
+
+    if index_name is None:
+        index_name = _generate_index_name(table_name, columns_list, unique=unique)
+
+    qualified_table = _format_qualified_table(table_name, database=database)
+    columns_sql = ", ".join(columns_list)
+
+    unique_sql = "UNIQUE " if unique else ""
+    if_not_exists_sql = "IF NOT EXISTS " if if_not_exists else ""
+    where_sql = f" WHERE {where_condition}" if where_condition else ""
+
+    if index_type and index_type != CONST_INDEX_TYPE.BTREE:
+        warnings.warn(
+            f"Index type {index_type} not supported, using default BTREE"
+        )
+
+    create_sql = (
+        f"CREATE {unique_sql}INDEX {if_not_exists_sql}{index_name} "
+        f"ON {qualified_table} ({columns_sql}){where_sql}"
+    )
+
+    with contextlib.closing(ibis_conn.con.cursor()) as cur:
+        cur.execute(create_sql)
+
+
+def duckdb_family_drop_index(
+    ibis_conn: t.Any,
+    index_name: str,
+    *,
+    table_name: str | None = None,
+    database: str | None = None,
+    if_exists: bool = True,
+) -> None:
+    """Drop an index using DuckDB/SQLite syntax."""
+    if_exists_sql = "IF EXISTS " if if_exists else ""
+    drop_sql = f"DROP INDEX {if_exists_sql}{index_name}"
+
+    with contextlib.closing(ibis_conn.con.cursor()) as cur:
+        cur.execute(drop_sql)
+
+
+def duckdb_family_upsert(
+    ibis_conn: t.Any,
+    table_name: str,
+    df: t.Any,
+    *,
+    conflict_columns: list[str] | str,
+    update_columns: list[str] | str | None = None,
+    conflict_action: str = CONST_CONFLICT_ACTION.UPDATE,
+    update_condition: str | None = None,
+    database: str | None = None,
+    schema: str | None = None,
+) -> None:
+    """Perform upsert using INSERT ... ON CONFLICT syntax (DuckDB/SQLite)."""
+    conflict_cols = _normalize_columns(conflict_columns)
+    all_columns = ma.relation(df).columns
+
+    if update_columns is None:
+        update_cols = [col for col in all_columns if col not in conflict_cols]
+    else:
+        update_cols = _normalize_columns(update_columns)
+
+    tables = ibis_conn.list_tables()
+    if table_name not in tables:
+        raise ValueError(f"Target table '{table_name}' does not exist")
+
+    if conflict_action not in [CONST_CONFLICT_ACTION.UPDATE, CONST_CONFLICT_ACTION.NOTHING]:
+        raise ValueError(
+            f"conflict_action must be '{CONST_CONFLICT_ACTION.UPDATE}' or "
+            f"'{CONST_CONFLICT_ACTION.NOTHING}', got '{conflict_action}'"
+        )
+
+    if conflict_action == CONST_CONFLICT_ACTION.NOTHING:
+        if update_cols or update_condition:
+            warnings.warn(
+                "update_columns and update_condition are ignored when "
+                "conflict_action='NOTHING'"
+            )
+
+    staging_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
+    qualified_table = _format_qualified_table(table_name, database=database, schema=schema)
+
+    all_cols_sql = ", ".join(all_columns)
+    conflict_cols_sql = ", ".join(conflict_cols)
+
+    if conflict_action == CONST_CONFLICT_ACTION.UPDATE:
+        if not update_cols:
+            raise ValueError(
+                "No columns to update. Either provide update_columns or ensure "
+                "dataframe has columns beyond conflict_columns"
+            )
+        update_set_sql = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
+        where_sql = f" WHERE {update_condition}" if update_condition else ""
+        on_conflict_sql = (
+            f"ON CONFLICT ({conflict_cols_sql}) DO UPDATE SET {update_set_sql}{where_sql}"
+        )
+    else:
+        on_conflict_sql = f"ON CONFLICT ({conflict_cols_sql}) DO NOTHING"
+
+    upsert_sql = f"""
+        INSERT INTO {qualified_table} ({all_cols_sql})
+        SELECT {all_cols_sql} FROM {staging_table}
+        WHERE true
+        {on_conflict_sql}
+    """
+
+    if hasattr(ibis_conn.con, 'register'):
+        with contextlib.closing(ibis_conn.con.cursor()) as cur:
+            cur.execute("BEGIN TRANSACTION")
+            cur.register(staging_table, df)
+            cur.execute(upsert_sql)
+            cur.unregister(staging_table)
+            cur.execute("COMMIT")
+    else:
+        ibis_conn.create_table(staging_table, df, temp=True, overwrite=True)
+        try:
+            with contextlib.closing(ibis_conn.con.cursor()) as cur:
+                cur.execute(upsert_sql)
+                ibis_conn.con.commit()
+        finally:
+            try:
+                ibis_conn.drop_table(staging_table, force=True)
+            except Exception:
+                pass
+
+
+# ===========================================================================
 # _DuckDBFamilyOperationsMixin
 # Salvaged from _duckdb_family_mixin.py — retained as class for backward
 # compatibility. Internal helpers now delegate to module-level functions.
