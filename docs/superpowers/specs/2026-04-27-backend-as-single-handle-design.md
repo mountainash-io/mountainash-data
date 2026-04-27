@@ -42,7 +42,7 @@ Both raise `RuntimeError` if not connected.
 | `OperationsFactory` | `core/factories/operations_factory.py` | Replaced by operations on `IbisBackend` |
 | `SettingsFactory` | `core/factories/settings_factory.py` | URL detection now in `_SCHEME_TO_DIALECT`; settings creation via `IbisBackend(settings_params)` |
 | `DatabaseUtils` | `core/utils.py` | Entire class — `IbisBackend` is the API |
-| `BaseDBConnection` | `core/connection.py` | Abstract base no longer needed |
+| ~~`BaseDBConnection`~~ | ~~`core/connection.py`~~ | **KEPT** — `IcebergConnectionBase` subclasses it; migrate Iceberg separately |
 | `BaseIbisConnection` + 12 subclasses | `backends/ibis/connection.py` | Replaced by `IbisConnection` (internal) + `DialectSpec` registry |
 | `BaseIbisOperations` + concrete subclasses | `backends/ibis/operations.py` | Replaced by operations on `IbisBackend` + `DialectSpec` hooks |
 | `_DuckDBFamilyOperationsMixin` | `backends/ibis/operations.py` | Implementations become `DialectSpec` hooks |
@@ -57,6 +57,7 @@ Both raise `RuntimeError` if not connected.
 | `DialectSpec` registry | `backends/ibis/dialects/_registry.py` | Expanded with operation hooks |
 | Module-level operation functions | `backends/ibis/operations.py` | Wired as `DialectSpec` hooks |
 | `IcebergBackend` | `backends/iceberg/backend.py` | Unchanged (separate backend) |
+| `BaseDBConnection` | `core/connection.py` | Kept — Iceberg depends on it; migrate separately |
 | `Backend` protocol | `core/protocol.py` | Updated — `connect()` returns `Self` |
 | Inspection model | `core/inspection.py` | Unchanged |
 | Settings classes | `core/settings/` | Unchanged |
@@ -321,7 +322,7 @@ to use `IbisBackend` directly. `test_backend.py` is expanded.
 |------|--------|
 | `core/factories/` (entire directory) | All factories replaced by `IbisBackend` |
 | `core/utils.py` | `DatabaseUtils` replaced by `IbisBackend` |
-| `core/connection.py` | `BaseDBConnection` no longer needed |
+| ~~`core/connection.py`~~ | **KEPT** — Iceberg depends on `BaseDBConnection`; migrate separately |
 | `backends/ibis/connection.py` | `BaseIbisConnection` + 12 subclasses replaced |
 | `tests/test_unit/factories/` | All factory tests |
 | `tests/test_unit/test_database_utils.py` | `DatabaseUtils` tests |
@@ -358,3 +359,39 @@ with IbisBackend(settings_params) as backend:
     tables = backend.list_tables()
     tbl = backend.ibis_connection().table("users")
 ```
+
+## Redshift URL Ambiguity
+
+Redshift is registered with `connection_string_scheme="postgres://"` because
+it uses the postgres wire protocol. This means `_SCHEME_TO_DIALECT` maps
+`postgres://` → `"postgres"` (first writer wins), and Redshift is not
+reachable by URL alone.
+
+**Resolution:** Redshift connections must use either:
+- `IbisBackend(dialect="redshift", ...)` — explicit dialect keyword
+- `IbisBackend(settings_params)` — settings path with Redshift settings class
+
+This is an inherent limitation: `postgres://` URLs are ambiguous between
+postgres and Redshift. The old `SettingsFactory` had the same problem — it
+mapped `postgres://` to postgres, not Redshift. No regression.
+
+If a dedicated `redshift://` scheme is needed in future, add a `url_schemes`
+list field on `DialectSpec` separate from `connection_string_scheme`.
+
+## Compatibility
+
+This package is internal to the mountainash-io organisation — there are zero
+external consumers. All imports of the removed names (`ConnectionFactory`,
+`OperationsFactory`, `SettingsFactory`, `DatabaseUtils`, `Connection`) are
+in this repo's own test files, which are rewritten in the same change.
+
+No deprecation window or major-version bump is needed. The removed exports
+are cleaned up atomically: deletion + test migration in the same branch.
+
+## Out of Scope
+
+| Item | Reason |
+|------|--------|
+| Iceberg migration off `BaseDBConnection` | Separate spec — `core/connection.py` kept for now |
+| `redshift://` URL scheme | No current need — use settings or `dialect=` |
+| Operations for non-DuckDB-family dialects | Add hooks when needed (Snowflake, BigQuery, etc.) |
