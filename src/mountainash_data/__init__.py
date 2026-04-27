@@ -1,7 +1,7 @@
 """mountainash-data: physical access to backend data services.
 
 Public API:
-    Backend, Connection — protocols (core.protocol)
+    Backend — protocol (core.protocol)
     IbisBackend — ibis-style relational backends (backends.ibis.backend)
     IcebergBackend — iceberg-style table-format catalogs (backends.iceberg.backend)
     CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo — inspection model
@@ -11,7 +11,7 @@ Public API:
 """
 
 from mountainash_data.__version__ import __version__
-from mountainash_data.core.protocol import Backend, Connection
+from mountainash_data.core.protocol import Backend
 from mountainash_data.core.inspection import (
     CatalogInfo,
     ColumnInfo,
@@ -37,7 +37,6 @@ except ImportError:
 __all__ = [
     "__version__",
     "Backend",
-    "Connection",
     "CatalogInfo",
     "ColumnInfo",
     "NamespaceInfo",

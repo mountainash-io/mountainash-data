@@ -195,6 +195,7 @@ class IbisBackend:
         self._spec: DialectSpec = DIALECTS[dialect_name]
         self._url: str | None = None
         self._config = config
+        self._conn: IbisConnection | None = None
 
     def _init_from_url(
         self, url: str, config: dict[str, t.Any]
@@ -218,6 +219,7 @@ class IbisBackend:
         self._spec = DIALECTS[resolved_dialect]
         self._url = url
         self._config = config
+        self._conn: IbisConnection | None = None
 
     def _init_from_settings(
         self, settings_params: t.Any, config: dict[str, t.Any]
@@ -244,25 +246,72 @@ class IbisBackend:
         self._spec = DIALECTS[resolved_dialect]
         self._url = None
         self._config = driver_kwargs
+        self._conn: IbisConnection | None = None
 
-    def connect(self) -> IbisConnection:
-        """Build and return a live ibis connection."""
+    def _require_connected(self) -> IbisConnection:
+        if self._conn is None:
+            raise RuntimeError(
+                "IbisBackend is not connected. Call connect() first."
+            )
+        return self._conn
+
+    def connect(self) -> IbisBackend:
+        """Build a live ibis connection. Returns self for fluent chaining."""
+        if self._conn is not None:
+            return self
         if self._spec.connection_builder is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} has no connection_builder configured"
             )
         if self._url is not None:
-            # URL path: delegate directly to ibis.connect() which
-            # natively handles all URL forms and preserves all URL
-            # components (host, port, credentials, database, query params).
             import ibis
             ibis_conn = ibis.connect(self._url, **self._config)
         else:
-            # Settings/dialect path: go through the dialect builder
-            # with empty-list normalization (e.g. DuckDB extensions=[]).
             cleaned_config = {
                 k: v for k, v in self._config.items()
                 if not (isinstance(v, (list, tuple)) and len(v) == 0)
             }
             ibis_conn = self._spec.connection_builder(**cleaned_config)
-        return IbisConnection(ibis_conn, self._spec)
+        self._conn = IbisConnection(ibis_conn, self._spec)
+        return self
+
+    def close(self) -> IbisBackend:
+        """Release the connection. Idempotent. Returns self."""
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
+        return self
+
+    def __enter__(self) -> IbisBackend:
+        self.connect()
+        return self
+
+    def __exit__(self, *args: t.Any) -> None:
+        self.close()
+
+    def ibis_connection(self) -> t.Any:
+        """Return the raw ibis backend object."""
+        return self._require_connected()._ibis_conn
+
+    def get_connection(self) -> IbisConnection:
+        """Return the internal IbisConnection wrapper."""
+        return self._require_connected()
+
+    # --- Inspection (terminal — delegates to IbisConnection) ---
+
+    def list_tables(self, namespace: str | None = None) -> list[str]:
+        return self._require_connected().list_tables(namespace=namespace)
+
+    def list_namespaces(self) -> list[str]:
+        return self._require_connected().list_namespaces()
+
+    def inspect_table(
+        self, name: str, namespace: str | None = None
+    ) -> TableInfo:
+        return self._require_connected().inspect_table(name, namespace=namespace)
+
+    def inspect_namespace(self, name: str) -> NamespaceInfo:
+        return self._require_connected().inspect_namespace(name)
+
+    def inspect_catalog(self) -> CatalogInfo:
+        return self._require_connected().inspect_catalog()

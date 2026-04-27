@@ -27,12 +27,11 @@ def test_all_registered_dialects_construct():
 def test_in_memory_sqlite_connect_and_inspect():
     """End-to-end test with the only dialect that needs no external service."""
     backend = IbisBackend(dialect="sqlite", database=":memory:")
-    conn = backend.connect()
+    backend.connect()
     try:
-        # Should expose protocol methods even if no tables exist
-        assert conn.list_tables() == []
+        assert backend.list_tables() == []
     finally:
-        conn.close()
+        backend.close()
 
 
 def test_neither_positional_nor_dialect_raises():
@@ -61,7 +60,6 @@ def test_settings_path_sqlite():
     """Construct IbisBackend from SQLite SettingsParameters and connect."""
     from mountainash_settings import SettingsParameters
     from mountainash_data.core.settings import SQLiteAuthSettings, NoAuth
-    from mountainash_data.backends.ibis.backend import IbisConnection
 
     params = SettingsParameters.create(
         settings_class=SQLiteAuthSettings,
@@ -70,18 +68,16 @@ def test_settings_path_sqlite():
     )
     backend = IbisBackend(params)
     assert backend.dialect == "sqlite"
-    conn = backend.connect()
-    assert isinstance(conn, IbisConnection)
-    tables = conn.list_tables()
+    backend.connect()
+    tables = backend.list_tables()
     assert isinstance(tables, list)
-    conn.close()
+    backend.close()
 
 
 def test_settings_path_duckdb_empty_extensions():
     """DuckDB settings with default EXTENSIONS=[] must not crash ibis."""
     from mountainash_settings import SettingsParameters
     from mountainash_data.core.settings import DuckDBAuthSettings, NoAuth
-    from mountainash_data.backends.ibis.backend import IbisConnection
 
     params = SettingsParameters.create(
         settings_class=DuckDBAuthSettings,
@@ -90,9 +86,8 @@ def test_settings_path_duckdb_empty_extensions():
     )
     backend = IbisBackend(params)
     assert backend.dialect == "duckdb"
-    conn = backend.connect()  # Must not raise — empty-list filter active
-    assert isinstance(conn, IbisConnection)
-    conn.close()
+    backend.connect()
+    backend.close()
 
 
 # ---------------------------------------------------------------------------
@@ -101,34 +96,99 @@ def test_settings_path_duckdb_empty_extensions():
 
 def test_url_path_sqlite():
     """Construct IbisBackend from sqlite:// URL and connect."""
-    from mountainash_data.backends.ibis.backend import IbisConnection
-
     backend = IbisBackend("sqlite://")
     assert backend.dialect == "sqlite"
-    conn = backend.connect()
-    assert isinstance(conn, IbisConnection)
-    conn.close()
+    backend.connect()
+    backend.close()
 
 
 def test_url_path_duckdb():
     """Construct IbisBackend from duckdb:// URL and connect."""
-    from mountainash_data.backends.ibis.backend import IbisConnection
-
     backend = IbisBackend("duckdb://")
     assert backend.dialect == "duckdb"
-    conn = backend.connect()
-    assert isinstance(conn, IbisConnection)
-    conn.close()
+    backend.connect()
+    backend.close()
 
 
 def test_url_path_preserves_database(tmp_path):
     """URL database component must reach the driver, not be discarded."""
-    from mountainash_data.backends.ibis.backend import IbisConnection
-
     db_file = tmp_path / "test.db"
     backend = IbisBackend(f"sqlite:///{db_file}")
     assert backend.dialect == "sqlite"
-    conn = backend.connect()
-    assert isinstance(conn, IbisConnection)
-    conn.close()
+    backend.connect()
+    backend.close()
     assert db_file.exists()
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle
+# ---------------------------------------------------------------------------
+
+def test_connect_returns_self():
+    """connect() must return the backend instance itself."""
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    result = backend.connect()
+    assert result is backend
+
+
+def test_close_returns_self():
+    """close() must return the backend instance itself."""
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    backend.connect()
+    result = backend.close()
+    assert result is backend
+
+
+def test_context_manager():
+    """with IbisBackend(...) as backend: must connect and close."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        assert backend.list_tables() == []
+    # After exit, should be closed
+    with pytest.raises(RuntimeError, match="not connected"):
+        backend.list_tables()
+
+
+def test_double_close_is_idempotent():
+    """Calling close() twice must not raise."""
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    backend.connect()
+    backend.close()
+    backend.close()  # Must not raise
+
+
+def test_use_before_connect_raises():
+    """Calling methods before connect() must raise RuntimeError."""
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    with pytest.raises(RuntimeError, match="not connected"):
+        backend.list_tables()
+
+
+def test_use_after_close_raises():
+    """Calling methods after close() must raise RuntimeError."""
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    backend.connect()
+    backend.close()
+    with pytest.raises(RuntimeError, match="not connected"):
+        backend.list_tables()
+
+
+def test_ibis_connection_accessor():
+    """ibis_connection() returns the raw ibis backend object."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        raw = backend.ibis_connection()
+        assert hasattr(raw, "list_tables")
+
+
+def test_ibis_connection_before_connect_raises():
+    """ibis_connection() before connect() must raise RuntimeError."""
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    with pytest.raises(RuntimeError, match="not connected"):
+        backend.ibis_connection()
+
+
+def test_get_connection_accessor():
+    """get_connection() returns our IbisConnection wrapper."""
+    from mountainash_data.backends.ibis.backend import IbisConnection
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        conn = backend.get_connection()
+        assert isinstance(conn, IbisConnection)

@@ -11,7 +11,6 @@ import typing as t
 
 from mountainash_data.backends.iceberg.catalogs.rest import IcebergRestConnection
 from mountainash_data.backends.iceberg.connection import IcebergConnectionBase
-from mountainash_data.core.protocol import Connection
 
 
 _CATALOG_REGISTRY: dict[str, type[IcebergConnectionBase]] = {
@@ -55,7 +54,7 @@ class IcebergBackend:
         self._catalog_cls = _CATALOG_REGISTRY[catalog]
         self._config = config
 
-    def connect(self) -> Connection:
+    def connect(self) -> IcebergConnectionBase:
         """Open a connection. Caller is responsible for closing it.
 
         Note: The legacy IcebergConnectionBase requires a
