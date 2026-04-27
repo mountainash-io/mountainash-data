@@ -51,3 +51,84 @@ def test_unknown_url_scheme_raises():
     """URL with unrecognised scheme must raise ValueError."""
     with pytest.raises(ValueError, match="Cannot detect ibis dialect"):
         IbisBackend("nosuch://localhost/db")
+
+
+# ---------------------------------------------------------------------------
+# Settings path
+# ---------------------------------------------------------------------------
+
+def test_settings_path_sqlite():
+    """Construct IbisBackend from SQLite SettingsParameters and connect."""
+    from mountainash_settings import SettingsParameters
+    from mountainash_data.core.settings import SQLiteAuthSettings, NoAuth
+    from mountainash_data.backends.ibis.backend import IbisConnection
+
+    params = SettingsParameters.create(
+        settings_class=SQLiteAuthSettings,
+        DATABASE=":memory:",
+        auth=NoAuth(),
+    )
+    backend = IbisBackend(params)
+    assert backend.dialect == "sqlite"
+    conn = backend.connect()
+    assert isinstance(conn, IbisConnection)
+    tables = conn.list_tables()
+    assert isinstance(tables, list)
+    conn.close()
+
+
+def test_settings_path_duckdb_empty_extensions():
+    """DuckDB settings with default EXTENSIONS=[] must not crash ibis."""
+    from mountainash_settings import SettingsParameters
+    from mountainash_data.core.settings import DuckDBAuthSettings, NoAuth
+    from mountainash_data.backends.ibis.backend import IbisConnection
+
+    params = SettingsParameters.create(
+        settings_class=DuckDBAuthSettings,
+        DATABASE=":memory:",
+        auth=NoAuth(),
+    )
+    backend = IbisBackend(params)
+    assert backend.dialect == "duckdb"
+    conn = backend.connect()  # Must not raise — empty-list filter active
+    assert isinstance(conn, IbisConnection)
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
+# URL path
+# ---------------------------------------------------------------------------
+
+def test_url_path_sqlite():
+    """Construct IbisBackend from sqlite:// URL and connect."""
+    from mountainash_data.backends.ibis.backend import IbisConnection
+
+    backend = IbisBackend("sqlite://")
+    assert backend.dialect == "sqlite"
+    conn = backend.connect()
+    assert isinstance(conn, IbisConnection)
+    conn.close()
+
+
+def test_url_path_duckdb():
+    """Construct IbisBackend from duckdb:// URL and connect."""
+    from mountainash_data.backends.ibis.backend import IbisConnection
+
+    backend = IbisBackend("duckdb://")
+    assert backend.dialect == "duckdb"
+    conn = backend.connect()
+    assert isinstance(conn, IbisConnection)
+    conn.close()
+
+
+def test_url_path_preserves_database(tmp_path):
+    """URL database component must reach the driver, not be discarded."""
+    from mountainash_data.backends.ibis.backend import IbisConnection
+
+    db_file = tmp_path / "test.db"
+    backend = IbisBackend(f"sqlite:///{db_file}")
+    assert backend.dialect == "sqlite"
+    conn = backend.connect()
+    assert isinstance(conn, IbisConnection)
+    conn.close()
+    assert db_file.exists()
