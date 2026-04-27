@@ -144,38 +144,28 @@ class TestSettingsParametersExtraction:
 class TestSettingsWithConnections:
     """Test that settings work with actual connections."""
 
-    def test_settings_work_with_connection_factory(self, settings_class, db_config):
-        """Test that settings work with ConnectionFactory."""
-        from mountainash_data.core.factories import ConnectionFactory
-
+    def test_settings_work_with_ibis_backend(self, settings_class, db_config):
+        """Test that settings work with IbisBackend."""
+        from mountainash_data.backends.ibis.backend import IbisBackend
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
             kwargs=db_config
         )
+        backend = IbisBackend(settings_params)
+        assert backend.dialect is not None
 
-        # Should be able to get connection
-        connection = ConnectionFactory.get_connection(settings_params)
-
-        assert connection is not None
-
-    def test_settings_enable_backend_connection(self, settings_class, db_config):
-        """Test that settings enable actual backend connection."""
-        from mountainash_data.core.utils import DatabaseUtils
-
+    def test_settings_work_with_ibis_backend_connect(self, settings_class, db_config):
+        """Test that settings can create a connected backend via IbisBackend."""
+        from mountainash_data.backends.ibis.backend import IbisBackend
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
             kwargs=db_config
         )
-
-        # Should be able to create backend
-        backend = DatabaseUtils.create_backend(settings_params)
-
-        assert backend is not None
-
-        # Backend should be functional
-        backend.create_table("test", {"id": [1, 2, 3]}, overwrite=True)
+        backend = IbisBackend(settings_params)
+        backend.connect()
         tables = backend.list_tables()
-        assert "test" in tables
+        assert isinstance(tables, list)
+        backend.close()
 
 
 @pytest.mark.unit

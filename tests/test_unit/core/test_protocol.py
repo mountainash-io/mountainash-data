@@ -14,7 +14,7 @@ from mountainash_data.core.inspection import (
     NamespaceInfo,
     TableInfo,
 )
-from mountainash_data.core.protocol import Backend, Connection
+from mountainash_data.core.protocol import Backend
 
 
 class _FakeConnection:
@@ -57,7 +57,7 @@ def test_fake_backend_satisfies_protocol():
 
 
 def test_fake_connection_satisfies_protocol():
-    conn: Connection = _FakeConnection()
+    conn = _FakeConnection()
     assert conn.list_namespaces() == ["public"]
 
 
