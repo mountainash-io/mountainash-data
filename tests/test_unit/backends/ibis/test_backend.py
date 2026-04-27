@@ -1,6 +1,7 @@
 """Tests for IbisBackend factory."""
 
 import pytest
+import polars as pl
 
 from mountainash_data.backends.ibis.backend import IbisBackend
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS
@@ -214,3 +215,145 @@ def test_postgres_dialect_has_no_upsert_hook():
     """Postgres DialectSpec has no upsert_hook (not DuckDB family)."""
     spec = DIALECTS["postgres"]
     assert spec.upsert_hook is None
+
+
+# ---------------------------------------------------------------------------
+# Thin wrapper operations (fluent)
+# ---------------------------------------------------------------------------
+
+def test_create_table_returns_self():
+    """create_table() must return self for fluent chaining."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        result = backend.create_table("t", {"id": [1, 2]})
+        assert result is backend
+        assert "t" in backend.list_tables()
+
+
+def test_drop_table_returns_self():
+    """drop_table() must return self."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        result = backend.drop_table("t")
+        assert result is backend
+        assert "t" not in backend.list_tables()
+
+
+def test_insert_returns_self():
+    """insert() must return self."""
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        result = backend.insert("t", {"id": [2]})
+        assert result is backend
+
+
+def test_truncate_returns_self():
+    """truncate() must return self."""
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        result = backend.truncate("t")
+        assert result is backend
+
+
+def test_table_returns_ibis_table():
+    """table() must return an ibis table expression."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1, 2]})
+        tbl = backend.table("t")
+        assert tbl is not None
+
+
+def test_run_sql_returns_result():
+    """run_sql() must return an ibis table expression."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1, 2, 3]})
+        result = backend.run_sql("SELECT COUNT(*) as cnt FROM t")
+        assert result is not None
+
+
+def test_table_exists_returns_bool():
+    """table_exists() must return True/False."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        assert backend.table_exists("nope") is False
+        backend.create_table("t", {"id": [1]})
+        assert backend.table_exists("t") is True
+
+
+def test_fluent_chaining():
+    """Multiple fluent calls can be chained."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("a", {"id": [1]}).create_table("b", {"id": [2]})
+        assert sorted(backend.list_tables()) == ["a", "b"]
+
+
+# ---------------------------------------------------------------------------
+# Hook-dispatched operations
+# ---------------------------------------------------------------------------
+
+def test_create_index_returns_self():
+    """create_index() via hook must return self."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1], "name": ["a"]})
+        result = backend.create_index("t", ["name"])
+        assert result is backend
+
+
+def test_create_unique_index_returns_self():
+    """create_unique_index() must return self."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1], "name": ["a"]})
+        result = backend.create_unique_index("t", ["name"])
+        assert result is backend
+
+
+def test_drop_index_returns_self():
+    """drop_index() via hook must return self."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1], "name": ["a"]})
+        backend.create_index("t", ["name"], index_name="idx_name")
+        result = backend.drop_index("idx_name")
+        assert result is backend
+
+
+def test_index_exists():
+    """index_exists() must detect created indexes."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        backend.create_index("t", ["id"], index_name="idx_id")
+        assert backend.index_exists("idx_id") is True
+        assert backend.index_exists("no_such_idx") is False
+
+
+def test_list_indexes():
+    """list_indexes() must return index info."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1], "name": ["a"]})
+        backend.create_index("t", ["id"], index_name="idx_id")
+        indexes = backend.list_indexes("t")
+        assert isinstance(indexes, list)
+        assert len(indexes) >= 1
+
+
+def test_upsert_duckdb():
+    """upsert() must work on DuckDB via hook."""
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        initial = pl.DataFrame({"id": [1, 2], "val": [10, 20]})
+        backend.create_table("t", initial)
+        backend.create_unique_index("t", ["id"])
+
+        update = pl.DataFrame({"id": [2, 3], "val": [25, 30]})
+        result = backend.upsert("t", update, conflict_columns=["id"])
+        assert result is backend
+
+        count_result = backend.run_sql("SELECT COUNT(*) as cnt FROM t")
+        count = count_result.to_polars()["cnt"][0]
+        assert count == 3
+
+
+def test_upsert_unsupported_dialect_raises():
+    """upsert() on a dialect without upsert_hook must raise NotImplementedError."""
+    backend = IbisBackend(dialect="postgres")
+    # Can't actually connect to postgres, so mock the connection state
+    from mountainash_data.backends.ibis.backend import IbisConnection
+    backend._conn = IbisConnection(None, DIALECTS["postgres"])
+    with pytest.raises(NotImplementedError, match="does not support upsert"):
+        backend.upsert("t", {}, conflict_columns=["id"])

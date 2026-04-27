@@ -315,3 +315,265 @@ class IbisBackend:
 
     def inspect_catalog(self) -> CatalogInfo:
         return self._require_connected().inspect_catalog()
+
+    # --- Thin wrapper operations (fluent — return self) ---
+
+    def create_table(
+        self,
+        name: str,
+        obj: t.Any,
+        *,
+        schema: t.Any | None = None,
+        database: str | None = None,
+        temp: bool = False,
+        overwrite: bool = False,
+    ) -> IbisBackend:
+        conn = self._require_connected()
+        conn._ibis_conn.create_table(
+            name, obj=obj, schema=schema, database=database,
+            temp=temp, overwrite=overwrite,
+        )
+        return self
+
+    def drop_table(
+        self,
+        name: str,
+        *,
+        database: str | None = None,
+        force: bool = False,
+    ) -> IbisBackend:
+        conn = self._require_connected()
+        conn._ibis_conn.drop_table(name, database=database, force=force)
+        return self
+
+    def create_view(
+        self,
+        name: str,
+        obj: t.Any,
+        *,
+        database: str | None = None,
+        overwrite: bool = False,
+    ) -> IbisBackend:
+        conn = self._require_connected()
+        conn._ibis_conn.create_view(name, obj=obj, database=database, overwrite=overwrite)
+        return self
+
+    def drop_view(
+        self,
+        name: str,
+        *,
+        database: str | None = None,
+        force: bool = False,
+    ) -> IbisBackend:
+        conn = self._require_connected()
+        conn._ibis_conn.drop_view(name, database=database, force=force)
+        return self
+
+    def insert(
+        self,
+        name: str,
+        obj: t.Any,
+        *,
+        database: str | None = None,
+        overwrite: bool = False,
+    ) -> IbisBackend:
+        conn = self._require_connected()
+        conn._ibis_conn.insert(name, obj=obj, database=database, overwrite=overwrite)
+        return self
+
+    def truncate(
+        self,
+        name: str,
+        *,
+        database: str | None = None,
+        schema: str | None = None,
+    ) -> IbisBackend:
+        conn = self._require_connected()
+        # ibis SQLBackend.truncate_table() accepts only table_name + database;
+        # schema is not a standard kwarg at the SQLBackend level.
+        kwargs: dict[str, t.Any] = {}
+        if database is not None:
+            kwargs["database"] = database
+        conn._ibis_conn.truncate_table(name, **kwargs)
+        return self
+
+    def rename_table(self, old_name: str, new_name: str) -> IbisBackend:
+        if self._spec.rename_table_hook is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support rename_table"
+            )
+        conn = self._require_connected()
+        self._spec.rename_table_hook(conn._ibis_conn, old_name, new_name)
+        return self
+
+    # --- Terminal operations (return data) ---
+
+    def table(self, name: str, *, database: str | None = None) -> t.Any:
+        conn = self._require_connected()
+        return conn._ibis_conn.table(name, database=database)
+
+    def table_exists(
+        self, name: str, database: str | None = None
+    ) -> bool:
+        tables = self.list_tables()
+        return name in tables
+
+    def run_sql(
+        self,
+        query: str,
+        *,
+        schema: t.Any | None = None,
+        dialect: str | None = None,
+    ) -> t.Any:
+        conn = self._require_connected()
+        return conn._ibis_conn.sql(query, schema=schema, dialect=dialect)
+
+    def run_expr(
+        self,
+        expr: t.Any,
+        *,
+        params: dict | None = None,
+        limit: str | None = "default",
+        **kwargs: t.Any,
+    ) -> t.Any:
+        conn = self._require_connected()
+        return conn._ibis_conn.execute(expr, params=params, limit=limit, **kwargs)
+
+    def to_sql(
+        self,
+        expr: t.Any,
+        *,
+        params: t.Any = None,
+        limit: str | None = None,
+        pretty: bool = False,
+        **kwargs: t.Any,
+    ) -> str | None:
+        conn = self._require_connected()
+        return conn._ibis_conn.compile(expr, params=params, limit=limit, pretty=pretty, **kwargs)
+
+    # --- Hook-dispatched operations (fluent — return self) ---
+
+    def upsert(
+        self,
+        name: str,
+        obj: t.Any,
+        *,
+        conflict_columns: list[str] | str,
+        update_columns: list[str] | str | None = None,
+        conflict_action: str = "UPDATE",
+        update_condition: str | None = None,
+        database: str | None = None,
+        schema: str | None = None,
+    ) -> IbisBackend:
+        if self._spec.upsert_hook is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support upsert"
+            )
+        conn = self._require_connected()
+        self._spec.upsert_hook(
+            conn._ibis_conn, name, obj,
+            conflict_columns=conflict_columns,
+            update_columns=update_columns,
+            conflict_action=conflict_action,
+            update_condition=update_condition,
+            database=database,
+            schema=schema,
+        )
+        return self
+
+    def create_index(
+        self,
+        table_name: str,
+        columns: list[str] | str,
+        *,
+        index_name: str | None = None,
+        unique: bool = False,
+        index_type: str | None = None,
+        where_condition: str | None = None,
+        database: str | None = None,
+        if_not_exists: bool = True,
+    ) -> IbisBackend:
+        if self._spec.create_index_hook is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support create_index"
+            )
+        conn = self._require_connected()
+        self._spec.create_index_hook(
+            conn._ibis_conn, table_name, columns,
+            index_name=index_name, unique=unique, index_type=index_type,
+            where_condition=where_condition, database=database,
+            if_not_exists=if_not_exists,
+        )
+        return self
+
+    def create_unique_index(
+        self,
+        table_name: str,
+        columns: list[str] | str,
+        *,
+        index_name: str | None = None,
+        where_condition: str | None = None,
+        database: str | None = None,
+    ) -> IbisBackend:
+        return self.create_index(
+            table_name, columns,
+            index_name=index_name, unique=True,
+            where_condition=where_condition, database=database,
+        )
+
+    def drop_index(
+        self,
+        index_name: str,
+        *,
+        table_name: str | None = None,
+        database: str | None = None,
+        if_exists: bool = True,
+    ) -> IbisBackend:
+        if self._spec.drop_index_hook is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support drop_index"
+            )
+        conn = self._require_connected()
+        self._spec.drop_index_hook(
+            conn._ibis_conn, index_name,
+            table_name=table_name, database=database, if_exists=if_exists,
+        )
+        return self
+
+    def index_exists(
+        self,
+        index_name: str,
+        *,
+        table_name: str | None = None,
+        database: str | None = None,
+    ) -> bool:
+        if self._spec.get_index_exists_sql is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support index_exists"
+            )
+        conn = self._require_connected()
+        check_sql = self._spec.get_index_exists_sql(index_name, table_name, database)
+        result = conn._ibis_conn.sql(check_sql)
+        if result is None:
+            return False
+        import mountainash as ma
+        count = ma.relation(result).to_dict()["count"][0]
+        return count > 0
+
+    def list_indexes(
+        self,
+        table_name: str,
+        *,
+        database: str | None = None,
+    ) -> list[dict]:
+        if self._spec.get_list_indexes_sql is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support list_indexes"
+            )
+        conn = self._require_connected()
+        list_sql = self._spec.get_list_indexes_sql(table_name, database)
+        result = conn._ibis_conn.sql(list_sql)
+        if result is None:
+            return []
+        import mountainash as ma
+        return ma.relation(result).to_dicts()
