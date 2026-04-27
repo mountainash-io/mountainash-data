@@ -33,3 +33,21 @@ def test_in_memory_sqlite_connect_and_inspect():
         assert conn.list_tables() == []
     finally:
         conn.close()
+
+
+def test_neither_positional_nor_dialect_raises():
+    """Constructor with no arguments must raise ValueError."""
+    with pytest.raises(ValueError, match="Either.*or.*dialect"):
+        IbisBackend()
+
+
+def test_both_positional_and_dialect_raises():
+    """Cannot supply both a positional arg and dialect= keyword."""
+    with pytest.raises(ValueError, match="Cannot specify both"):
+        IbisBackend("sqlite://", dialect="sqlite")
+
+
+def test_unknown_url_scheme_raises():
+    """URL with unrecognised scheme must raise ValueError."""
+    with pytest.raises(ValueError, match="Cannot detect ibis dialect"):
+        IbisBackend("nosuch://localhost/db")

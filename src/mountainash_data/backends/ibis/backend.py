@@ -103,33 +103,147 @@ class IbisConnection:
         self.close()
 
 
+# ---------------------------------------------------------------------------
+# Scheme → dialect reverse lookup (built once from the DIALECTS registry)
+# ---------------------------------------------------------------------------
+def _build_scheme_to_dialect() -> dict[str, str]:
+    """Build a map from URL scheme (e.g. 'sqlite', 'postgres') to dialect name."""
+    result: dict[str, str] = {}
+    for dialect_name, spec in DIALECTS.items():
+        # connection_string_scheme is e.g. "postgres://", "duckdb://md:"
+        scheme = spec.connection_string_scheme.split("://")[0].lower()
+        # First dialect wins — e.g. "postgres" maps to "postgres", not "redshift"
+        if scheme not in result:
+            result[scheme] = dialect_name
+    # Common aliases
+    result.setdefault("postgresql", result.get("postgres", "postgres"))
+    return result
+
+
+_SCHEME_TO_DIALECT: dict[str, str] = _build_scheme_to_dialect()
+
+
 class IbisBackend:
-    """Ibis backend factory.
+    """Ibis backend — single entry point for all Ibis connections.
 
-    Construction takes a dialect name (e.g. 'postgres') and config.
-    connect() returns a live connection that satisfies
-    core.protocol.Connection.
+    Three input forms, all producing IbisConnection via connect():
 
-    Usage:
+        # Settings object (deployment, env-driven config)
+        backend = IbisBackend(settings_params)
+
+        # Connection URL (universal connection strings)
+        backend = IbisBackend("postgresql://user:pass@host:5432/db")
+
+        # Dialect keyword + kwargs (tests, scripts)
         backend = IbisBackend(dialect="sqlite", database=":memory:")
-        conn = backend.connect()
-        try:
-            tables = conn.list_tables()
-        finally:
-            conn.close()
     """
 
     name = "ibis"
 
-    def __init__(self, dialect: str, **config: t.Any):
-        if dialect not in DIALECTS:
+    def __init__(
+        self,
+        settings_or_connection_string: str | t.Any | None = None,
+        /,
+        *,
+        dialect: str | None = None,
+        **config: t.Any,
+    ):
+        if settings_or_connection_string is not None and dialect is not None:
+            raise ValueError(
+                "Cannot specify both a positional settings/URL argument "
+                "and dialect= keyword"
+            )
+
+        if settings_or_connection_string is not None:
+            self._init_from_positional(settings_or_connection_string, config)
+        elif dialect is not None:
+            self._init_from_dialect(dialect, config)
+        else:
+            raise ValueError(
+                "Either a SettingsParameters/URL positional argument "
+                "or a dialect= keyword is required"
+            )
+
+    def _init_from_positional(
+        self, value: str | t.Any, config: dict[str, t.Any]
+    ) -> None:
+        # Lazy import — only pay for it on the settings/URL paths
+        from mountainash_settings import SettingsParameters
+
+        if isinstance(value, SettingsParameters):
+            self._init_from_settings(value, config)
+        elif isinstance(value, str):
+            if "://" in value:
+                self._init_from_url(value, config)
+            else:
+                # Plain string — treat as dialect name
+                self._init_from_dialect(value, config)
+        else:
+            raise TypeError(
+                f"Expected SettingsParameters or str, got {type(value).__name__}"
+            )
+
+    def _init_from_dialect(
+        self, dialect_name: str, config: dict[str, t.Any]
+    ) -> None:
+        if dialect_name not in DIALECTS:
             raise KeyError(
-                f"Unknown ibis dialect {dialect!r}. "
+                f"Unknown ibis dialect {dialect_name!r}. "
                 f"Available: {sorted(DIALECTS)}"
             )
-        self.dialect = dialect
-        self._spec: DialectSpec = DIALECTS[dialect]
+        self.dialect = dialect_name
+        self._spec: DialectSpec = DIALECTS[dialect_name]
+        self._url: str | None = None
         self._config = config
+
+    def _init_from_url(
+        self, url: str, config: dict[str, t.Any]
+    ) -> None:
+        from urllib.parse import urlparse
+
+        scheme = urlparse(url).scheme.lower()
+
+        # Special case: MotherDuck URLs are "duckdb://md:..."
+        if scheme == "duckdb" and url.startswith("duckdb://md:"):
+            resolved_dialect = "motherduck"
+        else:
+            resolved_dialect = _SCHEME_TO_DIALECT.get(scheme)
+
+        if resolved_dialect is None:
+            raise ValueError(
+                f"Cannot detect ibis dialect from URL scheme: {scheme!r}"
+            )
+
+        self.dialect = resolved_dialect
+        self._spec = DIALECTS[resolved_dialect]
+        self._url = url
+        self._config = config
+
+    def _init_from_settings(
+        self, settings_params: t.Any, config: dict[str, t.Any]
+    ) -> None:
+        obj_settings = settings_params.settings_class.get_settings(
+            settings_parameters=settings_params
+        )
+        descriptor = getattr(obj_settings, "__descriptor__", None)
+        if descriptor is None or getattr(descriptor, "ibis_dialect", None) is None:
+            raise ValueError(
+                f"Settings class {type(obj_settings).__name__} has no "
+                f"ibis_dialect on its descriptor"
+            )
+        resolved_dialect = descriptor.ibis_dialect
+        if resolved_dialect not in DIALECTS:
+            raise KeyError(
+                f"Unknown ibis dialect {resolved_dialect!r} from descriptor. "
+                f"Available: {sorted(DIALECTS)}"
+            )
+        driver_kwargs = obj_settings.to_driver_kwargs()
+        driver_kwargs.update(config)
+
+        self.dialect = resolved_dialect
+        self._spec = DIALECTS[resolved_dialect]
+        self._url = None
+        self._config = driver_kwargs
 
     def connect(self) -> IbisConnection:
         """Build and return a live ibis connection."""
@@ -137,5 +251,18 @@ class IbisBackend:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} has no connection_builder configured"
             )
-        ibis_conn = self._spec.connection_builder(**self._config)
+        if self._url is not None:
+            # URL path: delegate directly to ibis.connect() which
+            # natively handles all URL forms and preserves all URL
+            # components (host, port, credentials, database, query params).
+            import ibis
+            ibis_conn = ibis.connect(self._url, **self._config)
+        else:
+            # Settings/dialect path: go through the dialect builder
+            # with empty-list normalization (e.g. DuckDB extensions=[]).
+            cleaned_config = {
+                k: v for k, v in self._config.items()
+                if not (isinstance(v, (list, tuple)) and len(v) == 0)
+            }
+            ibis_conn = self._spec.connection_builder(**cleaned_config)
         return IbisConnection(ibis_conn, self._spec)
