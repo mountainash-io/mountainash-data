@@ -362,6 +362,31 @@ def _build_trino_connection(**config: t.Any) -> t.Any:
     return ibis.connect(conn_str, **extra)
 
 
+def _build_clickhouse_connection(**config: t.Any) -> t.Any:
+    """Build a ClickHouse ibis connection.
+
+    Uses ibis.clickhouse.connect() with kwargs: host, port, user, password,
+    database, secure.
+    """
+    import ibis
+
+    host = config.get("host", "localhost")
+    port = config.get("port", 9000)
+    user = config.get("user", config.get("username", "default"))
+    password = config.get("password", "")
+    database = config.get("database", "default")
+    secure = config.get("secure", False)
+
+    extra = {k: v for k, v in config.items()
+             if k not in ("host", "port", "user", "username", "password",
+                          "database", "secure", "connection_string")}
+
+    return ibis.clickhouse.connect(
+        host=host, port=port, user=user, password=password,
+        database=database, secure=secure, **extra,
+    )
+
+
 def _build_pyspark_connection(**config: t.Any) -> t.Any:
     """Build a PySpark ibis connection.
 
@@ -486,6 +511,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_HYBRID,  # confirmed: trino defaults to HYBRID
         connection_string_scheme="trino://",
         connection_builder=_build_trino_connection,
+    ),
+    "clickhouse": DialectSpec(
+        ibis_backend_name="clickhouse",
+        connection_mode=_KWARGS,
+        connection_string_scheme="clickhouse://",
+        connection_builder=_build_clickhouse_connection,
     ),
     "pyspark": DialectSpec(
         ibis_backend_name="pyspark",

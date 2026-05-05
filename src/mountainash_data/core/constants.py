@@ -23,6 +23,7 @@ class CONST_DB_PROVIDER_TYPE(Enum):
     TRINO = auto()
     PYICEBERG_REST = auto()
     ORACLE = auto()
+    CLICKHOUSE = auto()
     PYSPARK = auto()
 
 
@@ -108,6 +109,7 @@ class CONST_DB_BACKEND(StrEnum):
     REDSHIFT =     "REDSHIFT"
     MSSQL =        "MSSQL"
     MYSQL =        "MYSQL"
+    CLICKHOUSE =   "CLICKHOUSE"
     MOTHERDUCK =   "MOTHERDUCK"
     PYICEBERG =    "PYICEBERG"
     # POLARS =       "POLARS"
@@ -142,6 +144,7 @@ class CONST_DB_BACKEND_IBIS_PREFIX(StrEnum):
     ORACLE =       "oracle:"
     REDSHIFT =     "redshift:"
     MSSQL =        "mssql:"
+    CLICKHOUSE =   "clickhouse:"
     MYSQL =        "mysql:"
 
 class CONST_DB_BACKEND_CAPABILITIES(Enum):
