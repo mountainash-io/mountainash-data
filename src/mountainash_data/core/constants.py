@@ -24,6 +24,7 @@ class CONST_DB_PROVIDER_TYPE(Enum):
     PYICEBERG_REST = auto()
     ORACLE = auto()
     CLICKHOUSE = auto()
+    DATABRICKS = auto()
     PYSPARK = auto()
 
 
