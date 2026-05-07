@@ -39,6 +39,7 @@ from .duckdb import DuckDBAuthSettings
 from .motherduck import MotherDuckAuthSettings
 from .postgresql import PostgreSQLAuthSettings
 from .clickhouse import ClickHouseAuthSettings
+from .databricks import DatabricksAuthSettings
 from .mysql import MySQLAuthSettings
 from .mssql import MSSQLAuthSettings
 from .snowflake import SnowflakeAuthSettings
@@ -60,7 +61,7 @@ __all__ = [
     # backends
     "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
     "PostgreSQLAuthSettings", "ClickHouseAuthSettings",
-    "MySQLAuthSettings", "MSSQLAuthSettings",
+    "DatabricksAuthSettings", "MySQLAuthSettings", "MSSQLAuthSettings",
     "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
     "PySparkAuthSettings", "TrinoAuthSettings", "PyIcebergRestAuthSettings",
 ]

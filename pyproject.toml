@@ -66,6 +66,7 @@ postgres = ["psycopg2-binary==2.9.9", "ibis-framework[postgres]>=11.0.0"]
 bigquery = ["ibis-framework[bigquery]>=11.0.0"]
 pyspark = ["setuptools", "ibis-framework[pyspark]>=11.0.0"]
 clickhouse = ["ibis-framework[clickhouse]>=11.0.0"]
+databricks = ["databricks-sql-connector>=4", "ibis-framework[databricks]>=11.0.0"]
 trino = ["ibis-framework[trino]>=11.0.0"]
 
 

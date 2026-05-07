@@ -387,6 +387,49 @@ def _build_clickhouse_connection(**config: t.Any) -> t.Any:
     )
 
 
+def _build_databricks_connection(**config: t.Any) -> t.Any:
+    """Build a Databricks ibis connection.
+
+    Uses ibis.databricks.connect() with kwargs: server_hostname, http_path,
+    access_token, catalog, schema, use_cloud_fetch.
+    """
+    import ibis
+
+    server_hostname = config.get("server_hostname", None)
+    http_path = config.get("http_path", None)
+    access_token = config.get("access_token", None)
+    catalog = config.get("catalog", None)
+    schema = config.get("schema", "default")
+    use_cloud_fetch = config.get("use_cloud_fetch", False)
+
+    known = {"server_hostname", "http_path", "access_token", "catalog",
+             "schema", "use_cloud_fetch", "username", "password",
+             "connection_string"}
+    extra = {k: v for k, v in config.items() if k not in known}
+
+    kwargs: dict[str, t.Any] = {}
+    if server_hostname is not None:
+        kwargs["server_hostname"] = server_hostname
+    if http_path is not None:
+        kwargs["http_path"] = http_path
+    if access_token is not None:
+        kwargs["access_token"] = access_token
+    if catalog is not None:
+        kwargs["catalog"] = catalog
+    kwargs["schema"] = schema
+    kwargs["use_cloud_fetch"] = use_cloud_fetch
+
+    username = config.get("username", None)
+    password = config.get("password", None)
+    if username is not None:
+        kwargs["username"] = username
+    if password is not None:
+        kwargs["password"] = password
+
+    kwargs.update(extra)
+    return ibis.databricks.connect(**kwargs)
+
+
 def _build_pyspark_connection(**config: t.Any) -> t.Any:
     """Build a PySpark ibis connection.
 
@@ -517,6 +560,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_KWARGS,
         connection_string_scheme="clickhouse://",
         connection_builder=_build_clickhouse_connection,
+    ),
+    "databricks": DialectSpec(
+        ibis_backend_name="databricks",
+        connection_mode=_KWARGS,
+        connection_string_scheme="",
+        connection_builder=_build_databricks_connection,
     ),
     "pyspark": DialectSpec(
         ibis_backend_name="pyspark",
