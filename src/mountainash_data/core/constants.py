@@ -26,6 +26,11 @@ class CONST_DB_PROVIDER_TYPE(Enum):
     CLICKHOUSE = auto()
     DATABRICKS = auto()
     SINGLESTOREDB = auto()
+    EXASOL = auto()
+    IMPALA = auto()
+    MATERIALIZE = auto()
+    RISINGWAVE = auto()
+    DRUID = auto()
     PYSPARK = auto()
 
 
@@ -114,6 +119,11 @@ class CONST_DB_BACKEND(StrEnum):
     CLICKHOUSE =   "CLICKHOUSE"
     MOTHERDUCK =   "MOTHERDUCK"
     SINGLESTOREDB = "SINGLESTOREDB"
+    EXASOL =       "EXASOL"
+    IMPALA =       "IMPALA"
+    MATERIALIZE =  "MATERIALIZE"
+    RISINGWAVE =   "RISINGWAVE"
+    DRUID =        "DRUID"
     PYICEBERG =    "PYICEBERG"
     # POLARS =       "POLARS"
     # PANDAS =       "PANDAS"
@@ -150,6 +160,11 @@ class CONST_DB_BACKEND_IBIS_PREFIX(StrEnum):
     CLICKHOUSE =   "clickhouse:"
     MYSQL =        "mysql:"
     SINGLESTOREDB = "singlestoredb:"
+    EXASOL =       "exasol:"
+    IMPALA =       "impala:"
+    MATERIALIZE =  "materialize:"
+    RISINGWAVE =   "risingwave:"
+    DRUID =        "druid:"
 
 class CONST_DB_BACKEND_CAPABILITIES(Enum):
     """

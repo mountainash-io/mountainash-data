@@ -48,6 +48,11 @@ from .bigquery import BigQueryAuthSettings
 from .redshift import RedshiftAuthSettings
 from .pyspark import PySparkAuthSettings
 from .trino import TrinoAuthSettings
+from .exasol import ExasolAuthSettings
+from .impala import ImpalaAuthSettings
+from .materialize import MaterializeAuthSettings
+from .risingwave import RisingWaveAuthSettings
+from .druid import DruidAuthSettings
 from .pyiceberg_rest import PyIcebergRestAuthSettings
 
 __all__ = [
@@ -65,5 +70,8 @@ __all__ = [
     "DatabricksAuthSettings", "MySQLAuthSettings", "SingleStoreDBAuthSettings",
     "MSSQLAuthSettings",
     "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
-    "PySparkAuthSettings", "TrinoAuthSettings", "PyIcebergRestAuthSettings",
+    "PySparkAuthSettings", "TrinoAuthSettings",
+    "ExasolAuthSettings", "ImpalaAuthSettings", "MaterializeAuthSettings",
+    "RisingWaveAuthSettings", "DruidAuthSettings",
+    "PyIcebergRestAuthSettings",
 ]
