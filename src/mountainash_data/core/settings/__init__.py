@@ -41,6 +41,7 @@ from .postgresql import PostgreSQLAuthSettings
 from .clickhouse import ClickHouseAuthSettings
 from .databricks import DatabricksAuthSettings
 from .mysql import MySQLAuthSettings
+from .singlestoredb import SingleStoreDBAuthSettings
 from .mssql import MSSQLAuthSettings
 from .snowflake import SnowflakeAuthSettings
 from .bigquery import BigQueryAuthSettings
@@ -61,7 +62,8 @@ __all__ = [
     # backends
     "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
     "PostgreSQLAuthSettings", "ClickHouseAuthSettings",
-    "DatabricksAuthSettings", "MySQLAuthSettings", "MSSQLAuthSettings",
+    "DatabricksAuthSettings", "MySQLAuthSettings", "SingleStoreDBAuthSettings",
+    "MSSQLAuthSettings",
     "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
     "PySparkAuthSettings", "TrinoAuthSettings", "PyIcebergRestAuthSettings",
 ]

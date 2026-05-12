@@ -430,6 +430,46 @@ def _build_databricks_connection(**config: t.Any) -> t.Any:
     return ibis.databricks.connect(**kwargs)
 
 
+def _build_singlestoredb_connection(**config: t.Any) -> t.Any:
+    """Build a SingleStoreDB ibis connection.
+
+    Uses ibis.singlestoredb.connect() with kwargs: host, port, user, password,
+    database, driver, autocommit, local_infile.
+    """
+    import ibis
+
+    host = config.get("host", "localhost")
+    port = config.get("port", 3306)
+    user = config.get("user", config.get("username", None))
+    password = config.get("password", None)
+    database = config.get("database", None)
+    driver = config.get("driver", None)
+    autocommit = config.get("autocommit", True)
+    local_infile = config.get("local_infile", True)
+
+    known = {"host", "port", "user", "username", "password", "database",
+             "driver", "autocommit", "local_infile", "connection_string"}
+    extra = {k: v for k, v in config.items() if k not in known}
+
+    kwargs: dict[str, t.Any] = {
+        "host": host,
+        "port": port,
+        "autocommit": autocommit,
+        "local_infile": local_infile,
+    }
+    if user is not None:
+        kwargs["user"] = user
+    if password is not None:
+        kwargs["password"] = password
+    if database is not None:
+        kwargs["database"] = database
+    if driver is not None:
+        kwargs["driver"] = driver
+
+    kwargs.update(extra)
+    return ibis.singlestoredb.connect(**kwargs)
+
+
 def _build_pyspark_connection(**config: t.Any) -> t.Any:
     """Build a PySpark ibis connection.
 
@@ -566,6 +606,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_KWARGS,
         connection_string_scheme="",
         connection_builder=_build_databricks_connection,
+    ),
+    "singlestoredb": DialectSpec(
+        ibis_backend_name="singlestoredb",
+        connection_mode=_KWARGS,
+        connection_string_scheme="singlestoredb://",
+        connection_builder=_build_singlestoredb_connection,
     ),
     "pyspark": DialectSpec(
         ibis_backend_name="pyspark",

@@ -25,6 +25,7 @@ class CONST_DB_PROVIDER_TYPE(Enum):
     ORACLE = auto()
     CLICKHOUSE = auto()
     DATABRICKS = auto()
+    SINGLESTOREDB = auto()
     PYSPARK = auto()
 
 
@@ -112,6 +113,7 @@ class CONST_DB_BACKEND(StrEnum):
     MYSQL =        "MYSQL"
     CLICKHOUSE =   "CLICKHOUSE"
     MOTHERDUCK =   "MOTHERDUCK"
+    SINGLESTOREDB = "SINGLESTOREDB"
     PYICEBERG =    "PYICEBERG"
     # POLARS =       "POLARS"
     # PANDAS =       "PANDAS"
@@ -147,6 +149,7 @@ class CONST_DB_BACKEND_IBIS_PREFIX(StrEnum):
     MSSQL =        "mssql:"
     CLICKHOUSE =   "clickhouse:"
     MYSQL =        "mysql:"
+    SINGLESTOREDB = "singlestoredb:"
 
 class CONST_DB_BACKEND_CAPABILITIES(Enum):
     """

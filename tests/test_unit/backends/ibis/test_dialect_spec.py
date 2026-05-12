@@ -33,11 +33,11 @@ def test_dialect_spec_with_capability_hooks():
     assert spec.get_index_exists_sql("users", "idx_users_id") == "SELECT 1 FROM users"
 
 
-def test_registry_contains_all_14_backends():
+def test_registry_contains_all_15_backends():
     expected = {
         "sqlite", "duckdb", "motherduck", "postgres", "mysql", "mssql",
         "oracle", "snowflake", "bigquery", "redshift", "trino", "pyspark",
-        "clickhouse", "databricks",
+        "clickhouse", "databricks", "singlestoredb",
     }
     assert set(DIALECTS.keys()) == expected
 
