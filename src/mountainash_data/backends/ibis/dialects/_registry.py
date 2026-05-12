@@ -470,6 +470,137 @@ def _build_singlestoredb_connection(**config: t.Any) -> t.Any:
     return ibis.singlestoredb.connect(**kwargs)
 
 
+def _build_exasol_connection(**config: t.Any) -> t.Any:
+    """Build an Exasol ibis connection."""
+    import ibis
+
+    user = config.get("user", config.get("username", None))
+    password = config.get("password", None)
+    host = config.get("host", "localhost")
+    port = config.get("port", 8563)
+    timezone = config.get("timezone", "UTC")
+
+    known = {"host", "port", "user", "username", "password", "timezone",
+             "connection_string"}
+    extra = {k: v for k, v in config.items() if k not in known}
+
+    kwargs: dict[str, t.Any] = {"host": host, "port": port, "timezone": timezone}
+    if user is not None:
+        kwargs["user"] = user
+    if password is not None:
+        kwargs["password"] = password
+    kwargs.update(extra)
+    return ibis.exasol.connect(**kwargs)
+
+
+def _build_impala_connection(**config: t.Any) -> t.Any:
+    """Build an Impala ibis connection."""
+    import ibis
+
+    host = config.get("host", "localhost")
+    port = config.get("port", 21050)
+    database = config.get("database", "default")
+    timeout = config.get("timeout", 45)
+    use_ssl = config.get("use_ssl", False)
+    ca_cert = config.get("ca_cert", None)
+    user = config.get("user", config.get("username", None))
+    password = config.get("password", None)
+    auth_mechanism = config.get("auth_mechanism", "NOSASL")
+    kerberos_service_name = config.get("kerberos_service_name", "impala")
+
+    known = {"host", "port", "database", "timeout", "use_ssl", "ca_cert",
+             "user", "username", "password", "auth_mechanism",
+             "kerberos_service_name", "connection_string"}
+    extra = {k: v for k, v in config.items() if k not in known}
+
+    kwargs: dict[str, t.Any] = {
+        "host": host, "port": port, "database": database,
+        "timeout": timeout, "use_ssl": use_ssl,
+        "auth_mechanism": auth_mechanism,
+        "kerberos_service_name": kerberos_service_name,
+    }
+    if ca_cert is not None:
+        kwargs["ca_cert"] = ca_cert
+    if user is not None:
+        kwargs["user"] = user
+    if password is not None:
+        kwargs["password"] = password
+    kwargs.update(extra)
+    return ibis.impala.connect(**kwargs)
+
+
+def _build_materialize_connection(**config: t.Any) -> t.Any:
+    """Build a Materialize ibis connection."""
+    import ibis
+
+    host = config.get("host", None)
+    port = config.get("port", 6875)
+    user = config.get("user", config.get("username", None))
+    password = config.get("password", None)
+    database = config.get("database", None)
+    schema = config.get("schema", None)
+    autocommit = config.get("autocommit", True)
+    cluster = config.get("cluster", None)
+
+    known = {"host", "port", "user", "username", "password", "database",
+             "schema", "autocommit", "cluster", "connection_string"}
+    extra = {k: v for k, v in config.items() if k not in known}
+
+    kwargs: dict[str, t.Any] = {"port": port, "autocommit": autocommit}
+    if host is not None:
+        kwargs["host"] = host
+    if user is not None:
+        kwargs["user"] = user
+    if password is not None:
+        kwargs["password"] = password
+    if database is not None:
+        kwargs["database"] = database
+    if schema is not None:
+        kwargs["schema"] = schema
+    if cluster is not None:
+        kwargs["cluster"] = cluster
+    kwargs.update(extra)
+    return ibis.materialize.connect(**kwargs)
+
+
+def _build_risingwave_connection(**config: t.Any) -> t.Any:
+    """Build a RisingWave ibis connection."""
+    import ibis
+
+    host = config.get("host", None)
+    port = config.get("port", 5432)
+    user = config.get("user", config.get("username", None))
+    password = config.get("password", None)
+    database = config.get("database", None)
+    schema = config.get("schema", None)
+
+    known = {"host", "port", "user", "username", "password", "database",
+             "schema", "connection_string"}
+    extra = {k: v for k, v in config.items() if k not in known}
+
+    kwargs: dict[str, t.Any] = {"port": port}
+    if host is not None:
+        kwargs["host"] = host
+    if user is not None:
+        kwargs["user"] = user
+    if password is not None:
+        kwargs["password"] = password
+    if database is not None:
+        kwargs["database"] = database
+    if schema is not None:
+        kwargs["schema"] = schema
+    kwargs.update(extra)
+    return ibis.risingwave.connect(**kwargs)
+
+
+def _build_druid_connection(**config: t.Any) -> t.Any:
+    """Build a Druid ibis connection."""
+    import ibis
+
+    extra = {k: v for k, v in config.items() if k != "connection_string"}
+    return ibis.druid.connect(**extra)
+
+
 def _build_pyspark_connection(**config: t.Any) -> t.Any:
     """Build a PySpark ibis connection.
 
@@ -612,6 +743,36 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_KWARGS,
         connection_string_scheme="singlestoredb://",
         connection_builder=_build_singlestoredb_connection,
+    ),
+    "exasol": DialectSpec(
+        ibis_backend_name="exasol",
+        connection_mode=_KWARGS,
+        connection_string_scheme="exasol://",
+        connection_builder=_build_exasol_connection,
+    ),
+    "impala": DialectSpec(
+        ibis_backend_name="impala",
+        connection_mode=_KWARGS,
+        connection_string_scheme="impala://",
+        connection_builder=_build_impala_connection,
+    ),
+    "materialize": DialectSpec(
+        ibis_backend_name="materialize",
+        connection_mode=_KWARGS,
+        connection_string_scheme="materialize://",
+        connection_builder=_build_materialize_connection,
+    ),
+    "risingwave": DialectSpec(
+        ibis_backend_name="risingwave",
+        connection_mode=_KWARGS,
+        connection_string_scheme="risingwave://",
+        connection_builder=_build_risingwave_connection,
+    ),
+    "druid": DialectSpec(
+        ibis_backend_name="druid",
+        connection_mode=_KWARGS,
+        connection_string_scheme="druid://",
+        connection_builder=_build_druid_connection,
     ),
     "pyspark": DialectSpec(
         ibis_backend_name="pyspark",

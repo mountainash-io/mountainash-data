@@ -68,6 +68,11 @@ pyspark = ["setuptools", "ibis-framework[pyspark]>=11.0.0"]
 clickhouse = ["ibis-framework[clickhouse]>=11.0.0"]
 databricks = ["databricks-sql-connector>=4", "ibis-framework[databricks]>=11.0.0"]
 singlestoredb = ["singlestoredb>=1.0", "ibis-framework[singlestoredb]>=11.0.0"]
+exasol = ["pyexasol>=0.25.2", "ibis-framework[exasol]>=11.0.0"]
+impala = ["impyla>=0.17", "ibis-framework[impala]>=11.0.0"]
+materialize = ["psycopg>=3.2.0", "ibis-framework[materialize]>=11.0.0"]
+risingwave = ["psycopg2>=2.8.4", "ibis-framework[risingwave]>=11.0.0"]
+druid = ["pydruid>=0.6.7", "ibis-framework[druid]>=11.0.0"]
 trino = ["ibis-framework[trino]>=11.0.0"]
 
 
