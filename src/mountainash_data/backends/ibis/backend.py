@@ -227,16 +227,16 @@ class IbisBackend:
         obj_settings = settings_params.settings_class.get_settings(
             settings_parameters=settings_params
         )
-        descriptor = getattr(obj_settings, "__descriptor__", None)
+        descriptor = getattr(obj_settings, "__spec__", None)
         if descriptor is None or getattr(descriptor, "ibis_dialect", None) is None:
             raise ValueError(
                 f"Settings class {type(obj_settings).__name__} has no "
-                f"ibis_dialect on its descriptor"
+                f"ibis_dialect on its spec"
             )
         resolved_dialect = descriptor.ibis_dialect
         if resolved_dialect not in DIALECTS:
             raise KeyError(
-                f"Unknown ibis dialect {resolved_dialect!r} from descriptor. "
+                f"Unknown ibis dialect {resolved_dialect!r} from spec. "
                 f"Available: {sorted(DIALECTS)}"
             )
         driver_kwargs = obj_settings.to_driver_kwargs()

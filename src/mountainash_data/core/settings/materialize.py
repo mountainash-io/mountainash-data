@@ -11,12 +11,12 @@ import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-MATERIALIZE_DESCRIPTOR = BackendDescriptor(
+MATERIALIZE_SPEC = BackendSpec(
     name="materialize",
     provider_type=CONST_DB_PROVIDER_TYPE.MATERIALIZE,
     default_port=6875,
@@ -39,6 +39,6 @@ MATERIALIZE_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(MATERIALIZE_DESCRIPTOR)
+@register
 class MaterializeAuthSettings(ConnectionProfile):
-    __descriptor__ = MATERIALIZE_DESCRIPTOR
+    __spec__ = MATERIALIZE_SPEC

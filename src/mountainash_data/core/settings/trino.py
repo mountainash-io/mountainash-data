@@ -13,12 +13,12 @@ from pathlib import Path
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import trino as _adapter
 from mountainash_settings.auth import JWTAuth, KerberosAuth, NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-TRINO_DESCRIPTOR = BackendDescriptor(
+TRINO_SPEC = BackendSpec(
     name="trino",
     provider_type=CONST_DB_PROVIDER_TYPE.TRINO,
     default_port=8080,
@@ -75,7 +75,7 @@ TRINO_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(TRINO_DESCRIPTOR)
+@register
 class TrinoAuthSettings(ConnectionProfile):
-    __descriptor__ = TRINO_DESCRIPTOR
+    __spec__ = TRINO_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

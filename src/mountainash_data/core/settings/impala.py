@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -25,7 +25,7 @@ class ImpalaAuthMechanism(StrEnum):
     LDAP = "LDAP"
 
 
-IMPALA_DESCRIPTOR = BackendDescriptor(
+IMPALA_SPEC = BackendSpec(
     name="impala",
     provider_type=CONST_DB_PROVIDER_TYPE.IMPALA,
     default_port=21050,
@@ -54,6 +54,6 @@ IMPALA_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(IMPALA_DESCRIPTOR)
+@register
 class ImpalaAuthSettings(ConnectionProfile):
-    __descriptor__ = IMPALA_DESCRIPTOR
+    __spec__ = IMPALA_SPEC

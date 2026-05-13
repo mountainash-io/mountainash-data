@@ -1,6 +1,6 @@
-"""Tests for ConnectionProfile — database-flavored DescriptorProfile.
+"""Tests for ConnectionProfile — database-flavored Profile.
 
-DescriptorProfile mechanism tests live in mountainash-settings. Here we only
+Profile mechanism tests live in mountainash-settings. Here we only
 exercise the database-specific methods: to_driver_kwargs() and
 to_connection_string().
 """
@@ -12,13 +12,13 @@ from pydantic import SecretStr
 
 from mountainash_data.core.settings.auth import NoAuth, PasswordAuth
 from mountainash_data.core.settings.descriptor import (
-    BackendDescriptor,
+    BackendSpec,
     ParameterSpec,
 )
 from mountainash_data.core.settings.profile import ConnectionProfile
 
 
-DUMMY_DESCRIPTOR = BackendDescriptor(
+DUMMY_SPEC = BackendSpec(
     name="dummy",
     provider_type="dummy",
     default_port=9999,
@@ -34,7 +34,7 @@ DUMMY_DESCRIPTOR = BackendDescriptor(
 
 
 class DummyProfile(ConnectionProfile):
-    __descriptor__ = DUMMY_DESCRIPTOR
+    __spec__ = DUMMY_SPEC
 
 
 @pytest.mark.unit
@@ -60,7 +60,7 @@ class TestConnectionProfile:
             return {"only": "thing"}
 
         class Adapted(ConnectionProfile):
-            __descriptor__ = DUMMY_DESCRIPTOR
+            __spec__ = DUMMY_SPEC
             __adapter__ = staticmethod(_adapter)
 
         p = Adapted(HOST="h", auth=NoAuth())
@@ -84,13 +84,13 @@ class TestConnectionProfile:
         assert "p%40ss%3Aw%2Ford" in url
 
     def test_to_connection_string_no_scheme_raises(self):
-        desc = BackendDescriptor(
+        spec = BackendSpec(
             name="x", provider_type="x", parameters=[], auth_modes=[NoAuth],
             connection_string_scheme=None,
         )
 
         class P(ConnectionProfile):
-            __descriptor__ = desc
+            __spec__ = spec
 
         p = P(auth=NoAuth())
         with pytest.raises(NotImplementedError):

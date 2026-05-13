@@ -11,12 +11,12 @@ from __future__ import annotations
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-DRUID_DESCRIPTOR = BackendDescriptor(
+DRUID_SPEC = BackendSpec(
     name="druid",
     provider_type=CONST_DB_PROVIDER_TYPE.DRUID,
     default_port=8082,
@@ -35,6 +35,6 @@ DRUID_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(DRUID_DESCRIPTOR)
+@register
 class DruidAuthSettings(ConnectionProfile):
-    __descriptor__ = DRUID_DESCRIPTOR
+    __spec__ = DRUID_SPEC

@@ -11,12 +11,12 @@ import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-RISINGWAVE_DESCRIPTOR = BackendDescriptor(
+RISINGWAVE_SPEC = BackendSpec(
     name="risingwave",
     provider_type=CONST_DB_PROVIDER_TYPE.RISINGWAVE,
     default_port=5432,
@@ -35,6 +35,6 @@ RISINGWAVE_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(RISINGWAVE_DESCRIPTOR)
+@register
 class RisingWaveAuthSettings(ConnectionProfile):
-    __descriptor__ = RISINGWAVE_DESCRIPTOR
+    __spec__ = RISINGWAVE_SPEC

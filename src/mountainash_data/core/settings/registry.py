@@ -12,9 +12,8 @@ from collections.abc import Mapping
 
 from mountainash_settings.profiles import Registry
 
-if t.TYPE_CHECKING:
-    from mountainash_settings.profiles import ProfileDescriptor
-    from .profile import ConnectionProfile
+from .descriptor import BackendSpec
+from .profile import ConnectionProfile
 
 __all__ = [
     "DATABASES_REGISTRY",
@@ -26,12 +25,16 @@ __all__ = [
     "register",
 ]
 
-DATABASES_REGISTRY = Registry("databases")
+DATABASES_REGISTRY = Registry(
+    "databases",
+    spec_type=BackendSpec,
+    profile_type=ConnectionProfile,
+)
 
 register = DATABASES_REGISTRY.decorator()
 
 
-def get_descriptor(name: str) -> "ProfileDescriptor":
+def get_descriptor(name: str) -> BackendSpec:
     return DATABASES_REGISTRY.get_descriptor(name)
 
 
@@ -47,7 +50,7 @@ class _RegistryDictView(Mapping):
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and name in DATABASES_REGISTRY
 
-    def __getitem__(self, name: str) -> "ProfileDescriptor":
+    def __getitem__(self, name: str) -> BackendSpec:
         return DATABASES_REGISTRY.get_descriptor(name)
 
     def __iter__(self) -> t.Iterator[str]:
@@ -56,13 +59,13 @@ class _RegistryDictView(Mapping):
     def __len__(self) -> int:
         return len(DATABASES_REGISTRY)
 
-    def items(self) -> t.ItemsView[str, "ProfileDescriptor"]:
+    def items(self) -> t.ItemsView[str, BackendSpec]:
         return DATABASES_REGISTRY.descriptors.items()
 
     def keys(self) -> t.KeysView[str]:
         return DATABASES_REGISTRY.descriptors.keys()
 
-    def values(self) -> t.ValuesView["ProfileDescriptor"]:
+    def values(self) -> t.ValuesView[BackendSpec]:
         return DATABASES_REGISTRY.descriptors.values()
 
 

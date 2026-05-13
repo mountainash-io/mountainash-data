@@ -15,11 +15,11 @@ from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
-__all__ = ["DuckDBAuthSettings", "DUCKDB_DESCRIPTOR"]
+__all__ = ["DuckDBAuthSettings", "DUCKDB_SPEC"]
 
 _MEMORY_LIMIT_RE = re.compile(r"^(?:\d+(?:\.\d+)?\s*[KMG]i?B|\d+%)$", re.IGNORECASE)
 
@@ -34,7 +34,7 @@ def _validate_memory_limit(value: t.Any) -> t.Any:
     return value
 
 
-DUCKDB_DESCRIPTOR = BackendDescriptor(
+DUCKDB_SPEC = BackendSpec(
     name="duckdb",
     provider_type=CONST_DB_PROVIDER_TYPE.DUCKDB,
     connection_string_scheme="duckdb://",
@@ -84,9 +84,9 @@ DUCKDB_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(DUCKDB_DESCRIPTOR)
+@register
 class DuckDBAuthSettings(ConnectionProfile):
-    __descriptor__ = DUCKDB_DESCRIPTOR
+    __spec__ = DUCKDB_SPEC
 
     @field_validator("MEMORY_LIMIT", check_fields=False)
     @classmethod

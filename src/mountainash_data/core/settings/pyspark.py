@@ -16,11 +16,11 @@ from enum import StrEnum
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import pyspark as _adapter
 from mountainash_settings.auth import NoAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
-__all__ = ["PySparkAuthSettings", "PySparkMode", "PYSPARK_DESCRIPTOR"]
+__all__ = ["PySparkAuthSettings", "PySparkMode", "PYSPARK_SPEC"]
 
 
 class PySparkMode(StrEnum):
@@ -28,7 +28,7 @@ class PySparkMode(StrEnum):
     STREAMING = "streaming"
 
 
-PYSPARK_DESCRIPTOR = BackendDescriptor(
+PYSPARK_SPEC = BackendSpec(
     name="pyspark",
     provider_type=CONST_DB_PROVIDER_TYPE.PYSPARK,
     connection_string_scheme=None,  # SparkSession, not URL
@@ -51,7 +51,7 @@ PYSPARK_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(PYSPARK_DESCRIPTOR)
+@register
 class PySparkAuthSettings(ConnectionProfile):
-    __descriptor__ = PYSPARK_DESCRIPTOR
+    __spec__ = PYSPARK_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

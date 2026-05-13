@@ -11,14 +11,14 @@ import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
-__all__ = ["SQLiteAuthSettings", "SQLITE_DESCRIPTOR"]
+__all__ = ["SQLiteAuthSettings", "SQLITE_SPEC"]
 
 
-SQLITE_DESCRIPTOR = BackendDescriptor(
+SQLITE_SPEC = BackendSpec(
     name="sqlite",
     provider_type=CONST_DB_PROVIDER_TYPE.SQLITE,
     connection_string_scheme="sqlite://",
@@ -45,6 +45,6 @@ SQLITE_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(SQLITE_DESCRIPTOR)
+@register
 class SQLiteAuthSettings(ConnectionProfile):
-    __descriptor__ = SQLITE_DESCRIPTOR
+    __spec__ = SQLITE_SPEC

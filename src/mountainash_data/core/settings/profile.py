@@ -1,8 +1,8 @@
-"""ConnectionProfile — database-flavored subclass of DescriptorProfile.
+"""ConnectionProfile — database-flavored subclass of Profile.
 
 Adds ``to_driver_kwargs()`` and ``to_connection_string()`` on top of the
 generic mechanism provided by
-:class:`mountainash_settings.profiles.DescriptorProfile`.
+:class:`mountainash_settings.profiles.Profile`.
 """
 
 from __future__ import annotations
@@ -10,12 +10,13 @@ from __future__ import annotations
 import typing as t
 from urllib.parse import quote
 
-from mountainash_settings.profiles import DescriptorProfile
+from mountainash_settings import lookup_class_var
+from mountainash_settings.profiles import Profile
 
 __all__ = ["ConnectionProfile"]
 
 
-class ConnectionProfile(DescriptorProfile):
+class ConnectionProfile(Profile):
     """Database connection settings.
 
     Public API:
@@ -23,9 +24,9 @@ class ConnectionProfile(DescriptorProfile):
         - :meth:`to_connection_string` — URL form, or ``NotImplementedError``
           if the descriptor has no ``connection_string_scheme`` metadata.
 
-    Subclasses set ``__descriptor__`` (a :class:`ProfileDescriptor`) and
+    Subclasses set ``__spec__`` (a :class:`BackendSpec`) and
     optionally ``__adapter__``. Field installation, auth union, and template
-    wiring are inherited from :class:`DescriptorProfile`.
+    wiring are inherited from :class:`Profile`.
     """
 
     def to_driver_kwargs(self) -> dict[str, t.Any]:
@@ -36,13 +37,7 @@ class ConnectionProfile(DescriptorProfile):
         composite mappings on top. Otherwise defaults to descriptor
         ``driver_key`` mappings + default auth dispatch.
         """
-        adapter = type(self).__dict__.get("__adapter__")
-        if adapter is None:
-            for base in type(self).__mro__[1:]:
-                candidate = base.__dict__.get("__adapter__")
-                if candidate is not None:
-                    adapter = candidate
-                    break
+        adapter = lookup_class_var(type(self), "__adapter__")
         if adapter is not None:
             return adapter(self)
         kwargs = self._default_kwargs()
@@ -56,7 +51,7 @@ class ConnectionProfile(DescriptorProfile):
         (or a typed ``connection_string_scheme`` attribute if the descriptor
         subclass provides one). Raises :class:`NotImplementedError` if absent.
         """
-        desc = self.__descriptor__
+        desc = lookup_class_var(type(self), "__spec__")
         scheme = getattr(desc, "connection_string_scheme", None)
         if scheme is None:
             scheme = desc.metadata.get("connection_string_scheme")
