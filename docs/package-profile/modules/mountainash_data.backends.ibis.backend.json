@@ -1,0 +1,68 @@
+{
+  "id": "mountainash_data.backends.ibis.backend",
+  "path": "src/mountainash_data/backends/ibis/backend.py",
+  "summary": "IbisBackend — the primary public entry point for all Ibis-backed relational database connections. Accepts three input forms: settings (SettingsParameters), URL string, or dialect+kwargs. connect() returns self (fluent). IbisConnection wraps the live ibis backend object and exposes the standard inspection API. Full DDL/DML surface: create_table, drop_table, create_view, insert, truncate, upsert (dialect-hooked), create_index, drop_index, list_indexes, rename_table, run_sql, run_expr, to_sql.",
+  "role": "backend",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "contributors", "backend-architecture"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": ["IbisBackend", "IbisConnection"],
+  "key_classes": ["IbisBackend", "IbisConnection"],
+  "key_functions": [
+    "IbisBackend.connect", "IbisBackend.close",
+    "IbisBackend.list_tables", "IbisBackend.list_namespaces",
+    "IbisBackend.inspect_table", "IbisBackend.inspect_namespace", "IbisBackend.inspect_catalog",
+    "IbisBackend.create_table", "IbisBackend.drop_table", "IbisBackend.insert",
+    "IbisBackend.upsert", "IbisBackend.create_index", "IbisBackend.drop_index",
+    "IbisBackend.run_sql", "IbisBackend.run_expr", "IbisBackend.to_sql",
+    "IbisBackend.table", "IbisBackend.ibis_connection"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis.dialects._registry",
+    "mountainash_data.core.inspection",
+    "mountainash_data.backends.ibis.inspect",
+    "mountainash_settings",
+    "ibis"
+  ],
+  "dependents": [
+    "mountainash_data.init"
+  ],
+  "extension_points": [
+    "Capability hooks: upsert_hook, create_index_hook, drop_index_hook, rename_table_hook — per-dialect in DialectSpec",
+    "ibis_connection() escapes the abstraction for advanced ibis-native operations"
+  ],
+  "lifecycle_notes": [
+    "Three construction paths: positional SettingsParameters, positional URL string, keyword dialect=.",
+    "Fluent: connect()/close() return self — supports chaining and context manager use.",
+    "upsert, create_index, drop_index, rename_table raise NotImplementedError if the dialect DialectSpec has no hook.",
+    "index_exists and list_indexes import mountainash — creates an implicit dependency on the mountainash meta-package."
+  ],
+  "documentation_hooks": [
+    "Three construction forms deserve a dedicated 'how to connect' page",
+    "MotherDuck URL special-case (duckdb://md:) should be called out explicitly",
+    "Fluent interface pattern (connect().list_tables()) vs context manager deserve comparison examples"
+  ],
+  "examples": [
+    "CLAUDE.md — IbisBackend(dialect='sqlite', database=':memory:') example"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_backend.py"
+  ],
+  "risks": [
+    "index_exists and list_indexes have an implicit dependency on mountainash meta-package (import mountainash as ma) — may break if mountainash is not installed",
+    "IbisConnection.list_namespaces uses print() for errors instead of logging"
+  ],
+  "open_questions": [
+    "Should IbisBackend implement the Backend protocol formally (isinstance check)?"
+  ],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/backend.py", "detail": "class IbisBackend with name='ibis' and full DDL/DML surface"},
+    {"kind": "symbol", "path": "src/mountainash_data/__init__.py", "detail": "from mountainash_data.backends.ibis.backend import IbisBackend"},
+    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_backend.py", "detail": "IbisBackend unit tests"},
+    {"kind": "doc", "path": "CLAUDE.md", "detail": "Usage example with dialect+kwargs construction"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

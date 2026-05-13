@@ -1,0 +1,49 @@
+{
+  "id": "mountainash_data.backends.iceberg.backend",
+  "path": "src/mountainash_data/backends/iceberg/backend.py",
+  "summary": "IcebergBackend — single entry point for Iceberg catalog connections. Accepts a catalog type string ('rest') and config kwargs. Dispatches to a concrete IcebergConnectionBase subclass via _CATALOG_REGISTRY. connect()/close() are fluent and idempotent. Delegates all inspection to the underlying connection.",
+  "role": "backend",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "backend-architecture"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": ["IcebergBackend"],
+  "key_classes": ["IcebergBackend"],
+  "key_functions": ["IcebergBackend.connect", "IcebergBackend.close"],
+  "dependencies": [
+    "mountainash_data.backends.iceberg.catalogs.rest",
+    "mountainash_data.backends.iceberg.connection"
+  ],
+  "dependents": ["mountainash_data.init"],
+  "extension_points": [
+    "_CATALOG_REGISTRY dict — add a new catalog type by registering a new IcebergConnectionBase subclass"
+  ],
+  "lifecycle_notes": [
+    "Currently only 'rest' catalog is registered.",
+    "IcebergBackend requires optional pyiceberg dependency — guarded at package root import.",
+    "New-style IcebergBackend takes **kwargs directly; IcebergConnectionBase still uses SettingsParameters."
+  ],
+  "documentation_hooks": [
+    "Catalog type registry and how to add a new catalog type belongs in extension-author docs",
+    "Optional dependency install instructions (pip install mountainash-data[pyiceberg])"
+  ],
+  "examples": [
+    "CLAUDE.md — IcebergBackend(catalog='rest', uri='http://localhost:8181') example"
+  ],
+  "tests": ["tests/test_unit/backends/iceberg/test_backend.py"],
+  "risks": [
+    "inspect_table return type is annotated as t.Any instead of TableInfo — protocol conformance gap"
+  ],
+  "open_questions": [
+    "Should inspect_table/inspect_namespace/inspect_catalog be typed as the concrete inspection model types rather than t.Any?"
+  ],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/iceberg/backend.py", "detail": "_CATALOG_REGISTRY = {'rest': IcebergRestConnection}"},
+    {"kind": "symbol", "path": "src/mountainash_data/__init__.py", "detail": "IcebergBackend conditionally imported with try/except ImportError"},
+    {"kind": "test", "path": "tests/test_unit/backends/iceberg/test_backend.py", "detail": "IcebergBackend unit tests"},
+    {"kind": "doc", "path": "CLAUDE.md", "detail": "Usage example"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

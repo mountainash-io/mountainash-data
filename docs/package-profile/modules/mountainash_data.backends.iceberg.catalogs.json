@@ -1,0 +1,40 @@
+{
+  "id": "mountainash_data.backends.iceberg.catalogs",
+  "path": "src/mountainash_data/backends/iceberg/catalogs/rest.py",
+  "summary": "IcebergRestConnection — the only currently-registered Iceberg catalog implementation. Concrete subclass of IcebergConnectionBase for PyIceberg REST catalogs. Registered as 'rest' in IcebergBackend._CATALOG_REGISTRY.",
+  "role": "backend",
+  "visibility": "internal",
+  "stability": "evolving",
+  "audiences": ["maintainers", "backend-architecture"],
+  "doc_priority": "internal-note",
+  "confidence": "medium",
+  "public_api": ["IcebergRestConnection"],
+  "key_classes": ["IcebergRestConnection"],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.backends.iceberg.connection",
+    "pyiceberg"
+  ],
+  "dependents": [
+    "mountainash_data.backends.iceberg.backend"
+  ],
+  "extension_points": [
+    "Pattern: create a new IcebergConnectionBase subclass and register it in IcebergBackend._CATALOG_REGISTRY"
+  ],
+  "lifecycle_notes": [
+    "Only REST catalog implemented — Hive, Glue, JDBC catalogs are not yet supported."
+  ],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [],
+  "open_questions": [
+    "What additional catalogs are planned (Hive, Glue, JDBC)?"
+  ],
+  "evidence": [
+    {"kind": "import", "path": "src/mountainash_data/backends/iceberg/backend.py", "detail": "from mountainash_data.backends.iceberg.catalogs.rest import IcebergRestConnection"},
+    {"kind": "symbol", "path": "src/mountainash_data/backends/iceberg/backend.py", "detail": "_CATALOG_REGISTRY = {'rest': IcebergRestConnection}"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

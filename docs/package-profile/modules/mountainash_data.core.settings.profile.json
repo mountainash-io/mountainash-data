@@ -1,0 +1,43 @@
+{
+  "id": "mountainash_data.core.settings.profile",
+  "path": "src/mountainash_data/core/settings/profile.py",
+  "summary": "ConnectionProfile — database-flavored Profile subclass. Adds to_driver_kwargs() and to_connection_string() on top of the generic mountainash_settings Profile. to_driver_kwargs() delegates to __adapter__ if set, otherwise builds from descriptor driver_key mappings. to_connection_string() assembles scheme://user:pass@host:port/db from BackendSpec metadata.",
+  "role": "model",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "contributors", "extension-authors"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": ["ConnectionProfile"],
+  "key_classes": ["ConnectionProfile"],
+  "key_functions": ["to_driver_kwargs", "to_connection_string"],
+  "dependencies": ["mountainash_settings.profiles", "mountainash_settings"],
+  "dependents": [
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core.settings (all per-backend settings classes)",
+    "mountainash_data.backends.ibis.backend"
+  ],
+  "extension_points": [
+    "__adapter__ class var — set to a callable(profile) -> dict to override to_driver_kwargs() entirely",
+    "Subclass ConnectionProfile and set __spec__ (BackendSpec) to define a new backend settings class"
+  ],
+  "lifecycle_notes": [
+    "Password from PasswordAuth is accessed via SecretStr.get_secret_value() in to_connection_string().",
+    "Adapter pattern: if __adapter__ is set, it owns the full kwarg-building pipeline."
+  ],
+  "documentation_hooks": [
+    "to_driver_kwargs() is the primary integration point between settings and IbisBackend",
+    "to_connection_string() URL escapes credentials with urllib.parse.quote — relevant for passwords with special chars"
+  ],
+  "examples": ["CLAUDE.md — usage section shows to_driver_kwargs() and to_connection_string() calls"],
+  "tests": ["tests/test_unit/core/settings/test_profile.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/profile.py", "detail": "class ConnectionProfile(Profile) with to_driver_kwargs and to_connection_string"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/test_profile.py", "detail": "Profile unit tests"},
+    {"kind": "doc", "path": "CLAUDE.md", "detail": "Usage examples showing to_driver_kwargs() and to_connection_string()"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

@@ -1,0 +1,59 @@
+{
+  "id": "mountainash_data.core.settings.backends",
+  "path": "src/mountainash_data/core/settings/{backend}.py (20 files)",
+  "summary": "Twenty per-backend ConnectionProfile subclasses. Each file defines a two-line shell: __spec__ (a BackendSpec instance) and optionally __adapter__. Registering with @register populates DATABASES_REGISTRY on import. Covered backends: SQLite, DuckDB, MotherDuck, PostgreSQL, ClickHouse, Databricks, MySQL, SingleStoreDB, MSSQL, Snowflake, BigQuery, Redshift, PySpark, Trino, Exasol, Impala, Materialize, RisingWave, Druid, PyIcebergRest.",
+  "role": "backend",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "contributors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": [
+    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
+    "PostgreSQLAuthSettings", "ClickHouseAuthSettings", "DatabricksAuthSettings",
+    "MySQLAuthSettings", "SingleStoreDBAuthSettings", "MSSQLAuthSettings",
+    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
+    "PySparkAuthSettings", "TrinoAuthSettings", "ExasolAuthSettings",
+    "ImpalaAuthSettings", "MaterializeAuthSettings", "RisingWaveAuthSettings",
+    "DruidAuthSettings", "PyIcebergRestAuthSettings"
+  ],
+  "key_classes": [
+    "SQLiteAuthSettings", "PostgreSQLAuthSettings", "DuckDBAuthSettings",
+    "SnowflakeAuthSettings", "BigQueryAuthSettings"
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.core.settings.descriptor",
+    "mountainash_data.core.settings.profile",
+    "mountainash_data.core.settings.registry"
+  ],
+  "dependents": ["mountainash_data.core.settings"],
+  "extension_points": [
+    "Pattern to add a new backend: create {backend}.py with ConnectionProfile subclass + @register + BackendSpec __spec__"
+  ],
+  "lifecycle_notes": [
+    "All 20 classes self-register on import via @register decorator.",
+    "Classes with complex kwarg mapping set __adapter__ to a module in core/settings/adapters/."
+  ],
+  "documentation_hooks": [
+    "Each class is a configuration schema — generated reference docs per backend would be valuable",
+    "PyIcebergRestAuthSettings bridges Iceberg catalog settings into this database registry"
+  ],
+  "examples": [
+    "CLAUDE.md — SQLiteAuthSettings(DATABASE=':memory:', auth=NoAuth()) usage",
+    "CLAUDE.md — PostgreSQLAuthSettings(HOST=..., DATABASE=..., auth=PasswordAuth(...)) usage"
+  ],
+  "tests": [
+    "tests/test_unit/core/settings/backends/test_*.py (one test file per backend, 20 total)",
+    "tests/test_unit/databases/settings/test_settings_parametrized.py"
+  ],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/__init__.py", "detail": "All 20 classes imported and in __all__"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/backends/", "detail": "20 per-backend test files"},
+    {"kind": "doc", "path": "CLAUDE.md", "detail": "SQLiteAuthSettings and PostgreSQLAuthSettings usage examples"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

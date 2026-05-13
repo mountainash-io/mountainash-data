@@ -1,0 +1,80 @@
+{
+  "audience": "extension-authors",
+  "summary": "Extension authors adding new database backends or custom catalog implementations. Primary contracts: Backend protocol (structural), DialectSpec (Ibis), IcebergConnectionBase (Iceberg), @register decorator (settings). No inheritance required for Ibis backends.",
+  "concepts": [
+    {
+      "name": "Backend protocol contract",
+      "module_ids": ["mountainash_data.core.protocol"],
+      "recommended_docs": [
+        "Backend is a structural protocol — no inheritance needed, just implement the interface",
+        "Required: name str, connect(), close(), __enter__/__exit__, list_tables(), list_namespaces(), inspect_table(), inspect_namespace(), inspect_catalog()"
+      ],
+      "evidence": ["core/protocol.py @t.runtime_checkable Backend(Protocol)"]
+    },
+    {
+      "name": "Adding an Ibis dialect extension",
+      "module_ids": ["mountainash_data.backends.ibis.dialects"],
+      "recommended_docs": [
+        "Add to DIALECTS dict: DialectSpec(ibis_backend_name=..., connection_mode=..., connection_string_scheme=..., connection_builder=callable)",
+        "Optional hooks: upsert_hook, create_index_hook, drop_index_hook, rename_table_hook, get_index_exists_sql, get_list_indexes_sql"
+      ],
+      "evidence": ["DialectSpec dataclass in _registry.py", "DIALECTS dict with 20 reference implementations"]
+    },
+    {
+      "name": "Adding a settings class for a new backend",
+      "module_ids": ["mountainash_data.core.settings.registry", "mountainash_data.core.settings.descriptor", "mountainash_data.core.settings.profile"],
+      "recommended_docs": [
+        "@register decorator on a ConnectionProfile subclass",
+        "Set __spec__ = BackendSpec(...) as class variable",
+        "Optionally set __adapter__ = my_adapter_callable for complex kwarg mapping"
+      ],
+      "evidence": ["Per-backend settings files (e.g. sqlite.py) as two-line pattern reference", "@register in registry.py"]
+    },
+    {
+      "name": "Adding an Iceberg catalog implementation",
+      "module_ids": ["mountainash_data.backends.iceberg.catalogs", "mountainash_data.backends.iceberg.connection", "mountainash_data.backends.iceberg.backend"],
+      "recommended_docs": [
+        "Subclass IcebergConnectionBase — implement catalog_backend, db_backend_name, settings_class",
+        "Implement _list_tables(namespace) hook",
+        "Register in IcebergBackend._CATALOG_REGISTRY"
+      ],
+      "evidence": ["IcebergRestConnection as reference", "_CATALOG_REGISTRY in backend.py"]
+    },
+    {
+      "name": "Settings registry discovery",
+      "module_ids": ["mountainash_data.core.settings.registry"],
+      "recommended_docs": [
+        "get_descriptor(name) → BackendSpec",
+        "get_settings_class(name) → type[ConnectionProfile]",
+        "REGISTRY dict-view for backwards-compatible lookup"
+      ],
+      "evidence": ["registry.py DATABASES_REGISTRY, get_descriptor, get_settings_class"]
+    }
+  ],
+  "featured_modules": [
+    "mountainash_data.core.protocol",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.core.settings.descriptor",
+    "mountainash_data.core.settings.profile",
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.backends.iceberg.connection",
+    "mountainash_data.backends.iceberg.catalogs"
+  ],
+  "hidden_or_internal_modules": [
+    "mountainash_data.core.connection",
+    "mountainash_data.core.constants",
+    "mountainash_data.backends.ibis.inspect",
+    "mountainash_data.backends.ibis.operations"
+  ],
+  "documentation_plan": [
+    "Tutorial: add a new Ibis dialect end-to-end (connection builder + DialectSpec + settings class)",
+    "Reference: DialectSpec fields and hook signatures",
+    "Reference: BackendSpec fields",
+    "Tutorial: add a new Iceberg catalog type",
+    "Reference: Backend protocol interface"
+  ],
+  "open_questions": [
+    "Is there a public stability guarantee for the DialectSpec interface? Can extension authors rely on it not changing?",
+    "Should core.registry be the unified extension point once it is wired up?"
+  ]
+}

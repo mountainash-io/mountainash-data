@@ -1,0 +1,39 @@
+{
+  "id": "mountainash_data.core.registry",
+  "path": "src/mountainash_data/core/registry.py",
+  "summary": "Backend name registry — maps string names to Backend factory callables. Provides register(name, factory) and get(name, **config). Currently a placeholder; no backends self-register here in production code.",
+  "role": "orchestration",
+  "visibility": "semi-public",
+  "stability": "experimental",
+  "audiences": ["maintainers", "extension-authors", "backend-architecture"],
+  "doc_priority": "internal-note",
+  "confidence": "medium",
+  "public_api": ["register", "get", "names"],
+  "key_classes": [],
+  "key_functions": ["register", "get", "names"],
+  "dependencies": ["mountainash_data.core.protocol"],
+  "dependents": [],
+  "extension_points": [
+    "register(name, factory) — extension authors can register custom backends here"
+  ],
+  "lifecycle_notes": [
+    "Docstring says 'populated in Phase 4 once IbisBackend and IcebergBackend exist' — suggesting incomplete wiring.",
+    "IbisBackend and IcebergBackend do NOT currently self-register here — this registry is empty at runtime."
+  ],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [
+    "Registry is populated manually — no auto-registration of built-in backends. get('ibis', ...) will raise KeyError at runtime.",
+    "Distinct from the settings DATABASES_REGISTRY in core.settings.registry — naming overlap may confuse."
+  ],
+  "open_questions": [
+    "Is this module intended to replace the two separate Backend entry points (IbisBackend, IcebergBackend) with a unified factory pattern?",
+    "Should built-in backends auto-register on import?"
+  ],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/registry.py", "detail": "Docstring: 'intentionally a placeholder for now'"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

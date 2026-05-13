@@ -1,0 +1,48 @@
+{
+  "id": "mountainash_data.core.connection",
+  "path": "src/mountainash_data/core/connection.py",
+  "summary": "Legacy abstract base class BaseDBConnection — the old-style settings-driven connection base retained for Iceberg backend inheritance. New ibis backends use the Backend protocol + IbisBackend directly, not this class.",
+  "role": "legacy",
+  "visibility": "semi-public",
+  "stability": "evolving",
+  "audiences": ["maintainers", "backend-architecture"],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": ["BaseDBConnection"],
+  "key_classes": ["BaseDBConnection"],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.core.constants",
+    "mountainash_settings"
+  ],
+  "dependents": [
+    "mountainash_data.backends.iceberg.connection"
+  ],
+  "extension_points": [
+    "Abstract properties: db_abstraction_layer, provider_type, db_backend_name, settings_class",
+    "Abstract methods: connect(), disconnect(), is_connected()"
+  ],
+  "lifecycle_notes": [
+    "Retained for IcebergConnectionBase inheritance — ibis backends no longer use this.",
+    "Contains commented-out SSH tunnel code — incomplete/deferred feature.",
+    "The init_ssh() method references self.ssh_required which is not defined — dead code risk."
+  ],
+  "documentation_hooks": [
+    "Should be marked as legacy/internal in any docs — new backends implement the Backend protocol, not this ABC"
+  ],
+  "examples": [],
+  "tests": [],
+  "risks": [
+    "init_ssh() method references undefined self.ssh_required — will raise AttributeError if called",
+    "Mix of legacy ABC pattern and new protocol pattern creates two parallel inheritance graphs"
+  ],
+  "open_questions": [
+    "Should IcebergConnectionBase be refactored to drop BaseDBConnection inheritance and use the Backend protocol directly?"
+  ],
+  "evidence": [
+    {"kind": "import", "path": "src/mountainash_data/backends/iceberg/connection.py", "detail": "from mountainash_data.core.connection import BaseDBConnection"},
+    {"kind": "symbol", "path": "src/mountainash_data/core/connection.py", "detail": "ABC with abstract properties and commented-out SSH code"}
+  ],
+  "source_hash": "1254928c55c9b0c5932707a6255c0325dd96f3c9",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
