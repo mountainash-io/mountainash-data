@@ -16,7 +16,7 @@ from pydantic import field_validator
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import redshift as _adapter
 from mountainash_settings.auth import IAMAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -34,7 +34,7 @@ _REGION_RE = re.compile(r"^[a-z]{2,4}-[a-z-]+-\d{1,2}$")
 _ROLE_ARN_RE = re.compile(r"^arn:aws(?:-us-gov|-cn)?:iam::\d{12}:role/.+$")
 
 
-REDSHIFT_DESCRIPTOR = BackendDescriptor(
+REDSHIFT_SPEC = BackendSpec(
     name="redshift",
     provider_type=CONST_DB_PROVIDER_TYPE.REDSHIFT,
     default_port=5439,
@@ -67,9 +67,9 @@ REDSHIFT_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(REDSHIFT_DESCRIPTOR)
+@register
 class RedshiftAuthSettings(ConnectionProfile):
-    __descriptor__ = REDSHIFT_DESCRIPTOR
+    __spec__ = REDSHIFT_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)
 
     @field_validator("REGION", check_fields=False)

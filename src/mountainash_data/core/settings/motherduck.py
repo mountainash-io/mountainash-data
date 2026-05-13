@@ -12,14 +12,14 @@ import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import TokenAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
-__all__ = ["MotherDuckAuthSettings", "MOTHERDUCK_DESCRIPTOR"]
+__all__ = ["MotherDuckAuthSettings", "MOTHERDUCK_SPEC"]
 
 
-MOTHERDUCK_DESCRIPTOR = BackendDescriptor(
+MOTHERDUCK_SPEC = BackendSpec(
     name="motherduck",
     provider_type=CONST_DB_PROVIDER_TYPE.MOTHERDUCK,
     connection_string_scheme="duckdb://md:",  # md:<db>?motherduck_token=...
@@ -35,6 +35,6 @@ MOTHERDUCK_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(MOTHERDUCK_DESCRIPTOR)
+@register
 class MotherDuckAuthSettings(ConnectionProfile):
-    __descriptor__ = MOTHERDUCK_DESCRIPTOR
+    __spec__ = MOTHERDUCK_SPEC

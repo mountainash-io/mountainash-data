@@ -12,12 +12,12 @@ import typing as t
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import databricks as _adapter
 from mountainash_settings.auth import NoAuth, PasswordAuth, TokenAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-DATABRICKS_DESCRIPTOR = BackendDescriptor(
+DATABRICKS_SPEC = BackendSpec(
     name="databricks",
     provider_type=CONST_DB_PROVIDER_TYPE.DATABRICKS,
     ibis_dialect="databricks",
@@ -37,7 +37,7 @@ DATABRICKS_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(DATABRICKS_DESCRIPTOR)
+@register
 class DatabricksAuthSettings(ConnectionProfile):
-    __descriptor__ = DATABRICKS_DESCRIPTOR
+    __spec__ = DATABRICKS_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

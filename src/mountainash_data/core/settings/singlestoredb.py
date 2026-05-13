@@ -12,7 +12,7 @@ from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -23,7 +23,7 @@ class SingleStoreDriver(StrEnum):
     HTTPS = "https"
 
 
-SINGLESTOREDB_DESCRIPTOR = BackendDescriptor(
+SINGLESTOREDB_SPEC = BackendSpec(
     name="singlestoredb",
     provider_type=CONST_DB_PROVIDER_TYPE.SINGLESTOREDB,
     default_port=3306,
@@ -46,6 +46,6 @@ SINGLESTOREDB_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(SINGLESTOREDB_DESCRIPTOR)
+@register
 class SingleStoreDBAuthSettings(ConnectionProfile):
-    __descriptor__ = SINGLESTOREDB_DESCRIPTOR
+    __spec__ = SINGLESTOREDB_SPEC

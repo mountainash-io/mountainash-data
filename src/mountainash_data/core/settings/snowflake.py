@@ -12,7 +12,7 @@ from enum import StrEnum
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import snowflake as _adapter
 from mountainash_settings.auth import CertificateAuth, OAuth2Auth, PasswordAuth, TokenAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -25,7 +25,7 @@ class SnowflakeAuthenticator(StrEnum):
     PASSWORD_MFA = "username_password_mfa"
 
 
-SNOWFLAKE_DESCRIPTOR = BackendDescriptor(
+SNOWFLAKE_SPEC = BackendSpec(
     name="snowflake",
     provider_type=CONST_DB_PROVIDER_TYPE.SNOWFLAKE,
     connection_string_scheme="snowflake://",
@@ -67,7 +67,7 @@ SNOWFLAKE_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(SNOWFLAKE_DESCRIPTOR)
+@register
 class SnowflakeAuthSettings(ConnectionProfile):
-    __descriptor__ = SNOWFLAKE_DESCRIPTOR
+    __spec__ = SNOWFLAKE_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

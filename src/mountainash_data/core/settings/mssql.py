@@ -12,7 +12,7 @@ from enum import StrEnum
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import mssql as _adapter
 from mountainash_settings.auth import AzureADAuth, PasswordAuth, WindowsAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -29,7 +29,7 @@ class MSSQLEncryption(StrEnum):
     STRICT = "strict"
 
 
-MSSQL_DESCRIPTOR = BackendDescriptor(
+MSSQL_SPEC = BackendSpec(
     name="mssql",
     provider_type=CONST_DB_PROVIDER_TYPE.MSSQL,
     default_port=1433,
@@ -106,7 +106,7 @@ MSSQL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(MSSQL_DESCRIPTOR)
+@register
 class MSSQLAuthSettings(ConnectionProfile):
-    __descriptor__ = MSSQL_DESCRIPTOR
+    __spec__ = MSSQL_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

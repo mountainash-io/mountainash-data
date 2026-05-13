@@ -11,12 +11,12 @@ import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-CLICKHOUSE_DESCRIPTOR = BackendDescriptor(
+CLICKHOUSE_SPEC = BackendSpec(
     name="clickhouse",
     provider_type=CONST_DB_PROVIDER_TYPE.CLICKHOUSE,
     default_port=9000,
@@ -44,6 +44,6 @@ CLICKHOUSE_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(CLICKHOUSE_DESCRIPTOR)
+@register
 class ClickHouseAuthSettings(ConnectionProfile):
-    __descriptor__ = CLICKHOUSE_DESCRIPTOR
+    __spec__ = CLICKHOUSE_SPEC

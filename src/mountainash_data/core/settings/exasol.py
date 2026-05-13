@@ -9,12 +9,12 @@ from __future__ import annotations
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-EXASOL_DESCRIPTOR = BackendDescriptor(
+EXASOL_SPEC = BackendSpec(
     name="exasol",
     provider_type=CONST_DB_PROVIDER_TYPE.EXASOL,
     default_port=8563,
@@ -31,6 +31,6 @@ EXASOL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(EXASOL_DESCRIPTOR)
+@register
 class ExasolAuthSettings(ConnectionProfile):
-    __descriptor__ = EXASOL_DESCRIPTOR
+    __spec__ = EXASOL_SPEC

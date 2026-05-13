@@ -13,12 +13,12 @@ from pydantic import SecretStr
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import pyiceberg_rest as _adapter
 from mountainash_settings.auth import OAuth2Auth, TokenAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
 
-PYICEBERG_REST_DESCRIPTOR = BackendDescriptor(
+PYICEBERG_REST_SPEC = BackendSpec(
     name="pyiceberg_rest",
     provider_type=CONST_DB_PROVIDER_TYPE.PYICEBERG_REST,
     connection_string_scheme=None,  # uri= kwarg, not URL form
@@ -57,7 +57,7 @@ PYICEBERG_REST_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(PYICEBERG_REST_DESCRIPTOR)
+@register
 class PyIcebergRestAuthSettings(ConnectionProfile):
-    __descriptor__ = PYICEBERG_REST_DESCRIPTOR
+    __spec__ = PYICEBERG_REST_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

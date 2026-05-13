@@ -15,7 +15,7 @@ from pathlib import Path
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import mysql as _adapter
 from mountainash_settings.auth import PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -28,7 +28,7 @@ class MySQLSSLMode(StrEnum):
     VERIFY_IDENTITY = "VERIFY_IDENTITY"
 
 
-MYSQL_DESCRIPTOR = BackendDescriptor(
+MYSQL_SPEC = BackendSpec(
     name="mysql",
     provider_type=CONST_DB_PROVIDER_TYPE.MYSQL,
     default_port=3306,
@@ -82,7 +82,7 @@ MYSQL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(MYSQL_DESCRIPTOR)
+@register
 class MySQLAuthSettings(ConnectionProfile):
-    __descriptor__ = MYSQL_DESCRIPTOR
+    __spec__ = MYSQL_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)

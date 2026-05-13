@@ -16,7 +16,7 @@ from pydantic import SecretStr
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
@@ -63,7 +63,7 @@ def _join_require_auth(v: list[PostgresRequireAuthMethods]) -> str:
     return ",".join(m.value for m in v)
 
 
-POSTGRESQL_DESCRIPTOR = BackendDescriptor(
+POSTGRESQL_SPEC = BackendSpec(
     name="postgresql",
     provider_type=CONST_DB_PROVIDER_TYPE.POSTGRESQL,
     default_port=5432,
@@ -156,6 +156,6 @@ POSTGRESQL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(POSTGRESQL_DESCRIPTOR)
+@register
 class PostgreSQLAuthSettings(ConnectionProfile):
-    __descriptor__ = POSTGRESQL_DESCRIPTOR
+    __spec__ = POSTGRESQL_SPEC

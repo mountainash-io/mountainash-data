@@ -14,11 +14,11 @@ from pydantic import field_validator
 from ..constants import CONST_DB_PROVIDER_TYPE
 from .adapters import bigquery as _adapter
 from mountainash_settings.auth import NoAuth, ServiceAccountAuth
-from .descriptor import BackendDescriptor, ParameterSpec
+from .descriptor import BackendSpec, ParameterSpec
 from .profile import ConnectionProfile
 from .registry import register
 
-__all__ = ["BigQueryAuthSettings", "BIGQUERY_DESCRIPTOR"]
+__all__ = ["BigQueryAuthSettings", "BIGQUERY_SPEC"]
 
 _PROJECT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
@@ -32,7 +32,7 @@ def _validate_project_id(value: str) -> str:
     return value
 
 
-BIGQUERY_DESCRIPTOR = BackendDescriptor(
+BIGQUERY_SPEC = BackendSpec(
     name="bigquery",
     provider_type=CONST_DB_PROVIDER_TYPE.BIGQUERY,
     connection_string_scheme="bigquery://",
@@ -60,9 +60,9 @@ BIGQUERY_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(BIGQUERY_DESCRIPTOR)
+@register
 class BigQueryAuthSettings(ConnectionProfile):
-    __descriptor__ = BIGQUERY_DESCRIPTOR
+    __spec__ = BIGQUERY_SPEC
     __adapter__ = staticmethod(_adapter.build_driver_kwargs)
 
     @field_validator("PROJECT_ID", check_fields=False)
