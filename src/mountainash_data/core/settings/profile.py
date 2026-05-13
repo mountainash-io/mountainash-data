@@ -10,6 +10,7 @@ from __future__ import annotations
 import typing as t
 from urllib.parse import quote
 
+from mountainash_settings import lookup_class_var
 from mountainash_settings.profiles import DescriptorProfile
 
 __all__ = ["ConnectionProfile"]
@@ -36,13 +37,7 @@ class ConnectionProfile(DescriptorProfile):
         composite mappings on top. Otherwise defaults to descriptor
         ``driver_key`` mappings + default auth dispatch.
         """
-        adapter = type(self).__dict__.get("__adapter__")
-        if adapter is None:
-            for base in type(self).__mro__[1:]:
-                candidate = base.__dict__.get("__adapter__")
-                if candidate is not None:
-                    adapter = candidate
-                    break
+        adapter = lookup_class_var(type(self), "__adapter__")
         if adapter is not None:
             return adapter(self)
         kwargs = self._default_kwargs()
