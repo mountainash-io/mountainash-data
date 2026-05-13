@@ -7,6 +7,7 @@ because these fields are domain-specific: ``connection_string_scheme`` and
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 from mountainash_settings.profiles import (
@@ -36,9 +37,6 @@ class BackendSpec(ProfileSpec):
     connection_string_scheme: str | None = None
     ibis_dialect: str | None = None
     rides_on: str | None = None
-
-
-import warnings
 
 
 _DEPRECATED = {

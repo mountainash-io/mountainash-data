@@ -15,9 +15,6 @@ from mountainash_settings.profiles import Registry
 from .descriptor import BackendSpec
 from .profile import ConnectionProfile
 
-if t.TYPE_CHECKING:
-    from mountainash_settings.profiles import ProfileSpec
-
 __all__ = [
     "DATABASES_REGISTRY",
     "REGISTRY",
