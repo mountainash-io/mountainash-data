@@ -24,7 +24,7 @@ class ConnectionProfile(DescriptorProfile):
         - :meth:`to_connection_string` — URL form, or ``NotImplementedError``
           if the descriptor has no ``connection_string_scheme`` metadata.
 
-    Subclasses set ``__descriptor__`` (a :class:`ProfileDescriptor`) and
+    Subclasses set ``__spec__`` (a :class:`BackendSpec`) and
     optionally ``__adapter__``. Field installation, auth union, and template
     wiring are inherited from :class:`DescriptorProfile`.
     """
@@ -51,7 +51,7 @@ class ConnectionProfile(DescriptorProfile):
         (or a typed ``connection_string_scheme`` attribute if the descriptor
         subclass provides one). Raises :class:`NotImplementedError` if absent.
         """
-        desc = self.__descriptor__
+        desc = lookup_class_var(type(self), "__spec__")
         scheme = getattr(desc, "connection_string_scheme", None)
         if scheme is None:
             scheme = desc.metadata.get("connection_string_scheme")
