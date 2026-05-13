@@ -1,8 +1,8 @@
-"""ConnectionProfile — database-flavored subclass of DescriptorProfile.
+"""ConnectionProfile — database-flavored subclass of Profile.
 
 Adds ``to_driver_kwargs()`` and ``to_connection_string()`` on top of the
 generic mechanism provided by
-:class:`mountainash_settings.profiles.DescriptorProfile`.
+:class:`mountainash_settings.profiles.Profile`.
 """
 
 from __future__ import annotations
@@ -11,12 +11,12 @@ import typing as t
 from urllib.parse import quote
 
 from mountainash_settings import lookup_class_var
-from mountainash_settings.profiles import DescriptorProfile
+from mountainash_settings.profiles import Profile
 
 __all__ = ["ConnectionProfile"]
 
 
-class ConnectionProfile(DescriptorProfile):
+class ConnectionProfile(Profile):
     """Database connection settings.
 
     Public API:
@@ -26,7 +26,7 @@ class ConnectionProfile(DescriptorProfile):
 
     Subclasses set ``__spec__`` (a :class:`BackendSpec`) and
     optionally ``__adapter__``. Field installation, auth union, and template
-    wiring are inherited from :class:`DescriptorProfile`.
+    wiring are inherited from :class:`Profile`.
     """
 
     def to_driver_kwargs(self) -> dict[str, t.Any]:

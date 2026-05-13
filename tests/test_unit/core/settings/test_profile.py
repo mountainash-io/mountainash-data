@@ -1,6 +1,6 @@
-"""Tests for ConnectionProfile — database-flavored DescriptorProfile.
+"""Tests for ConnectionProfile — database-flavored Profile.
 
-DescriptorProfile mechanism tests live in mountainash-settings. Here we only
+Profile mechanism tests live in mountainash-settings. Here we only
 exercise the database-specific methods: to_driver_kwargs() and
 to_connection_string().
 """
