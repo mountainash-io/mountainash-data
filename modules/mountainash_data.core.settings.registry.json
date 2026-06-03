@@ -1,0 +1,46 @@
+{
+  "id": "mountainash_data.core.settings.registry",
+  "path": "src/mountainash_data/core/settings/registry.py",
+  "summary": "Central settings registry. DATABASES_REGISTRY is a mountainash_settings.profiles.Registry instance (spec_type=BackendSpec, profile_type=ConnectionProfile). Provides @register decorator, get_descriptor(), get_settings_class(), and backwards-compatible REGISTRY dict view.",
+  "role": "orchestration",
+  "visibility": "semi-public",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": ["DATABASES_REGISTRY", "REGISTRY", "get_descriptor", "get_settings_class", "register", "_snapshot_for_tests", "_reset_for_tests"],
+  "key_classes": [
+    {"name": "_RegistryDictView", "kind": "mapping", "purpose": "Backwards-compatible read-only dict view"}
+  ],
+  "key_functions": [
+    {"name": "get_descriptor", "signature": "(name: str) -> BackendSpec"},
+    {"name": "get_settings_class", "signature": "(name: str) -> type[ConnectionProfile]"},
+    {"name": "register", "signature": "decorator from DATABASES_REGISTRY.decorator()"}
+  ],
+  "dependencies": [
+    "mountainash_settings.profiles",
+    "mountainash_data.core.settings.descriptor",
+    "mountainash_data.core.settings.profile"
+  ],
+  "dependents": [
+    "mountainash_data.core.settings",
+    "mountainash_data.core.settings.backends"
+  ],
+  "extension_points": [
+    "@register decorator — new backends self-register on import"
+  ],
+  "lifecycle_notes": [
+    "Test isolation via _snapshot_for_tests / _reset_for_tests"
+  ],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": ["tests/test_unit/core/settings/test_registry.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/registry.py", "detail": "DATABASES_REGISTRY instance + register decorator"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/test_registry.py", "detail": "Registry population and lookup tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

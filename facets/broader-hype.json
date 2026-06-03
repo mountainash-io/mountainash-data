@@ -1,0 +1,56 @@
+{
+  "audience": "broader-hype",
+  "summary": "The gateway to every database and lakehouse — one typed interface to connect, inspect, query, and write across every Ibis dialect and Apache Iceberg catalog.",
+
+  "the_vision": "mountainash-data connects the mountainash expression engine to the world's databases. Every expression, rule evaluation, data contract, and conformance pipeline that compiles through Ibis gains access to whatever backend mountainash-data is connected to. The same logic runs on SQLite during development, DuckDB for analytics, Snowflake or BigQuery for enterprise scale, and Iceberg for the lakehouse.",
+
+  "what_it_makes_possible": [
+    {
+      "capability": "Every Ibis dialect through one interface",
+      "essence": "IbisBackend provides a unified connection, inspection, and query interface across every SQL and analytical engine Ibis supports — DuckDB, PostgreSQL, Snowflake, BigQuery, Trino, ClickHouse, MySQL, Oracle, SQL Server, Databricks, and more. When Ibis adds a new backend, mountainash-data inherits it."
+    },
+    {
+      "capability": "Native Iceberg lakehouse support",
+      "essence": "IcebergBackend connects to Apache Iceberg catalogs — REST, Hive, Glue, SQL — so the same expressions that validate and transform data can store and query it in a production lakehouse. Tables, metadata inspection, and operations all through the Backend protocol."
+    },
+    {
+      "capability": "Typed connection settings for every backend",
+      "essence": "Each database dialect has typed settings classes with auto-derived connection parameters. Authentication spans the full spectrum — password, token, OAuth2, IAM, service accounts, certificates, and more. Settings compose with mountainash-settings for config file loading and secrets resolution."
+    },
+    {
+      "capability": "A protocol that any data store can implement",
+      "essence": "The Backend protocol defines connect, close, inspect, and query operations. Any data store that implements this protocol participates in the mountainash ecosystem — expressions, rules, and validation all work against it automatically."
+    }
+  ],
+
+  "use_cases": [
+    {
+      "title": "Development to production without rewrites",
+      "story": "A data engineer develops pipelines against DuckDB on their laptop. In staging, the same pipeline points at Snowflake. In production, BigQuery. The expressions compile through Ibis to each backend's native dialect. The backend is a deployment config, not a code change."
+    },
+    {
+      "title": "The lakehouse that speaks expressions",
+      "story": "Rule tables, validated data, and flattened hierarchical data all land in Iceberg. The same mountainash expressions that validated the data can query it later. The lakehouse isn't a separate world — it's another backend the expression engine compiles to."
+    },
+    {
+      "title": "Multi-warehouse data quality",
+      "story": "A platform team runs the same data contracts against every warehouse in the organisation — Snowflake for the analytics team, BigQuery for the ML team, PostgreSQL for the application team. One contract definition, one library version, every backend."
+    }
+  ],
+
+  "featured_modules": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.iceberg.backend",
+    "mountainash_data.core.protocol",
+    "mountainash_data.core.settings",
+    "mountainash_data.core.inspection"
+  ],
+  "hidden_or_internal_modules": [
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.backends.ibis.operations",
+    "mountainash_data.backends.iceberg.connection",
+    "mountainash_data.backends.iceberg.catalogs",
+    "mountainash_data.core.settings.adapters"
+  ],
+  "open_questions": []
+}

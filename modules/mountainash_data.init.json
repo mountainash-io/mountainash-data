@@ -1,0 +1,57 @@
+{
+  "id": "mountainash_data.init",
+  "path": "src/mountainash_data/__init__.py",
+  "summary": "Package root. Exports Backend protocol, IbisBackend, IcebergBackend (optional), and four inspection dataclasses. Defines the stable public import surface.",
+  "role": "public-api",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "extension-authors"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": [
+    "__version__",
+    "Backend",
+    "CatalogInfo",
+    "ColumnInfo",
+    "NamespaceInfo",
+    "TableInfo",
+    "IbisBackend",
+    "IcebergBackend"
+  ],
+  "key_classes": [
+    {"name": "Backend", "origin": "core.protocol", "kind": "protocol"},
+    {"name": "IbisBackend", "origin": "backends.ibis.backend", "kind": "class"},
+    {"name": "IcebergBackend", "origin": "backends.iceberg.backend", "kind": "class"}
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.core.protocol",
+    "mountainash_data.core.inspection",
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.iceberg.backend"
+  ],
+  "dependents": [],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "IcebergBackend is conditionally imported; set to None if pyiceberg is not installed"
+  ],
+  "documentation_hooks": [
+    "Primary import target for all downstream consumers",
+    "Users should import from mountainash_data directly, not submodules"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/test_mountainash_data.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/__init__.py", "detail": "__all__ defines 8 public symbols"},
+    {"kind": "test", "path": "tests/test_unit/test_mountainash_data.py", "detail": "Package-level import tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

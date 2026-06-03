@@ -1,0 +1,31 @@
+{
+  "id": "mountainash_data.backends.ibis.inspect",
+  "path": "src/mountainash_data/backends/ibis/inspect.py",
+  "summary": "Converter from ibis Table objects to the core TableInfo dataclass. Single function: table_to_info().",
+  "role": "io",
+  "visibility": "internal",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture"],
+  "doc_priority": "reference-only",
+  "confidence": "high",
+  "public_api": ["table_to_info"],
+  "key_classes": [],
+  "key_functions": [
+    {"name": "table_to_info", "signature": "(ibis_table, *, name: str, namespace: str | None, catalog: str | None) -> TableInfo"}
+  ],
+  "dependencies": ["mountainash_data.core.inspection"],
+  "dependents": ["mountainash_data.backends.ibis.backend"],
+  "extension_points": [],
+  "lifecycle_notes": [],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": ["tests/test_unit/backends/ibis/test_inspect.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/inspect.py", "detail": "table_to_info function"},
+    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_inspect.py", "detail": "Conversion tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

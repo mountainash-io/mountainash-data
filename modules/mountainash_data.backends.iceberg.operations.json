@@ -1,0 +1,43 @@
+{
+  "id": "mountainash_data.backends.iceberg.operations",
+  "path": "src/mountainash_data/backends/iceberg/operations.py",
+  "summary": "Iceberg table mutation functions: create_table, drop_table, insert, upsert, truncate (stub), create_view (stub), drop_view. Also provides prepare_dataframe_for_iceberg (DataFrame-to-PyArrow conversion) and retry_operation helper.",
+  "role": "backend",
+  "visibility": "internal",
+  "stability": "evolving",
+  "audiences": ["maintainers", "backend-architecture"],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [
+    "prepare_dataframe_for_iceberg", "retry_operation",
+    "create_table", "drop_table", "insert", "upsert", "truncate",
+    "create_view", "drop_view"
+  ],
+  "key_classes": [],
+  "key_functions": [
+    {"name": "prepare_dataframe_for_iceberg", "signature": "Converts DataFrame to PyArrow and casts to Iceberg schema"},
+    {"name": "upsert", "signature": "Upsert with natural key matching via PyArrow"},
+    {"name": "retry_operation", "signature": "Generic retry helper for pyiceberg operations"}
+  ],
+  "dependencies": [
+    "mountainash_dataframes",
+    "mountainash_data.backends.iceberg._types"
+  ],
+  "dependents": ["mountainash_data.backends.iceberg.connection"],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "truncate and create_view raise NotImplementedError"
+  ],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [
+    "Upsert implementation reads entire table into memory for key matching"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/iceberg/operations.py", "detail": "8 public functions"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
