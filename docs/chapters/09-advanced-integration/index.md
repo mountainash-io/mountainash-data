@@ -34,6 +34,7 @@ This chapter covers advanced topics that span both the Ibis and Iceberg backends
 
 ---
 
+<!-- concept:43 -->
 ## Iceberg Operations
 
 **Iceberg operations** encompass the read-side inspection methods that the IcebergBackend provides through its connection objects. While the IcebergBackend satisfies the same Connection protocol as the Ibis backend, the underlying implementation differs significantly because Iceberg catalogs organize data around namespaces and table identifiers rather than SQL schemas and qualified table names.
@@ -42,6 +43,7 @@ The Iceberg connection delegates all inspection operations to the PyIceberg Cata
 
 Iceberg operations also include mutations (create_table, drop_table, insert, upsert, truncate) that are delegated to a separate operations module. However, Iceberg does not support raw SQL queries; calling `run_sql()` on an Iceberg connection raises `NotImplementedError`. This is a fundamental architectural difference: Iceberg is a table format with catalog-level operations, not a query engine.
 
+<!-- concept:44 -->
 ## List Tables Iceberg
 
 The **List Tables Iceberg** implementation returns the names of tables within a specified namespace. Unlike the Ibis implementation (which delegates to the Ibis connection's `list_tables` method), the Iceberg implementation calls the PyIceberg catalog's table listing API.
@@ -56,6 +58,7 @@ The `_list_tables()` hook is implemented by each concrete catalog type (e.g., `I
 
 Iceberg namespaces are hierarchical in some catalog implementations, meaning a namespace like `"analytics"` might contain sub-namespaces. The `list_tables()` method returns only the tables at the specified namespace level, not tables in nested namespaces.
 
+<!-- concept:45 -->
 ## Table Inspection Iceberg
 
 **Table Inspection Iceberg** loads a table reference through the PyIceberg catalog and converts its schema into a `TableInfo` dataclass. The implementation uses the `table_to_info()` helper from `backends.iceberg.inspect`.
@@ -87,6 +90,7 @@ Type: workflow
 A comparison workflow showing Ibis inspection (top path) and Iceberg inspection (bottom path) side by side, converging at the unified TableInfo output. The Ibis path shows: Ibis Table -> schema() -> names/types lists -> ColumnInfo(nullable=type.nullable). The Iceberg path shows: PyIceberg Table -> schema() -> NestedField list -> ColumnInfo(nullable=not field.required). Highlighted annotations call out the nullability inversion. Both paths converge to the same TableInfo dataclass. Clicking either path highlights the differences in detail. Learning objective: Compare Ibis and Iceberg inspection pipelines and identify key differences (Bloom: Analyze). Controls: click paths to highlight differences, hover nodes for data examples. Colors: DarkGreen for Ibis path, LimeGreen for Iceberg path, Gold for unified output.
 </details>
 
+<!-- concept:46 -->
 ## Namespace Inspection Iceberg
 
 **Namespace Inspection Iceberg** builds a `NamespaceInfo` from the tables listed within a namespace and the catalog name. The implementation uses the `namespace_to_info()` helper function.
@@ -101,6 +105,7 @@ def inspect_namespace(self, name):
 
 The helper function simply assembles the `NamespaceInfo` dataclass from the provided arguments. Unlike the Ibis implementation (which has no catalog context), the Iceberg implementation populates the `catalog` field because Iceberg namespaces always exist within a named catalog.
 
+<!-- concept:47 -->
 ## Catalog Inspection Iceberg
 
 **Catalog Inspection Iceberg** provides a complete hierarchical view of the Iceberg catalog by iterating over all namespaces and collecting their table lists. The implementation calls `catalog_backend.list_namespaces()` to discover all top-level namespaces, then builds a `NamespaceInfo` for each one.
@@ -125,6 +130,7 @@ def inspect_catalog(self):
 
 The implementation handles the fact that PyIceberg returns namespaces as tuples (e.g., `("analytics",)`) by extracting the first element. It also catches `NotImplementedError` from `_list_tables()` for catalog types that do not fully implement table listing, falling back to an empty table list.
 
+<!-- concept:95 -->
 ## Cross Backend Queries
 
 **Cross backend queries** refer to scenarios where data from an Ibis-backed SQL database and an Iceberg-backed data lake need to be combined in a single analytical workflow. mountainash-data does not provide a built-in cross-backend query engine; instead, it facilitates cross-backend workflows through the unified protocol interface.
@@ -154,6 +160,7 @@ with ice_backend.connect() as ice_conn:
 
 The unified protocol makes it possible to write generic functions that operate on any backend. A schema validation function, for example, can accept any Connection object and compare its TableInfo output regardless of the underlying backend type.
 
+<!-- concept:96 -->
 ## Backend Capability Matrix
 
 The **backend capability matrix** documents which operations each backend supports. Not all backends implement every operation: SQL databases support raw SQL queries but not Iceberg-style time travel, while Iceberg catalogs support schema evolution but not raw SQL.
@@ -191,6 +198,7 @@ Type: chart
 An interactive heatmap with operations on the Y axis and backend types on the X axis (Ibis-SQLite, Ibis-DuckDB, Ibis-PostgreSQL, Ibis-Snowflake, Ibis-Trino, Iceberg-REST). Cells are color-coded: green for fully supported, yellow for partial support, red for not supported. Clicking a cell shows implementation details and any caveats. A summary bar at the bottom shows the total number of supported operations per backend. Filtering controls allow showing only specific operation categories (lifecycle, inspection, DDL, DML, advanced). Learning objective: Evaluate which backend to choose based on required capabilities (Bloom: Evaluate). Controls: click cells for details, filter by operation category. Colors: DarkGreen for supported, Gold for partial, Crimson for unsupported.
 </details>
 
+<!-- concept:97 -->
 ## DDL Index Support
 
 **DDL index support** varies significantly across database backends, and mountainash-data makes this variation explicit through the operation hooks system described in Chapter 5. Only backends that provide `get_index_exists_sql` and `get_list_indexes_sql` hooks support index management operations.
@@ -213,6 +221,7 @@ The operations module provides a unified interface for index management (`create
 
 Backends that do not provide index hooks (PostgreSQL, Snowflake, BigQuery, Trino) raise `NotImplementedError` when index operations are attempted. Cloud data warehouses like Snowflake deliberately do not expose user-defined indexes, relying instead on automatic micro-partitioning and clustering for query optimization.
 
+<!-- concept:98 -->
 ## Memory Intensive Upsert
 
 The **memory-intensive upsert** limitation arises from the staging table approach used by the Ibis backend's upsert implementation. As described in Chapter 4, the upsert operation writes all incoming data to a temporary staging table, then executes an `INSERT ... ON CONFLICT` statement to merge the staged data into the target table.
@@ -233,6 +242,7 @@ Strategies for mitigating memory-intensive upserts include:
 !!! warning "Upsert is not supported on all backends"
     The upsert operation requires `INSERT ... ON CONFLICT` syntax, which is not available on all backends. Trino, BigQuery, and MSSQL do not support this syntax natively. Attempting upsert on these backends raises `NotImplementedError`. Check the backend capability matrix before planning upsert-based ETL workflows.
 
+<!-- concept:99 -->
 ## REST Catalog Cursors
 
 **REST catalog cursors** are the pagination mechanism used by Iceberg REST catalogs to handle large result sets. When a namespace contains thousands of tables, the catalog service returns results in pages rather than as a single response, using cursor tokens to track pagination state.
@@ -247,6 +257,7 @@ However, cursor-based pagination introduces considerations for large catalogs:
 
 The `inspect_catalog()` method is particularly sensitive to these concerns because it issues a `list_tables()` call for every namespace. For catalogs with many namespaces, this can result in a large number of paginated API calls.
 
+<!-- concept:100 -->
 ## Unimplemented Operations
 
 **Unimplemented operations** are methods that exist in the protocol or base class interface but are not yet implemented for a specific backend or dialect. mountainash-data handles unimplemented operations by raising `NotImplementedError` with a descriptive message that identifies both the operation and the backend.

@@ -39,6 +39,7 @@ This chapter covers the IbisBackend class — the primary backend for connecting
 
 ---
 
+<!-- concept:19 -->
 ## IbisBackend Class
 
 The **IbisBackend class** is the primary entry point for connecting to SQL databases through mountainash-data. It implements the `Backend` protocol by providing a `name` attribute (the string `"ibis"`) and a `connect()` method that returns an `IbisConnection`. The class acts as a factory: it accepts a dialect name and configuration parameters at construction time, validates that the dialect exists in the registry, and stores the configuration for later use when `connect()` is called.
@@ -79,6 +80,7 @@ backend = IbisBackend(
 )
 ```
 
+<!-- concept:20 -->
 ## Ibis Connection
 
 The **IbisConnection class** wraps a live Ibis backend object and adapts it to satisfy the `Connection` protocol. It is constructed by `IbisBackend.connect()` and should not be instantiated directly by consumer code.
@@ -110,6 +112,7 @@ Type: workflow
 A sequential flow diagram showing the connection creation process. Five nodes: (1) "Consumer code calls IbisBackend(dialect, **config)", (2) "IbisBackend validates dialect in DIALECTS registry", (3) "connect() invokes dialect.connection_builder(**config)", (4) "Ibis library opens connection to database engine", (5) "IbisConnection wrapper returned to consumer". Arrows connect nodes sequentially. Error paths branch off from nodes 2 and 3 showing KeyError and NotImplementedError respectively. Clicking a node shows the code executed at that stage. Learning objective: Apply knowledge of the connection flow to debug connection failures (Bloom: Apply). Controls: click nodes for code detail, hover for descriptions. Colors: SteelBlue for consumer, DarkSlateBlue for validation, DarkGreen for Ibis library, Gold for result.
 </details>
 
+<!-- concept:21 -->
 ## Fluent Query API
 
 The **fluent query API** refers to Ibis's expression-based approach to building analytical queries. Instead of writing SQL strings, you chain method calls on table objects to compose queries. Ibis compiles these expressions into the appropriate SQL dialect for the connected backend at execution time.
@@ -137,6 +140,7 @@ Key characteristics of the fluent query API include:
 - **Type safety**: Ibis validates column names and operation compatibility at expression construction time.
 - **Composability**: Intermediate expressions can be stored in variables and combined later.
 
+<!-- concept:22 -->
 ## Raw SQL Queries
 
 When the fluent API does not cover a specific query pattern, mountainash-data supports **raw SQL queries** through the `run_sql()` class method on `BaseIbisOperations`. This method accepts a SQL string and returns an Ibis table expression representing the result set.
@@ -157,6 +161,7 @@ Raw SQL is essential for operations that Ibis does not support natively, such as
 
 The `to_sql()` companion method provides the inverse operation: it compiles an Ibis expression into a SQL string without executing it, which is useful for debugging or logging.
 
+<!-- concept:23 -->
 ## DDL Operations
 
 **DDL (Data Definition Language) operations** modify the structure of the database. In mountainash-data, DDL operations include creating and dropping tables, creating and dropping views, and managing indexes. These operations are exposed through the `BaseIbisOperations` class, which provides class methods that accept an Ibis backend connection and perform the structural modification.
@@ -174,6 +179,7 @@ The primary DDL methods available in mountainash-data are:
 | `create_index()` | Create a table index | table_name, columns, unique, if_not_exists |
 | `drop_index()` | Remove an index | index_name, if_exists |
 
+<!-- concept:24 -->
 ## Create Table
 
 The **create_table** operation constructs a new table in the database, optionally populating it with data from a dataframe or defining its schema without data.
@@ -192,12 +198,14 @@ The method delegates to Ibis's native `create_table()`, which handles SQL genera
 
 Temporary tables are particularly useful for staging data during upsert operations, where incoming data must be compared against existing rows before being merged.
 
+<!-- concept:25 -->
 ## DML Operations
 
 **DML (Data Manipulation Language) operations** modify the data within existing tables. mountainash-data provides three DML operations: insert, upsert, and truncate. These operations form the write path of the library, complementing the read path provided by the fluent query API and raw SQL.
 
 DML operations accept data in flexible formats. The `df` parameter can be an Ibis table expression, a Polars dataframe, a Pandas dataframe, or any other format supported by the underlying Ibis backend. This flexibility allows mountainash-data to serve as a write sink for diverse data pipelines.
 
+<!-- concept:26 -->
 ## Insert Data
 
 The **insert** operation appends rows from a dataframe to an existing table. It is the simplest DML operation, requiring only the target table name and source data.
@@ -211,6 +219,7 @@ def insert(cls, ibis_backend, table_name, /, df,
 
 The `overwrite` parameter controls whether existing data is replaced. When `overwrite=True`, the operation is equivalent to truncate followed by insert. When `overwrite=False` (the default), new rows are appended without affecting existing data.
 
+<!-- concept:27 -->
 ## Upsert Data
 
 The **upsert** operation (also known as "merge" or "INSERT ... ON CONFLICT") combines insert and update semantics. Rows that do not conflict with existing data are inserted; rows that conflict on specified key columns are updated. This is the most complex DML operation in mountainash-data.
@@ -238,6 +247,7 @@ The operation accepts several control parameters:
 !!! warning "Upsert memory considerations"
     The staging table approach loads all incoming data into a temporary table before merging. For very large datasets, this can consume significant memory. See Chapter 9 for a discussion of memory-intensive upsert patterns and alternatives.
 
+<!-- concept:28 -->
 ## Truncate Table
 
 The **truncate** operation removes all rows from a table without dropping the table structure itself. Unlike `DELETE FROM table` (which logs individual row deletions), truncate is a bulk operation that is typically much faster for clearing large tables.
@@ -250,6 +260,7 @@ def truncate(cls, ibis_backend, table_name, /, database=None, schema=None):
 
 Truncate is commonly used in ETL pipelines that follow a "full refresh" pattern: clear the table, then reload all data from the source.
 
+<!-- concept:29 -->
 ## Create View
 
 The **create_view** operation creates a named view backed by an Ibis table expression. A view is a stored query that behaves like a table for read operations but does not store data independently. Views are useful for encapsulating complex query logic that multiple consumers need to share.
@@ -276,6 +287,7 @@ Type: chart
 A two-column layout showing DDL operations (left, structural changes) and DML operations (right, data changes). DDL column shows create_table, drop_table, create_view, drop_view, create_index, drop_index as nodes connected to a central "Schema" node. DML column shows insert, upsert, truncate as nodes connected to a central "Data" node. Each operation node shows its key parameters on hover. The upsert node is larger to indicate its complexity, with a sub-flow showing the staging table pattern. Clicking an operation highlights its parameters and shows example SQL. Learning objective: Evaluate when to use each operation type (Bloom: Evaluate). Controls: click operation for details, hover for parameters. Colors: DarkSlateBlue for DDL, DarkGreen for DML, Gold for shared concepts.
 </details>
 
+<!-- concept:30 -->
 ## List Tables Ibis
 
 The **List Tables Ibis** implementation delegates to the underlying Ibis connection's `list_tables()` method, passing the namespace as the `database` parameter. The Ibis library uses "database" terminology where mountainash-data uses "namespace" to refer to schema-level groupings.
@@ -293,6 +305,7 @@ def list_tables(self, namespace: str | None = None) -> list[str]:
 
 Error handling returns an empty list rather than propagating exceptions, which allows exploration code to gracefully handle cases where a namespace does not exist or the connection has been interrupted.
 
+<!-- concept:31 -->
 ## Table Inspection Ibis
 
 **Table Inspection Ibis** implements the `inspect_table()` protocol method by loading the Ibis table reference and converting its schema to a `TableInfo` through the `table_to_info()` helper from `backends.ibis.inspect`.
@@ -308,6 +321,7 @@ def inspect_table(self, name: str, namespace: str | None = None) -> TableInfo:
 
 If the table does not exist or cannot be accessed, the method raises a `ValueError` with a descriptive message identifying the problematic table name.
 
+<!-- concept:32 -->
 ## Namespace Inspection Ibis
 
 **Namespace Inspection Ibis** builds a `NamespaceInfo` by combining the namespace name with a `list_tables()` call scoped to that namespace. This approach reuses the list_tables implementation rather than duplicating its logic.
@@ -318,6 +332,7 @@ def inspect_namespace(self, name: str) -> NamespaceInfo:
     return NamespaceInfo(name=name, tables=tables)
 ```
 
+<!-- concept:33 -->
 ## Catalog Inspection Ibis
 
 **Catalog Inspection Ibis** constructs a complete `CatalogInfo` by iterating over all namespaces and building a `NamespaceInfo` for each one. The catalog name is taken from the dialect spec's `ibis_backend_name` field.
@@ -334,6 +349,7 @@ def inspect_catalog(self) -> CatalogInfo:
 
 For backends with many schemas, this operation issues one `list_tables` call per namespace and may be slow. Consumers performing repeated catalog inspections should cache the result.
 
+<!-- concept:34 -->
 ## Context Manager Ibis
 
 The **context manager** pattern in `IbisConnection` ensures that database resources are released even when exceptions occur. The implementation uses Python's `__enter__` and `__exit__` dunder methods to support `with` statement usage.

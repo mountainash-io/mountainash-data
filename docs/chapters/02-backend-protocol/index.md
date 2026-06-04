@@ -29,6 +29,7 @@ This chapter introduces the Backend protocol — a runtime-checkable structural 
 
 ---
 
+<!-- concept:11 -->
 ## Backend Protocol Definition
 
 The **Backend protocol** is the central architectural contract in mountainash-data. Defined in `mountainash_data.core.protocol`, it specifies the minimal interface that any backend implementation must provide. The protocol uses Python's structural typing system (PEP 544) rather than class inheritance, which means that conformance is determined by whether a class has the right methods with the right signatures, not by whether it appears in a specific class hierarchy.
@@ -69,6 +70,7 @@ The following table contrasts the two protocols and their responsibilities.
 | `Backend` | Factory; holds configuration | Stateless (from consumer's perspective) | `connect()` |
 | `Connection` | Live database handle; owns session state | Stateful; must be closed | `list_tables()`, `inspect_table()`, `close()`, etc. |
 
+<!-- concept:12 -->
 ## Connect Method
 
 The **connect method** is the single method required by the `Backend` protocol. It constructs and returns a `Connection` object representing a live session with the backing database or catalog service. The caller assumes ownership of the returned connection and is responsible for closing it when finished.
@@ -93,6 +95,7 @@ class IbisBackend:
 
 If the dialect's `connection_builder` is not configured (for backends that are registered but not yet implemented), `connect()` raises `NotImplementedError` with a clear message identifying the incomplete dialect.
 
+<!-- concept:13 -->
 ## Close Method
 
 The **close method** releases all resources held by a Connection. It is defined on the `Connection` protocol and must be idempotent: calling `close()` multiple times on the same connection must not raise an error.
@@ -116,6 +119,7 @@ def close(self) -> None:
 
 The `IbisConnection` also implements `__enter__` and `__exit__` to support context manager usage. This means `close()` is called automatically at the end of a `with` block, which is the recommended usage pattern.
 
+<!-- concept:14 -->
 ## List Tables Method
 
 The **list_tables method** returns the names of all tables visible within a given namespace (schema). It accepts an optional `namespace` parameter; when omitted, it returns tables from the connection's default namespace.
@@ -132,6 +136,7 @@ This method is one of the most frequently used entry points for data exploration
 
 The Ibis implementation delegates to the underlying Ibis connection object, passing the namespace as the `database` parameter (Ibis uses "database" where mountainash-data uses "namespace" for the schema-level grouping). Error handling wraps the call in a try/except block and returns an empty list on failure, ensuring that transient connection issues do not propagate as unhandled exceptions.
 
+<!-- concept:15 -->
 ## Inspect Table Method
 
 The **inspect_table method** returns detailed structural metadata for a single table. Rather than returning raw driver-specific metadata, it produces a `TableInfo` dataclass from the unified inspection model (covered in Chapter 3).
@@ -162,6 +167,7 @@ Type: workflow
 A directed flow diagram showing the data transformation pipeline from raw driver metadata to the unified inspection model. Five nodes connected by arrows: (1) "Driver-Specific Schema" (raw Ibis or PyIceberg metadata), (2) "Conversion Helper" (table_to_info function), (3) "ColumnInfo" dataclass, (4) "TableInfo" dataclass, (5) "Consumer Code" that receives the standardized metadata. Each node shows the data shape at that stage. Clicking a node displays example data at that transformation step. Learning objective: Understand the metadata conversion pipeline (Bloom: Understand). Controls: click node to see example data, hover for descriptions. Colors: Orange for driver data, Gold for conversion, LimeGreen for unified model, SteelBlue for consumer.
 </details>
 
+<!-- concept:16 -->
 ## List Namespaces Method
 
 The **list_namespaces method** returns the names of all namespaces (schemas or databases, depending on the engine) visible to the current connection. This is the entry point for hierarchical exploration of database structure.
@@ -176,6 +182,7 @@ Different database engines expose namespace information through different mechan
 
 This graceful degradation is important because some embedded databases (like SQLite) have no concept of multiple namespaces. For these backends, `list_namespaces()` returns an empty list, and all tables are accessed without a namespace qualifier.
 
+<!-- concept:17 -->
 ## Inspect Namespace Method
 
 The **inspect_namespace method** returns metadata about a single namespace, including the list of tables it contains. The method returns a `NamespaceInfo` dataclass.
@@ -195,6 +202,7 @@ The `NamespaceInfo` dataclass contains:
 - `catalog`: An optional catalog name that this namespace belongs to.
 - `metadata`: An extensible mapping for backend-specific properties.
 
+<!-- concept:18 -->
 ## Inspect Catalog Method
 
 The **inspect_catalog method** provides a complete view of the connection's top-level catalog, including all namespaces and their tables. It returns a `CatalogInfo` dataclass that aggregates multiple `NamespaceInfo` objects.

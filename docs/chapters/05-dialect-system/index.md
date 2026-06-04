@@ -31,6 +31,7 @@ This chapter explains the DialectSpec system — a registry-driven mechanism for
 
 ---
 
+<!-- concept:57 -->
 ## DialectSpec Overview
 
 The **DialectSpec** is a frozen dataclass that encapsulates everything mountainash-data needs to know about a specific database dialect. Rather than scattering dialect-specific logic across dozens of subclasses (the library's original approach involved 13 separate connection class files), the DialectSpec system consolidates all per-dialect information into data-driven configuration objects stored in a single registry.
@@ -64,6 +65,7 @@ Type: infographic
 An interactive card visualization showing a DialectSpec instance as a structured form with labeled fields. Each field is a clickable region that expands to show its type, purpose, and an example value. The card initially shows the DuckDB DialectSpec with ibis_backend_name="duckdb", connection_mode="connection_string", connection_string_scheme="duckdb://", and populated connection_builder and index hooks. A dropdown at the top allows switching between different dialect cards (SQLite, PostgreSQL, Snowflake, BigQuery) to compare their configurations. Learning objective: Remember the components of a DialectSpec (Bloom: Remember). Controls: dropdown to switch dialects, click fields for detail expansion. Colors: Teal for required fields, MediumPurple for optional hooks, Gold for extras.
 </details>
 
+<!-- concept:58 -->
 ## Dialect Registry
 
 The **dialect registry** is the `DIALECTS` dictionary defined in `backends.ibis.dialects._registry`. It maps string keys (dialect names) to `DialectSpec` instances, providing a single lookup point for all dialect-related configuration. When `IbisBackend.__init__()` receives a dialect name, it looks up the corresponding `DialectSpec` in this registry.
@@ -91,6 +93,7 @@ Notice that the dialect name key and the `ibis_backend_name` are not always the 
 
 Adding a new dialect to mountainash-data requires only creating a new `DialectSpec` entry and a connection builder function. No class hierarchies need to be modified, and no existing code needs to change.
 
+<!-- concept:59 -->
 ## Dialect Name Key
 
 The **dialect name key** is the string identifier used to look up a dialect in the registry. These keys serve as the user-facing API for selecting a backend: when creating an `IbisBackend`, the `dialect` parameter must match one of the registered keys.
@@ -110,6 +113,7 @@ Keys are designed to be intuitive and match common usage. The choice of `"postgr
 
 The registry lookup is case-sensitive. Requesting `"PostgreSQL"` or `"POSTGRES"` raises a `KeyError`, and the error message includes the sorted list of available dialect names to guide the user toward the correct key.
 
+<!-- concept:60 -->
 ## Connection Builder
 
 A **connection builder** is a callable (typically a module-level function) that accepts keyword arguments and returns a live Ibis backend connection object. Each dialect has its own connection builder that handles the dialect-specific logic for constructing connection strings, setting authentication parameters, and invoking the appropriate Ibis connect method.
@@ -143,6 +147,7 @@ def _build_snowflake_connection(**config):
     return ibis.connect(conn_str, warehouse=warehouse, role=role)
 ```
 
+<!-- concept:61 -->
 ## Operation Hooks
 
 **Operation hooks** are optional callable attributes on `DialectSpec` that provide dialect-specific SQL generation for operations that vary across database engines. Currently, mountainash-data defines two hook types for index management: `get_index_exists_sql` and `get_list_indexes_sql`.
@@ -173,6 +178,7 @@ Type: workflow
 A dispatch flow diagram showing how an index_exists() call resolves to dialect-specific SQL. The flow starts with a "BaseIbisOperations.index_exists()" node, which branches to a "DialectSpec hook lookup" node. From there, three paths diverge: DuckDB path leading to "SELECT COUNT(*) FROM duckdb_indexes()" SQL, SQLite path leading to "SELECT COUNT(*) FROM sqlite_master" SQL, and PostgreSQL path leading to a "None (not implemented)" dead end. Each SQL output is shown in a code block node. Clicking a path highlights the full resolution chain. Learning objective: Apply knowledge of hook dispatch to predict SQL output for a given dialect (Bloom: Apply). Controls: click paths to highlight, hover for SQL details. Colors: Teal for entry point, DarkGreen for DuckDB, SteelBlue for SQLite, Crimson for unimplemented.
 </details>
 
+<!-- concept:62 -->
 ## Per Dialect Configuration
 
 **Per dialect configuration** refers to the practice of storing all dialect-specific behavior within the `DialectSpec` rather than in separate subclasses. Each entry in the `DIALECTS` registry is a complete, self-contained configuration for its dialect, including connection mode, URI scheme, connection builder, and capability hooks.
@@ -181,6 +187,7 @@ This data-driven approach replaced an earlier architecture where each dialect ha
 
 The `extras` field on DialectSpec provides a general-purpose extension mechanism. Backend-specific configuration that does not fit the standard fields can be stored here without modifying the DialectSpec dataclass definition. This is useful for experimental features or dialect-specific tuning parameters.
 
+<!-- concept:63 -->
 ## SQLite Dialect
 
 The **SQLite dialect** represents the simplest connection model in mountainash-data. SQLite is an embedded database that stores data in a single file (or in memory), requiring no server process, no authentication, and no network configuration.
@@ -198,6 +205,7 @@ SQLite provides both index management hooks (`sqlite_get_index_exists_sql` and `
 
 The DialectSpec for SQLite uses `connection_mode="connection_string"` and `connection_string_scheme="sqlite://"`.
 
+<!-- concept:64 -->
 ## DuckDB Dialect
 
 The **DuckDB dialect** supports both file-based and in-memory databases, similar to SQLite, but with significantly richer analytical capabilities including columnar storage, vectorized execution, and direct Parquet file querying.
@@ -223,6 +231,7 @@ DuckDB provides index management hooks that query the `duckdb_indexes()` system 
 !!! tip "MotherDuck shares DuckDB's engine"
     The MotherDuck dialect is a cloud-hosted variant of DuckDB. Its `ibis_backend_name` is `"duckdb"` and it uses the same index management SQL. The key difference is the connection string scheme (`duckdb://md:`) and the addition of a `token` parameter for authentication.
 
+<!-- concept:65 -->
 ## PostgreSQL Dialect
 
 The **PostgreSQL dialect** represents the server-based connection model. Unlike SQLite and DuckDB, PostgreSQL requires network connectivity, authentication credentials, and typically a host, port, username, password, and database name.
@@ -248,6 +257,7 @@ def _build_postgres_connection(**config):
 
 The PostgreSQL dialect does not currently provide index management hooks, as PostgreSQL's `pg_indexes` system catalog requires different query patterns than the DuckDB family. The Redshift dialect reuses the PostgreSQL connection builder entirely, since Redshift speaks the PostgreSQL wire protocol.
 
+<!-- concept:66 -->
 ## Snowflake Dialect
 
 The **Snowflake dialect** demonstrates the HYBRID connection mode, where both a connection string and additional keyword arguments are required. Snowflake connections require an account identifier, user credentials, and warehouse/role configuration that do not fit cleanly into a URI-only format.

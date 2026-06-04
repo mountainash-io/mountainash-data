@@ -31,6 +31,7 @@ This chapter introduces the IcebergBackend — the second major backend type in 
 
 ---
 
+<!-- concept:36 -->
 ## Apache Iceberg Overview
 
 **Apache Iceberg** is an open table format designed for large-scale analytical datasets. Unlike traditional SQL databases that tightly couple storage, metadata, and compute in a single engine, Iceberg separates these concerns. The table format defines how data files (typically Parquet or ORC) are organized in object storage (S3, GCS, ADLS), while a separate catalog service manages table metadata, including schema evolution, partition layouts, and snapshot history.
@@ -56,6 +57,7 @@ Type: infographic
 A layered architecture diagram showing four Iceberg layers from top to bottom: (1) Catalog Layer (REST, Hive, Glue, SQL catalogs), (2) Metadata Layer (manifest lists, manifest files, table metadata JSON), (3) Data Layer (Parquet files in object storage), (4) Storage Layer (S3, GCS, ADLS, local filesystem). Each layer is a horizontal band with representative nodes. Vertical arrows show the navigation path from catalog lookup through metadata resolution to data file access. Clicking a layer expands it to show more detail about its components. A side panel shows how mountainash-data's IcebergBackend interacts with only the catalog layer. Learning objective: Understand how Iceberg separates catalog, metadata, and data layers (Bloom: Understand). Controls: click layers to expand, hover for component descriptions. Colors: SteelBlue for catalog, Gold for metadata, DarkGreen for data, Teal for storage.
 </details>
 
+<!-- concept:48 -->
 ## PyIceberg Library
 
 The **PyIceberg library** is the official Python implementation for interacting with Apache Iceberg tables. It provides Python-native APIs for catalog operations (create, load, drop tables), schema manipulation, and data read/write operations. mountainash-data uses PyIceberg as the driver for its Iceberg backend, analogous to how it uses Ibis for SQL databases.
@@ -83,6 +85,7 @@ conn = backend.connect()
 info = conn.inspect_table("events", namespace="analytics")
 ```
 
+<!-- concept:35 -->
 ## IcebergBackend Class
 
 The **IcebergBackend class** is the Iceberg counterpart to `IbisBackend`. It implements the `Backend` protocol by providing a `name` attribute (the string `"iceberg"`) and a `connect()` method that returns a Connection-conformant object.
@@ -110,6 +113,7 @@ Like IbisBackend, IcebergBackend performs eager validation of the catalog type a
 
 The key architectural difference from IbisBackend is that IcebergBackend's `connect()` instantiates a connection class directly (passing config as constructor arguments), whereas IbisBackend invokes a connection builder function. This difference reflects the fact that Iceberg connections carry more stateful initialization logic (catalog discovery, namespace caching) that is better encapsulated in a class constructor.
 
+<!-- concept:37 -->
 ## Iceberg Connection Base
 
 The **IcebergConnectionBase** is an abstract base class that all Iceberg catalog connection implementations extend. Unlike the Ibis side (where `IbisConnection` is a single concrete class), the Iceberg side uses inheritance because different catalog types require significantly different initialization, authentication, and lifecycle management.
@@ -160,6 +164,7 @@ Type: graph-model
 A method dependency graph for IcebergConnectionBase. Central node is the class name. Surrounding nodes are grouped by category: Lifecycle (connect, disconnect, close, is_connected), Inspection (list_namespaces, list_tables, inspect_table, inspect_namespace, inspect_catalog), Mutations (create_table, drop_table, insert, upsert, truncate), and Utilities (table, get_schema, clear_schema_cache). Edges show internal call dependencies (e.g., inspect_catalog calls list_namespaces and list_tables). Node size reflects method complexity. Clicking a method shows its signature and which other methods it depends on. Learning objective: Analyze the internal method dependencies of IcebergConnectionBase (Bloom: Analyze). Controls: click methods for signatures, hover for descriptions. Colors: SteelBlue for lifecycle, Gold for inspection, DarkGreen for mutations, Teal for utilities.
 </details>
 
+<!-- concept:42 -->
 ## Catalog Type Registry
 
 The **Catalog Type Registry** is a module-level dictionary (`_CATALOG_REGISTRY`) that maps catalog type names to their connection class implementations. This is a direct application of the registry pattern described in Chapter 1, scoped to the Iceberg backend.
@@ -174,6 +179,7 @@ The registry currently contains one implemented catalog type (`"rest"`), with Hi
 
 The registry lookup is performed in `IcebergBackend.__init__()`, which stores the resolved class for later instantiation in `connect()`. This two-phase approach (resolve at init, instantiate at connect) allows validation to fail early while deferring the expensive network connection until actually needed.
 
+<!-- concept:38 -->
 ## REST Catalog Type
 
 The **REST Catalog type** implements the Iceberg REST Catalog API specification. REST catalogs communicate with a remote catalog service over HTTP, making them the most common deployment model for production Iceberg installations. Services like AWS Athena, Tabular, and Polaris implement the REST Catalog specification.
@@ -197,6 +203,7 @@ REST catalog connections require at minimum a `uri` parameter pointing to the ca
 
 The REST catalog supports pagination for large namespaces (tables listed in pages via cursor-based pagination), which is handled transparently by PyIceberg's `RestCatalog` implementation.
 
+<!-- concept:39 -->
 ## Hive Catalog Type
 
 The **Hive Catalog type** uses Apache Hive Metastore as the metadata backend. The Hive Metastore was the original catalog implementation for Iceberg tables in Hadoop-based data lakes. It stores table metadata in a relational database (typically MySQL or PostgreSQL) and exposes it via the Thrift protocol.
@@ -210,6 +217,7 @@ Key characteristics of the Hive catalog type:
 - Supports the full range of Iceberg operations (create, drop, rename, alter).
 - May have higher latency than REST catalogs due to Thrift serialization overhead.
 
+<!-- concept:40 -->
 ## Glue Catalog Type
 
 The **Glue Catalog type** uses AWS Glue Data Catalog as the metadata backend. AWS Glue is a fully managed service that eliminates the need to run a separate catalog server. Tables registered in Glue are automatically available to AWS services like Athena, EMR, and Redshift Spectrum.
@@ -223,6 +231,7 @@ Key characteristics of the Glue catalog type:
 - Requires AWS credentials and appropriate IAM permissions.
 - Subject to AWS Glue API rate limits for high-throughput operations.
 
+<!-- concept:41 -->
 ## SQL Catalog Type
 
 The **SQL Catalog type** stores Iceberg table metadata directly in a SQL database (typically SQLite for testing or PostgreSQL for production). This catalog type is useful for environments that do not have access to a dedicated catalog service but need Iceberg's table format features.

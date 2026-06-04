@@ -37,6 +37,7 @@ Database connections in modern data engineering environments rarely use simple u
 
 The gap between how credentials are stored (in secrets managers, environment variables, or configuration files) and how drivers consume them requires a transformation layer. mountainash-data's adapter system fills this gap by providing composable transformations that convert stored credentials into driver-ready formats.
 
+<!-- concept:85 -->
 ## Adapter Pipeline
 
 The **adapter pipeline** is a composable chain of credential transformations that processes raw authentication inputs into the final format expected by a database driver. Each adapter in the pipeline performs a single, well-defined transformation, and adapters can be composed to handle complex authentication flows.
@@ -61,6 +62,7 @@ Type: workflow
 A horizontal pipeline diagram showing credential flow through multiple adapter stages. The left side shows raw credential inputs (password, refresh_token, service_account_json, certificate_path) as colored source nodes. The center shows adapter nodes (OAuth Adapter, JWT Adapter, SSL Adapter) that transform inputs. The right side shows driver-ready output formats (connection_kwargs dict). Animated particles flow through the pipeline showing data transformation. Users can click different authentication scenarios (password, OAuth, certificate) to highlight the relevant path through the pipeline. Learning objective: Analyze how credentials flow through the adapter pipeline for different auth methods (Bloom: Analyze). Controls: click scenario buttons to highlight paths, hover adapters for transformation details. Colors: SteelBlue for inputs, MediumPurple for adapters, DarkGreen for outputs.
 </details>
 
+<!-- concept:86 -->
 ## Credential Transformation
 
 **Credential transformation** is the core concept underlying the adapter pattern: the act of converting credentials from one representation to another. Each transformation is a pure function (or nearly pure, with side effects limited to network calls for token exchange) that takes an input credential format and produces an output format.
@@ -83,6 +85,7 @@ Each transformation is encapsulated in its own adapter class or function, ensuri
 | IAM role assumption | Role ARN + Session credentials | Temporary username/password | Network (STS/IAM API) |
 | SSL context creation | Certificate + Key file paths | SSL context object | Filesystem read |
 
+<!-- concept:87 -->
 ## OAuth Adapter
 
 The **OAuth adapter** handles the OAuth 2.0 token exchange flow required by databases that use OAuth for authentication. Snowflake, Databricks, and other cloud platforms support OAuth as an alternative to password authentication, providing short-lived tokens that reduce the blast radius of credential compromise.
@@ -112,6 +115,7 @@ class OAuthAdapter:
         return {"token": response["access_token"]}
 ```
 
+<!-- concept:88 -->
 ## JWT Adapter
 
 The **JWT adapter** handles JSON Web Token authentication, where a private key is used to sign claims that the database server verifies. This authentication method is common in Snowflake's key-pair authentication and Google Cloud's service account model.
@@ -143,6 +147,7 @@ class JWTAdapter:
         return {"private_key": private_key, "jwt_token": token}
 ```
 
+<!-- concept:89 -->
 ## Cloud Native Auth
 
 **Cloud native authentication** refers to authentication methods that leverage cloud provider IAM (Identity and Access Management) systems rather than database-specific credentials. In this model, the application authenticates to the cloud provider (AWS, GCP, Azure) and then uses that identity to access databases within the same cloud ecosystem.
@@ -167,6 +172,7 @@ Type: infographic
 A three-panel infographic showing AWS, GCP, and Azure cloud-native authentication flows. Each panel shows: (1) the compute environment (EC2/ECS/Lambda, GKE/Cloud Run, Azure VM/AKS), (2) the IAM service (STS, IAM API, Azure AD), (3) the database service (Redshift, BigQuery, Azure SQL). Arrows show the credential flow: compute requests temporary credentials from IAM, then uses them to connect to the database. Each panel is interactive: clicking the compute node shows the configuration required, clicking the IAM node shows the token format, clicking the database shows the connection parameters. Learning objective: Evaluate which cloud-native auth pattern applies to each cloud provider (Bloom: Evaluate). Controls: click nodes for details, toggle between cloud providers. Colors: Orange for AWS, SteelBlue for GCP, MediumPurple for Azure.
 </details>
 
+<!-- concept:90 -->
 ## SSL Bundle Adapter
 
 The **SSL bundle adapter** handles the transformation of file paths into SSL context objects for database connections that require encrypted transport with mutual TLS (mTLS) authentication. This adapter is particularly relevant for self-hosted databases in enterprise environments where connections must be encrypted and both client and server must prove their identity.
@@ -194,6 +200,7 @@ class SSLBundleAdapter:
         return ssl_kwargs
 ```
 
+<!-- concept:91 -->
 ## NoAuth Settings
 
 **NoAuth settings** represent the simplest authentication strategy: no credentials are required. This applies to embedded databases (SQLite, local DuckDB) and development environments where authentication is disabled.
@@ -202,6 +209,7 @@ The NoAuth strategy sets `AUTH_METHOD` to `"none"` and bypasses all credential v
 
 NoAuth is the default for embedded databases because they rely on filesystem permissions rather than application-level authentication. A SQLite database file is secured by its file permissions, not by a password check in the database engine.
 
+<!-- concept:92 -->
 ## PasswordAuth Settings
 
 **PasswordAuth settings** represent traditional username/password authentication, which is the most common authentication method for server-based databases (PostgreSQL, MySQL, MSSQL). The settings require both `USERNAME` and `PASSWORD` fields to be populated.
@@ -221,6 +229,7 @@ def validate_auth_method_password(self) -> Self:
 
 Password credentials are embedded into the connection string for CONNECTION_STRING mode backends (e.g., `postgres://user:password@host:port/db`) or passed as separate keyword arguments for KWARGS mode backends.
 
+<!-- concept:93 -->
 ## TokenAuth Settings
 
 **TokenAuth settings** represent authentication via a bearer token, access token, or API key. This method is common for cloud services (MotherDuck, Databricks) where tokens are issued by an external identity provider and presented to the database service.
@@ -240,6 +249,7 @@ def validate_auth_method_token(self) -> Self:
 
 The key difference between TokenAuth and PasswordAuth from the adapter pipeline's perspective is that tokens are passed as-is (no transformation needed), while passwords are typically embedded in a connection string or hashed.
 
+<!-- concept:94 -->
 ## IAMAuth Settings
 
 **IAMAuth settings** represent cloud-native authentication through Identity and Access Management services. Rather than storing a password or static token, IAMAuth uses temporary credentials obtained from the cloud provider's IAM service.

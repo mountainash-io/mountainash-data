@@ -32,6 +32,7 @@ This chapter establishes the foundational knowledge required for understanding m
 
 ---
 
+<!-- concept:1 -->
 ## SQL Databases
 
 A **SQL database** is a structured data store that organizes information into tables composed of rows and columns. Each table represents an entity type, and SQL (Structured Query Language) provides the standard interface for creating, reading, updating, and deleting data within these tables. mountainash-data treats SQL databases as the primary storage tier, wrapping connections to over 20 database engines through a unified Python interface.
@@ -48,6 +49,7 @@ The following table summarizes the database engines that mountainash-data suppor
 | Federated / Query Engine | Trino, PySpark | Query across heterogeneous data sources |
 | Hybrid | MotherDuck | Cloud-hosted DuckDB with local compute |
 
+<!-- concept:2 -->
 ## Database Schemas
 
 Within a SQL database, a **database schema** (sometimes called a namespace) provides a logical grouping mechanism for related tables, views, and other database objects. Schemas serve a purpose analogous to directories in a filesystem: they organize objects by function, ownership, or access control without affecting the underlying storage. A PostgreSQL database, for example, creates a default schema named `public` where tables reside unless explicitly placed elsewhere.
@@ -66,12 +68,14 @@ Type: diagram
 A hierarchical tree diagram showing the three-level organization of database objects. The root node represents a Catalog (e.g., "analytics_warehouse"), which branches into multiple Schema nodes (e.g., "public", "staging", "raw"). Each Schema node branches into Table nodes (e.g., "users", "orders", "events"). Nodes are color-coded by level: catalogs in SteelBlue, schemas in Gold, tables in LimeGreen. Clicking a node highlights its children and displays a tooltip with level description. Users can drag nodes to rearrange the layout. Learning objective: Understand the hierarchical organization of database objects (Bloom: Understand). Controls: click to select node, drag to rearrange, hover for tooltip. Colors: SteelBlue for catalogs, Gold for schemas, LimeGreen for tables.
 </details>
 
+<!-- concept:3 -->
 ## Database Catalogs
 
 A **database catalog** is the top level of the structural hierarchy, acting as a container for one or more schemas. In single-database systems like SQLite, the catalog is implicit (there is only one). In multi-database platforms such as Snowflake, Trino, or Databricks, catalogs enable cross-database queries and unified metadata browsing. mountainash-data captures this three-tier structure through its `CatalogInfo`, `NamespaceInfo`, and `TableInfo` dataclasses, which are introduced fully in Chapter 3.
 
 Not every database engine exposes catalogs in the same way. Some engines treat the database name itself as the catalog (PostgreSQL), while others maintain a distinct catalog layer above the database (Trino). The mountainash-data inspection layer normalizes these differences, mapping engine-specific terminology into the consistent `catalog > namespace > table` hierarchy.
 
+<!-- concept:4 -->
 ## Connection Management
 
 **Connection management** refers to the lifecycle of a database connection: establishing a connection with the appropriate credentials, maintaining its state while operations are performed, and releasing resources when the connection is no longer needed. Poor connection management causes resource leaks, stale connections, and concurrency issues that can degrade application performance.
@@ -102,6 +106,7 @@ with backend.connect() as conn:
 # conn.close() is called automatically
 ```
 
+<!-- concept:5 -->
 ## Python Protocols
 
 A **Python protocol** is a mechanism for structural typing introduced in PEP 544 and available in the `typing` module. Unlike abstract base classes, which require explicit inheritance, protocols define an interface purely in terms of method signatures and attributes. Any class that happens to have the right methods satisfies the protocol, regardless of whether it inherits from a common base class. This approach is sometimes called "duck typing with type checking."
@@ -110,6 +115,7 @@ mountainash-data uses protocols as the foundation of its backend system. The `Ba
 
 The key advantage of protocols over inheritance for a library like mountainash-data is that new backends can be added without modifying any existing code. A third-party backend only needs to implement the correct method signatures; it never needs to import or subclass anything from mountainash-data's core module.
 
+<!-- concept:6 -->
 ## Runtime Checkable Protocol
 
 The `@runtime_checkable` decorator, applied to a protocol class, enables `isinstance()` and `issubclass()` checks at runtime. Without this decorator, protocols are purely a static analysis concept and cannot be used for dynamic dispatch.
@@ -132,6 +138,7 @@ The runtime check verifies that the object has the required methods and attribut
 !!! note "Runtime checks are structural, not behavioral"
     A `runtime_checkable` protocol confirms that an object has the right *shape* (methods and attributes exist), but it cannot verify that those methods behave correctly. Think of it as checking that a key fits the lock, not that it opens the right door.
 
+<!-- concept:7 -->
 ## Pydantic Models
 
 **Pydantic** is a Python library for data validation and settings management that uses type annotations to define data structures. A Pydantic model is a class that inherits from `BaseModel` (or, in mountainash-data's case, from a custom `MountainAshBaseSettings` base) and declares typed fields. When an instance is created, Pydantic validates each field against its declared type and applies any custom validators.
@@ -149,6 +156,7 @@ The following list highlights the key features that Pydantic provides to mountai
 - **Secret types**: `SecretStr` prevents accidental logging of passwords and tokens.
 - **Default values**: Sensible defaults reduce boilerplate for common configurations.
 
+<!-- concept:8 -->
 ## Decorators
 
 A **decorator** in Python is a callable that wraps or modifies another callable (function, method, or class) without changing its source code. Decorators use the `@` syntax and are evaluated at definition time, making them a powerful tool for metaprogramming patterns like logging, caching, access control, and registration.
@@ -172,6 +180,7 @@ class SQLiteAuthSettings:
     ...
 ```
 
+<!-- concept:9 -->
 ## Registry Pattern
 
 The **registry pattern** is a design pattern where a central dictionary (the registry) maps string keys to factories or class references. Consumer code looks up entries by name rather than importing specific classes, which decouples the consumer from the concrete implementations and makes the system extensible without modifying existing code.
@@ -198,6 +207,7 @@ Type: workflow
 An animated workflow diagram showing three swim lanes: Registration (left), Registry (center), and Lookup (right). On the left, decorator calls flow into the central registry dictionary. On the right, consumer code sends a lookup key to the registry and receives back a factory/class reference. Clicking each step highlights the data flow with animated edges. The registry node in the center shows the current state of registered entries. Learning objective: Analyze how the registry pattern decouples registration from lookup (Bloom: Analyze). Controls: click step to animate flow, hover nodes for description. Colors: DarkSlateBlue for registration, Gold for registry, LimeGreen for lookup.
 </details>
 
+<!-- concept:10 -->
 ## Ibis Library
 
 **Ibis** is an open-source Python library that provides a portable, pandas-like API for writing analytical queries that execute on remote SQL backends. Rather than writing raw SQL strings, you compose queries using Ibis's fluent expression API, and Ibis compiles those expressions into the appropriate SQL dialect for the connected backend. This means the same Python code can run against SQLite during local development and against Snowflake in production.

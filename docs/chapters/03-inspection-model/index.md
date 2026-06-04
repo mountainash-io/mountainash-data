@@ -36,6 +36,7 @@ Every database engine represents table structure differently. Ibis exposes schem
 
 mountainash-data solves this problem with a set of four frozen dataclasses that serve as the common language for structural metadata. Regardless of whether the metadata originated from a DuckDB schema introspection or an Iceberg catalog scan, it arrives at the consumer in the same shape. This chapter introduces those dataclasses from the bottom up, starting with the smallest unit (a column) and building toward the full catalog view.
 
+<!-- concept:52 -->
 ## ColumnInfo Dataclass
 
 The **ColumnInfo dataclass** represents the physical metadata for a single column within a table. It captures the minimal information needed to understand a column's structure: its name, its data type (as a string representation), and whether it accepts null values.
@@ -67,6 +68,7 @@ Type: diagram
 An interactive card-style visualization showing a ColumnInfo instance as a structured card with labeled fields. The card displays name="user_id", type_name="int64", nullable=False, description=None, metadata={}. Below the card, three example source formats are shown (Ibis Schema entry, PyIceberg NestedField, raw SQL column definition) with animated arrows flowing into the ColumnInfo card to show convergence. Clicking a source format highlights the field mapping. Learning objective: Remember the fields of the ColumnInfo dataclass (Bloom: Remember). Controls: click source format to see mapping, hover fields for type info. Colors: Gold for ColumnInfo card, DarkGreen for Ibis source, LimeGreen for Iceberg source, SteelBlue for SQL source.
 </details>
 
+<!-- concept:51 -->
 ## TableInfo Dataclass
 
 The **TableInfo dataclass** aggregates column metadata into a complete description of a single table or view. It is the primary return type of the `inspect_table()` protocol method.
@@ -98,6 +100,7 @@ def qualified_name(self) -> str:
 
 These properties mean that a `TableInfo` for a table named `orders` in the `public` schema of the `analytics` catalog would produce `qualified_name = "analytics.public.orders"`. For backends without catalogs (like SQLite), only the table name appears.
 
+<!-- concept:50 -->
 ## NamespaceInfo Dataclass
 
 The **NamespaceInfo dataclass** represents a namespace (schema) and the tables it contains. It sits one level above `TableInfo` in the structural hierarchy.
@@ -121,6 +124,7 @@ The following list shows what information each inspection level provides:
 - **inspect_table()**: Full column structure for one table (most detailed).
 - **inspect_catalog()**: All namespaces with their table name lists.
 
+<!-- concept:49 -->
 ## CatalogInfo Dataclass
 
 The **CatalogInfo dataclass** is the top-level container that represents an entire catalog (or backend instance). It aggregates multiple `NamespaceInfo` objects into a single hierarchical view.
@@ -145,6 +149,7 @@ The hierarchical relationship between all four dataclasses can be visualized as 
 | Table | `TableInfo` | Multiple `ColumnInfo` |
 | Column | `ColumnInfo` | Scalar field values |
 
+<!-- concept:53 -->
 ## Frozen Metadata Model
 
 All four inspection dataclasses use `@dataclass(frozen=True)`, which makes their instances **immutable** after construction. Attempting to assign a new value to any field raises a `FrozenInstanceError`. This design choice has three important benefits for the mountainash-data architecture.
@@ -173,6 +178,7 @@ Type: diagram
 A nested containment diagram showing CatalogInfo at the top containing NamespaceInfo boxes, which contain TableInfo boxes, which contain ColumnInfo rows. The diagram uses a tree-map or Russian-doll style layout. Each level is color-coded and shows the actual field names from the dataclass. Users can click to expand/collapse levels, showing or hiding the contained elements. An ice crystal icon on each box indicates the frozen (immutable) property. Learning objective: Understand the hierarchical containment of the inspection model (Bloom: Understand). Controls: click to expand/collapse levels, hover for field type information. Colors: SteelBlue for CatalogInfo, Teal for NamespaceInfo, Gold for TableInfo, Orange for ColumnInfo.
 </details>
 
+<!-- concept:54 -->
 ## Backend Agnostic Metadata
 
 The concept of **backend-agnostic metadata** is the principle that inspection results must not expose any driver-specific details in their standard fields. A consumer reading a `TableInfo` should not need to know whether it was produced by an Ibis connection to PostgreSQL or a PyIceberg connection to a REST catalog. The structural information (table name, column names and types, nullability) should be directly comparable across backends.
@@ -212,6 +218,7 @@ TableInfo(
 !!! note "Type name normalization is not performed"
     mountainash-data does not normalize type names across backends. PostgreSQL's `"int64"` and Iceberg's `"long"` refer to the same logical type but retain their backend-specific string representations. This preserves fidelity to the source system while still providing a structurally consistent interface.
 
+<!-- concept:55 -->
 ## Driver Metadata Conversion
 
 **Driver metadata conversion** is the process of transforming raw driver-specific schema objects into the unified inspection dataclasses. Each backend implements its own conversion helper module (`backends.ibis.inspect` and `backends.iceberg.inspect`) that contains functions named `table_to_info`, `namespace_to_info`, and `catalog_to_info`.
@@ -261,6 +268,7 @@ Type: workflow
 A side-by-side comparison workflow showing the Ibis conversion path (left) and Iceberg conversion path (right) converging into the same TableInfo output (center bottom). Each path shows three stages: (1) raw driver object with example attributes, (2) conversion helper function call, (3) unified TableInfo result. Animated arrows trace the data flow. A toggle control switches between showing the Ibis path, the Iceberg path, or both simultaneously for comparison. Learning objective: Apply knowledge of both conversion paths to predict outputs (Bloom: Apply). Controls: toggle between Ibis/Iceberg/Both views, click stages for detail. Colors: DarkGreen for Ibis path, LimeGreen for Iceberg path, Gold for unified output.
 </details>
 
+<!-- concept:56 -->
 ## Unified Inspection API
 
 The **unified inspection API** is the collection of protocol methods (`inspect_table`, `inspect_namespace`, `inspect_catalog`) combined with the shared dataclass model that together provide a single, consistent way to explore database structure across all backends. The "unified" qualifier emphasizes that the same method calls and return types work identically whether the connection is to a local SQLite file, a remote PostgreSQL server, or an Iceberg REST catalog.
