@@ -12,23 +12,6 @@ version: 0.08
 
 This chapter introduces the IcebergBackend — the second major backend type in mountainash-data, providing access to Apache Iceberg table format catalogs. It begins with an overview of Apache Iceberg and the PyIceberg library, then covers the IcebergBackend class and its connection model. The Catalog Type Registry and its four implementations (REST, Hive, Glue, SQL) demonstrate how different catalog backends are discovered and instantiated through the registry pattern.
 
-## Concepts Covered
-
-- Apache Iceberg Overview
-- PyIceberg Library
-- IcebergBackend Class
-- Iceberg Connection Base
-- Catalog Type Registry
-- REST Catalog Type
-- Hive Catalog Type
-- Glue Catalog Type
-- SQL Catalog Type
-
-## Prerequisites
-
-- Chapter 1: Foundation Concepts (Database Catalogs, Connection Management, Registry Pattern)
-- Chapter 2: Backend Protocol (Backend Protocol Definition)
-
 ---
 
 <!-- concept:36 -->

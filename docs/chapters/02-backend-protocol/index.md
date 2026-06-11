@@ -12,21 +12,6 @@ version: 0.08
 
 This chapter introduces the Backend protocol — a runtime-checkable structural typing contract that all mountainash-data backends must satisfy. It defines the required methods for connection lifecycle (connect, close), table and namespace listing, and catalog/schema/table inspection. Both IbisBackend and IcebergBackend implement this protocol, enabling polymorphic usage across all supported databases.
 
-## Concepts Covered
-
-- Backend Protocol Definition
-- Connect Method
-- Close Method
-- List Tables Method
-- Inspect Table Method
-- List Namespaces Method
-- Inspect Namespace Method
-- Inspect Catalog Method
-
-## Prerequisites
-
-- Chapter 1: Foundation Concepts (Python Protocols, Runtime Checkable Protocol, Database Schemas, Database Catalogs, Connection Management)
-
 ---
 
 <!-- concept:11 -->

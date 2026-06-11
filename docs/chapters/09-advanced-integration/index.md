@@ -12,26 +12,6 @@ version: 0.08
 
 This chapter covers advanced topics that span both the Ibis and Iceberg backends. It begins with Iceberg-specific operations — listing tables, inspecting tables, namespaces, and catalogs through the IcebergBackend. Then it addresses cross-backend integration patterns: querying across Ibis and Iceberg backends, understanding the backend capability matrix, DDL index support variations, memory-intensive upsert considerations, REST catalog cursor pagination, and handling unimplemented operations gracefully.
 
-## Concepts Covered
-
-- Iceberg Operations
-- List Tables Iceberg
-- Table Inspection Iceberg
-- Namespace Inspection Iceberg
-- Catalog Inspection Iceberg
-- Cross Backend Queries
-- Backend Capability Matrix
-- DDL Index Support
-- Memory Intensive Upsert
-- REST Catalog Cursors
-- Unimplemented Operations
-
-## Prerequisites
-
-- Chapter 3: Inspection Model (Driver Metadata Conversion)
-- Chapter 4: Ibis Backend (IbisBackend Class, DDL Operations, DML Operations, Upsert Data)
-- Chapter 8: Iceberg Backend (IcebergBackend Class, REST Catalog Type)
-
 ---
 
 <!-- concept:43 -->

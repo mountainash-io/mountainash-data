@@ -12,23 +12,6 @@ version: 0.08
 
 This chapter explains the adapter pipeline — a composable mechanism for transforming raw credentials into the formats required by specific database drivers. It covers the Credential Transformation concept, then presents concrete adapter implementations for OAuth token exchange, JWT signing, cloud-native IAM authentication, and SSL certificate bundles. The chapter also covers the auth settings base types (NoAuth, PasswordAuth, TokenAuth, IAMAuth) that model different authentication strategies and feed into the adapter pipeline.
 
-## Concepts Covered
-
-- Adapter Pipeline
-- Credential Transformation
-- OAuth Adapter
-- JWT Adapter
-- Cloud Native Auth
-- SSL Bundle Adapter
-- NoAuth Settings
-- PasswordAuth Settings
-- TokenAuth Settings
-- IAMAuth Settings
-
-## Prerequisites
-
-- Chapter 6: Settings and Configuration (ConnectionProfile Base)
-
 ---
 
 ## The Authentication Challenge

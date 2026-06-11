@@ -12,31 +12,6 @@ version: 0.08
 
 This chapter covers the IbisBackend class — the primary backend for connecting to 20+ SQL databases through the Ibis library. It begins with the IbisBackend class structure and connection management, then covers querying via both the fluent Ibis API and raw SQL. DDL operations (create table, create view) and DML operations (insert, upsert, truncate) are presented in detail. The chapter concludes with Ibis-specific implementations of table listing, table/namespace/catalog inspection using the Driver Metadata Conversion layer, and context manager usage for automatic cleanup.
 
-## Concepts Covered
-
-- IbisBackend Class
-- Ibis Connection
-- Fluent Query API
-- Raw SQL Queries
-- DDL Operations
-- Create Table
-- DML Operations
-- Insert Data
-- Upsert Data
-- Truncate Table
-- Create View
-- List Tables Ibis
-- Table Inspection Ibis
-- Namespace Inspection Ibis
-- Catalog Inspection Ibis
-- Context Manager Ibis
-
-## Prerequisites
-
-- Chapter 1: Foundation Concepts (SQL Databases, Connection Management, Ibis Library)
-- Chapter 2: Backend Protocol (Backend Protocol Definition, Connect Method, Close Method, List Tables Method, Inspect Table Method, Inspect Namespace Method, Inspect Catalog Method)
-- Chapter 3: Inspection Model (Driver Metadata Conversion)
-
 ---
 
 <!-- concept:19 -->

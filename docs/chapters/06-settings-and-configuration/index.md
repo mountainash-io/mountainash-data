@@ -12,32 +12,6 @@ version: 0.08
 
 This chapter covers the typed configuration system for mountainash-data. It begins with the ConnectionProfile base class and its to_driver_kwargs method for converting settings into connection parameters. BackendSpec and ParameterSpec define typed parameter specifications with tiered complexity levels. The DATABASES registry and @register decorator enable auto-discovery of new backend settings at import time. The chapter then presents all provider-specific AuthSettings implementations: SQLite, DuckDB, PostgreSQL, BigQuery, Snowflake, Redshift, Clickhouse, Databricks, MSSQL, and Trino.
 
-## Concepts Covered
-
-- ConnectionProfile Base
-- To Driver Kwargs Method
-- BackendSpec Class
-- ParameterSpec Class
-- Parameter Tiers
-- DATABASES REGISTRY
-- Register Decorator
-- Auto Registration
-- SQLiteAuthSettings
-- DuckDBAuthSettings
-- PostgreSQLAuthSettings
-- BigQueryAuthSettings
-- SnowflakeAuthSettings
-- RedshiftAuthSettings
-- ClickhouseAuthSettings
-- DatabricksAuthSettings
-- MSSQLAuthSettings
-- TrinoAuthSettings
-
-## Prerequisites
-
-- Chapter 1: Foundation Concepts (Pydantic Models, Decorators, Registry Pattern)
-- Chapter 5: Dialect System (SQLite Dialect, DuckDB Dialect, PostgreSQL Dialect, Snowflake Dialect)
-
 ---
 
 <!-- concept:67 -->
