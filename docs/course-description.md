@@ -1,14 +1,11 @@
 ---
-title: Mountainash Data Package Description
-description: A detailed description of the mountainash-data unified database and lakehouse connectivity library
-quality_score: 87
+title: Package Overview
+description: 'What mountainash-data is, who it is for, what it covers, and what it does not cover.'
 ---
 
-# Mountainash Data Package Description
+# Package Overview
 
-## Title
-
-Mountainash Data: Unified Database and Lakehouse Connectivity Library
+Mountainash-data is a unified Python library for connecting to any supported database or lakehouse. It wraps every Ibis dialect — DuckDB, PostgreSQL, Snowflake, BigQuery, Trino, ClickHouse, and more — behind a single `IbisBackend` class, and provides `IcebergBackend` for Apache Iceberg catalog access. Typed settings classes handle connection configuration and authentication, while a runtime-checkable `Backend` protocol provides a uniform interface for inspecting metadata and running queries.
 
 ## Target Audience
 
@@ -21,18 +18,19 @@ Python developers and data engineers who need to connect to multiple database ba
 - Familiarity with at least one database client library
 - Understanding of connection pooling and credential management
 
-## Topics Covered
+## What This Manual Covers
 
-1. **Backend Protocol** — Runtime-checkable structural protocol defining the universal backend contract
-2. **Ibis Backend** — IbisBackend class for 20+ SQL databases with fluent queries and DDL/DML
-3. **Iceberg Backend** — IcebergBackend for Apache Iceberg catalog access (REST, Hive, Glue)
-4. **Inspection Model** — CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo metadata dataclasses
-5. **Settings & Configuration** — Per-backend AuthSettings with auto-registration via @register decorator
-6. **Dialect System** — DialectSpec registry for backend-specific connection and operation routing
-7. **Adapters** — Credential transformation pipeline for OAuth, JWT, cloud-native auth, SSL
-8. **BackendSpec & Registry** — Typed parameter specifications and centralized backend discovery
+1. **Foundation Concepts** — Core abstractions and design decisions underpinning the library
+2. **Backend Protocol** — Runtime-checkable structural protocol defining the universal backend contract
+3. **Inspection Model** — CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo metadata dataclasses
+4. **Ibis Backend** — IbisBackend class for 20+ SQL databases with fluent queries and DDL/DML
+5. **Dialect System** — DialectSpec registry for backend-specific connection and operation routing
+6. **Settings and Configuration** — Per-backend AuthSettings with auto-registration via @register decorator
+7. **Adapters and Auth** — Credential transformation pipeline for OAuth, JWT, cloud-native auth, SSL
+8. **Iceberg Backend** — IcebergBackend for Apache Iceberg catalog access (REST, Hive, Glue)
+9. **Advanced Integration** — Combining backends, extending the library, and production deployment patterns
 
-## Topics Excluded
+## What This Manual Does Not Cover
 
 - Database administration and performance tuning
 - SQL query optimization
@@ -40,43 +38,17 @@ Python developers and data engineers who need to connect to multiple database ba
 - ETL/ELT pipeline orchestration
 - Cloud provider account management
 
-## Learning Outcomes
+## Key Capabilities
 
-After studying this package, developers will be able to:
+**Every Ibis dialect through one interface** — IbisBackend provides a unified connection, inspection, and query interface across every SQL and analytical engine Ibis supports: DuckDB, PostgreSQL, Snowflake, BigQuery, Trino, ClickHouse, MySQL, Oracle, SQL Server, Databricks, and more. When Ibis adds a new backend, mountainash-data inherits it.
 
-### Remember
+**Native Iceberg lakehouse support** — IcebergBackend connects to Apache Iceberg catalogs (REST, Hive, Glue, SQL) so the same code that validates and transforms data can store and query it in a production lakehouse. Tables, metadata inspection, and operations all work through the Backend protocol.
 
-- List the four inspection dataclasses (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo)
-- Name the Backend protocol's required methods
-- Identify the two backend types (IbisBackend, IcebergBackend)
+**Typed connection settings for every backend** — Each database dialect has typed settings classes with auto-derived connection parameters. Authentication spans the full spectrum: password, token, OAuth2, IAM, service accounts, and certificates. Settings compose with mountainash-settings for config file loading and secrets resolution.
 
-### Understand
+**A protocol that any data store can implement** — The Backend protocol defines connect, close, inspect, and query operations. Any data store that implements this protocol participates in the mountainash ecosystem — expressions, rules, and validation all work against it automatically.
 
-- Explain the structural typing approach via runtime-checkable Backend protocol
-- Describe dialect-driven routing through DialectSpec
-- Explain the adapter pipeline for credential transformation
-
-### Apply
-
-- Connect to databases using typed settings classes
-- Inspect catalogs, schemas, and tables via the unified API
-- Execute queries using both fluent Ibis expressions and raw SQL
-
-### Analyze
-
-- Compare IbisBackend and IcebergBackend capabilities and tradeoffs
-- Analyze the settings registration and auto-discovery pipeline
-
-### Evaluate
-
-- Assess which backend type suits a given data architecture
-- Evaluate settings class designs for new database providers
-
-### Create
-
-- Implement new database backend settings via the @register pattern
-- Build custom Iceberg catalog type implementations
-- Design adapter functions for new authentication schemes
+**Development to production without rewrites** — Develop pipelines against DuckDB on your laptop, point at Snowflake in staging, and BigQuery in production. The expressions compile through Ibis to each backend's native dialect. The backend is a deployment config, not a code change.
 
 ## Context
 

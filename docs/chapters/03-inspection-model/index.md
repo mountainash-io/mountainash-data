@@ -12,22 +12,6 @@ version: 0.08
 
 This chapter covers the four frozen metadata dataclasses that provide a backend-agnostic view of database structure: CatalogInfo, NamespaceInfo, TableInfo, and ColumnInfo. It explains the frozen metadata model pattern, how driver-specific metadata is converted into these unified structures, and the unified inspection API that ties everything together. These dataclasses are central to the Backend protocol's inspect methods.
 
-## Concepts Covered
-
-- CatalogInfo Dataclass
-- NamespaceInfo Dataclass
-- TableInfo Dataclass
-- ColumnInfo Dataclass
-- Frozen Metadata Model
-- Backend Agnostic Metadata
-- Driver Metadata Conversion
-- Unified Inspection API
-
-## Prerequisites
-
-- Chapter 1: Foundation Concepts (Pydantic Models, Database Schemas, Database Catalogs)
-- Chapter 2: Backend Protocol (Backend Protocol Definition, List Tables Method, Inspect Table Method, List Namespaces Method, Inspect Namespace Method, Inspect Catalog Method)
-
 ---
 
 ## The Problem of Heterogeneous Metadata

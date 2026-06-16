@@ -12,23 +12,6 @@ version: 0.08
 
 This chapter explains the DialectSpec system — a registry-driven mechanism for handling backend-specific connection construction and operation routing. It covers the DialectSpec overview, the dialect registry and its name-key lookup, connection builders that produce backend-specific connection parameters, operation hooks for customizing behavior, and per-dialect configuration. Concrete dialect implementations for SQLite, DuckDB, PostgreSQL, and Snowflake demonstrate the extensibility of the system.
 
-## Concepts Covered
-
-- DialectSpec Overview
-- Dialect Registry
-- Dialect Name Key
-- Connection Builder
-- Operation Hooks
-- Per Dialect Configuration
-- SQLite Dialect
-- DuckDB Dialect
-- PostgreSQL Dialect
-- Snowflake Dialect
-
-## Prerequisites
-
-- Chapter 1: Foundation Concepts (Registry Pattern, Ibis Library, Connection Management)
-
 ---
 
 <!-- concept:57 -->

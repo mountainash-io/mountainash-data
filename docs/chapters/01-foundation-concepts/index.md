@@ -12,24 +12,6 @@ version: 0.08
 
 This chapter establishes the foundational knowledge required for understanding mountainash-data. It covers SQL database fundamentals, schema and catalog organization, connection management patterns, Python's protocol system for structural typing, Pydantic models for data validation, decorators for metaprogramming, the registry pattern for extensible discovery, and the Ibis library that powers the SQL backend.
 
-## Concepts Covered
-
-- SQL Databases
-- Database Schemas
-- Database Catalogs
-- Connection Management
-- Python Protocols
-- Runtime Checkable Protocol
-- Pydantic Models
-- Decorators
-- Registry Pattern
-- Ibis Library
-
-## Prerequisites
-
-- Intermediate Python programming experience
-- Basic familiarity with relational databases
-
 ---
 
 <!-- concept:1 -->

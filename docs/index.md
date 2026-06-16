@@ -1,35 +1,25 @@
 ---
 title: 'Mountainash Data'
-description: 'An intelligent textbook for the mountainash-data unified database and lakehouse connectivity library'
+description: 'A unified Python interface for connecting to any database or lakehouse through typed settings, consistent metadata inspection, and fluent queries.'
 ---
 
+
+[← Back to Ecosystem](../)
 # Mountainash Data
 
-An intelligent textbook for the mountainash-data unified database and lakehouse connectivity library
+A single, consistent way to connect to any supported database or lakehouse — import `IbisBackend` for SQL databases across every Ibis dialect, or `IcebergBackend` for Apache Iceberg catalogs.
 
-## Getting Started
+## Why a Guided Manual?
 
-This is an intelligent textbook built with MkDocs Material. Use the navigation
-sidebar on the left to explore chapters, the learning graph, MicroSims, and
-supporting reference content.
+Most library documentation tells you *what* the API does. This manual explains *why* the library is designed the way it is — why there is a Backend protocol, why settings classes auto-register, why inspection returns frozen dataclasses — so that when you need to extend it or debug a connection, you understand the system rather than just the surface.
 
-## Front Matter
+## What's Inside
 
-- **About** — audience, prerequisites, and how to read the book
-- **Course Description** — the seed document used to generate the learning graph
+- [**Chapters**](chapters/index.md) — 9 chapters covering everything from foundation concepts through advanced integration patterns
+- [**MicroSims**](sims/index.md) — Interactive simulations that let you experiment with concepts hands-on
+- [**Learning Graph**](learning-graph/index.md) — A dependency map showing how concepts build on each other
+- [**API Reference**](api/index.md) — Auto-generated reference for backends, core protocol, settings, and inspection models
 
-## Chapters
+## Who This Is For
 
-The main body of the book lives under [Chapters](chapters/index.md). Each
-chapter has its own folder with a two-digit prefix (e.g. `01-introduction`).
-
-## Learning Graph
-
-The [Learning Graph](learning-graph/index.md) shows how concepts depend on each
-other. Concepts are introduced in dependency order so prerequisites are always
-covered before they are used.
-
-## MicroSims
-
-Interactive simulations live under [MicroSims](sims/index.md). Each MicroSim
-focuses on one concept and is embeddable as an iframe inside chapter content.
+Python developers and data engineers who work with multiple database backends and want a single library instead of per-database boilerplate. Whether you are connecting to DuckDB locally, PostgreSQL in staging, or Snowflake in production, this manual will get you productive quickly. See the [About](about.md) page for prerequisites and a full reading guide.
