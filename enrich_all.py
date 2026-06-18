@@ -20,8 +20,8 @@ PROJECTS = [
         "profile_dir": "03.profile/mountainash-treespec",
     },
     {
-        "name": "mountainash-utils-files",
-        "profile_dir": "03.profile/mountainash-utils-files",
+        "name": "mountainash-transport",
+        "profile_dir": "03.profile/mountainash-transport",
     },
     {
         "name": "mountainash-utils-secrets",
