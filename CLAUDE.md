@@ -124,7 +124,7 @@ src/mountainash_data/
 - **mountainash-settings** - Settings management and configuration framework
 - **mountainash-constants** - Shared constants and configuration
 - **mountainash-dataframes** - DataFrame abstractions and utilities
-- **mountainash-utils-files** - File system utilities
+- **mountainash-transport** - File system utilities
 - **mountainash-utils-os** - Operating system utilities
 - **mountainash-utils-ssh** - SSH connection utilities
 
