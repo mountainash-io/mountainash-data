@@ -180,7 +180,7 @@ connection profile's emission is **uniform** across all backends:
 def to_driver_kwargs(self, auth_profile: AuthProfile | None = None) -> dict:
     auth = self._normalize_and_validate_auth(auth_profile)   # §6
     target = self.__spec__.auth_target
-    base = self.emit(target)                                 # connection config (driver_key)
+    base = self.emit(target)                                 # connection config (§3.5.1)
     if isinstance(auth, NoAuthProfile):
         return base                                          # short-circuit (cf. transport)
     return auth.emit(target, base=base)                      # credentials via the registered adapter
@@ -191,6 +191,51 @@ This **removes** the legacy `__adapter__` indirection, the per-backend
 adapters), and the `_auth_kwargs` base method. `emit()`'s fail-closed semantics
 give a second guard: `auth.emit(target)` for an (auth-type, dialect) with no
 registered adapter raises, complementing the explicit `supported_auth` check.
+
+#### 3.5.1 Two-sided emission — connection shaping vs. credentials
+
+`base = self.emit(target)` is **not** "driver_key only". `emit()` is the same
+three-tier pipeline on both sides: driver_key renames → per-target `__adapters__`
+2-arg compose → return. So the connection profile owns **all non-auth shaping**,
+and the auth profile owns **only credentials** — exactly the
+`mountainash-transport` split, where a storage profile emits the SDK config and a
+separate `AuthProfile` layers creds onto it (`connections/__init__.py:_emit_kwargs`).
+
+Most backends are pure driver_key renames, so `self.emit(target)` needs no adapter.
+The three backends whose connection config is **not a flat rename** carry a
+**connection-shaping compose adapter on their own `*ConnectionProfile` class**,
+precisely mirroring transport's connection-side adapters:
+
+| Backend | Non-flat connection shaping | Transport precedent |
+|---|---|---|
+| mysql | nested `ssl={...}` dict from the 5 `SSL_*` fields | `HTTPStorageProfile` → `httpx.Timeout(...)` object |
+| mssql | fold `HOST` + `INSTANCE_NAME` → `host\instance`; encryption flags | `SFTPStorageProfile` → `_post_connect` sidecar |
+| snowflake | `session_parameters={...}` from `QUERY_TAG`/`TIMEZONE` | `S3StorageProfile` → nested `botocore.Config(...)` |
+
+Because the compose adapter receives the **already-driver_key-renamed dict** as its
+second arg (settings spec §3.2), it layers the nested pieces on top of the flat
+renames. pyiceberg-rest's dotted keys (`s3.region`, `rest.sigv4-enabled`, `header.*`)
+and redshift's `readonly`/`sslmode` are **flat** — handled by `driver_key` alone
+(string driver_key may itself contain a dot), no connection adapter.
+
+Two distinct adapter homes, same `register_adapter` primitive:
+
+- **Connection-shaping adapters** register onto mountainash-data's own
+  `*ConnectionProfile` classes (data owns them; a class-literal `__adapters__ =
+  {target: fn}` à la transport is equivalent). Keyed by the *same* `auth_target`.
+- **Auth adapters** register onto auth-client's `*AuthProfile` classes (data does
+  **not** own them — this is the case that *requires* the settings primitive).
+
+The shared `SQL_USERPASS` target stays conflict-free: mysql's connection adapter
+lives on `MySQLConnectionProfile` only, postgres has none, and both share the one
+`PasswordAuthProfile`→`SQL_USERPASS` auth adapter. Different classes, same key.
+
+**MotherDuck is the exception that registers no driver adapter at all:** its token
+travels in the connection *string* (`duckdb://md:<db>?motherduck_token=…`, via
+`rides_on="duckdb"`), not in driver kwargs. It declares
+`supported_auth=(TokenAuthProfile,)` and overrides `to_connection_string` to inject
+the token; `to_driver_kwargs` for it returns the flat duckdb base (no auth adapter,
+so `auth.emit` is never reached for the token — handled in the URL path).
 
 ### 3.6 Auth flow
 
@@ -460,9 +505,19 @@ per-dialect `IbisDialectTarget`; OAuth lifecycle = deferred to §10.)
   `isinstance` `supported_auth`; shared validation helper; field-table gaps (KEYTAB,
   `Path` types, OAuth1/OAuth2AuthCode scope); MotherDuck token handling; per-adapter
   terminal raise; iceberg `connection_kwargs` precedence.
-- **v2 (this revision)** — adopt the canonical `emit()` pattern via the new
+- **v2** — adopt the canonical `emit()` pattern via the new
   `Profile.register_adapter` settings primitive: per-dialect `IbisDialectTarget`,
   adapters registered from mountainash-data onto auth-client profiles, uniform
   `auth.emit(target, base=conn.emit(target))` connect path. Removes the legacy
   `__adapter__` indirection, the per-backend `build_driver_kwargs` modules, and the
   `_auth_kwargs` base method. (Supersedes the v1 §3.2 "reject emit()" decision.)
+- **v3 (this revision)** — grounding the plan against the live code surfaced that
+  the per-backend `build_driver_kwargs` modules mix auth with **non-flat connection
+  shaping** (mysql `ssl={}`, mssql `host\instance` fold, snowflake
+  `session_parameters={}`) that `base = self.emit(target)` as "driver_key only"
+  cannot produce. Resolved per the established `mountainash-transport` pattern (new
+  §3.5.1): connection shaping is a compose adapter on the `*ConnectionProfile` class
+  (the SFTP/S3/HTTP precedent), auth stays a separate adapter on the `*AuthProfile`
+  class — both via the same `register_adapter` primitive, same `auth_target` key.
+  Flat cases (pyiceberg dotted keys, redshift) stay pure `driver_key`. MotherDuck
+  registers no driver adapter (token via connection string).
