@@ -58,14 +58,17 @@ no compat shims.
 ### Goals
 1. Unbreak the package against `mountainash-settings` 26.5.0 + `mountainash-auth-client`.
 2. Adopt the **canonical `emit()` composition** (auth-client `INTEGRATION.md`
-   Pattern 1): `auth_profile.emit(target, base=connection_profile.emit(target))`,
-   with auth **decoupled** from the connection profile (per `mountainash-transport`).
+   Pattern 1): `auth_profile.emit(target, base=backend_profile.emit(target))`,
+   composed in the **factory** (not on the profile), with auth **decoupled** from
+   the backend profile (per `mountainash-transport`'s three-layer separation, §3.5).
 3. Contribute mountainash-data's ibis-driver auth translation through the **sanctioned
    `Profile.register_adapter` extension point** — registered *from* mountainash-data
    *onto* the auth-client profile classes, so auth-client never imports a DB driver
    and no package hand-mutates another's class state.
 4. Replace the deleted `auth_modes` / `_auth_kwargs` / `.auth`-field machinery.
-5. Rename the misnamed `*AuthSettings` classes to `*ConnectionProfile`.
+5. Rename the misnamed `*AuthSettings` classes to `*BackendProfile` (base
+   `ConnectionProfile` → `BackendProfile`), reserving "Connection" for the runtime
+   layer (§3.5.2).
 6. Make `mountainash-auth-client` a first-class core dependency.
 7. All tests green under `hatch run test:test`.
 
@@ -82,9 +85,9 @@ no compat shims.
 
 ## 3. Architecture
 
-### 3.1 Decouple auth from the connection profile
+### 3.1 Decouple auth from the backend profile
 
-The connection profile (`*ConnectionProfile`) carries **only backend config**
+The backend profile (`*BackendProfile`) carries **only backend config**
 (host/port/database/warehouse/role/…). Auth is a **separate, orthogonal**
 `AuthProfile | None` passed alongside it at connect time. This mirrors
 `mountainash-transport`'s `create_connection(storage_profile, auth_profile)` and
@@ -100,7 +103,7 @@ conn = backend.connect(
 ### 3.2 Adopt the canonical `emit()` pattern via `register_adapter`
 
 We use the ecosystem-blessed primitive directly. `auth_profile.emit(target, base)`
-layers credentials onto a base config dict; `connection_profile.emit(target)`
+layers credentials onto a base config dict; `backend_profile.emit(target)`
 produces that base. mountainash-data's only job is to **contribute the ibis-driver
 adapters** for its targets.
 
@@ -146,7 +149,7 @@ or `Enum`, e.g. `IbisDialectTarget`), never bare strings (settings spec §3.6):
   Kerberos→`KerberosAuthentication`; `BIGQUERY`: ServiceAccount→`Credentials`;
   `REDSHIFT`: Password + IAM; `MSSQL`: Password + Windows + AzureAD).
 
-Each `*ConnectionProfile` declares its `auth_target` on its `BackendSpec`
+Each `*BackendProfile` declares its `auth_target` on its `BackendSpec`
 (default `SQL_USERPASS`). The no-auth-only backends (sqlite, duckdb, pyspark) use
 `SQL_USERPASS` with `supported_auth=(NoAuthProfile,)` and never reach an auth adapter
 (short-circuit, §3.5).
@@ -171,39 +174,57 @@ singleton function `(_auth_profile, base) -> dict` (settings spec §3.2 identity
 contract), registered on the **concrete** auth-profile class (settings spec §3.3
 leaf-registration guidance).
 
-### 3.5 Uniform connect path — no per-backend `__adapter__`, no `_auth_kwargs`
+### 3.5 Three layers — `BackendProfile`, `Connection`, and the composing factory
 
-Because the dialect logic now lives in registered `emit()` adapters, the
-connection profile's emission is **uniform** across all backends:
+mountainash-data mirrors `mountainash-transport`'s **three-role** separation, with
+"Connection" reserved for the runtime layer (§3.5.2 names the analogues):
+
+1. **`BackendProfile`** (config) — declarative backend config + its own `emit(target)`.
+   Knows **nothing** about auth. The analogue of transport's `*StorageProfile`.
+2. **`Connection` / `Backend`** (runtime) — `IbisBackend`/`IbisConnection`,
+   `IcebergConnection`: takes a *finished* kwargs dict and opens the live handle.
+   The analogue of transport's `connections/*Connection`.
+3. **The factory** (`core/factories/ConnectionFactory`) — the bridge that composes
+   auth onto config and constructs the runtime. The analogue of transport's
+   `connections/__init__.py:create_connection` / `_emit_kwargs`.
+
+**The auth+config composition lives in the factory, not on the profile.** This is
+the v4 correction: earlier drafts hung `to_driver_kwargs(auth_profile)` on the
+profile, coupling the declarative config layer to auth. The factory helper:
 
 ```python
-def to_driver_kwargs(self, auth_profile: AuthProfile | None = None) -> dict:
-    auth = self._normalize_and_validate_auth(auth_profile)   # §6
-    target = self.__spec__.auth_target
-    base = self.emit(target)                                 # connection config (§3.5.1)
+# core/factories/connection_factory.py  (the _emit_kwargs analogue)
+def build_driver_kwargs(profile: BackendProfile, auth_profile: AuthProfile | None = None) -> dict:
+    auth = _normalize_and_validate_auth(profile, auth_profile)  # §6 (factory-level)
+    target = profile.__spec__.auth_target
+    base = profile.emit(target)                                 # config only (§3.5.1)
     if isinstance(auth, NoAuthProfile):
-        return base                                          # short-circuit (cf. transport)
-    return auth.emit(target, base=base)                      # credentials via the registered adapter
+        return base                                             # short-circuit (cf. transport)
+    return auth.emit(target, base=base)                         # credentials layered on
 ```
 
-This **removes** the legacy `__adapter__` indirection, the per-backend
-`adapters/*.py` `build_driver_kwargs` modules (their logic becomes the registered
-adapters), and the `_auth_kwargs` base method. `emit()`'s fail-closed semantics
-give a second guard: `auth.emit(target)` for an (auth-type, dialect) with no
-registered adapter raises, complementing the explicit `supported_auth` check.
+`BackendProfile` therefore exposes **only** `emit(target)` for its own config (no
+`to_driver_kwargs`, no `_normalize_and_validate_auth`) — as pure as a
+`StorageProfile`. This **removes** the legacy `__adapter__` indirection, the
+per-backend `adapters/*.py` `build_driver_kwargs` modules (their logic splits into
+connection-shaping adapters on the `BackendProfile` classes and auth adapters on
+the `*AuthProfile` classes), and the `_auth_kwargs` base method. `emit()`'s
+fail-closed semantics give a second guard: `auth.emit(target)` for an
+(auth-type, dialect) with no registered adapter raises, complementing the explicit
+`supported_auth` check.
 
 #### 3.5.1 Two-sided emission — connection shaping vs. credentials
 
-`base = self.emit(target)` is **not** "driver_key only". `emit()` is the same
+`profile.emit(target)` is **not** "driver_key only". `emit()` is the same
 three-tier pipeline on both sides: driver_key renames → per-target `__adapters__`
-2-arg compose → return. So the connection profile owns **all non-auth shaping**,
+2-arg compose → return. So the backend profile owns **all non-auth shaping**,
 and the auth profile owns **only credentials** — exactly the
 `mountainash-transport` split, where a storage profile emits the SDK config and a
 separate `AuthProfile` layers creds onto it (`connections/__init__.py:_emit_kwargs`).
 
-Most backends are pure driver_key renames, so `self.emit(target)` needs no adapter.
+Most backends are pure driver_key renames, so `profile.emit(target)` needs no adapter.
 The three backends whose connection config is **not a flat rename** carry a
-**connection-shaping compose adapter on their own `*ConnectionProfile` class**,
+**connection-shaping compose adapter on their own `BackendProfile` class**,
 precisely mirroring transport's connection-side adapters:
 
 | Backend | Non-flat connection shaping | Transport precedent |
@@ -218,24 +239,43 @@ renames. pyiceberg-rest's dotted keys (`s3.region`, `rest.sigv4-enabled`, `heade
 and redshift's `readonly`/`sslmode` are **flat** — handled by `driver_key` alone
 (string driver_key may itself contain a dot), no connection adapter.
 
-Two distinct adapter homes, same `register_adapter` primitive:
+Two adapter homes, two mechanisms — chosen by **ownership**, not interchangeably:
 
-- **Connection-shaping adapters** register onto mountainash-data's own
-  `*ConnectionProfile` classes (data owns them; a class-literal `__adapters__ =
-  {target: fn}` à la transport is equivalent). Keyed by the *same* `auth_target`.
-- **Auth adapters** register onto auth-client's `*AuthProfile` classes (data does
-  **not** own them — this is the case that *requires* the settings primitive).
+- **Connection-shaping adapters** → a **class-literal `__adapters__ = {target: fn}`**
+  on mountainash-data's own `BackendProfile` classes (data owns them; the literal
+  lands in the class's own `__dict__`, copy-on-write-safe by construction — the
+  transport way). `register_adapter` is **not** used here; a literal is cleaner for
+  a class you own. Keyed by the *same* `auth_target`.
+- **Auth adapters** → `Profile.register_adapter` onto auth-client's `*AuthProfile`
+  classes (data does **not** own them — the *only* case that requires the settings
+  primitive, and the reason it exists; a literal is impossible across packages).
 
-The shared `SQL_USERPASS` target stays conflict-free: mysql's connection adapter
-lives on `MySQLConnectionProfile` only, postgres has none, and both share the one
+The shared `SQL_USERPASS` target stays conflict-free: mysql's connection literal
+lives on `MySQLBackendProfile` only, postgres has none, and both share the one
 `PasswordAuthProfile`→`SQL_USERPASS` auth adapter. Different classes, same key.
 
 **MotherDuck is the exception that registers no driver adapter at all:** its token
 travels in the connection *string* (`duckdb://md:<db>?motherduck_token=…`, via
 `rides_on="duckdb"`), not in driver kwargs. It declares
-`supported_auth=(TokenAuthProfile,)` and overrides `to_connection_string` to inject
-the token; `to_driver_kwargs` for it returns the flat duckdb base (no auth adapter,
-so `auth.emit` is never reached for the token — handled in the URL path).
+`supported_auth=(TokenAuthProfile,)`; the factory's `build_connection_string`
+(§4.6) injects the token. `build_driver_kwargs` for it returns the flat duckdb
+base (no auth adapter, so `auth.emit` is never reached for the token — handled in
+the URL path).
+
+#### 3.5.2 Layer naming — "Connection" reserved for the runtime
+
+To kill the profile/connection word-collision, the config-layer classes are named
+`*BackendProfile`, leaving "Connection" exclusively for the runtime handles. The
+ecosystem mapping:
+
+| Role | transport | mountainash-data |
+|---|---|---|
+| config profile (declarative `emit`) | `settings/storage/profiles/*StorageProfile` | `core/settings/*BackendProfile` |
+| runtime handle (consumes kwargs) | `connections/*Connection` | `backends/ibis` (`IbisBackend`/`IbisConnection`), `backends/iceberg` (`IcebergConnection`) |
+| composing factory | `connections/__init__.py:create_connection` | `core/factories/ConnectionFactory` |
+
+The base class `ConnectionProfile` is renamed `BackendProfile`; the 20 leaves
+`*AuthSettings` → `*BackendProfile` (§4.7).
 
 ### 3.6 Auth flow
 
@@ -243,18 +283,18 @@ so `auth.emit` is never reached for the token — handled in the URL path).
 caller ── auth_profile (AuthProfile|None) ──▶ IbisBackend.connect(auth_profile)
                                               │  (also iceberg connect path)
                                               ▼
-                       ConnectionProfile.to_driver_kwargs(auth_profile)
-                                              │
-                    auth = normalize_and_validate(auth_profile)
-                    target = spec.auth_target
-                    base = self.emit(target)            # config
+              ConnectionFactory.build_driver_kwargs(backend_profile, auth_profile)
+                                              │   (the composing factory — §3.5)
+                    auth = _normalize_and_validate_auth(profile, auth_profile)
+                    target = profile.__spec__.auth_target
+                    base = profile.emit(target)         # config only (BackendProfile)
                               │
                     NoAuth? ──┴── yes ─▶ return base
                               │ no
                     auth.emit(target, base=base)        # registered dialect adapter
                               │  (lives in mountainash-data; builds BasicAuthentication/
                               ▼   Credentials/flat user-password/…)
-                    dict ready for the ibis driver
+                    dict ready for the ibis driver ──▶ runtime Connection opens it
 ```
 
 ---
@@ -271,7 +311,7 @@ caller ── auth_profile (AuthProfile|None) ──▶ IbisBackend.connect(auth
 - Update `__all__`: drop old `*Auth`/`AuthSpec` names; add the `*AuthProfile`
   names + `AuthProfile` + `IbisDialectTarget`.
 - Import `core/settings/adapters/register.py` so adapters register at load (§3.4).
-- Update the `*AuthSettings` re-exports to the renamed `*ConnectionProfile` names (§4.6).
+- Update the `*AuthSettings` re-exports to the renamed `*BackendProfile` names (§4.7).
 
 ### 4.2 Delete `core/settings/auth/`
 Remove `__init__.py`, `base.py`, `dispatch.py` entirely. Verified the only
@@ -299,34 +339,53 @@ type (§3.3). Exported from `core/settings`.
   ladder (one function per (auth-type, dialect)).
 - `core/settings/adapters/register.py` — the import-time registration calls (§3.4).
 - The old `__adapter__ = staticmethod(_adapter.build_driver_kwargs)` lines on the
-  backend classes are **removed**.
+  backend classes are **removed**. The three backends needing connection-shaping
+  (mysql/mssql/snowflake) instead declare a class-literal
+  `__adapters__ = {<auth_target>: _conn_compose}` (§3.5.1) — the connection-shaping
+  fn lives in `core/settings/adapters/<dialect>.py` alongside the auth adapters but
+  is registered by the literal, not `register.py`.
 
-### 4.6 `core/settings/profile.py` (`ConnectionProfile`)
-- Add `_normalize_and_validate_auth(self, auth_profile) -> AuthProfile`: normalize
+### 4.6 `core/settings/profile.py` (`BackendProfile`) — pure config emitter
+- Rename the base class `ConnectionProfile` → `BackendProfile` (§3.5.2).
+- **Remove all auth coupling.** `BackendProfile` exposes **only** `emit(target)`
+  (inherited) for its own config — no `to_driver_kwargs`, no
+  `_normalize_and_validate_auth`, no `__adapter__`/`_auth_kwargs`. It is as
+  declarative as transport's `StorageProfile`. Connection-shaping for the three
+  non-flat backends is a class-literal `__adapters__` on the respective
+  `*BackendProfile` subclass (§3.5.1), not a method here.
+
+### 4.6b New: `core/factories/connection_factory.py` — the composing factory
+The auth+config composition (transport's `_emit_kwargs` analogue) lives here, not on
+the profile:
+- `_normalize_and_validate_auth(profile, auth_profile) -> AuthProfile`: normalize
   `None` → `NoAuthProfile()`, then `isinstance`-validate against
-  `self.__spec__.supported_auth`; raise a clear `ValueError` on miss.
-- `to_driver_kwargs(self, auth_profile=None)` — the uniform body in §3.5. (No
-  `__adapter__` lookup, no `_auth_kwargs`.)
-- `to_connection_string(self, auth_profile=None)`:
+  `profile.__spec__.supported_auth`; raise a clear `ValueError` on miss (§6).
+- `build_driver_kwargs(profile, auth_profile=None) -> dict` — the body in §3.5
+  (validate → `base = profile.emit(target)` → NoAuth short-circuit →
+  `auth.emit(target, base=base)`).
+- `build_connection_string(profile, auth_profile=None) -> str`:
   - call `_normalize_and_validate_auth` first;
-  - base builds password-style `scheme://user:pass@host:port/db` **only** for
+  - build password-style `scheme://user:pass@host:port/db` **only** for
     `PasswordAuthProfile` (read `USERNAME` / `PASSWORD.get_secret_value()`, each
     `quote(..., safe="")`); `NoAuthProfile` → no creds in URL;
-  - **any other auth type raises `NotImplementedError`** — token-in-URL backends
-    (MotherDuck `md:<db>?motherduck_token=…`, Snowflake, Databricks, Trino-JWT)
-    **override** `to_connection_string` in their own module if a URL form is needed.
+  - **any other auth type raises `NotImplementedError`**, **except** the token-in-URL
+    backends (MotherDuck `md:<db>?motherduck_token=…`, and any future
+    Snowflake/Databricks/Trino-JWT URL form), which are handled by a per-provider
+    URL builder keyed off `provider_type` (the factory's analogue of transport's
+    `provider_type` dispatch — keeps URL quirks out of the profile).
   - (URLs are not kwargs, so this path does not use `emit()`.)
 
-### 4.7 Rename `*AuthSettings` → `*ConnectionProfile` (20 backends)
+### 4.7 Rename `*AuthSettings` → `*BackendProfile` (20 backends)
 Rename across all 20 backend modules, class definitions, `core/settings/__init__.py`
 exports, and references. Drop `auth_modes=[…]` from each `BackendSpec(...)`; add
 `supported_auth=(…AuthProfile, …)` and (where not `SQL_USERPASS`) `auth_target=…`.
+mysql/mssql/snowflake additionally gain a class-literal `__adapters__` (§3.5.1).
 
 | Old | New |
 |---|---|
-| `SQLiteAuthSettings` | `SQLiteConnectionProfile` |
-| `PostgreSQLAuthSettings` | `PostgreSQLConnectionProfile` |
-| … (all 20) | `*ConnectionProfile` |
+| `SQLiteAuthSettings` | `SQLiteBackendProfile` |
+| `PostgreSQLAuthSettings` | `PostgreSQLBackendProfile` |
+| … (all 20) | `*BackendProfile` |
 
 ### 4.8 Entry points
 - `backends/ibis/backend.py`: `IbisBackend.connect(self, auth_profile=None)` is the
@@ -334,9 +393,9 @@ exports, and references. Drop `auth_modes=[…]` from each `BackendSpec(...)`; a
   kwargs assembly to `connect()`** — today `_init_from_settings` eagerly calls
   `to_driver_kwargs()` at `__init__` (backend.py:242), before any `auth_profile`
   exists. Restructure so `__init__`/`_init_from_settings` resolves only the dialect
-  + spec and stores `obj_settings`; `connect(auth_profile)` then calls
-  `obj_settings.to_driver_kwargs(auth_profile)` and layers `self._config`. The
-  direct-dialect path is unaffected.
+  + spec and stores the `BackendProfile` (`obj_settings`); `connect(auth_profile)`
+  then calls `ConnectionFactory.build_driver_kwargs(obj_settings, auth_profile)`
+  (§4.6b) and layers `self._config`. The direct-dialect path is unaffected.
 - **URL credentials vs explicit `auth_profile` precedence:** an explicit
   `connect(auth_profile=…)` **always wins**. URL `user:pass@` is parsed into a
   `PasswordAuthProfile` **only when no explicit `auth_profile` is given**; supplying
@@ -344,8 +403,8 @@ exports, and references. Drop `auth_modes=[…]` from each `BackendSpec(...)`; a
   reaches `ibis.connect` (credentials travel via the auth profile).
 - `backends/iceberg/connection.py`: `connect_default(self, *, auth_profile=None, **kwargs)`
   and `connect`/`get_or_connect` thread `auth_profile` into
-  `to_driver_kwargs(auth_profile)`. Precedence: **profile-derived
-  `to_driver_kwargs(auth_profile)` < explicit `connection_kwargs`/`**kwargs`**
+  `ConnectionFactory.build_driver_kwargs(profile, auth_profile)`. Precedence:
+  **profile-derived `build_driver_kwargs(...)` < explicit `connection_kwargs`/`**kwargs`**
   (caller overrides win); document on the methods.
 
 ### 4.9 Dependency wiring
@@ -393,9 +452,10 @@ adapter reads and the new `*AuthProfile` `ParameterSpec`s.
 
 ## 6. Validation & Error Handling
 
-- Shared `_normalize_and_validate_auth(auth_profile)` (§4.6) is called first by
-  **both** `to_driver_kwargs` and `to_connection_string`: normalize `None` →
-  `NoAuthProfile()`, then `isinstance(auth, tuple(supported_auth))`; on miss raise
+- Shared factory-level `_normalize_and_validate_auth(profile, auth_profile)` (§4.6b)
+  is called first by **both** `build_driver_kwargs` and `build_connection_string`:
+  normalize `None` → `NoAuthProfile()`, then
+  `isinstance(auth, tuple(profile.__spec__.supported_auth))`; on miss raise
   `ValueError(f"{backend} does not support auth: {type(auth).__name__}")`.
   `isinstance` (not exact `type()`) so `*AuthProfile` subclasses are accepted.
 - Empty `supported_auth` is impossible: the registry invariant (§4.3) rejects it.
@@ -430,8 +490,9 @@ adapter reads and the new `*AuthProfile` `ParameterSpec`s.
   - `None` normalization: no auth → `NoAuthProfile` accepted for no-auth backends,
     rejected for credential-required backends.
   - `isinstance` validation: a subclass of an allowed `*AuthProfile` is accepted.
-  - `to_connection_string`: password backend → `user:pass@` (percent-encoded, secret
-    unwrapped); token/other type → `NotImplementedError` from the base.
+  - `build_connection_string`: password backend → `user:pass@` (percent-encoded,
+    secret unwrapped); token/other type → `NotImplementedError` (except token-in-URL
+    backends handled by the per-provider URL builder, §4.6b).
   - Registry invariant: empty `supported_auth` fails at import.
   - URL-vs-explicit precedence: both supplied → `ValueError`; URL-only → creds
     stripped and carried via `PasswordAuthProfile`.
@@ -445,12 +506,17 @@ adapter reads and the new `*AuthProfile` `ParameterSpec`s.
   mechanism. Never imports a DB driver. mountainash-data registers adapters onto its
   profile classes via the sanctioned `Profile.register_adapter`.
 - **`IbisDialectTarget`** — mountainash-data's namespaced target type; the key that
-  ties a connection profile's `emit(target)` to the registered auth adapter.
+  ties a backend profile's `emit(target)` to the registered auth adapter.
 - **registered adapters** (`core/settings/adapters/<dialect>.py`) — module-level
-  singleton `(auth_profile, base) -> dict`; the only place that knows a driver's
-  auth-kwarg shape; import the DB drivers; independently testable.
-- **`*ConnectionProfile`** — owns backend config + the uniform `to_driver_kwargs` /
-  `to_connection_string`; no per-backend auth branching.
+  singleton `(auth_profile, base) -> dict` for auth (registered onto auth-client
+  classes) and `(backend_profile, base) -> dict` for connection-shaping (class-literal
+  on the `*BackendProfile`); the only place that knows a driver's kwarg shape; import
+  the DB drivers; independently testable.
+- **`*BackendProfile`** — owns backend config + its own `emit(target)`; pure config,
+  no auth methods, no per-backend auth branching (transport `StorageProfile` analogue).
+- **`ConnectionFactory`** — the composing bridge: `build_driver_kwargs` /
+  `build_connection_string` / `_normalize_and_validate_auth`; the only layer that
+  knows about *both* a backend profile and an auth profile.
 
 ---
 
@@ -460,11 +526,13 @@ Depends on the settings `Profile.register_adapter` PR landing first. Then a sing
 feature branch off mountainash-data `develop` → PR to `develop`. Internally atomic
 (the package does not import cleanly until the settings layer is migrated). Suggested
 commit slices: (a) deps + re-exports + delete shim; (b) `IbisDialectTarget` +
-descriptor (`supported_auth`/`auth_target` + invariant) + uniform `ConnectionProfile`
-(`_normalize_and_validate_auth`, `to_driver_kwargs`, `to_connection_string`);
-(c) the 20 renames + `supported_auth`/`auth_target`; (d) the dialect adapter
-functions + `register.py`; (e) entry points (deferred-auth `IbisBackend`, URL
-precedence, iceberg threading); (f) tests.
+descriptor (`supported_auth`/`auth_target` + invariant) + `BackendProfile` rename to
+a pure `emit` config class; (c) the `ConnectionFactory` composition
+(`_normalize_and_validate_auth`, `build_driver_kwargs`, `build_connection_string`);
+(d) the 20 renames `*AuthSettings`→`*BackendProfile` + `supported_auth`/`auth_target`
++ the mysql/mssql/snowflake connection-shaping `__adapters__` literals; (e) the auth
+adapter functions + `register.py`; (f) entry points (deferred-auth `IbisBackend`, URL
+precedence, iceberg threading); (g) tests.
 
 ---
 
@@ -491,9 +559,11 @@ Tracked as a follow-up issue after this migration merges.
 
 ## 11. Open Questions
 
-None outstanding. (Auth placement = decouple; compat = clean break; rename =
-`*ConnectionProfile`; consumption = canonical `emit()` via `register_adapter` with
-per-dialect `IbisDialectTarget`; OAuth lifecycle = deferred to §10.)
+None outstanding. (Auth placement = decouple, composed in the factory not the
+profile; compat = clean break; rename = `*BackendProfile` with "Connection" reserved
+for the runtime; consumption = canonical `emit()` via `register_adapter` for auth /
+class-literal `__adapters__` for connection-shaping, with per-dialect
+`IbisDialectTarget`; OAuth lifecycle = deferred to §10.)
 
 ---
 
@@ -511,13 +581,26 @@ per-dialect `IbisDialectTarget`; OAuth lifecycle = deferred to §10.)
   `auth.emit(target, base=conn.emit(target))` connect path. Removes the legacy
   `__adapter__` indirection, the per-backend `build_driver_kwargs` modules, and the
   `_auth_kwargs` base method. (Supersedes the v1 §3.2 "reject emit()" decision.)
-- **v3 (this revision)** — grounding the plan against the live code surfaced that
+- **v3** — grounding the plan against the live code surfaced that
   the per-backend `build_driver_kwargs` modules mix auth with **non-flat connection
   shaping** (mysql `ssl={}`, mssql `host\instance` fold, snowflake
-  `session_parameters={}`) that `base = self.emit(target)` as "driver_key only"
-  cannot produce. Resolved per the established `mountainash-transport` pattern (new
-  §3.5.1): connection shaping is a compose adapter on the `*ConnectionProfile` class
+  `session_parameters={}`) that `base = profile.emit(target)` as "driver_key only"
+  cannot produce. Resolved per the established `mountainash-transport` pattern
+  (§3.5.1): connection shaping is a compose adapter on the backend-profile class
   (the SFTP/S3/HTTP precedent), auth stays a separate adapter on the `*AuthProfile`
-  class — both via the same `register_adapter` primitive, same `auth_target` key.
-  Flat cases (pyiceberg dotted keys, redshift) stay pure `driver_key`. MotherDuck
-  registers no driver adapter (token via connection string).
+  class. Flat cases (pyiceberg dotted keys, redshift) stay pure `driver_key`.
+  MotherDuck registers no driver adapter (token via connection string).
+- **v4 (this revision)** — full alignment with transport's **three-layer**
+  separation, surfaced by reviewing `transport/connections/` vs
+  `transport/settings/storage/profiles/`. (1) **Naming:** "Connection" is reserved
+  for the runtime; the config classes are renamed `ConnectionProfile`→`BackendProfile`
+  (base) and `*AuthSettings`→`*BackendProfile` (20 leaves) — §3.5.2. (2)
+  **Composition relocated to the factory:** `to_driver_kwargs(auth_profile)` /
+  `to_connection_string` / `_normalize_and_validate_auth` move **off** the profile
+  into `ConnectionFactory` (`build_driver_kwargs` / `build_connection_string`,
+  transport's `_emit_kwargs`/`create_connection` analogue); `BackendProfile` is left
+  as pure `emit` config, as declarative as a `StorageProfile`. (3) **Adapter
+  mechanism by ownership:** connection-shaping uses a **class-literal `__adapters__`**
+  on the owned `*BackendProfile` classes (CoW-safe by construction); `register_adapter`
+  is reserved for the cross-package auth case — the only situation that requires the
+  settings primitive. (Refines v2/v3 §3.5, §4.6–§4.8.)
