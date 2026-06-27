@@ -3,6 +3,8 @@
 **Date:** 2026-06-27
 **Status:** Draft — for review
 **Author:** Nathaniel Ramm (with Claude)
+**Depends on:** mountainash-settings `Profile.register_adapter`
+(`2026-06-27-profile-register-adapter-design.md`) — must land first.
 
 ---
 
@@ -38,8 +40,9 @@ classes (subclasses of `mountainash_settings.Profile`):
 - Fields are **UPPERCASE** `ParameterSpec` names: `auth.username` → `auth.USERNAME`,
   `auth.password` → `auth.PASSWORD`. Secret fields remain pydantic `SecretStr`
   (`.get_secret_value()` still works).
-- `auth_to_driver_kwargs()` / `AUTH_TO_DRIVER_KWARGS` are gone; profiles expose
-  `emit(target, base=…)` over `TargetFamily.{HTTP, BOTO, PARAMIKO}`.
+- `auth_to_driver_kwargs()` / `AUTH_TO_DRIVER_KWARGS` are gone; profiles expose the
+  generic three-tier `emit(target, base=…)` (driver_key renames → per-target
+  `__adapters__` → legacy `__adapter__`) over any `Hashable` target.
 
 ### Project constraints
 
@@ -54,13 +57,17 @@ no compat shims.
 
 ### Goals
 1. Unbreak the package against `mountainash-settings` 26.5.0 + `mountainash-auth-client`.
-2. Adopt the ecosystem-blessed auth composition pattern (per `mountainash-transport`
-   / `mountainash-wearables`): **auth decoupled from the connection profile**.
-3. Replace the deleted `auth_modes` / `_auth_kwargs` / `.auth`-field machinery
-   with mountainash-data-owned equivalents.
-4. Rename the misnamed `*AuthSettings` classes to `*ConnectionProfile`.
-5. Make `mountainash-auth-client` a first-class core dependency.
-6. All tests green under `hatch run test:test`.
+2. Adopt the **canonical `emit()` composition** (auth-client `INTEGRATION.md`
+   Pattern 1): `auth_profile.emit(target, base=connection_profile.emit(target))`,
+   with auth **decoupled** from the connection profile (per `mountainash-transport`).
+3. Contribute mountainash-data's ibis-driver auth translation through the **sanctioned
+   `Profile.register_adapter` extension point** — registered *from* mountainash-data
+   *onto* the auth-client profile classes, so auth-client never imports a DB driver
+   and no package hand-mutates another's class state.
+4. Replace the deleted `auth_modes` / `_auth_kwargs` / `.auth`-field machinery.
+5. Rename the misnamed `*AuthSettings` classes to `*ConnectionProfile`.
+6. Make `mountainash-auth-client` a first-class core dependency.
+7. All tests green under `hatch run test:test`.
 
 ### Non-Goals
 - Interactive OAuth **acquisition**/persistence (`OAuth2TokenManager`,
@@ -68,6 +75,8 @@ no compat shims.
 - Reworking the Ibis `DialectSpec` registry, inspection model, or iceberg catalog
   registry beyond the auth threading.
 - Adding new backends or auth types.
+- An MRO-merge for `emit()` (register on the exact leaf class — see the settings
+  spec §3.3).
 
 ---
 
@@ -88,90 +97,119 @@ conn = backend.connect(
 )
 ```
 
-`auth_profile` threads through every connect path into
-`to_driver_kwargs(auth_profile)` and `to_connection_string(auth_profile)`.
+### 3.2 Adopt the canonical `emit()` pattern via `register_adapter`
 
-### 3.2 mountainash-data owns the database-driver credential translation
+We use the ecosystem-blessed primitive directly. `auth_profile.emit(target, base)`
+layers credentials onto a base config dict; `connection_profile.emit(target)`
+produces that base. mountainash-data's only job is to **contribute the ibis-driver
+adapters** for its targets.
 
-auth-client's `emit()` only renders `HTTP`/`BOTO`/`PARAMIKO` SDK shapes.
-mountainash-data's target is the **ibis database driver** — `trino.auth.BasicAuthentication`,
-the snowflake connector's `user`/`password`/`token`/`private_key` kwargs,
-postgres `user`/`password`, etc. These are **per-dialect** shapes auth-client
-deliberately does not cover (there is no "DB" `TargetFamily`).
+**Why this is now clean (vs. the earlier "own a bespoke adapter layer" draft).**
+auth-client's built-in `emit()` adapters only cover `HTTP`/`BOTO`/`PARAMIKO`, and
+the ibis-driver credential shapes are per-dialect (trino wraps creds in
+`trino.auth.BasicAuthentication`; bigquery in `google …Credentials`; postgres is
+flat `user`/`password`). Two facts make `emit()` the right vehicle anyway:
 
-**Decision:** keep the per-backend adapter layer (`core/settings/adapters/*.py`)
-as mountainash-data's database-family translation; re-point it to read the new
-`*AuthProfile` UPPERCASE fields.
+1. **`emit()` targets are any `Hashable`** — settings stores adapters "under an
+   opaque `Hashable` key" precisely so other domains plug in. mountainash-data
+   defines its own **namespaced** target type (§3.3) — never bare strings.
+2. **`Profile.register_adapter` (the settings primitive) is the sanctioned way to
+   add an adapter to an existing profile class** — copy-on-write-safe, conflict-checked.
+   mountainash-data registers its dialect adapters onto the auth-client profile
+   classes at import. The adapter **functions live in mountainash-data** (they
+   `import trino.auth`, `google.oauth2`, …), so **auth-client never depends on a DB
+   driver**, and there is no hand-mutation of shared class state.
 
-We considered the `emit()` route and reject it deliberately. `Profile.emit()` is
-generic over any `Hashable` target (not just `TargetFamily`), so mountainash-data
-*could* define a `DBTarget` key family and call `auth_profile.emit(DBTarget.X, base=…)`
-— transport does exactly this for storage with per-provider `__adapters__`. The
-difference that makes it wrong here:
-
-- In transport, the **auth** profile layers credentials onto a base via its *own*
-  `__adapters__` (`HTTP`/`BOTO`/`PARAMIKO`) — auth-client owns those adapters. For
-  the DB case the credential→driver shape is keyed on **auth-type × ibis-dialect**
-  (trino `BasicAuthentication` vs snowflake connector kwargs vs postgres
-  `user`/`password`). To route that through `auth_profile.emit(DBTarget.<dialect>)`,
-  mountainash-data would have to **register dialect-specific adapters onto
-  upstream auth-client classes' `__adapters__`** — action-at-a-distance mutation
-  of another package's shared classes. That is worse layering, not better.
-- The connection profile's own `emit()` cannot layer credentials either, because
-  auth is **decoupled** (§3.1) — the connection profile does not hold the auth.
-
-So the per-backend adapter, reading documented UPPERCASE fields off the passed
-`auth_profile`, is the correct seam: auth-client stays a pure credential carrier,
-mountainash-data owns the dialect translation, and no package reaches into
-another's class internals.
+This keeps the layering honest — auth-client owns the credential schemas + the
+`emit()`/registry mechanism; mountainash-data owns the dialect bindings — while
+using the canonical primitive end to end.
 
 **OAuth credential seam (forward-compatible).** Deferring the OAuth *lifecycle*
 (§10) does not leave the credential path open-ended: the snowflake / pyiceberg-rest
 adapters read an **already-resolved** token off the auth profile
-(`OAuth2AuthProfile.TOKEN`, `.CLIENT_ID`, `.SERVER_URI`, …). A future token manager
-produces a populated `OAuth2AuthProfile`; the adapter contract does not change.
+(`OAuth2AuthProfile.TOKEN`, `.CLIENT_ID`, …). A future token manager produces a
+populated `OAuth2AuthProfile`; the registered adapter is unchanged.
 
-### 3.3 Replace the deleted machinery
+### 3.3 Emission targets — `IbisDialectTarget`
 
-- **`supported_auth`** (replaces `auth_modes`): each backend declares a
-  `supported_auth: tuple[type[AuthProfile], ...]` on its `BackendSpec` (the same
-  object that carried `auth_modes` before it was passed upstream). It is
-  **required** — `BackendSpec` gives it no default; a registry invariant
-  (`spec_invariants_for`, run at import/registration) rejects any backend whose
-  `supported_auth` is empty, so a forgotten declaration fails loudly at import,
-  never silently at connect. It carries no pydantic-field semantics — it is plain
-  backend metadata. Validation is by **`isinstance`** (not exact `type()`) against
-  `tuple(supported_auth)`, so legitimate `*AuthProfile` subclasses (e.g. a future
-  wearables-style persistence subclass) are accepted.
-- **`ConnectionProfile._auth_kwargs(auth_profile)`** (replaces the removed
-  upstream `Profile._auth_kwargs`): a mountainash-data base method for the
-  **adapter-less, password-or-none** backends (postgres, mysql, clickhouse,
-  materialize, risingwave, druid, singlestoredb, impala, exasol, duckdb, sqlite).
-  It handles exactly two cases — `NoAuthProfile` → `{}`; `PasswordAuthProfile` →
-  generic ibis `{"user": …, "password": …}` — and **raises** for anything else.
-  Backends whose adapter-less default does not fit get a **minimal dedicated
-  adapter** instead of leaning on the base — notably **MotherDuck**, which is
-  token-only (no adapter today) and must not be routed through `_auth_kwargs`
-  (§4.6).
+Define a **package-namespaced** target type in mountainash-data (a frozen dataclass
+or `Enum`, e.g. `IbisDialectTarget`), never bare strings (settings spec §3.6):
 
-### 3.4 Auth flow
+- **`SQL_USERPASS`** — one shared target for the flat user/password backends that
+  support only `{Password, NoAuth}`: postgres, mysql, clickhouse, materialize,
+  risingwave, druid, singlestoredb, impala, exasol. `PasswordAuthProfile` registers
+  **once** for this target → `{"user": …, "password": …}`.
+- **Per-dialect targets** where the shape diverges or multiple auth types are
+  supported: `TRINO`, `SNOWFLAKE`, `BIGQUERY`, `DATABRICKS`, `REDSHIFT`, `MSSQL`,
+  `PYICEBERG_REST`, `MOTHERDUCK`. Each supported `*AuthProfile` registers an adapter
+  for that target (e.g. `TRINO`: Password→`BasicAuthentication`, JWT→`JWTAuthentication`,
+  Kerberos→`KerberosAuthentication`; `BIGQUERY`: ServiceAccount→`Credentials`;
+  `REDSHIFT`: Password + IAM; `MSSQL`: Password + Windows + AzureAD).
+
+Each `*ConnectionProfile` declares its `auth_target` on its `BackendSpec`
+(default `SQL_USERPASS`). The no-auth-only backends (sqlite, duckdb, pyspark) use
+`SQL_USERPASS` with `supported_auth=(NoAuthProfile,)` and never reach an auth adapter
+(short-circuit, §3.5).
+
+### 3.4 Registration
+
+A single import-time module — `core/settings/adapters/register.py` — imports the
+driver-binding adapter functions and registers them:
+
+```python
+PasswordAuthProfile.register_adapter(IbisDialectTarget.SQL_USERPASS, _sql_userpass)
+PasswordAuthProfile.register_adapter(IbisDialectTarget.TRINO, _trino_password)
+JWTAuthProfile.register_adapter(IbisDialectTarget.TRINO, _trino_jwt)
+ServiceAccountAuthProfile.register_adapter(IbisDialectTarget.BIGQUERY, _bigquery_sa)
+IAMAuthProfile.register_adapter(IbisDialectTarget.REDSHIFT, _redshift_iam)
+# … one line per (auth-profile, dialect-target) the package supports
+```
+
+`core/settings/__init__.py` imports this module so registration happens when the
+settings layer loads — before any `connect()`. Each adapter is a module-level
+singleton function `(_auth_profile, base) -> dict` (settings spec §3.2 identity
+contract), registered on the **concrete** auth-profile class (settings spec §3.3
+leaf-registration guidance).
+
+### 3.5 Uniform connect path — no per-backend `__adapter__`, no `_auth_kwargs`
+
+Because the dialect logic now lives in registered `emit()` adapters, the
+connection profile's emission is **uniform** across all backends:
+
+```python
+def to_driver_kwargs(self, auth_profile: AuthProfile | None = None) -> dict:
+    auth = self._normalize_and_validate_auth(auth_profile)   # §6
+    target = self.__spec__.auth_target
+    base = self.emit(target)                                 # connection config (driver_key)
+    if isinstance(auth, NoAuthProfile):
+        return base                                          # short-circuit (cf. transport)
+    return auth.emit(target, base=base)                      # credentials via the registered adapter
+```
+
+This **removes** the legacy `__adapter__` indirection, the per-backend
+`adapters/*.py` `build_driver_kwargs` modules (their logic becomes the registered
+adapters), and the `_auth_kwargs` base method. `emit()`'s fail-closed semantics
+give a second guard: `auth.emit(target)` for an (auth-type, dialect) with no
+registered adapter raises, complementing the explicit `supported_auth` check.
+
+### 3.6 Auth flow
 
 ```
 caller ── auth_profile (AuthProfile|None) ──▶ IbisBackend.connect(auth_profile)
                                               │  (also iceberg connect path)
                                               ▼
-                            ConnectionProfile.to_driver_kwargs(auth_profile)
+                       ConnectionProfile.to_driver_kwargs(auth_profile)
                                               │
-                    ┌─────────────────────────┴──────────────────────────┐
-            has __adapter__?                                     no adapter
-                    │                                                     │
-       adapters/<backend>.build_driver_kwargs(profile, auth_profile)      │
-       (isinstance dispatch on *AuthProfile, reads UPPERCASE fields)      │
-                    │                                          _default_kwargs()
-                    │                                     + _auth_kwargs(auth_profile)
-                    └─────────────────────────┬──────────────────────────┘
-                                              ▼
-                                    dict ready for the ibis driver
+                    auth = normalize_and_validate(auth_profile)
+                    target = spec.auth_target
+                    base = self.emit(target)            # config
+                              │
+                    NoAuth? ──┴── yes ─▶ return base
+                              │ no
+                    auth.emit(target, base=base)        # registered dialect adapter
+                              │  (lives in mountainash-data; builds BasicAuthentication/
+                              ▼   Credentials/flat user-password/…)
+                    dict ready for the ibis driver
 ```
 
 ---
@@ -186,9 +224,9 @@ caller ── auth_profile (AuthProfile|None) ──▶ IbisBackend.connect(auth
   KerberosAuthProfile, CertificateAuthProfile, ServiceAccountAuthProfile,
   AuthProfile)`.
 - Update `__all__`: drop old `*Auth`/`AuthSpec` names; add the `*AuthProfile`
-  names + `AuthProfile`.
-- Update the `*AuthSettings` re-exports to the renamed `*ConnectionProfile` names
-  (§4.6).
+  names + `AuthProfile` + `IbisDialectTarget`.
+- Import `core/settings/adapters/register.py` so adapters register at load (§3.4).
+- Update the `*AuthSettings` re-exports to the renamed `*ConnectionProfile` names (§4.6).
 
 ### 4.2 Delete `core/settings/auth/`
 Remove `__init__.py`, `base.py`, `dispatch.py` entirely. Verified the only
@@ -199,59 +237,45 @@ consumer of `auth_to_driver_kwargs` / `AUTH_TO_DRIVER_KWARGS` is the shim itself
 - Add a **required** `supported_auth: tuple[type, ...]` field (no default; typed
   loosely as `type` to avoid importing the union at dataclass-definition time;
   values are `*AuthProfile` classes). Add a registry invariant so an empty
-  `supported_auth` fails at import (§3.3).
-- No `auth_modes` anywhere (it was never a `BackendSpec` field locally — it was
-  passed through to the upstream `ProfileSpec`; that path is gone).
+  `supported_auth` fails at import.
+- Add an `auth_target: Hashable` field defaulting to `IbisDialectTarget.SQL_USERPASS`.
+- No `auth_modes` anywhere (gone with the upstream `ProfileSpec` path).
 
-### 4.4 `core/settings/profile.py` (`ConnectionProfile`)
-- Add a shared `_normalize_and_validate_auth(self, auth_profile) -> AuthProfile`
-  helper: normalize `None` → `NoAuthProfile()`, then `isinstance`-validate against
-  `self.__spec__.supported_auth`; raise a clear `ValueError` on miss
-  (`f"{backend} does not support auth: {type(auth_profile).__name__}"`). **Both**
-  `to_driver_kwargs` and `to_connection_string` call it first (§6).
-- `to_driver_kwargs(self, auth_profile: AuthProfile | None = None)`:
-  - `auth = self._normalize_and_validate_auth(auth_profile)`;
-  - if `__adapter__` is set, call `adapter(self, auth)`;
-  - else `kwargs = self._default_kwargs(); kwargs.update(self._auth_kwargs(auth))`.
-- Add `_auth_kwargs(self, auth)` — the restricted base dispatch (NoAuth → `{}`,
-  Password → `{"user", "password"}`, else raise) per §3.3.
-- `to_connection_string(self, auth_profile: AuthProfile | None = None)`:
+### 4.4 New: `core/settings/targets.py`
+Define `IbisDialectTarget` (frozen dataclass or `Enum`) — the namespaced target
+type (§3.3). Exported from `core/settings`.
+
+### 4.5 New: `core/settings/adapters/` becomes the registered-adapter home
+- `core/settings/adapters/<dialect>.py` — module-level singleton functions
+  `(_auth_profile, base) -> dict` that read UPPERCASE fields (calling `str(...)`
+  on `Path | None` fields — `PRIVATE_KEY_PATH`, `FILE`, `KEYTAB` — where the driver
+  wants a string) and build the driver kwargs / objects. These hold the same
+  per-dialect knowledge as the old `build_driver_kwargs`, minus the `isinstance`
+  ladder (one function per (auth-type, dialect)).
+- `core/settings/adapters/register.py` — the import-time registration calls (§3.4).
+- The old `__adapter__ = staticmethod(_adapter.build_driver_kwargs)` lines on the
+  backend classes are **removed**.
+
+### 4.6 `core/settings/profile.py` (`ConnectionProfile`)
+- Add `_normalize_and_validate_auth(self, auth_profile) -> AuthProfile`: normalize
+  `None` → `NoAuthProfile()`, then `isinstance`-validate against
+  `self.__spec__.supported_auth`; raise a clear `ValueError` on miss.
+- `to_driver_kwargs(self, auth_profile=None)` — the uniform body in §3.5. (No
+  `__adapter__` lookup, no `_auth_kwargs`.)
+- `to_connection_string(self, auth_profile=None)`:
   - call `_normalize_and_validate_auth` first;
-  - the base builds a password-style `scheme://user:pass@host:port/db` URL **only**
-    for `PasswordAuthProfile` (read `USERNAME` / `PASSWORD.get_secret_value()`,
-    each wrapped in `quote(..., safe="")`); `NoAuthProfile` → no credentials in URL;
-  - **any other auth type raises `NotImplementedError`** — token-in-URL / query-param
-    backends (MotherDuck `md:<db>?motherduck_token=…`, Snowflake, Databricks,
-    Trino-JWT) are **not** expressible as `user:pass@host` and must **override**
-    `to_connection_string` in their own module if a URL form is needed.
+  - base builds password-style `scheme://user:pass@host:port/db` **only** for
+    `PasswordAuthProfile` (read `USERNAME` / `PASSWORD.get_secret_value()`, each
+    `quote(..., safe="")`); `NoAuthProfile` → no creds in URL;
+  - **any other auth type raises `NotImplementedError`** — token-in-URL backends
+    (MotherDuck `md:<db>?motherduck_token=…`, Snowflake, Databricks, Trino-JWT)
+    **override** `to_connection_string` in their own module if a URL form is needed.
+  - (URLs are not kwargs, so this path does not use `emit()`.)
 
-### 4.5 `core/settings/adapters/*.py` (7 → 8 adapters)
-For each adapter: change `build_driver_kwargs(profile)` →
-`build_driver_kwargs(profile, auth)`; re-point imports to `mountainash_auth_client`;
-re-point `isinstance` checks to `*AuthProfile`; read UPPERCASE fields (calling
-`str(...)` on `Path | None` fields — `PRIVATE_KEY_PATH`, `FILE`, `KEYTAB` — where
-the driver wants a string, as the current code already does). **Every** adapter
-gains a terminal `else: raise ValueError(f"{backend} adapter does not support auth: …")`
-— today only `trino.py` has one; the other 7 (bigquery, databricks, mssql,
-mysql, pyiceberg_rest, pyspark, redshift, snowflake) must add it. This is
-defense-in-depth behind the central `supported_auth` validation (§6). The mysql
-adapter's `profile._auth_kwargs()` call passes the normalized `auth`.
-
-> The central validation makes unauthenticated-kwargs-on-unsupported-auth
-> impossible; the per-adapter terminal raise guarantees it even if an adapter is
-> reached with an in-`supported_auth` type it doesn't branch on.
-
-### 4.6 Rename `*AuthSettings` → `*ConnectionProfile` (20 backends) + MotherDuck adapter
-Now that auth is decoupled, "AuthSettings" is a misnomer. Rename across all 20
-backend modules, their class definitions, `core/settings/__init__.py` exports,
-and all references. Drop the `auth_modes=[…]` kwarg from each `BackendSpec(...)`
-call and replace with `supported_auth=(…AuthProfile, …)`.
-
-**MotherDuck** is token-only (`supported_auth=(TokenAuthProfile,)`) and currently
-has no adapter, so it cannot use the password-or-none base `_auth_kwargs`. Add a
-**minimal `adapters/motherduck.py`** that reads `auth.TOKEN.get_secret_value()`
-into the MotherDuck driver's token kwarg / connection-string token param. (This is
-the one new adapter; "7 adapters" elsewhere becomes 8.)
+### 4.7 Rename `*AuthSettings` → `*ConnectionProfile` (20 backends)
+Rename across all 20 backend modules, class definitions, `core/settings/__init__.py`
+exports, and references. Drop `auth_modes=[…]` from each `BackendSpec(...)`; add
+`supported_auth=(…AuthProfile, …)` and (where not `SQL_USERPASS`) `auth_target=…`.
 
 | Old | New |
 |---|---|
@@ -259,30 +283,31 @@ the one new adapter; "7 adapters" elsewhere becomes 8.)
 | `PostgreSQLAuthSettings` | `PostgreSQLConnectionProfile` |
 | … (all 20) | `*ConnectionProfile` |
 
-### 4.7 Entry points
+### 4.8 Entry points
 - `backends/ibis/backend.py`: `IbisBackend.connect(self, auth_profile=None)` is the
   single auth entry point. **The settings-backed path must defer auth-dependent
   kwargs assembly to `connect()`** — today `_init_from_settings` eagerly calls
   `to_driver_kwargs()` at `__init__` (backend.py:242), before any `auth_profile`
-  exists. Restructure so `__init__`/`_init_from_settings` resolves only the
-  dialect + spec and stores `obj_settings`; `connect(auth_profile)` then calls
+  exists. Restructure so `__init__`/`_init_from_settings` resolves only the dialect
+  + spec and stores `obj_settings`; `connect(auth_profile)` then calls
   `obj_settings.to_driver_kwargs(auth_profile)` and layers `self._config`. The
-  direct-dialect path is unaffected (no settings auth).
+  direct-dialect path is unaffected.
 - **URL credentials vs explicit `auth_profile` precedence:** an explicit
   `connect(auth_profile=…)` **always wins**. URL `user:pass@` is parsed into a
   `PasswordAuthProfile` **only when no explicit `auth_profile` is given**; supplying
-  both is a `ValueError`. When credentials come from the URL they are **stripped**
-  from the URL before it reaches `ibis.connect` (credentials travel via the auth
-  profile, not the URL).
+  both is a `ValueError`. URL credentials are **stripped** from the URL before it
+  reaches `ibis.connect` (credentials travel via the auth profile).
 - `backends/iceberg/connection.py`: `connect_default(self, *, auth_profile=None, **kwargs)`
   and `connect`/`get_or_connect` thread `auth_profile` into
-  `to_driver_kwargs(auth_profile)`. Define kwargs precedence explicitly:
-  **profile-derived `to_driver_kwargs(auth_profile)` < explicit `connection_kwargs`/`**kwargs`**
-  (caller overrides win), and document it on the methods.
+  `to_driver_kwargs(auth_profile)`. Precedence: **profile-derived
+  `to_driver_kwargs(auth_profile)` < explicit `connection_kwargs`/`**kwargs`**
+  (caller overrides win); document on the methods.
 
-### 4.8 Dependency wiring
-- `pyproject.toml`: add `mountainash-auth-client` to core `dependencies`
-  (every backend, even `NoAuthProfile`, needs it).
+### 4.9 Dependency wiring
+- `pyproject.toml`: add `mountainash-auth-client` to core `dependencies` (every
+  backend needs it). Requires a `mountainash-settings` build that includes
+  `Profile.register_adapter` (the prerequisite spec) — ensure the env pins/paths
+  resolve to that version.
 - `hatch.toml`: add the path dep to all relevant envs (`default`, `dev`, `test`,
   `test_github`, `build_github`, `tower`), mirroring transport:
   `mountainash_auth_client @ {root:uri}/../mountainash-auth-client` (local) and
@@ -293,17 +318,17 @@ the one new adapter; "7 adapters" elsewhere becomes 8.)
 ## 5. Field Mapping (old → new), per auth type
 
 Field names change to UPPERCASE; secret-ness preserved. Most are plain renames,
-but **path fields are typed `Path | None`** (not strings) — adapters must
-`str(...)` them where the driver expects a string (the current adapters already
-do, e.g. `str(auth.private_key_path)`, `str(auth.file)`). Confirmed against both
-the old adapter reads and the new `*AuthProfile` `ParameterSpec`s.
+but **path fields are typed `Path | None`** — adapters must `str(...)` them where
+the driver expects a string (the current adapters already do, e.g.
+`str(auth.private_key_path)`, `str(auth.file)`). Confirmed against both the old
+adapter reads and the new `*AuthProfile` `ParameterSpec`s.
 
 | Auth | Old field(s) | New field(s) | Secret / type notes |
 |---|---|---|---|
 | Password | `username`, `password` | `USERNAME`, `PASSWORD` | PASSWORD secret |
 | Token | `token` | `TOKEN` | TOKEN secret |
 | JWT | `token` | `TOKEN` | TOKEN secret |
-| Kerberos | `service_name`, `principal` | `SERVICE_NAME`, `PRINCIPAL`, `KEYTAB` | `KEYTAB: Path \| None` (new field, unused by the trino adapter; listed for completeness) |
+| Kerberos | `service_name`, `principal` | `SERVICE_NAME`, `PRINCIPAL`, `KEYTAB` | `KEYTAB: Path \| None` (new; unused by the trino adapter; for completeness) |
 | Windows | `domain`, `username` | `DOMAIN`, `USERNAME` | — |
 | AzureAD | `tenant_id`, `client_id`, `client_secret`, `managed_identity`, `msi_endpoint` | `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET`, `MANAGED_IDENTITY`, `MSI_ENDPOINT` | CLIENT_SECRET secret |
 | IAM | `role_arn`, `access_key_id`, `secret_access_key`, `session_token`, `profile_name` | `ROLE_ARN`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `SESSION_TOKEN`, `PROFILE_NAME` | SECRET_ACCESS_KEY, SESSION_TOKEN secret |
@@ -312,91 +337,88 @@ the old adapter reads and the new `*AuthProfile` `ParameterSpec`s.
 | Certificate | `private_key`, `private_key_path`, `passphrase` | `PRIVATE_KEY`, `PRIVATE_KEY_PATH`, `PASSPHRASE` | PRIVATE_KEY, PASSPHRASE secret; `PRIVATE_KEY_PATH: Path \| None` |
 | NoAuth | — | — | — |
 
-> **Scope of this table:** the rows are exactly the auth types consumed by a
-> current backend adapter. `OAuth1AuthProfile` and `OAuth2AuthCodeAuthProfile` are
-> members of the `AuthProfile` union but are **not consumed by any backend**
-> (verified: zero references) — they have no old equivalent and need no mapping.
-> They are re-exported as part of the union for completeness, not declared in any
-> backend's `supported_auth`.
->
-> `OAuth2AuthProfile.SERVER_URI`/`SCOPE` are `tier="advanced"`; pyiceberg's adapter
-> reads `server_uri`/`scope`/`client_id`/`client_secret`/`token` — all present.
-> Snowflake's adapter reads only `token` from OAuth2 — also present.
+> **Scope:** rows are exactly the auth types consumed by a backend.
+> `OAuth1AuthProfile` and `OAuth2AuthCodeAuthProfile` are union members **not
+> consumed by any backend** (verified: zero references) — no mapping, not in any
+> `supported_auth`. `OAuth2AuthProfile.SERVER_URI`/`SCOPE` are `tier="advanced"`;
+> pyiceberg reads `server_uri`/`scope`/`client_id`/`client_secret`/`token` (all
+> present); snowflake reads only `token` (present).
 
 ---
 
 ## 6. Validation & Error Handling
 
-- A single shared helper `_normalize_and_validate_auth(auth_profile)` (§4.4) is
-  called first by **both** `to_driver_kwargs` and `to_connection_string`:
-  normalize `None` → `NoAuthProfile()`, then `isinstance(auth, tuple(supported_auth))`;
-  on miss raise `ValueError(f"{backend} does not support auth: {type(auth).__name__}")`.
+- Shared `_normalize_and_validate_auth(auth_profile)` (§4.6) is called first by
+  **both** `to_driver_kwargs` and `to_connection_string`: normalize `None` →
+  `NoAuthProfile()`, then `isinstance(auth, tuple(supported_auth))`; on miss raise
+  `ValueError(f"{backend} does not support auth: {type(auth).__name__}")`.
   `isinstance` (not exact `type()`) so `*AuthProfile` subclasses are accepted.
-  Thus a backend listing `NoAuthProfile` in `supported_auth` accepts `None`; a
-  backend requiring credentials (no `NoAuthProfile`) rejects `None` with the same
-  clear error.
-- Empty `supported_auth` is impossible: the registry invariant (§3.3) rejects it
-  at import.
-- Defense-in-depth: **every** adapter (all 8) ends with a terminal
-  `else: raise ValueError(...)` for an auth type it does not branch on — added in
-  this migration (only `trino.py` had one before).
+- Empty `supported_auth` is impossible: the registry invariant (§4.3) rejects it.
+- `emit()` fail-closed gives a second guard: `auth.emit(target)` for an
+  (auth-type, dialect) pair with no registered adapter raises — so an auth type
+  listed in `supported_auth` but missing its registration is caught loudly, not by
+  emitting unauthenticated kwargs.
+- `register_adapter` conflict-checks at import (settings spec): a duplicate
+  (profile, target) registration with a different function fails at load.
 
 ---
 
 ## 7. Testing Strategy
 
-- Update ~25 test files: imports → `mountainash_auth_client` (or the
-  `core/settings` re-exports); construction → UPPERCASE kwargs
+- Update ~25 test files: imports → `mountainash_auth_client` (or the `core/settings`
+  re-exports); construction → UPPERCASE kwargs
   (`PasswordAuthProfile(USERNAME="u", PASSWORD="p")`); auth passed as a separate
-  arg to the connect/`to_driver_kwargs` calls rather than an `auth=` field.
-- `tests/fixtures/settings_fixtures.py`: rebuild fixtures to yield
-  `(connection_profile, auth_profile)` pairs.
+  arg, not an `auth=` field.
+- `tests/fixtures/settings_fixtures.py`: yield `(connection_profile, auth_profile)`
+  pairs.
 - Add focused tests:
-  - `supported_auth` rejection path: **one negative test per backend/adapter**
-    feeding an out-of-`supported_auth` auth type → `ValueError` (covers both the
-    central validation and each adapter's terminal raise).
-  - `None` normalization: `connect()`/`to_driver_kwargs()` with no auth →
-    `NoAuthProfile` accepted for no-auth backends; rejected for credential-required
-    backends.
+  - **Registration:** at import, the expected `(auth-profile, IbisDialectTarget.*)`
+    adapters are present (`registered_adapters()` introspection); no cross-pollution
+    onto unrelated auth profiles.
+  - **Golden per (dialect, auth type):** `auth.emit(target, base=conn.emit(target))`
+    yields the exact driver-kwargs dict (trino → `auth=BasicAuthentication(...)`;
+    bigquery → `credentials=…`; postgres → `{user, password}`; …). Mirrors
+    transport's `test_emission_golden.py`.
+  - **Fail-closed:** `auth.emit(target)` for an unsupported (auth, dialect) → raises.
+  - `supported_auth` rejection: out-of-`supported_auth` type → `ValueError` (one
+    negative test per backend).
+  - `None` normalization: no auth → `NoAuthProfile` accepted for no-auth backends,
+    rejected for credential-required backends.
   - `isinstance` validation: a subclass of an allowed `*AuthProfile` is accepted.
-  - `_auth_kwargs` base dispatch for an adapter-less backend (e.g. postgres) →
-    `{user, password}`; and that a non-(NoAuth|Password) type raises there.
-  - MotherDuck token adapter: `TokenAuthProfile` → correct token kwarg/URL param.
-  - `to_connection_string`: password backend → `user:pass@` (percent-encoded,
-    secret unwrapped); token/other type → `NotImplementedError` from the base.
-  - Registry invariant: a backend spec with empty `supported_auth` fails at import.
+  - `to_connection_string`: password backend → `user:pass@` (percent-encoded, secret
+    unwrapped); token/other type → `NotImplementedError` from the base.
+  - Registry invariant: empty `supported_auth` fails at import.
   - URL-vs-explicit precedence: both supplied → `ValueError`; URL-only → creds
-    stripped from URL and carried via `PasswordAuthProfile`.
-  - One golden per adapter asserting the exact driver-kwargs dict for its
-    supported auth types (mirrors transport's `test_emission_golden.py`).
-- Acceptance gate: `hatch run test:test` green; `hatch run mypy:check` clean;
-  `hatch run ruff:check` clean.
+    stripped and carried via `PasswordAuthProfile`.
+- Acceptance gate: `hatch run test:test` green; `mypy:check` clean; `ruff:check` clean.
 
 ---
 
 ## 8. Isolation & Interfaces
 
-- **auth-client** — owns credential schemas (`*AuthProfile`) + `emit()` for
-  HTTP/BOTO/PARAMIKO. mountainash-data treats it as a black-box credential carrier.
-- **`*ConnectionProfile`** — owns backend config + `to_driver_kwargs(auth_profile)`
-  / `to_connection_string(auth_profile)`. Does not know auth internals beyond
-  reading documented UPPERCASE fields via adapters.
-- **adapters** — pure functions `(profile, auth_profile) -> dict`; the only place
-  that knows a specific driver's auth-kwarg shape. Independently testable.
+- **auth-client** — owns credential schemas (`*AuthProfile`) + the `emit()`/registry
+  mechanism. Never imports a DB driver. mountainash-data registers adapters onto its
+  profile classes via the sanctioned `Profile.register_adapter`.
+- **`IbisDialectTarget`** — mountainash-data's namespaced target type; the key that
+  ties a connection profile's `emit(target)` to the registered auth adapter.
+- **registered adapters** (`core/settings/adapters/<dialect>.py`) — module-level
+  singleton `(auth_profile, base) -> dict`; the only place that knows a driver's
+  auth-kwarg shape; import the DB drivers; independently testable.
+- **`*ConnectionProfile`** — owns backend config + the uniform `to_driver_kwargs` /
+  `to_connection_string`; no per-backend auth branching.
 
 ---
 
 ## 9. Rollout
 
-Single feature branch off `develop` → PR to `develop` (three-tier flow). The
-change is internally atomic (the package does not import cleanly until the whole
-settings layer is migrated), so it lands as one reviewed PR. Suggested commit
-slices for reviewability: (a) deps + re-exports + delete shim; (b) descriptor
-(`supported_auth` + registry invariant) + profile base
-(`_normalize_and_validate_auth`, restricted `_auth_kwargs`, auth-threaded
-`to_driver_kwargs`/`to_connection_string`); (c) the 20 backend renames +
-`supported_auth`; (d) the 8 adapters (re-point + terminal raise + new MotherDuck
-adapter); (e) entry points (deferred-auth restructure of `IbisBackend`, URL
+Depends on the settings `Profile.register_adapter` PR landing first. Then a single
+feature branch off mountainash-data `develop` → PR to `develop`. Internally atomic
+(the package does not import cleanly until the settings layer is migrated). Suggested
+commit slices: (a) deps + re-exports + delete shim; (b) `IbisDialectTarget` +
+descriptor (`supported_auth`/`auth_target` + invariant) + uniform `ConnectionProfile`
+(`_normalize_and_validate_auth`, `to_driver_kwargs`, `to_connection_string`);
+(c) the 20 renames + `supported_auth`/`auth_target`; (d) the dialect adapter
+functions + `register.py`; (e) entry points (deferred-auth `IbisBackend`, URL
 precedence, iceberg threading); (f) tests.
 
 ---
@@ -406,51 +428,41 @@ precedence, iceberg threading); (f) tests.
 **Interactive OAuth acquisition & token persistence.** Snowflake (OAuth
 authenticator), PyIceberg-REST (OAuth2), and any future OAuth backend currently
 consume an **already-obtained** token read statically off the auth profile
-(`auth.TOKEN` / `auth.CLIENT_ID`). The decoupled design already lets a caller
-hand in a fully-authorized `OAuth2AuthProfile`.
+(`auth.TOKEN` / `auth.CLIENT_ID`). The decoupled design already lets a caller hand
+in a fully-authorized `OAuth2AuthProfile`.
 
-A future capability should integrate the wearables lifecycle so mountainash-data
-can **acquire and refresh** tokens itself:
+A future capability should integrate the wearables lifecycle so mountainash-data can
+**acquire and refresh** tokens itself:
 - `OAuth2TokenManager(provider, auth_profile, resolver=…)` for authorize/refresh/revoke.
 - `PersistableAuthProfile` (`SETTINGS_SOURCE_SECRETS_PROVIDER` + `persist_key()`)
   + `token_store()` for per-(provider, account) token persistence.
 - A `SecretStoreResolver` + `mountainash-secrets` wiring and a named token store.
-- Likely a small `mountainash-data`-side subclass per OAuth backend (à la
-  wearables' `WearableOAuth2Auth`) binding the persist identity.
+- Likely a small mountainash-data-side subclass per OAuth backend (à la wearables'
+  `WearableOAuth2Auth`) binding the persist identity.
 
-Tracked as a follow-up issue after this migration merges. Out of scope here to
-keep the migration focused on unbreaking + the decoupled auth model.
+Tracked as a follow-up issue after this migration merges.
 
 ---
 
 ## 11. Open Questions
 
 None outstanding. (Auth placement = decouple; compat = clean break; rename =
-`*ConnectionProfile`; OAuth lifecycle = deferred to §10 — all resolved.)
+`*ConnectionProfile`; consumption = canonical `emit()` via `register_adapter` with
+per-dialect `IbisDialectTarget`; OAuth lifecycle = deferred to §10.)
 
 ---
 
-## 12. Adversarial review (Codex) — incorporated
+## 12. Revision history
 
-A Codex design review (2026-06-27) raised, and this spec now resolves:
-- **Lifecycle seam** — `IbisBackend` resolved settings (and called `to_driver_kwargs`)
-  eagerly at `__init__`, before any `auth_profile`. Fixed: settings path defers
-  auth-dependent kwargs to `connect()` (§4.7).
-- **URL vs explicit auth precedence** — now defined: explicit wins, both = error,
-  URL creds stripped before `ibis.connect` (§4.7).
-- **`to_connection_string` for token backends** — base restricted to
-  password/none; other types raise `NotImplementedError`, backends override (§4.4).
-- **`supported_auth=()` default + exact `type()` check** — now required (registry
-  invariant) and validated by `isinstance` (§3.3, §6).
-- **Validation only on `to_driver_kwargs`** — shared `_normalize_and_validate_auth`
-  used by both entry methods (§4.4, §6).
-- **Field table gaps** — Kerberos `KEYTAB`, `Path | None` typing, and the
-  OAuth1/OAuth2AuthCode "union-but-unconsumed" scope note added (§5).
-- **`_auth_kwargs` mis-applied to token-only MotherDuck** — base restricted to
-  NoAuth/Password; MotherDuck gets a dedicated token adapter (§3.3, §4.6).
-- **"Adapters keep terminal else" was false** — only trino had one; all 8 adapters
-  now add it, with a negative test each (§4.5, §6, §7).
-- **Iceberg `connection_kwargs` precedence** — defined: explicit kwargs override
-  profile-derived (§4.7).
-```
-</content>
+- **v1** — initial design: keep a bespoke per-backend adapter layer, reject `emit()`.
+- **v1 Codex review** — incorporated: deferred-auth `IbisBackend` lifecycle; URL/explicit
+  precedence; `to_connection_string` token-backend restriction; required +
+  `isinstance` `supported_auth`; shared validation helper; field-table gaps (KEYTAB,
+  `Path` types, OAuth1/OAuth2AuthCode scope); MotherDuck token handling; per-adapter
+  terminal raise; iceberg `connection_kwargs` precedence.
+- **v2 (this revision)** — adopt the canonical `emit()` pattern via the new
+  `Profile.register_adapter` settings primitive: per-dialect `IbisDialectTarget`,
+  adapters registered from mountainash-data onto auth-client profiles, uniform
+  `auth.emit(target, base=conn.emit(target))` connect path. Removes the legacy
+  `__adapter__` indirection, the per-backend `build_driver_kwargs` modules, and the
+  `_auth_kwargs` base method. (Supersedes the v1 §3.2 "reject emit()" decision.)
