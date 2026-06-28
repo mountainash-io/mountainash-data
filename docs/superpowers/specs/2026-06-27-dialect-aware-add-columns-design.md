@@ -24,8 +24,9 @@ Two assumptions in the backlog item do **not** hold in mountainash-data and
 shaped this design:
 
 1. **There is no "type bridge" in `create_table` to reuse.**
-   `IbisBackend.create_table` (`backend.py:321`) is a pure passthrough to
-   `conn._ibis_conn.create_table(...)`; Ibis infers all column types natively.
+   `IbisBackend.create_table` (the "Thin wrapper operations" section of
+   `backend.py`) is a pure passthrough to `conn._ibis_conn.create_table(...)`;
+   Ibis infers all column types natively.
    "Reuse whatever type bridge `create_table` applies" therefore means **let
    Ibis render the types** — specifically via the connection's own
    `compiler.type_mapper`, which is exactly what Ibis uses to emit `CREATE
@@ -78,10 +79,16 @@ backend.add_columns("readings", {"hrv": "float64"})               # equivalent
 - **Additive only.** Adds columns. Never drops, renames, or re-types existing
   columns. Out of scope by design (matches the consumer need:
   passthrough-column accretion).
-- **Idempotent / introspective.** Missing columns are computed against the
-  live table schema (`conn._ibis_conn.table(name).schema().names`). A call
-  that adds nothing is a no-op. Safe to call unconditionally before every
-  write. (Verified: a repeated call adds `[]`.)
+- **Idempotent / introspective (single-process preflight).** Missing columns
+  are computed against the live table schema
+  (`conn._ibis_conn.table(name).schema().names`) once, then one `ALTER` is
+  issued per missing column. A call that adds nothing is a no-op (verified: a
+  repeated call adds `[]`), so it is safe to call unconditionally before every
+  write *within a single writer*. It is **not** concurrency-safe — two writers
+  racing the same new column will collide — and a multi-column add is **not
+  atomic** on engines without transactional DDL. See Known Limitations; this
+  matches the single-writer consumer (wearables store) and is documented, not
+  handled.
 - **Type parity with `create_table`.** Types render through the connection's
   own `compiler.type_mapper.to_string(dtype)` — the identical mapper Ibis uses
   for `CREATE TABLE`. An evolved column is typed exactly as a freshly-created
@@ -102,8 +109,16 @@ Unlike `upsert`/`create_index` (hook-or-`NotImplementedError`),
 `add_columns` is a **uniform-SQL** operation: `ALTER TABLE … ADD COLUMN …` is
 standard across the registry; only type rendering and identifier quoting vary,
 and both are already encapsulated by the connection's compiler. So the default
-is a single generic implementation that **works on every SQL dialect**, with
-an optional per-dialect override for genuine exceptions.
+is a single generic implementation that **covers SQL backends exposing a
+sqlglot compiler + `raw_sql` and supporting `ALTER TABLE … ADD COLUMN`, for
+single-part `database`/`table` contexts** — verified on duckdb/sqlite; the
+registry's other SQL dialects (postgres, snowflake, trino, bigquery, …) are
+covered by construction but unverified until a consumer exercises them.
+**Multi-part qualification (e.g. BigQuery `project.dataset.table`) is not
+supported** by the generic path — it would need a dialect hook; dotted
+`name`/`database` are rejected with `ValueError` (see Semantics). An optional
+per-dialect override also handles genuine capability gaps (e.g. a backend with
+no `ADD COLUMN`).
 
 ```python
 # backend.py — thin method, mirrors the existing hook-dispatch wiring
@@ -122,10 +137,10 @@ def add_columns(self, name, source, *, database=None):
 add_columns_hook: t.Optional[AddColumnsHook] = None
 ```
 
-No dialect registers a hook initially; the generic path covers all of them.
-The field exists so a dialect that genuinely cannot `ADD COLUMN`, or needs a
-quirk, can override later — consistent with the established extensibility
-pattern.
+No dialect registers a hook initially; the generic path covers every SQL
+dialect that supports `ALTER TABLE … ADD COLUMN`. The field exists so a dialect
+that genuinely cannot `ADD COLUMN`, or needs a quirk, can override later —
+consistent with the established extensibility pattern.
 
 ### Generic implementation (`operations.py`)
 
@@ -143,6 +158,12 @@ def _generic_add_columns(ibis_conn, table_name, source, *, database=None):
     def _quote(name):                                    # quote each part separately
         return exp.to_identifier(name, quoted=True).sql(dialect=dialect)
 
+    # table_name / database must each be a SIMPLE identifier; each is quoted
+    # as one part. Dotted/multi-part namespaces are out of scope and rejected
+    # up front (a dotted value would otherwise be quoted as one literal).
+    _validate_simple_identifier(table_name, kind="table_name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
     table_parts = [database, table_name] if database else [table_name]
     ident_t = ".".join(_quote(p) for p in table_parts)   # never quote "db.t" as one
 
@@ -175,15 +196,22 @@ def _coerce_dtype(v) -> ibis.DataType:
         return v
     if isinstance(v, MountainashDtype):
         from mountainash.core.dtypes import target_ibis
+        # Gate parametric members via the bridge's own CAST_UNSUPPORTED set
+        # (currently {LIST, STRUCT}) rather than relying on ibis.dtype() to
+        # reject a bare "array"/"struct".
+        if v in target_ibis.CAST_UNSUPPORTED:
+            raise ValueError(f"MountainashDtype.{v.name} is parametric; "
+                             "pass an ibis.DataType or use the frame form")
         return ibis.dtype(target_ibis.SCHEMA_TYPES[v])   # canonical bridge
     return ibis.dtype(v)                                  # str or polars/pyarrow dtype
 ```
 
 `target_ibis.SCHEMA_TYPES` maps each `MountainashDtype` to an ibis-castable
-type string (`FP64`→`"float64"`, `U8`→`"uint8"`, …). **Limitation:**
-parametric members (`LIST`→`array`, `STRUCT`) are not expressible via the bare
-enum (they need element types) and will raise on coercion; use an explicit
-`ibis.DataType` or the frame form for nested columns.
+type string (`FP64`→`"float64"`, `U8`→`"uint8"`, …); `CAST_UNSUPPORTED` is the
+bridge's own `frozenset` of parametric members. **Limitation:** parametric
+members (`LIST`/`STRUCT`) are not expressible via the bare enum (they need
+element types) and raise `ValueError`; use an explicit `ibis.DataType` or the
+frame form for nested columns.
 
 ## Parity Invariant (verified)
 
@@ -207,16 +235,26 @@ PARITY HOLDS      : True
 - **Parametric types via bare `MountainashDtype`** (LIST/STRUCT) are
   unsupported in the explicit-map form; supply an `ibis.DataType` or use the
   frame form.
+- **Not concurrency-safe; non-atomic multi-column adds.** Idempotency is
+  single-process preflight (compute-missing-then-ALTER). Concurrent writers can
+  collide on the same new column, and a partial failure mid-add leaves earlier
+  columns applied. Acceptable for the single-writer consumer; a transactional
+  wrapper (where the engine supports DDL transactions) is a future enhancement,
+  not in this iteration.
+- **Simple identifiers only (enforced).** `name`/`database` must each be a
+  single, non-dotted identifier; multi-part qualified names
+  (`project.dataset.table`) are out of scope and rejected with `ValueError`
+  via `_validate_simple_identifier`, not silently mis-quoted.
 - **Additive only** — re-typing/dropping/renaming are explicitly out of scope.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/mountainash_data/backends/ibis/operations.py` | `_generic_add_columns`, `_normalize_to_schema`, `_coerce_dtype` |
+| `src/mountainash_data/backends/ibis/operations.py` | `_generic_add_columns`, `_normalize_to_schema`, `_coerce_dtype`, `_validate_simple_identifier` |
 | `src/mountainash_data/backends/ibis/backend.py` | `IbisBackend.add_columns` thin method (hook dispatch + generic fallback) |
 | `src/mountainash_data/backends/ibis/dialects/_registry.py` | `add_columns_hook` optional field on `DialectSpec`; `AddColumnsHook` type alias |
-| `tests/test_unit/backends/ibis/test_backend.py` | add_columns tests (see Testing) |
+| `tests/test_unit/backends/ibis/test_add_columns.py` | **new file** — all add_columns tests (helpers + integration; see Testing) |
 
 ## Files NOT Changed
 
@@ -224,7 +262,8 @@ PARITY HOLDS      : True
 - `create_table` / `insert` / `upsert` — untouched.
 - `core/protocol.py` — `add_columns` is an `IbisBackend` capability, not part
   of the minimal `Connection` protocol (consistent with `upsert`/`create_index`).
-- No new files.
+- One new file: `tests/test_unit/backends/ibis/test_add_columns.py` (no new
+  source modules — all production code lands in existing files).
 
 ## Testing
 

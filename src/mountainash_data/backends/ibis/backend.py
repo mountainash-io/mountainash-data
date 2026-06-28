@@ -11,6 +11,7 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
+from mountainash_data.backends.ibis.operations import _generic_add_columns
 from mountainash_data.core.inspection import (
     CatalogInfo,
     NamespaceInfo,
@@ -541,6 +542,27 @@ class IbisBackend:
             database=database,
             schema=schema,
         )
+        return self
+
+    def add_columns(
+        self,
+        name: str,
+        source: t.Any,
+        *,
+        database: str | None = None,
+    ) -> IbisBackend:
+        """Additively evolve `name`: add columns present in `source` but
+        missing from the table. `source` is a frame (types inferred) or a
+        ``{column: dtype}`` mapping. Additive, idempotent, dialect-agnostic.
+        """
+        conn = self._require_connected()
+        hook = self._spec.add_columns_hook
+        if hook is not None:
+            hook(conn._ibis_conn, name, source, database=database)
+        else:
+            _generic_add_columns(
+                conn._ibis_conn, name, source, database=database
+            )
         return self
 
     def create_index(
