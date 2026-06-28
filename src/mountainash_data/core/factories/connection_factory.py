@@ -88,8 +88,10 @@ def _url_password(parts: UrlParts, auth: t.Any) -> str:
         raise NotImplementedError("password URL form requires a host authority")
     user, pw = quote(str(auth.USERNAME), safe=""), quote(auth.PASSWORD.get_secret_value(), safe="")
     url = f"{parts.scheme}://{user}:{pw}@{parts.host}"
-    if parts.port is not None: url += f":{parts.port}"
-    if parts.database is not None: url += f"/{parts.database}"
+    if parts.port is not None:
+        url += f":{parts.port}"
+    if parts.database is not None:
+        url += f"/{parts.database}"
     return url
 
 
