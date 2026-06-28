@@ -9,3 +9,7 @@ def headers_compose(profile: t.Any, base: dict[str, t.Any]) -> dict[str, t.Any]:
         for hk, hv in profile.HEADERS.items():
             out[f"header.{hk}"] = hv
     return out
+
+
+def token(auth, base):
+    return {**base, "token": auth.TOKEN.get_secret_value()}
