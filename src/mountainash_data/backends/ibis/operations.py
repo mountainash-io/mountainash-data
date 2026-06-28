@@ -128,7 +128,7 @@ def _validate_simple_identifier(value: str, *, kind: str) -> None:
     literal identifier (``"a.b"``) rather than a namespace, silently violating
     the documented contract. Fail loudly instead.
     """
-    if value is not None and "." in value:
+    if "." in value:
         raise ValueError(
             f"{kind} {value!r} must be a simple (non-dotted) identifier; "
             f"multi-part qualified names are out of scope."

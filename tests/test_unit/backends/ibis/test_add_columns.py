@@ -58,6 +58,8 @@ class TestNormalizeToSchema:
     def test_frame_inference(self):
         sch = _normalize_to_schema(pl.DataFrame({"a": [1], "b": ["x"]}))
         assert set(sch.names) == {"a", "b"}
+        assert sch["a"] == ibis.dtype("int64")
+        assert sch["b"] == ibis.dtype("string")
 
 
 class TestGenericAddColumns:
@@ -109,6 +111,23 @@ class TestGenericAddColumns:
         with pytest.raises(ValueError, match="simple"):
             _generic_add_columns(con, "t", {"x": "float64"}, database="a.b")
 
+    def test_database_qualified_add_on_duckdb(self):
+        """Happy-path: two-part qualified quoting (database.table) via ATTACH.
+
+        ibis 10.4.0's duckdb backend does not support create_table(database=...)
+        for attached databases — ``database=`` resolves to the DuckDB *schema*
+        slot, not the catalog. The table is therefore created via raw_sql, which
+        is the realistic path for an attached second database. The
+        _generic_add_columns path itself (table look-up + ALTER) is what we
+        exercise here.
+        """
+        con = ibis.duckdb.connect()
+        con.raw_sql("ATTACH ':memory:' AS mem2")
+        con.raw_sql("CREATE TABLE mem2.t (id INTEGER)")
+        con.raw_sql("INSERT INTO mem2.t VALUES (1)")
+        _generic_add_columns(con, "t", {"score": "float64"}, database="mem2")
+        assert "score" in con.table("t", database="mem2").schema().names
+
 
 class TestIbisBackendAddColumns:
     def test_frame_form_returns_self_and_adds_column(self):
@@ -126,6 +145,7 @@ class TestIbisBackendAddColumns:
             be.create_table("t", {"id": [1]})
             be.add_columns("t", {"hrv": MountainashDtype.FP64})
             cols = {c.name: c.type_name for c in be.inspect_table("t").columns}
+            assert "hrv" in cols
             assert cols["hrv"] == "float64"
 
     def test_create_evolve_type_parity_sqlite(self):
