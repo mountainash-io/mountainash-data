@@ -29,6 +29,7 @@ UpsertHook = t.Callable[..., None]
 CreateIndexHook = t.Callable[..., None]
 DropIndexHook = t.Callable[..., None]
 RenameTableHook = t.Callable[..., None]
+AddColumnsHook = t.Callable[..., None]
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,7 @@ class DialectSpec:
     create_index_hook: t.Optional[CreateIndexHook] = None
     drop_index_hook: t.Optional[DropIndexHook] = None
     rename_table_hook: t.Optional[RenameTableHook] = None
+    add_columns_hook: t.Optional[AddColumnsHook] = None
     extras: t.Mapping[str, t.Any] = field(default_factory=dict)
 
 
