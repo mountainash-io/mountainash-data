@@ -90,7 +90,11 @@ def _coerce_dtype(v: t.Any) -> ibis.DataType:
     except ImportError:  # mountainash build without the canonical dtypes bridge
         pass
 
-    if mountainash_dtype is not None and isinstance(v, mountainash_dtype):
+    if (
+        mountainash_dtype is not None
+        and target_ibis is not None
+        and isinstance(v, mountainash_dtype)
+    ):
         # Gate parametric members explicitly via the canonical bridge's own
         # CAST_UNSUPPORTED set (currently {LIST, STRUCT}) rather than relying
         # on ibis.dtype() to reject a bare "array"/"struct" string.
