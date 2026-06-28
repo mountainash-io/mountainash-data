@@ -32,6 +32,16 @@ class TestSnowflakeBackendProfile:
         s = self._minimal(ROLE="analyst")
         assert s.emit(CONST_DB_PROVIDER_TYPE.SNOWFLAKE)["role"] == "analyst"
 
+    def test_authenticator_is_emitted_as_str(self):
+        """Regression: AUTHENTICATOR (e.g. Okta/MFA) must reach the driver kwargs."""
+        s = self._minimal(AUTHENTICATOR=SnowflakeAuthenticator.PASSWORD_MFA)
+        out = s.emit(CONST_DB_PROVIDER_TYPE.SNOWFLAKE)
+        assert out["authenticator"] == "username_password_mfa"
+        assert isinstance(out["authenticator"], str)
+
+    def test_authenticator_absent_when_unset(self):
+        assert "authenticator" not in self._minimal().emit(CONST_DB_PROVIDER_TYPE.SNOWFLAKE)
+
     def test_timezone_stored(self):
         """Audit regression: TIMEZONE was top-level."""
         s = self._minimal(TIMEZONE="UTC")
