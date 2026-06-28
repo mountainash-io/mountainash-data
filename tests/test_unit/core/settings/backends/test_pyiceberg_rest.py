@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_data.core.settings.pyiceberg_rest import PyIcebergRestBackendProfile
 
 
@@ -22,7 +23,7 @@ class TestPyIcebergRestBackendProfile:
 
     def test_emit_plumbs_uri(self):
         s = self._min()
-        kwargs = s.emit()
+        kwargs = s.emit(CONST_DB_PROVIDER_TYPE.PYICEBERG_REST)
         assert kwargs["uri"] == "https://catalog.example/v1"
         assert kwargs["name"] == "cat"
 

@@ -59,35 +59,54 @@ def test_unknown_url_scheme_raises():
 
 def test_settings_path_sqlite():
     """Construct IbisBackend from SQLite SettingsParameters and connect."""
+    from mountainash_auth_client import NoAuthProfile
     from mountainash_settings import SettingsParameters
-    from mountainash_data.core.settings import SQLiteAuthSettings, NoAuth
+    from mountainash_data.core.settings import SQLiteBackendProfile
 
     params = SettingsParameters.create(
-        settings_class=SQLiteAuthSettings,
+        settings_class=SQLiteBackendProfile,
         DATABASE=":memory:",
-        auth=NoAuth(),
     )
     backend = IbisBackend(params)
     assert backend.dialect == "sqlite"
-    backend.connect()
+    backend.connect(auth_profile=NoAuthProfile())
     tables = backend.list_tables()
     assert isinstance(tables, list)
     backend.close()
 
 
-def test_settings_path_duckdb_empty_extensions():
-    """DuckDB settings with default EXTENSIONS=[] must not crash ibis."""
+def test_settings_path_sqlite_with_auth_profile():
+    """Settings path threads auth through build_driver_kwargs via connect(auth_profile=...)."""
+    from mountainash_auth_client import NoAuthProfile
     from mountainash_settings import SettingsParameters
-    from mountainash_data.core.settings import DuckDBAuthSettings, NoAuth
+    from mountainash_data.core.settings import SQLiteBackendProfile
 
     params = SettingsParameters.create(
-        settings_class=DuckDBAuthSettings,
+        settings_class=SQLiteBackendProfile,
         DATABASE=":memory:",
-        auth=NoAuth(),
+    )
+    backend = IbisBackend(params)
+    assert backend.dialect == "sqlite"
+    # auth_profile=None normalises to NoAuth, which is supported for sqlite
+    result = backend.connect(auth_profile=NoAuthProfile())
+    assert result is backend
+    assert isinstance(backend.list_tables(), list)
+    backend.close()
+
+
+def test_settings_path_duckdb_empty_extensions():
+    """DuckDB settings with default EXTENSIONS=[] must not crash ibis."""
+    from mountainash_auth_client import NoAuthProfile
+    from mountainash_settings import SettingsParameters
+    from mountainash_data.core.settings import DuckDBBackendProfile
+
+    params = SettingsParameters.create(
+        settings_class=DuckDBBackendProfile,
+        DATABASE=":memory:",
     )
     backend = IbisBackend(params)
     assert backend.dialect == "duckdb"
-    backend.connect()
+    backend.connect(auth_profile=NoAuthProfile())
     backend.close()
 
 

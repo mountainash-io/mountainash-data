@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_data.core.settings.mysql import MySQLBackendProfile, MySQLSSLMode
 
 
@@ -34,4 +35,4 @@ class TestMySQLBackendProfile:
     def test_autocommit_false_honored(self):
         """Audit regression: `if self.AUTOCOMMIT:` dropped explicit False."""
         s = self._minimal(AUTOCOMMIT=False)
-        assert s.emit()["autocommit"] is False
+        assert s.emit(CONST_DB_PROVIDER_TYPE.MYSQL)["autocommit"] is False

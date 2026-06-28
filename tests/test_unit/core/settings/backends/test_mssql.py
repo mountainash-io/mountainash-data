@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_data.core.settings.mssql import (
     MSSQLBackendProfile,
     MSSQLEncryption,
@@ -16,7 +17,7 @@ class TestMSSQLBackendProfile:
 
     def test_emit_plumbs_host_and_database(self):
         s = self._minimal()
-        kwargs = s.emit()
+        kwargs = s.emit(CONST_DB_PROVIDER_TYPE.MSSQL)
         assert kwargs["host"] == "h"
         assert kwargs["database"] == "d"
 

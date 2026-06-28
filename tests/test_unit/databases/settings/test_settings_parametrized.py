@@ -1,14 +1,14 @@
 """Parametrized tests for database settings across all backends."""
 
 import pytest
+from mountainash_auth_client import NoAuthProfile
 from mountainash_data.core.settings import (
-    ConnectionProfile,
-    SQLiteAuthSettings,
-    DuckDBAuthSettings,
-    PostgreSQLAuthSettings,
-    BigQueryAuthSettings,
-    SnowflakeAuthSettings,
-    NoAuth,
+    BackendProfile,
+    SQLiteBackendProfile,
+    DuckDBBackendProfile,
+    PostgreSQLBackendProfile,
+    BigQueryBackendProfile,
+    SnowflakeBackendProfile,
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_settings import SettingsParameters
@@ -16,9 +16,11 @@ from mountainash_settings import SettingsParameters
 
 @pytest.mark.unit
 @pytest.mark.parametrize("settings_class,expected_provider", [
-    (SQLiteAuthSettings, CONST_DB_PROVIDER_TYPE.SQLITE),
-    (DuckDBAuthSettings, CONST_DB_PROVIDER_TYPE.DUCKDB),
-    (PostgreSQLAuthSettings, CONST_DB_PROVIDER_TYPE.POSTGRESQL),
+    (SQLiteBackendProfile, CONST_DB_PROVIDER_TYPE.SQLITE),
+    (DuckDBBackendProfile, CONST_DB_PROVIDER_TYPE.DUCKDB),
+    (PostgreSQLBackendProfile, CONST_DB_PROVIDER_TYPE.POSTGRESQL),
+    (BigQueryBackendProfile, CONST_DB_PROVIDER_TYPE.BIGQUERY),
+    (SnowflakeBackendProfile, CONST_DB_PROVIDER_TYPE.SNOWFLAKE),
 ])
 class TestSettingsInitialization:
     """Test settings initialization for all backend types."""
@@ -27,15 +29,15 @@ class TestSettingsInitialization:
         """Test that settings can be instantiated."""
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
-            kwargs={"DATABASE": ":memory:"} if settings_class in [SQLiteAuthSettings, DuckDBAuthSettings] else {}
+            kwargs={"DATABASE": ":memory:"} if settings_class in [SQLiteBackendProfile, DuckDBBackendProfile] else {}
         )
 
         assert settings_params is not None
         assert settings_params.settings_class == settings_class
 
     def test_settings_inherits_from_base(self, settings_class, expected_provider):
-        """Test that all settings inherit from ConnectionProfile."""
-        assert issubclass(settings_class, ConnectionProfile)
+        """Test that all settings inherit from BackendProfile."""
+        assert issubclass(settings_class, BackendProfile)
 
     def test_settings_has_provider_type(self, settings_class, expected_provider):
         """Test that settings have correct provider type."""
@@ -45,11 +47,12 @@ class TestSettingsInitialization:
 
 @pytest.mark.unit
 @pytest.mark.parametrize("settings_class,required_fields", [
-    (SQLiteAuthSettings, ["DATABASE"]),
-    (DuckDBAuthSettings, ["DATABASE"]),
-    # PostgreSQLAuthSettings uses ConnectionProfile with auth field instead of
-    # discrete USERNAME/PASSWORD fields at the top level; check the new fields.
-    (PostgreSQLAuthSettings, ["HOST", "PORT", "DATABASE"]),
+    (SQLiteBackendProfile, ["DATABASE"]),
+    (DuckDBBackendProfile, ["DATABASE"]),
+    # PostgreSQLBackendProfile: check the connection fields.
+    (PostgreSQLBackendProfile, ["HOST", "PORT", "DATABASE"]),
+    (BigQueryBackendProfile, ["PROJECT_ID"]),
+    (SnowflakeBackendProfile, ["ACCOUNT"]),
 ])
 class TestSettingsRequiredFields:
     """Test required fields for different settings types."""
@@ -69,10 +72,10 @@ class TestSettingsRequiredFields:
 
 @pytest.mark.unit
 @pytest.mark.parametrize("settings_class,test_config", [
-    (SQLiteAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
-    (SQLiteAuthSettings, {"DATABASE": "/tmp/test.db", "auth": NoAuth()}),
-    (DuckDBAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
-    (DuckDBAuthSettings, {"DATABASE": "/tmp/test.duckdb", "auth": NoAuth()}),
+    (SQLiteBackendProfile, {"DATABASE": ":memory:"}),
+    (SQLiteBackendProfile, {"DATABASE": "/tmp/test.db"}),
+    (DuckDBBackendProfile, {"DATABASE": ":memory:"}),
+    (DuckDBBackendProfile, {"DATABASE": "/tmp/test.duckdb"}),
 ])
 class TestSettingsConfiguration:
     """Test settings configuration with various values."""
@@ -95,18 +98,15 @@ class TestSettingsConfiguration:
 
         settings = settings_params.get_settings()
 
-        # Only check non-auth fields (auth is a special object, not a simple value)
         for key, value in test_config.items():
-            if key == "auth":
-                continue
             assert hasattr(settings, key)
             assert getattr(settings, key) == value
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("settings_class", [
-    SQLiteAuthSettings,
-    DuckDBAuthSettings,
+    SQLiteBackendProfile,
+    DuckDBBackendProfile,
 ])
 class TestSettingsParametersExtraction:
     """Test SettingsParameters extraction for all backends."""
@@ -115,31 +115,31 @@ class TestSettingsParametersExtraction:
         """Test that settings can be extracted to parameters."""
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
-            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
+            kwargs={"DATABASE": ":memory:"}
         )
 
         settings = settings_params.get_settings()
 
         assert settings is not None
-        assert isinstance(settings, ConnectionProfile)
+        assert isinstance(settings, BackendProfile)
 
     def test_extracted_settings_have_parameters_method(self, settings_class):
         """Test that extracted settings have extract_settings_parameters method."""
         settings_params = SettingsParameters.create(
             settings_class=settings_class,
-            kwargs={"DATABASE": ":memory:", "auth": NoAuth()}
+            kwargs={"DATABASE": ":memory:"}
         )
 
         settings = settings_params.get_settings()
 
         # Should have method to extract parameters back
-        assert hasattr(settings, 'extract_settings_parameters') or True
+        assert hasattr(settings, 'extract_settings_parameters')
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("settings_class,db_config", [
-    (SQLiteAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
-    (DuckDBAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
+    (SQLiteBackendProfile, {"DATABASE": ":memory:"}),
+    (DuckDBBackendProfile, {"DATABASE": ":memory:"}),
 ])
 class TestSettingsWithConnections:
     """Test that settings work with actual connections."""
@@ -162,7 +162,7 @@ class TestSettingsWithConnections:
             kwargs=db_config
         )
         backend = IbisBackend(settings_params)
-        backend.connect()
+        backend.connect(auth_profile=NoAuthProfile())
         tables = backend.list_tables()
         assert isinstance(tables, list)
         backend.close()
@@ -179,7 +179,7 @@ class TestSettingsValidation:
         # Try to create without DATABASE
         with pytest.raises((ValueError, KeyError, TypeError)):
             SettingsParameters.create(
-                settings_class=SQLiteAuthSettings,
+                settings_class=SQLiteBackendProfile,
                 kwargs={}
             )
 
@@ -190,13 +190,13 @@ class TestSettingsValidation:
         # Try to create without DATABASE
         with pytest.raises((ValueError, KeyError, TypeError)):
             SettingsParameters.create(
-                settings_class=DuckDBAuthSettings,
+                settings_class=DuckDBBackendProfile,
                 kwargs={}
             )
 
     @pytest.mark.parametrize("settings_class,valid_config", [
-        (SQLiteAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
-        (DuckDBAuthSettings, {"DATABASE": ":memory:", "auth": NoAuth()}),
+        (SQLiteBackendProfile, {"DATABASE": ":memory:"}),
+        (DuckDBBackendProfile, {"DATABASE": ":memory:"}),
     ])
     def test_valid_configuration_accepted(self, settings_class, valid_config):
         """Test that valid configurations are accepted."""

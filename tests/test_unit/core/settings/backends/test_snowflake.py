@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
 from mountainash_data.core.settings.snowflake import (
     SnowflakeAuthenticator,
     SnowflakeBackendProfile,
@@ -22,14 +23,14 @@ class TestSnowflakeBackendProfile:
 
     def test_emit_plumbs_account_and_warehouse(self):
         s = self._minimal()
-        kwargs = s.emit()
+        kwargs = s.emit(CONST_DB_PROVIDER_TYPE.SNOWFLAKE)
         assert kwargs["account"] == "acc"
         assert kwargs["warehouse"] == "wh"
 
     def test_role_is_plumbed(self):
         """Audit regression: ROLE was declared but never emitted."""
         s = self._minimal(ROLE="analyst")
-        assert s.emit()["role"] == "analyst"
+        assert s.emit(CONST_DB_PROVIDER_TYPE.SNOWFLAKE)["role"] == "analyst"
 
     def test_timezone_stored(self):
         """Audit regression: TIMEZONE was top-level."""

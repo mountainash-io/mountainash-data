@@ -9,9 +9,11 @@ from mountainash_auth_client import (
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
 from . import (sql as _sql, trino as _trino, snowflake as _snow, bigquery as _bq,
-               databricks as _dbx, mssql as _mssql, redshift as _rs, pyiceberg_rest as _ice)
+               databricks as _dbx, mssql as _mssql, redshift as _rs, pyiceberg_rest as _ice,
+               motherduck as _md)
 
 _AUTH_ADAPTERS: dict[tuple[t.Any, type], t.Callable[[t.Any, dict], dict]] = {
+    (P.MOTHERDUCK,     TokenAuthProfile):          _md.token,
     (P.TRINO,          PasswordAuthProfile):       _trino.password,
     (P.TRINO,          JWTAuthProfile):            _trino.jwt,
     (P.TRINO,          KerberosAuthProfile):       _trino.kerberos,
