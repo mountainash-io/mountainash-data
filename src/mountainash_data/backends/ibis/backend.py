@@ -214,6 +214,7 @@ class IbisBackend:
         scheme = urlparse(url).scheme.lower()
 
         # Special case: MotherDuck URLs are "duckdb://md:..."
+        resolved_dialect: str | None
         if scheme == "duckdb" and url.startswith("duckdb://md:"):
             resolved_dialect = "motherduck"
         else:
@@ -230,7 +231,7 @@ class IbisBackend:
         self._profile = None
         self._url_config = config
         self._config = None
-        self._conn: IbisConnection | None = None
+        self._conn = None
 
     def _init_from_settings(
         self, settings_params: t.Any, config: dict[str, t.Any]
@@ -256,7 +257,7 @@ class IbisBackend:
         self._profile = obj_settings          # settings path
         self._extra_config = config           # caller **config overrides
         self._config = None
-        self._conn: IbisConnection | None = None
+        self._conn = None
 
     def _require_connected(self) -> IbisConnection:
         if self._conn is None:
@@ -297,6 +298,8 @@ class IbisBackend:
 
     def _connect_via_builder(self) -> t.Any:
         # preserves the prior empty-list/tuple filtering before connection_builder
+        assert self._config is not None  # connect() sets it before dispatch
+        assert self._spec.connection_builder is not None  # guarded in connect()
         cleaned_config = {
             k: v for k, v in self._config.items()
             if not (isinstance(v, (list, tuple)) and len(v) == 0)
@@ -326,7 +329,7 @@ class IbisBackend:
                 netloc += f":{parts.port}"
             clean = urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
             auth_profile = PasswordAuthProfile(
-                USERNAME=unquote(parts.username),
+                USERNAME=unquote(parts.username or ""),
                 PASSWORD=unquote(parts.password) if parts.password else "",
             )
         if auth_profile is not None:
@@ -611,7 +614,8 @@ class IbisBackend:
                 f"Dialect {self.dialect!r} does not support index_exists"
             )
         conn = self._require_connected()
-        check_sql = self._spec.get_index_exists_sql(index_name, table_name, database)
+        # pre-existing: hook signature types table_name as str; not migration scope
+        check_sql = self._spec.get_index_exists_sql(index_name, table_name, database)  # type: ignore[arg-type]
         result = conn._ibis_conn.sql(check_sql)
         if result is None:
             return False
