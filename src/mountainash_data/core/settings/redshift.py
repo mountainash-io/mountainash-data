@@ -14,10 +14,9 @@ from enum import StrEnum
 from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import redshift as _adapter
-from mountainash_settings.auth import IAMAuth, PasswordAuth
+from mountainash_auth_client import IAMAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -41,7 +40,7 @@ REDSHIFT_SPEC = BackendSpec(
     connection_string_scheme="redshift://",
     ibis_dialect="postgres",
     rides_on="postgres",
-    auth_modes=[PasswordAuth, IAMAuth],
+    supported_auth=(PasswordAuthProfile, IAMAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=5439,
@@ -68,9 +67,8 @@ REDSHIFT_SPEC = BackendSpec(
 
 
 @register
-class RedshiftAuthSettings(ConnectionProfile):
+class RedshiftBackendProfile(BackendProfile):
     __spec__ = REDSHIFT_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
 
     @field_validator("REGION", check_fields=False)
     @classmethod

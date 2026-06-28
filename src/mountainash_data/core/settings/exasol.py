@@ -8,9 +8,9 @@ Ibis: ``ibis.exasol.connect(user, password, host, port, timezone,
 from __future__ import annotations
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import PasswordAuth
+from mountainash_auth_client import PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -20,7 +20,7 @@ EXASOL_SPEC = BackendSpec(
     default_port=8563,
     connection_string_scheme="exasol://",
     ibis_dialect="exasol",
-    auth_modes=[PasswordAuth],
+    supported_auth=(PasswordAuthProfile,),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=8563,
@@ -32,5 +32,5 @@ EXASOL_SPEC = BackendSpec(
 
 
 @register
-class ExasolAuthSettings(ConnectionProfile):
+class ExasolBackendProfile(BackendProfile):
     __spec__ = EXASOL_SPEC

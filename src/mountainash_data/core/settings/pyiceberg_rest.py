@@ -11,10 +11,9 @@ import typing as t
 from pydantic import SecretStr
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import pyiceberg_rest as _adapter
-from mountainash_settings.auth import OAuth2Auth, TokenAuth
+from mountainash_auth_client import TokenAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -22,7 +21,7 @@ PYICEBERG_REST_SPEC = BackendSpec(
     name="pyiceberg_rest",
     provider_type=CONST_DB_PROVIDER_TYPE.PYICEBERG_REST,
     connection_string_scheme=None,  # uri= kwarg, not URL form
-    auth_modes=[TokenAuth, OAuth2Auth],
+    supported_auth=(TokenAuthProfile,),
     parameters=[
         ParameterSpec(name="CATALOG_NAME", type=str, tier="core",
                       driver_key="name"),
@@ -58,6 +57,5 @@ PYICEBERG_REST_SPEC = BackendSpec(
 
 
 @register
-class PyIcebergRestAuthSettings(ConnectionProfile):
+class PyIcebergRestBackendProfile(BackendProfile):
     __spec__ = PYICEBERG_REST_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

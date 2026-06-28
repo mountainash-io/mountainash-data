@@ -2,22 +2,20 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
-from mountainash_data.core.settings.auth import NoAuth, PasswordAuth
 from mountainash_data.core.settings.singlestoredb import (
-    SingleStoreDBAuthSettings,
+    SingleStoreDBBackendProfile,
     SingleStoreDriver,
 )
 
 
 @pytest.mark.unit
-class TestSingleStoreDBAuthSettings:
+class TestSingleStoreDBBackendProfile:
     def _minimal(self, **extra):
-        return SingleStoreDBAuthSettings(
+        return SingleStoreDBBackendProfile(
             HOST="svc-123.svc.singlestore.com",
-            auth=PasswordAuth(username="admin", password=SecretStr("s3cret")),
             **extra,
         )
 
@@ -43,7 +41,7 @@ class TestSingleStoreDBAuthSettings:
 
     def test_driver_https(self):
         s = self._minimal(DRIVER=SingleStoreDriver.HTTPS)
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["driver"] == "https"
 
     def test_autocommit_default_true(self):
@@ -54,20 +52,16 @@ class TestSingleStoreDBAuthSettings:
         s = self._minimal()
         assert s.LOCAL_INFILE is True
 
-    def test_no_auth(self):
-        s = SingleStoreDBAuthSettings(
-            HOST="svc-123.svc.singlestore.com", auth=NoAuth(),
-        )
+    def test_minimal_construction(self):
+        s = SingleStoreDBBackendProfile(HOST="svc-123.svc.singlestore.com")
         assert s.HOST == "svc-123.svc.singlestore.com"
 
-    def test_to_driver_kwargs_plumbs_core_fields(self):
+    def test_emit_plumbs_core_fields(self):
         s = self._minimal(PORT=3307, DATABASE="mydb")
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["host"] == "svc-123.svc.singlestore.com"
         assert kwargs["port"] == 3307
         assert kwargs["database"] == "mydb"
-        assert kwargs["user"] == "admin"
-        assert kwargs["password"] == "s3cret"
 
     def test_ibis_dialect(self):
         s = self._minimal()

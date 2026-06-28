@@ -2,46 +2,35 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr
 
-from mountainash_data.core.settings.auth import OAuth2Auth, TokenAuth
-from mountainash_data.core.settings.pyiceberg_rest import PyIcebergRestAuthSettings
+from mountainash_data.core.settings.pyiceberg_rest import PyIcebergRestBackendProfile
 
 
 @pytest.mark.unit
-class TestPyIcebergRestAuthSettings:
-    def _min(self, auth, **extra):
-        return PyIcebergRestAuthSettings(
+class TestPyIcebergRestBackendProfile:
+    def _min(self, **extra):
+        return PyIcebergRestBackendProfile(
             CATALOG_NAME="cat",
             CATALOG_URI="https://catalog.example/v1",
-            auth=auth, **extra,
+            **extra,
         )
 
     def test_warehouse_optional(self):
         """Audit regression: WAREHOUSE was over-required."""
-        s = self._min(auth=TokenAuth(token=SecretStr("t")))
+        s = self._min()
         assert s.WAREHOUSE is None
 
-    def test_token_auth(self):
-        s = self._min(auth=TokenAuth(token=SecretStr("tok")))
-        kwargs = s.to_driver_kwargs()
-        assert kwargs["token"] == "tok"
+    def test_emit_plumbs_uri(self):
+        s = self._min()
+        kwargs = s.emit()
         assert kwargs["uri"] == "https://catalog.example/v1"
+        assert kwargs["name"] == "cat"
 
-    def test_oauth2_credential_form(self):
+    def test_s3_params_stored(self):
+        """Audit regression: s3.* family was absent from the spec."""
         s = self._min(
-            auth=OAuth2Auth(client_id="cid", client_secret=SecretStr("sec")),
-        )
-        kwargs = s.to_driver_kwargs()
-        assert kwargs["credential"] == "cid:sec"
-
-    def test_s3_params_prefixed(self):
-        """Audit regression: s3.* family was absent."""
-        s = self._min(
-            auth=TokenAuth(token=SecretStr("t")),
             S3_ENDPOINT="https://r2.example.com",
             S3_REGION="auto",
         )
-        kwargs = s.to_driver_kwargs()
-        assert kwargs["s3.endpoint"] == "https://r2.example.com"
-        assert kwargs["s3.region"] == "auto"
+        assert s.S3_ENDPOINT == "https://r2.example.com"
+        assert s.S3_REGION == "auto"

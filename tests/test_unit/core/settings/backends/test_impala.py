@@ -2,24 +2,19 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
-from mountainash_data.core.settings.auth import NoAuth, PasswordAuth
 from mountainash_data.core.settings.impala import (
-    ImpalaAuthSettings,
+    ImpalaBackendProfile,
     ImpalaAuthMechanism,
 )
 
 
 @pytest.mark.unit
-class TestImpalaAuthSettings:
+class TestImpalaBackendProfile:
     def _minimal(self, **extra):
-        return ImpalaAuthSettings(
-            HOST="impala.example.com",
-            auth=NoAuth(),
-            **extra,
-        )
+        return ImpalaBackendProfile(HOST="impala.example.com", **extra)
 
     def test_provider_type(self):
         assert self._minimal().provider_type == CONST_DB_PROVIDER_TYPE.IMPALA
@@ -39,22 +34,19 @@ class TestImpalaAuthSettings:
 
     def test_gssapi_mechanism(self):
         s = self._minimal(AUTH_MECHANISM=ImpalaAuthMechanism.GSSAPI)
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["auth_mechanism"] == "GSSAPI"
 
-    def test_ldap_with_password(self):
-        s = ImpalaAuthSettings(
+    def test_ldap_mechanism(self):
+        s = ImpalaBackendProfile(
             HOST="impala.example.com",
-            auth=PasswordAuth(username="user", password=SecretStr("pass")),
             AUTH_MECHANISM=ImpalaAuthMechanism.LDAP,
         )
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["auth_mechanism"] == "LDAP"
-        assert kwargs["user"] == "user"
-        assert kwargs["password"] == "pass"
 
-    def test_to_driver_kwargs_plumbs_ssl(self):
-        kwargs = self._minimal(USE_SSL=True).to_driver_kwargs()
+    def test_emit_plumbs_ssl(self):
+        kwargs = self._minimal(USE_SSL=True).emit()
         assert kwargs["use_ssl"] is True
 
     def test_ibis_dialect(self):

@@ -1,21 +1,19 @@
-"""Tests for ConnectionProfile — database-flavored Profile.
+"""Tests for BackendProfile — database-flavored Profile.
 
 Profile mechanism tests live in mountainash-settings. Here we only
-exercise the database-specific methods: to_driver_kwargs() and
-to_connection_string().
+exercise the database-specific methods: emit() and to_url_parts().
 """
 
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr
 
-from mountainash_data.core.settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from mountainash_data.core.settings.descriptor import (
     BackendSpec,
     ParameterSpec,
 )
-from mountainash_data.core.settings.profile import ConnectionProfile
+from mountainash_data.core.settings.profile import BackendProfile
 
 
 DUMMY_SPEC = BackendSpec(
@@ -23,75 +21,59 @@ DUMMY_SPEC = BackendSpec(
     provider_type="dummy",
     default_port=9999,
     connection_string_scheme="dummy://",
+    supported_auth=(NoAuthProfile, PasswordAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=9999, driver_key="port"),
         ParameterSpec(name="DATABASE", type=str, tier="core", default=None,
                       driver_key="database"),
     ],
-    auth_modes=[NoAuth, PasswordAuth],
 )
 
 
-class DummyProfile(ConnectionProfile):
+class DummyProfile(BackendProfile):
     __spec__ = DUMMY_SPEC
 
 
 @pytest.mark.unit
-class TestConnectionProfile:
-    def test_to_driver_kwargs_default(self):
-        p = DummyProfile(HOST="h", PORT=1234, DATABASE="db", auth=NoAuth())
-        kwargs = p.to_driver_kwargs()
+class TestBackendProfile:
+    def test_emit_default(self):
+        p = DummyProfile(HOST="h", PORT=1234, DATABASE="db")
+        kwargs = p.emit()
         assert kwargs["host"] == "h"
         assert kwargs["port"] == 1234
         assert kwargs["database"] == "db"
 
-    def test_to_driver_kwargs_password_unwrapped(self):
-        p = DummyProfile(
-            HOST="h", DATABASE="db",
-            auth=PasswordAuth(username="u", password=SecretStr("p")),
-        )
-        kwargs = p.to_driver_kwargs()
-        assert kwargs["user"] == "u"
-        assert kwargs["password"] == "p"
-
-    def test_to_driver_kwargs_adapter_owns_pipeline(self):
+    def test_emit_adapter_owns_pipeline(self):
         def _adapter(profile):
             return {"only": "thing"}
 
-        class Adapted(ConnectionProfile):
+        class Adapted(BackendProfile):
             __spec__ = DUMMY_SPEC
             __adapter__ = staticmethod(_adapter)
 
-        p = Adapted(HOST="h", auth=NoAuth())
-        assert p.to_driver_kwargs() == {"only": "thing"}
+        p = Adapted(HOST="h")
+        assert p.emit() == {"only": "thing"}
 
-    def test_to_connection_string_full(self):
-        p = DummyProfile(
-            HOST="h", DATABASE="db",
-            auth=PasswordAuth(username="u", password=SecretStr("p")),
-        )
-        url = p.to_connection_string()
-        assert url == "dummy://u:p@h:9999/db"
+    def test_to_url_parts_returns_skeleton(self):
+        p = DummyProfile(HOST="h", PORT=9999, DATABASE="db")
+        parts = p.to_url_parts()
+        assert parts.scheme == "dummy"
+        assert parts.host == "h"
+        assert parts.port == 9999
+        assert parts.database == "db"
 
-    def test_to_connection_string_url_encodes_secrets(self):
-        p = DummyProfile(
-            HOST="h", DATABASE="db",
-            auth=PasswordAuth(username="user@corp", password=SecretStr("p@ss:w/ord")),
-        )
-        url = p.to_connection_string()
-        assert "user%40corp" in url
-        assert "p%40ss%3Aw%2Ford" in url
-
-    def test_to_connection_string_no_scheme_raises(self):
+    def test_to_url_parts_no_scheme_raises(self):
         spec = BackendSpec(
-            name="x", provider_type="x", parameters=[], auth_modes=[NoAuth],
+            name="x", provider_type="x",
+            supported_auth=(NoAuthProfile,),
+            parameters=[],
             connection_string_scheme=None,
         )
 
-        class P(ConnectionProfile):
+        class P(BackendProfile):
             __spec__ = spec
 
-        p = P(auth=NoAuth())
+        p = P()
         with pytest.raises(NotImplementedError):
-            p.to_connection_string()
+            p.to_url_parts()

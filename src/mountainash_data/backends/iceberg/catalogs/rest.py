@@ -32,7 +32,7 @@ from pyiceberg.catalog import Catalog
 
 from mountainash_settings import SettingsParameters
 from mountainash_data.core.constants import CONST_DB_BACKEND
-from mountainash_data.core.settings import PyIcebergRestAuthSettings
+from mountainash_data.core.settings import PyIcebergRestBackendProfile
 from mountainash_data.backends.iceberg.connection import IcebergConnectionBase
 
 
@@ -62,7 +62,7 @@ class IcebergRestConnection(IcebergConnectionBase):
 
     @property
     def settings_class(self) -> t.Type[BaseSettings]:
-        return PyIcebergRestAuthSettings
+        return PyIcebergRestBackendProfile
 
     # ------------------------------------------------------------------
     # List tables (instance-method version; fixes the broken classmethod

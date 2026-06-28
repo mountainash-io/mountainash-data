@@ -10,9 +10,9 @@ from __future__ import annotations
 import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -22,7 +22,7 @@ MATERIALIZE_SPEC = BackendSpec(
     default_port=6875,
     connection_string_scheme="materialize://",
     ibis_dialect="materialize",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=6875,
@@ -40,5 +40,5 @@ MATERIALIZE_SPEC = BackendSpec(
 
 
 @register
-class MaterializeAuthSettings(ConnectionProfile):
+class MaterializeBackendProfile(BackendProfile):
     __spec__ = MATERIALIZE_SPEC

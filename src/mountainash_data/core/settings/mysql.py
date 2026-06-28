@@ -13,10 +13,9 @@ from enum import StrEnum
 from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import mysql as _adapter
-from mountainash_settings.auth import PasswordAuth
+from mountainash_auth_client import PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -34,7 +33,7 @@ MYSQL_SPEC = BackendSpec(
     default_port=3306,
     connection_string_scheme="mysql://",
     ibis_dialect="mysql",
-    auth_modes=[PasswordAuth],
+    supported_auth=(PasswordAuthProfile,),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=3306,
@@ -83,6 +82,5 @@ MYSQL_SPEC = BackendSpec(
 
 
 @register
-class MySQLAuthSettings(ConnectionProfile):
+class MySQLBackendProfile(BackendProfile):
     __spec__ = MYSQL_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

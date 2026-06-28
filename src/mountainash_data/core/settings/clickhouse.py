@@ -10,9 +10,9 @@ from __future__ import annotations
 import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -22,7 +22,7 @@ CLICKHOUSE_SPEC = BackendSpec(
     default_port=9000,
     connection_string_scheme="clickhouse://",
     ibis_dialect="clickhouse",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=9000,
@@ -45,5 +45,5 @@ CLICKHOUSE_SPEC = BackendSpec(
 
 
 @register
-class ClickHouseAuthSettings(ConnectionProfile):
+class ClickHouseBackendProfile(BackendProfile):
     __spec__ = CLICKHOUSE_SPEC

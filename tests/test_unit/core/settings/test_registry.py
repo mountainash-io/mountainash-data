@@ -28,8 +28,8 @@ class TestDatabasesRegistry:
 
     def test_get_settings_class_returns_correct_type(self):
         import mountainash_data.core.settings  # noqa: F401
-        from mountainash_data.core.settings.sqlite import SQLiteAuthSettings
-        assert get_settings_class("sqlite") is SQLiteAuthSettings
+        from mountainash_data.core.settings.sqlite import SQLiteBackendProfile
+        assert get_settings_class("sqlite") is SQLiteBackendProfile
 
     def test_legacy_REGISTRY_alias_still_works(self):
         import mountainash_data.core.settings  # noqa: F401
