@@ -1218,34 +1218,33 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 `tests/test_unit/backends/iceberg/test_iceberg_auth.py`:
 ```python
+from types import SimpleNamespace
 from unittest.mock import patch
 from mountainash_auth_client import TokenAuthProfile
 from mountainash_data.backends.iceberg.connection import IcebergConnectionBase  # confirm exact name
 
 
-def _stub_conn(settings_obj):
+def test_build_catalog_kwargs_threads_auth_and_merges():
+    obj_settings = object()
+    # plain stubs — no property/attribute conflict: get_settings returns obj_settings
+    params = SimpleNamespace(
+        settings_class=SimpleNamespace(get_settings=lambda settings_parameters: obj_settings)
+    )
     conn = IcebergConnectionBase.__new__(IcebergConnectionBase)
-    class _P:  # minimal db_auth_settings_parameters
-        settings_class = type(settings_obj)
-        @staticmethod
-        def _unused(): ...
-    conn.db_auth_settings_parameters = _P()
-    return conn, settings_obj
+    conn.db_auth_settings_parameters = params
 
+    auth = TokenAuthProfile(TOKEN="T")
+    with patch(
+        "mountainash_data.backends.iceberg.connection.build_driver_kwargs",
+        return_value={"uri": "http://x", "token": "T", "name": "c"},
+    ) as bk:
+        out = conn._build_catalog_kwargs(auth, warehouse="w")
 
-def test_build_catalog_kwargs_threads_auth():
-    settings_obj = object()
-    conn, _ = _stub_conn(settings_obj)
-    with patch.object(type(conn).db_auth_settings_parameters, "settings_class") as sc:
-        sc.get_settings.return_value = settings_obj
-        with patch("mountainash_data.backends.iceberg.connection.build_driver_kwargs") as bk:
-            bk.return_value = {"uri": "http://x", "token": "T", "name": "c"}
-            out = conn._build_catalog_kwargs(TokenAuthProfile(TOKEN="T"), warehouse="w")
-    bk.assert_called_once()
-    assert bk.call_args.args[1].TOKEN.get_secret_value() == "T"   # auth_profile threaded
-    assert out["warehouse"] == "w"                                # explicit kwargs win
+    bk.assert_called_once_with(obj_settings, auth)   # profile + auth_profile threaded
+    assert out["warehouse"] == "w"                   # explicit kwargs win
+    assert out["uri"] == "http://x"
 ```
-> Adjust the stub to the real `IcebergConnectionBase` constructor/attribute names discovered at implementation time; the load-bearing assertions (auth threaded; explicit kwargs merged) stay.
+> Confirm the real `IcebergConnectionBase` class/attribute names at implementation time (the `.db_auth_settings_parameters` + `.settings_class.get_settings(...)` shape is from the current `connect_default`); the load-bearing assertions (profile+auth threaded; explicit kwargs win) stay. `build_driver_kwargs` is patched at the name bound INSIDE `connection.py`, not at its definition site.
 
 - [ ] **Step 2: Run to verify it fails**
 
