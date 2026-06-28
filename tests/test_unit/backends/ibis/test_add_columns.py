@@ -8,6 +8,7 @@ from mountainash.core.dtypes.canonical import MountainashDtype
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
 from mountainash_data.backends.ibis.operations import (
     _coerce_dtype,
+    _generic_add_columns,
     _normalize_to_schema,
 )
 
@@ -55,3 +56,53 @@ class TestNormalizeToSchema:
     def test_frame_inference(self):
         sch = _normalize_to_schema(pl.DataFrame({"a": [1], "b": ["x"]}))
         assert set(sch.names) == {"a", "b"}
+
+
+class TestGenericAddColumns:
+    def test_adds_missing_column_from_frame_duckdb(self):
+        con = ibis.duckdb.connect()
+        con.create_table("t", pl.DataFrame({"id": [1], "name": ["a"]}))
+        _generic_add_columns(
+            con, "t", pl.DataFrame({"id": [1], "name": ["a"], "score": [1.5]})
+        )
+        assert "score" in con.table("t").schema().names
+
+    def test_idempotent_second_call_is_noop(self):
+        con = ibis.duckdb.connect()
+        con.create_table("t", pl.DataFrame({"id": [1]}))
+        _generic_add_columns(con, "t", {"x": "float64"})
+        _generic_add_columns(con, "t", {"x": "float64"})
+        assert list(con.table("t").schema().names).count("x") == 1
+
+    def test_null_typed_column_becomes_string(self):
+        con = ibis.duckdb.connect()
+        con.create_table("t", pl.DataFrame({"id": [1]}))
+        _generic_add_columns(
+            con, "t",
+            pl.DataFrame({"id": [1], "note": pl.Series([None], dtype=pl.Null)}),
+        )
+        assert str(con.table("t").schema()["note"]) == "string"
+
+    def test_quotes_identifiers_needing_quoting(self):
+        con = ibis.duckdb.connect()
+        con.create_table("t", pl.DataFrame({"id": [1]}))
+        _generic_add_columns(con, "t", {"new col": "float64"})
+        assert "new col" in con.table("t").schema().names
+
+    def test_works_on_sqlite(self):
+        con = ibis.sqlite.connect()
+        con.create_table("t", pl.DataFrame({"id": [1]}))
+        _generic_add_columns(con, "t", {"score": "float64"})
+        assert "score" in con.table("t").schema().names
+
+    def test_rejects_dotted_table_name(self):
+        con = ibis.duckdb.connect()
+        con.create_table("t", pl.DataFrame({"id": [1]}))
+        with pytest.raises(ValueError, match="simple"):
+            _generic_add_columns(con, "schema.t", {"x": "float64"})
+
+    def test_rejects_dotted_database(self):
+        con = ibis.duckdb.connect()
+        con.create_table("t", pl.DataFrame({"id": [1]}))
+        with pytest.raises(ValueError, match="simple"):
+            _generic_add_columns(con, "t", {"x": "float64"}, database="a.b")

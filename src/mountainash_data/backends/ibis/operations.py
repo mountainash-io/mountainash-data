@@ -14,6 +14,7 @@ import uuid
 
 import ibis
 import mountainash as ma
+from sqlglot import exp
 
 from mountainash_data.core.constants import (
     CONST_CONFLICT_ACTION,
@@ -114,6 +115,67 @@ def _normalize_to_schema(source: t.Any) -> ibis.Schema:
     if isinstance(source, t.Mapping):
         return ibis.schema({k: _coerce_dtype(v) for k, v in source.items()})
     return ibis.memtable(source).schema()
+
+
+def _validate_simple_identifier(value: str, *, kind: str) -> None:
+    """Reject dotted/multi-part names — only simple identifiers are supported.
+
+    A dotted ``table_name``/``database`` would otherwise be quoted as a single
+    literal identifier (``"a.b"``) rather than a namespace, silently violating
+    the documented contract. Fail loudly instead.
+    """
+    if value is not None and "." in value:
+        raise ValueError(
+            f"{kind} {value!r} must be a simple (non-dotted) identifier; "
+            f"multi-part qualified names are out of scope."
+        )
+
+
+def _generic_add_columns(
+    ibis_conn: t.Any,
+    table_name: str,
+    source: t.Any,
+    *,
+    database: str | None = None,
+) -> None:
+    """Add columns present in `source` but missing from `table_name`.
+
+    Additive and idempotent (single-process preflight: missing columns are
+    computed once, then one ALTER is issued per column — not concurrency-safe
+    and not atomic across columns on engines without transactional DDL).
+    Column types render through the connection's own compiler type-mapper
+    (identical to ``create_table``); a null-typed column coerces to the
+    dialect string type; identifiers are quoted per dialect. One ``ALTER
+    TABLE … ADD COLUMN`` is issued per new column (SQLite permits only one per
+    statement).
+
+    `table_name` and `database` must each be a simple (non-dotted) identifier;
+    each is quoted as a single part. Dotted/multi-part qualified names are out
+    of scope.
+    """
+    _validate_simple_identifier(table_name, kind="table_name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
+    candidate = _normalize_to_schema(source)
+    existing = set(ibis_conn.table(table_name, database=database).schema().names)
+    type_mapper = ibis_conn.compiler.type_mapper
+    dialect = ibis_conn.compiler.dialect
+
+    def _quote(identifier: str) -> str:
+        return exp.to_identifier(identifier, quoted=True).sql(dialect=dialect)
+
+    table_parts = [database, table_name] if database else [table_name]
+    qualified = ".".join(_quote(part) for part in table_parts)
+
+    for col_name, dtype in candidate.items():
+        if col_name in existing:
+            continue
+        if dtype.is_null():
+            dtype = ibis.dtype("string")
+        type_sql = type_mapper.to_string(dtype)
+        ibis_conn.raw_sql(
+            f"ALTER TABLE {qualified} ADD COLUMN {_quote(col_name)} {type_sql}"
+        )
 
 
 # ===========================================================================
