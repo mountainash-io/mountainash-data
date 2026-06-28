@@ -16,6 +16,13 @@ from mountainash_data.core.inspection import (
     NamespaceInfo,
     TableInfo,
 )
+from mountainash_data.core.factories.connection_factory import (
+    build_driver_kwargs,
+    apply_auth_adapter,
+    provider_for_dialect,
+    provider_for_scheme,
+)
+from mountainash_auth_client import PasswordAuthProfile
 
 
 class IbisConnection:
@@ -194,7 +201,9 @@ class IbisBackend:
         self.dialect = dialect_name
         self._spec: DialectSpec = DIALECTS[dialect_name]
         self._url: str | None = None
-        self._config = config
+        self._profile = None
+        self._dialect_config = config
+        self._config: dict[str, t.Any] | None = None
         self._conn: IbisConnection | None = None
 
     def _init_from_url(
@@ -218,7 +227,9 @@ class IbisBackend:
         self.dialect = resolved_dialect
         self._spec = DIALECTS[resolved_dialect]
         self._url = url
-        self._config = config
+        self._profile = None
+        self._url_config = config
+        self._config = None
         self._conn: IbisConnection | None = None
 
     def _init_from_settings(
@@ -239,13 +250,12 @@ class IbisBackend:
                 f"Unknown ibis dialect {resolved_dialect!r} from spec. "
                 f"Available: {sorted(DIALECTS)}"
             )
-        driver_kwargs = obj_settings.to_driver_kwargs()
-        driver_kwargs.update(config)
-
         self.dialect = resolved_dialect
         self._spec = DIALECTS[resolved_dialect]
         self._url = None
-        self._config = driver_kwargs
+        self._profile = obj_settings          # settings path
+        self._extra_config = config           # caller **config overrides
+        self._config = None
         self._conn: IbisConnection | None = None
 
     def _require_connected(self) -> IbisConnection:
@@ -255,25 +265,74 @@ class IbisBackend:
             )
         return self._conn
 
-    def connect(self) -> IbisBackend:
-        """Build a live ibis connection. Returns self for fluent chaining."""
+    def connect(self, auth_profile: t.Any = None) -> IbisBackend:
+        """Build a live ibis connection, optionally applying an auth profile.
+
+        auth_profile is L2 credential data (a *AuthProfile). It is composed onto
+        the backend config here (L3) — config is built at connect time, not init.
+        Returns self for fluent chaining.
+        """
         if self._conn is not None:
             return self
         if self._spec.connection_builder is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} has no connection_builder configured"
             )
-        if self._url is not None:
+        if self._profile is not None:                       # settings path
+            cfg = build_driver_kwargs(self._profile, auth_profile)
+            cfg.update(self._extra_config)
+            self._config = cfg
+            ibis_conn = self._connect_via_builder()
+        elif self._url is not None:                         # URL path
+            config, clean_url = self._resolve_url_auth(self._url, auth_profile)
+            config.update(self._url_config)                 # caller extras apply on top
+            self._config = config
             import ibis
-            ibis_conn = ibis.connect(self._url, **self._config)
-        else:
-            cleaned_config = {
-                k: v for k, v in self._config.items()
-                if not (isinstance(v, (list, tuple)) and len(v) == 0)
-            }
-            ibis_conn = self._spec.connection_builder(**cleaned_config)
+            ibis_conn = ibis.connect(clean_url, **self._config)
+        else:                                               # direct-dialect path
+            self._config = self._resolve_dialect_auth(auth_profile)
+            ibis_conn = self._connect_via_builder()
         self._conn = IbisConnection(ibis_conn, self._spec)
         return self
+
+    def _connect_via_builder(self) -> t.Any:
+        # preserves the prior empty-list/tuple filtering before connection_builder
+        cleaned_config = {
+            k: v for k, v in self._config.items()
+            if not (isinstance(v, (list, tuple)) and len(v) == 0)
+        }
+        return self._spec.connection_builder(**cleaned_config)
+
+    def _resolve_dialect_auth(self, auth_profile: t.Any) -> dict[str, t.Any]:
+        base = dict(self._dialect_config)
+        if auth_profile is None:
+            return base
+        provider = provider_for_dialect(self.dialect)
+        return apply_auth_adapter(provider, base, auth_profile)
+
+    def _resolve_url_auth(self, url: str, auth_profile: t.Any) -> tuple[dict[str, t.Any], str]:
+        from urllib.parse import urlsplit, urlunsplit, unquote
+        parts = urlsplit(url)
+        has_url_creds = bool(parts.username)
+        if has_url_creds and auth_profile is not None:
+            raise ValueError(
+                "both URL credentials and an explicit auth_profile given"
+            )
+        config: dict[str, t.Any] = {}
+        clean = url
+        if has_url_creds:
+            netloc = parts.hostname or ""
+            if parts.port:
+                netloc += f":{parts.port}"
+            clean = urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+            auth_profile = PasswordAuthProfile(
+                USERNAME=unquote(parts.username),
+                PASSWORD=unquote(parts.password) if parts.password else "",
+            )
+        if auth_profile is not None:
+            provider = provider_for_scheme(parts.scheme)
+            config = apply_auth_adapter(provider, config, auth_profile)
+        return config, clean
 
     def close(self) -> IbisBackend:
         """Release the connection. Idempotent. Returns self."""
