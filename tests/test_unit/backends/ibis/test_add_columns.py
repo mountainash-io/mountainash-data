@@ -1,10 +1,12 @@
 """Tests for dialect-agnostic add_columns (schema evolution)."""
 
+import dataclasses
 import ibis
 import polars as pl
 import pytest
 
 from mountainash.core.dtypes.canonical import MountainashDtype
+from mountainash_data import IbisBackend
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
 from mountainash_data.backends.ibis.operations import (
     _coerce_dtype,
@@ -106,3 +108,52 @@ class TestGenericAddColumns:
         con.create_table("t", pl.DataFrame({"id": [1]}))
         with pytest.raises(ValueError, match="simple"):
             _generic_add_columns(con, "t", {"x": "float64"}, database="a.b")
+
+
+class TestIbisBackendAddColumns:
+    def test_frame_form_returns_self_and_adds_column(self):
+        with IbisBackend(dialect="duckdb", database=":memory:") as be:
+            be.create_table("t", pl.DataFrame({"id": [1], "name": ["a"]}))
+            ret = be.add_columns(
+                "t", pl.DataFrame({"id": [1], "name": ["a"], "score": [1.5]})
+            )
+            assert ret is be
+            cols = {c.name for c in be.inspect_table("t").columns}
+            assert "score" in cols
+
+    def test_explicit_mountainash_dtype(self):
+        with IbisBackend(dialect="duckdb", database=":memory:") as be:
+            be.create_table("t", {"id": [1]})
+            be.add_columns("t", {"hrv": MountainashDtype.FP64})
+            cols = {c.name: c.type_name for c in be.inspect_table("t").columns}
+            assert cols["hrv"] == "float64"
+
+    def test_create_evolve_type_parity_sqlite(self):
+        """The core invariant: an evolved column types like a created one."""
+        with IbisBackend(dialect="sqlite", database=":memory:") as be:
+            be.create_table(
+                "fresh", pl.DataFrame({"cnt": pl.Series([3], dtype=pl.UInt8)})
+            )
+            be.create_table("evo", pl.DataFrame({"id": [1]}))
+            be.add_columns(
+                "evo",
+                pl.DataFrame({"id": [1], "cnt": pl.Series([3], dtype=pl.UInt8)}),
+            )
+            fresh = {c.name: c.type_name for c in be.inspect_table("fresh").columns}
+            evolved = {c.name: c.type_name for c in be.inspect_table("evo").columns}
+            assert evolved["cnt"] == fresh["cnt"]
+
+    def test_hook_override_wins_over_generic(self):
+        calls = []
+
+        def fake_hook(ibis_conn, name, source, *, database=None):
+            calls.append((name, source))
+
+        with IbisBackend(dialect="duckdb", database=":memory:") as be:
+            be.create_table("t", {"id": [1]})
+            be._spec = dataclasses.replace(be._spec, add_columns_hook=fake_hook)
+            be.add_columns("t", {"x": "float64"})
+            assert calls == [("t", {"x": "float64"})]
+            # generic path did NOT run -> column absent
+            cols = {c.name for c in be.inspect_table("t").columns}
+            assert "x" not in cols
