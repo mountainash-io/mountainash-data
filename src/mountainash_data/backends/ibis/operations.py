@@ -12,6 +12,7 @@ import contextlib
 import warnings
 import uuid
 
+import ibis
 import mountainash as ma
 
 from mountainash_data.core.constants import (
@@ -66,6 +67,53 @@ def _normalize_columns(
     if not columns:
         raise ValueError("At least one column must be specified")
     return list(columns)
+
+
+def _coerce_dtype(v: t.Any) -> ibis.DataType:
+    """Normalize a dtype spec to an ibis DataType.
+
+    Accepts an ibis DataType (passthrough), an ibis type string, or a
+    MountainashDtype (resolved via the canonical ibis bridge). Parametric
+    MountainashDtype members (LIST/STRUCT) carry no element type and raise.
+    """
+    if isinstance(v, ibis.DataType):
+        return v
+
+    mountainash_dtype = None
+    target_ibis = None
+    try:
+        from mountainash.core.dtypes.canonical import MountainashDtype as _MD
+        from mountainash.core.dtypes import target_ibis as _ti
+
+        mountainash_dtype, target_ibis = _MD, _ti
+    except ImportError:  # mountainash build without the canonical dtypes bridge
+        pass
+
+    if mountainash_dtype is not None and isinstance(v, mountainash_dtype):
+        # Gate parametric members explicitly via the canonical bridge's own
+        # CAST_UNSUPPORTED set (currently {LIST, STRUCT}) rather than relying
+        # on ibis.dtype() to reject a bare "array"/"struct" string.
+        if v in target_ibis.CAST_UNSUPPORTED:
+            raise ValueError(
+                f"MountainashDtype.{v.name} is a parametric type with no "
+                f"element types; pass an ibis DataType or use the frame form "
+                f"for nested columns."
+            )
+        return ibis.dtype(target_ibis.SCHEMA_TYPES[v])
+
+    return ibis.dtype(v)
+
+
+def _normalize_to_schema(source: t.Any) -> ibis.Schema:
+    """Resolve `source` to a candidate ibis Schema.
+
+    A Mapping of ``{name: dtype}`` is coerced per-value; any other object is
+    treated as a frame and run through Ibis's native inference (identical to
+    what ``create_table`` applies).
+    """
+    if isinstance(source, t.Mapping):
+        return ibis.schema({k: _coerce_dtype(v) for k, v in source.items()})
+    return ibis.memtable(source).schema()
 
 
 # ===========================================================================
