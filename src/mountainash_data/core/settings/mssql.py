@@ -11,6 +11,7 @@ from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import AzureADAuthProfile, PasswordAuthProfile, WindowsAuthProfile
+from .adapters import mssql as _mssql
 from .descriptor import BackendSpec, ParameterSpec
 from .profile import BackendProfile
 from .registry import register
@@ -108,3 +109,4 @@ MSSQL_SPEC = BackendSpec(
 @register
 class MSSQLBackendProfile(BackendProfile):
     __spec__ = MSSQL_SPEC
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.MSSQL: _mssql.host_fold}

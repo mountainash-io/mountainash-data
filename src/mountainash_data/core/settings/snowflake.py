@@ -11,6 +11,7 @@ from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import CertificateAuthProfile, OAuth2AuthProfile, PasswordAuthProfile, TokenAuthProfile
+from .adapters import snowflake as _snow
 from .descriptor import BackendSpec, ParameterSpec
 from .profile import BackendProfile
 from .registry import register
@@ -69,3 +70,4 @@ SNOWFLAKE_SPEC = BackendSpec(
 @register
 class SnowflakeBackendProfile(BackendProfile):
     __spec__ = SNOWFLAKE_SPEC
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.SNOWFLAKE: _snow.session_params}

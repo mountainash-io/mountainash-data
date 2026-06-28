@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import PasswordAuthProfile
+from .adapters import mysql as _mysql
 from .descriptor import BackendSpec, ParameterSpec
 from .profile import BackendProfile
 from .registry import register
@@ -84,3 +85,4 @@ MYSQL_SPEC = BackendSpec(
 @register
 class MySQLBackendProfile(BackendProfile):
     __spec__ = MYSQL_SPEC
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.MYSQL: _mysql.ssl_compose}
