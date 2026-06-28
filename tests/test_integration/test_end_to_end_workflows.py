@@ -2,8 +2,9 @@
 
 import pytest
 import polars as pl
+from mountainash_auth_client import NoAuthProfile
 from mountainash_data.backends.ibis.backend import IbisBackend
-from mountainash_data.core.settings import DuckDBAuthSettings
+from mountainash_data.core.settings import DuckDBBackendProfile
 from mountainash_settings import SettingsParameters
 
 
@@ -29,11 +30,9 @@ class TestIbisBackendWorkflow:
 
     def test_duckdb_settings_workflow(self):
         """Full workflow from SettingsParameters."""
-        from mountainash_data.core.settings import NoAuth
         params = SettingsParameters.create(
-            settings_class=DuckDBAuthSettings,
+            settings_class=DuckDBBackendProfile,
             DATABASE=":memory:",
-            auth=NoAuth(),
         )
         with IbisBackend(params) as backend:
             backend.create_table("t", {"id": [1, 2]})

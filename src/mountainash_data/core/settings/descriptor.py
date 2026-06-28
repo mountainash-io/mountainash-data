@@ -31,12 +31,18 @@ class BackendSpec(ProfileSpec):
         ibis_dialect: Name of the Ibis backend if Ibis handles this backend.
         rides_on: Name of another backend whose Ibis path this one routes
             through (e.g. ``motherduck`` -> ``duckdb``). Metadata only.
+        supported_auth: Tuple of AuthProfile types this backend accepts.
     """
 
     default_port: int | None = None
     connection_string_scheme: str | None = None
     ibis_dialect: str | None = None
     rides_on: str | None = None
+    supported_auth: tuple[type, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.supported_auth:
+            raise ValueError(f"{self.name}: supported_auth must be non-empty")
 
 
 _DEPRECATED = {

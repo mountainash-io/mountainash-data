@@ -2,21 +2,15 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr
 
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
-from mountainash_data.core.settings.auth import NoAuth, PasswordAuth
-from mountainash_data.core.settings.clickhouse import ClickHouseAuthSettings
+from mountainash_data.core.settings.clickhouse import ClickHouseBackendProfile
 
 
 @pytest.mark.unit
-class TestClickHouseAuthSettings:
+class TestClickHouseBackendProfile:
     def _minimal(self, **extra):
-        return ClickHouseAuthSettings(
-            HOST="ch.example.com",
-            auth=PasswordAuth(username="demo", password=SecretStr("s3cret")),
-            **extra,
-        )
+        return ClickHouseBackendProfile(HOST="ch.example.com", **extra)
 
     def test_provider_type_is_clickhouse(self):
         s = self._minimal()
@@ -38,19 +32,17 @@ class TestClickHouseAuthSettings:
         s = self._minimal(SECURE=True)
         assert s.SECURE is True
 
-    def test_no_auth(self):
-        s = ClickHouseAuthSettings(HOST="ch.example.com", auth=NoAuth())
+    def test_minimal_construction(self):
+        s = ClickHouseBackendProfile(HOST="ch.example.com")
         assert s.HOST == "ch.example.com"
 
-    def test_to_driver_kwargs_plumbs_core_fields(self):
+    def test_emit_plumbs_core_fields(self):
         s = self._minimal(PORT=443, DATABASE="pypi", SECURE=True)
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["host"] == "ch.example.com"
         assert kwargs["port"] == 443
         assert kwargs["database"] == "pypi"
         assert kwargs["secure"] is True
-        assert kwargs["user"] == "demo"
-        assert kwargs["password"] == "s3cret"
 
     def test_ibis_dialect(self):
         s = self._minimal()

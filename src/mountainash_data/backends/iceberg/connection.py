@@ -35,6 +35,7 @@ from mountainash_data.core.inspection import (
     TableInfo,
 )
 
+from mountainash_data.core.factories.connection_factory import build_driver_kwargs
 from mountainash_dataframes import DataFrameUtils, SupportedDataFrames
 from mountainash_dataframes.constants import CONST_DATAFRAME_FRAMEWORK
 from mountainash_settings import SettingsParameters
@@ -92,26 +93,46 @@ class IcebergConnectionBase(BaseDBConnection):
         self,
         connection_string: t.Optional[str] = None,
         connection_kwargs: t.Optional[t.Dict[str, t.Any]] = None,
+        *,
+        auth_profile: t.Any = None,
         **kwargs: t.Any,
     ) -> Catalog:
         """Ensure a catalog connection is open, returning the backend handle.
 
-        If already connected, this is a no-op (idempotent).
+        Idempotent. ``auth_profile`` is L2 credential data (a *AuthProfile)
+        composed onto the catalog config at connect time. Precedence:
+        profile-derived config < explicit ``connection_kwargs``/``kwargs``.
         """
         if self.catalog_backend is None:
-            self.connect_default(**kwargs)
+            self.connect_default(
+                auth_profile=auth_profile, **(connection_kwargs or {}), **kwargs
+            )
         return self.catalog_backend
 
-    def connect_default(self, **kwargs: t.Any) -> Catalog:
-        """Connect using credentials from the configured settings class."""
+    def connect_default(self, *, auth_profile: t.Any = None, **kwargs: t.Any) -> Catalog:
+        """Connect using settings credentials plus an optional auth profile.
+
+        Precedence: profile-derived config < explicit ``kwargs``.
+        """
         if self.catalog_backend is None:
-            settings_class = self.db_auth_settings_parameters.settings_class
-            if settings_class is None:
-                raise ValueError("Settings class is required for the database connection")
-            obj_settings = settings_class.get_settings(settings_parameters=self.db_auth_settings_parameters)
-            connection_kwargs = obj_settings.to_driver_kwargs()
+            connection_kwargs = self._build_catalog_kwargs(auth_profile, **kwargs)
             self._catalog_backend: RestCatalog = RestCatalog(**connection_kwargs)
         return self.catalog_backend
+
+    def _build_catalog_kwargs(self, auth_profile: t.Any = None, **kwargs: t.Any) -> dict:
+        """Build RestCatalog kwargs from settings + auth (no pyiceberg use here).
+
+        Explicit ``kwargs`` override profile-derived config.
+        """
+        settings_class = self.db_auth_settings_parameters.settings_class
+        if settings_class is None:
+            raise ValueError("Settings class is required for the database connection")
+        obj_settings = settings_class.get_settings(
+            settings_parameters=self.db_auth_settings_parameters
+        )
+        connection_kwargs = build_driver_kwargs(obj_settings, auth_profile)
+        connection_kwargs.update(kwargs)
+        return connection_kwargs
 
     def _connect(
         self,

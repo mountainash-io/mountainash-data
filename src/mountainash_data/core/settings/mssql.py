@@ -10,10 +10,10 @@ import typing as t
 from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import mssql as _adapter
-from mountainash_settings.auth import AzureADAuth, PasswordAuth, WindowsAuth
+from mountainash_auth_client import AzureADAuthProfile, PasswordAuthProfile, WindowsAuthProfile
+from .adapters import mssql as _mssql
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -35,7 +35,7 @@ MSSQL_SPEC = BackendSpec(
     default_port=1433,
     connection_string_scheme="mssql://",
     ibis_dialect="mssql",
-    auth_modes=[PasswordAuth, WindowsAuth, AzureADAuth],
+    supported_auth=(PasswordAuthProfile, WindowsAuthProfile, AzureADAuthProfile),
     parameters=[
         ParameterSpec(
             name="HOST",
@@ -107,6 +107,6 @@ MSSQL_SPEC = BackendSpec(
 
 
 @register
-class MSSQLAuthSettings(ConnectionProfile):
+class MSSQLBackendProfile(BackendProfile):
     __spec__ = MSSQL_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.MSSQL: _mssql.host_fold}

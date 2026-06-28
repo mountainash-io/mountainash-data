@@ -2,21 +2,15 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr
 
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE
-from mountainash_data.core.settings.auth import NoAuth, PasswordAuth
-from mountainash_data.core.settings.materialize import MaterializeAuthSettings
+from mountainash_data.core.settings.materialize import MaterializeBackendProfile
 
 
 @pytest.mark.unit
-class TestMaterializeAuthSettings:
+class TestMaterializeBackendProfile:
     def _minimal(self, **extra):
-        return MaterializeAuthSettings(
-            HOST="materialize.example.com",
-            auth=PasswordAuth(username="mz", password=SecretStr("s3cret")),
-            **extra,
-        )
+        return MaterializeBackendProfile(HOST="materialize.example.com", **extra)
 
     def test_provider_type(self):
         assert self._minimal().provider_type == CONST_DB_PROVIDER_TYPE.MATERIALIZE
@@ -29,20 +23,18 @@ class TestMaterializeAuthSettings:
 
     def test_cluster_param(self):
         s = self._minimal(CLUSTER="quickstart")
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["cluster"] == "quickstart"
 
-    def test_to_driver_kwargs(self):
-        kwargs = self._minimal(DATABASE="mydb", SCHEMA="public").to_driver_kwargs()
+    def test_emit(self):
+        kwargs = self._minimal(DATABASE="mydb", SCHEMA="public").emit()
         assert kwargs["host"] == "materialize.example.com"
         assert kwargs["port"] == 6875
         assert kwargs["database"] == "mydb"
         assert kwargs["schema"] == "public"
-        assert kwargs["user"] == "mz"
-        assert kwargs["password"] == "s3cret"
 
-    def test_no_auth(self):
-        s = MaterializeAuthSettings(HOST="mz.local", auth=NoAuth())
+    def test_minimal_construction(self):
+        s = MaterializeBackendProfile(HOST="mz.local")
         assert s.HOST == "mz.local"
 
     def test_ibis_dialect(self):

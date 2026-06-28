@@ -20,7 +20,8 @@ dependencies = [
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
     "mountainash_transport @  {root:uri}/../mountainash-transport",
-    "mountainash_utils_ssh @    {root:uri}/../mountainash-utils-ssh",
+    "mountainash_secrets @  {root:uri}/../mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 
 ]
 
@@ -35,7 +36,8 @@ dependencies = [
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
-    "mountainash_utils_ssh @    {root:uri}/temp/mountainash-utils-ssh",
+    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 
 ]
 [envs.build_github.scripts]
@@ -83,7 +85,8 @@ dependencies = [
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
-    "mountainash_utils_ssh @    {root:uri}/temp/mountainash-utils-ssh",
+    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 
 
 ]
@@ -121,7 +124,8 @@ dependencies = [
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
     "mountainash_transport @  {root:uri}/../mountainash-transport",
-    "mountainash_utils_ssh @    {root:uri}/../mountainash-utils-ssh",
+    "mountainash_secrets @  {root:uri}/../mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 
 
 ]
@@ -287,6 +291,16 @@ radon-cc-detail = "radon cc ./src"
 # Mypy Type checks
 [envs.mypy]
 installer = "uv"
-dependencies = ["mypy==1.10.1"]
+dependencies = [
+    "mypy==1.10.1",
+    "pytest==8.3.5",
+    "pytest-mock==3.12.0",
+    "pytest-check==2.5.3",
+    "mountainash_settings @     {root:uri}/../mountainash-settings",
+    "mountainash @              {root:uri}/../mountainash",
+    "mountainash_transport @  {root:uri}/../mountainash-transport",
+    "mountainash_secrets @  {root:uri}/../mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
+]
 [envs.mypy.scripts]
 check = "mypy --install-types --non-interactive {args:src/mountainash_data tests}"

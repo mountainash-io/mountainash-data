@@ -11,10 +11,9 @@ import typing as t
 from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import trino as _adapter
-from mountainash_settings.auth import JWTAuth, KerberosAuth, NoAuth, PasswordAuth
+from mountainash_auth_client import JWTAuthProfile, KerberosAuthProfile, NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -24,7 +23,7 @@ TRINO_SPEC = BackendSpec(
     default_port=8080,
     connection_string_scheme="trino://",
     ibis_dialect="trino",
-    auth_modes=[PasswordAuth, JWTAuth, KerberosAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, JWTAuthProfile, KerberosAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=8080,
@@ -76,6 +75,5 @@ TRINO_SPEC = BackendSpec(
 
 
 @register
-class TrinoAuthSettings(ConnectionProfile):
+class TrinoBackendProfile(BackendProfile):
     __spec__ = TRINO_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

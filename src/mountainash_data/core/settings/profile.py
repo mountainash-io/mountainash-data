@@ -1,81 +1,45 @@
-"""ConnectionProfile — database-flavored subclass of Profile.
+"""BackendProfile — database-flavored subclass of Profile.
 
-Adds ``to_driver_kwargs()`` and ``to_connection_string()`` on top of the
-generic mechanism provided by
-:class:`mountainash_settings.profiles.Profile`.
+Pure L1 config emitter. Auth is orthogonal — applied by ConnectionFactory,
+never here.
 """
 
 from __future__ import annotations
 
-import typing as t
-from urllib.parse import quote
+from dataclasses import dataclass, field
 
 from mountainash_settings import lookup_class_var
 from mountainash_settings.profiles import Profile
 
-__all__ = ["ConnectionProfile"]
+__all__ = ["BackendProfile", "UrlParts"]
 
 
-class ConnectionProfile(Profile):
-    """Database connection settings.
+@dataclass(frozen=True)
+class UrlParts:
+    """Credential-free URL skeleton (L1). Every authority component optional."""
+    scheme: str
+    database: str | None = None
+    host: str | None = None
+    port: int | None = None
+    path: str | None = None
+    query: dict[str, str] = field(default_factory=dict)
 
-    Public API:
-        - :meth:`to_driver_kwargs` — dict ready for the Ibis driver.
-        - :meth:`to_connection_string` — URL form, or ``NotImplementedError``
-          if the descriptor has no ``connection_string_scheme`` metadata.
 
-    Subclasses set ``__spec__`` (a :class:`BackendSpec`) and
-    optionally ``__adapter__``. Field installation, auth union, and template
-    wiring are inherited from :class:`Profile`.
+class BackendProfile(Profile):
+    """Database backend CONFIG. Pure L1 emitter — no auth methods.
+
+    Auth is orthogonal, applied by ConnectionFactory, never here.
     """
 
-    def to_driver_kwargs(self) -> dict[str, t.Any]:
-        """Build the final driver kwargs dict.
-
-        If ``__adapter__`` is set, it owns the full pipeline — typically it
-        calls :meth:`_default_kwargs` and :meth:`_auth_kwargs` and layers
-        composite mappings on top. Otherwise defaults to descriptor
-        ``driver_key`` mappings + default auth dispatch.
-        """
-        adapter = lookup_class_var(type(self), "__adapter__")
-        if adapter is not None:
-            return adapter(self)
-        kwargs = self._default_kwargs()
-        kwargs.update(self._auth_kwargs())
-        return kwargs
-
-    def to_connection_string(self) -> str:
-        """Build ``scheme://user:pass@host:port/database`` from the descriptor.
-
-        Reads the scheme from ``descriptor.metadata['connection_string_scheme']``
-        (or a typed ``connection_string_scheme`` attribute if the descriptor
-        subclass provides one). Raises :class:`NotImplementedError` if absent.
-        """
+    def to_url_parts(self) -> UrlParts:
         desc = lookup_class_var(type(self), "__spec__")
         scheme = getattr(desc, "connection_string_scheme", None)
         if scheme is None:
-            scheme = desc.metadata.get("connection_string_scheme")
-        if scheme is None:
-            raise NotImplementedError(
-                f"Profile {self.backend!r} has no connection string scheme"
-            )
-        host = getattr(self, "HOST", None)
-        port = getattr(self, "PORT", None)
-        database = getattr(self, "DATABASE", None)
-        url = scheme
-        auth = getattr(self, "auth", None)
-        if auth is not None:
-            username = getattr(auth, "username", None)
-            if username:
-                url += quote(str(username), safe="")
-                pw = getattr(auth, "password", None)
-                if pw is not None:
-                    url += ":" + quote(pw.get_secret_value(), safe="")
-                url += "@"
-        if host is not None:
-            url += str(host)
-        if port is not None:
-            url += f":{port}"
-        if database is not None:
-            url += f"/{database}"
-        return url
+            raise NotImplementedError(f"Profile {self.backend!r} has no URL form")
+        scheme = scheme.removesuffix("://").removesuffix(":")
+        return UrlParts(
+            scheme=scheme,
+            host=getattr(self, "HOST", None),
+            port=getattr(self, "PORT", None),
+            database=getattr(self, "DATABASE", None),
+        )

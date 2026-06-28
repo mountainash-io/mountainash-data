@@ -10,9 +10,9 @@ Core parameters are host, port, and path for the Druid broker endpoint.
 from __future__ import annotations
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -22,7 +22,7 @@ DRUID_SPEC = BackendSpec(
     default_port=8082,
     connection_string_scheme="druid://",
     ibis_dialect="druid",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=8082,
@@ -36,5 +36,5 @@ DRUID_SPEC = BackendSpec(
 
 
 @register
-class DruidAuthSettings(ConnectionProfile):
+class DruidBackendProfile(BackendProfile):
     __spec__ = DRUID_SPEC

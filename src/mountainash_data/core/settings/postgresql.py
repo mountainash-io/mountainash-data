@@ -15,9 +15,9 @@ from pathlib import Path
 from pydantic import SecretStr
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -69,7 +69,7 @@ POSTGRESQL_SPEC = BackendSpec(
     default_port=5432,
     connection_string_scheme="postgresql://",
     ibis_dialect="postgres",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="HOSTADDR", type=t.Optional[str], tier="advanced",
@@ -157,5 +157,5 @@ POSTGRESQL_SPEC = BackendSpec(
 
 
 @register
-class PostgreSQLAuthSettings(ConnectionProfile):
+class PostgreSQLBackendProfile(BackendProfile):
     __spec__ = POSTGRESQL_SPEC

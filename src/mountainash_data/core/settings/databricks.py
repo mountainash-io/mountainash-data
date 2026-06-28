@@ -10,10 +10,9 @@ from __future__ import annotations
 import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import databricks as _adapter
-from mountainash_settings.auth import NoAuth, PasswordAuth, TokenAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile, TokenAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -21,7 +20,7 @@ DATABRICKS_SPEC = BackendSpec(
     name="databricks",
     provider_type=CONST_DB_PROVIDER_TYPE.DATABRICKS,
     ibis_dialect="databricks",
-    auth_modes=[TokenAuth, PasswordAuth, NoAuth],
+    supported_auth=(TokenAuthProfile, PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="SERVER_HOSTNAME", type=str, tier="core",
                       driver_key="server_hostname"),
@@ -38,6 +37,5 @@ DATABRICKS_SPEC = BackendSpec(
 
 
 @register
-class DatabricksAuthSettings(ConnectionProfile):
+class DatabricksBackendProfile(BackendProfile):
     __spec__ = DATABRICKS_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

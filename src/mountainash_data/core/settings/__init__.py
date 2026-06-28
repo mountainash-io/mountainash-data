@@ -1,14 +1,10 @@
-"""Backend settings — declarative spec + registry.
-
-The *AuthSettings classes below are stable import anchors; internally each
-class body is a two-line shell (``__spec__`` + ``__adapter__``).
-"""
+"""Backend settings — declarative spec + registry."""
 
 from __future__ import annotations
 
 # Core primitives
 from .descriptor import MISSING, Missing, BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile, UrlParts
 from .registry import (
     DATABASES_REGISTRY,
     REGISTRY,
@@ -18,42 +14,34 @@ from .registry import (
 )
 
 # Auth union members
-from mountainash_settings.auth import (
-    AuthSpec,
-    AzureADAuth,
-    CertificateAuth,
-    IAMAuth,
-    JWTAuth,
-    KerberosAuth,
-    NoAuth,
-    OAuth2Auth,
-    PasswordAuth,
-    ServiceAccountAuth,
-    TokenAuth,
-    WindowsAuth,
+from mountainash_auth_client import (
+    AuthProfile, NoAuthProfile, PasswordAuthProfile, TokenAuthProfile,
+    JWTAuthProfile, OAuth2AuthProfile, IAMAuthProfile, WindowsAuthProfile,
+    AzureADAuthProfile, KerberosAuthProfile, CertificateAuthProfile,
+    ServiceAccountAuthProfile,
 )
 
-# Per-backend settings classes (these import-register themselves).
-from .sqlite import SQLiteAuthSettings
-from .duckdb import DuckDBAuthSettings
-from .motherduck import MotherDuckAuthSettings
-from .postgresql import PostgreSQLAuthSettings
-from .clickhouse import ClickHouseAuthSettings
-from .databricks import DatabricksAuthSettings
-from .mysql import MySQLAuthSettings
-from .singlestoredb import SingleStoreDBAuthSettings
-from .mssql import MSSQLAuthSettings
-from .snowflake import SnowflakeAuthSettings
-from .bigquery import BigQueryAuthSettings
-from .redshift import RedshiftAuthSettings
-from .pyspark import PySparkAuthSettings
-from .trino import TrinoAuthSettings
-from .exasol import ExasolAuthSettings
-from .impala import ImpalaAuthSettings
-from .materialize import MaterializeAuthSettings
-from .risingwave import RisingWaveAuthSettings
-from .druid import DruidAuthSettings
-from .pyiceberg_rest import PyIcebergRestAuthSettings
+# Per-backend profile classes (these import-register themselves).
+from .sqlite import SQLiteBackendProfile
+from .duckdb import DuckDBBackendProfile
+from .motherduck import MotherDuckBackendProfile
+from .postgresql import PostgreSQLBackendProfile
+from .clickhouse import ClickHouseBackendProfile
+from .databricks import DatabricksBackendProfile
+from .mysql import MySQLBackendProfile
+from .singlestoredb import SingleStoreDBBackendProfile
+from .mssql import MSSQLBackendProfile
+from .snowflake import SnowflakeBackendProfile
+from .bigquery import BigQueryBackendProfile
+from .redshift import RedshiftBackendProfile
+from .pyspark import PySparkBackendProfile
+from .trino import TrinoBackendProfile
+from .exasol import ExasolBackendProfile
+from .impala import ImpalaBackendProfile
+from .materialize import MaterializeBackendProfile
+from .risingwave import RisingWaveBackendProfile
+from .druid import DruidBackendProfile
+from .pyiceberg_rest import PyIcebergRestBackendProfile
 
 import warnings as _warnings
 
@@ -78,21 +66,22 @@ def __getattr__(name: str):
 
 __all__ = [
     # primitives
-    "MISSING", "Missing", "BackendSpec", "ParameterSpec", "ConnectionProfile",
+    "MISSING", "Missing", "BackendSpec", "ParameterSpec", "BackendProfile", "UrlParts",
     "DATABASES_REGISTRY", "REGISTRY",
     "get_descriptor", "get_settings_class", "register",
     # auth
-    "AuthSpec", "NoAuth", "PasswordAuth", "TokenAuth", "JWTAuth",
-    "OAuth2Auth", "ServiceAccountAuth", "IAMAuth", "WindowsAuth",
-    "AzureADAuth", "KerberosAuth", "CertificateAuth",
+    "AuthProfile", "NoAuthProfile", "PasswordAuthProfile", "TokenAuthProfile",
+    "JWTAuthProfile", "OAuth2AuthProfile", "IAMAuthProfile", "WindowsAuthProfile",
+    "AzureADAuthProfile", "KerberosAuthProfile", "CertificateAuthProfile",
+    "ServiceAccountAuthProfile",
     # backends
-    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
-    "PostgreSQLAuthSettings", "ClickHouseAuthSettings",
-    "DatabricksAuthSettings", "MySQLAuthSettings", "SingleStoreDBAuthSettings",
-    "MSSQLAuthSettings",
-    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
-    "PySparkAuthSettings", "TrinoAuthSettings",
-    "ExasolAuthSettings", "ImpalaAuthSettings", "MaterializeAuthSettings",
-    "RisingWaveAuthSettings", "DruidAuthSettings",
-    "PyIcebergRestAuthSettings",
+    "SQLiteBackendProfile", "DuckDBBackendProfile", "MotherDuckBackendProfile",
+    "PostgreSQLBackendProfile", "ClickHouseBackendProfile",
+    "DatabricksBackendProfile", "MySQLBackendProfile", "SingleStoreDBBackendProfile",
+    "MSSQLBackendProfile",
+    "SnowflakeBackendProfile", "BigQueryBackendProfile", "RedshiftBackendProfile",
+    "PySparkBackendProfile", "TrinoBackendProfile",
+    "ExasolBackendProfile", "ImpalaBackendProfile", "MaterializeBackendProfile",
+    "RisingWaveBackendProfile", "DruidBackendProfile",
+    "PyIcebergRestBackendProfile",
 ]

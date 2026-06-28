@@ -13,7 +13,7 @@ from collections.abc import Mapping
 from mountainash_settings.profiles import Registry
 
 from .descriptor import BackendSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 
 __all__ = [
     "DATABASES_REGISTRY",
@@ -28,7 +28,7 @@ __all__ = [
 DATABASES_REGISTRY = Registry(
     "databases",
     spec_type=BackendSpec,
-    profile_type=ConnectionProfile,
+    profile_type=BackendProfile,
 )
 
 register = DATABASES_REGISTRY.decorator()
@@ -38,7 +38,7 @@ def get_descriptor(name: str) -> BackendSpec:
     return DATABASES_REGISTRY.get_descriptor(name)
 
 
-def get_settings_class(name: str) -> type["ConnectionProfile"]:
+def get_settings_class(name: str) -> type["BackendProfile"]:
     return DATABASES_REGISTRY.get_settings_class(name)  # type: ignore[return-value]
 
 

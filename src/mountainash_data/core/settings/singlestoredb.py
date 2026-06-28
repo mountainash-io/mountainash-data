@@ -11,9 +11,9 @@ import typing as t
 from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -29,7 +29,7 @@ SINGLESTOREDB_SPEC = BackendSpec(
     default_port=3306,
     connection_string_scheme="singlestoredb://",
     ibis_dialect="singlestoredb",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=3306,
@@ -47,5 +47,5 @@ SINGLESTOREDB_SPEC = BackendSpec(
 
 
 @register
-class SingleStoreDBAuthSettings(ConnectionProfile):
+class SingleStoreDBBackendProfile(BackendProfile):
     __spec__ = SINGLESTOREDB_SPEC

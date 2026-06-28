@@ -14,13 +14,12 @@ import typing as t
 from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import pyspark as _adapter
-from mountainash_settings.auth import NoAuth
+from mountainash_auth_client import NoAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
-__all__ = ["PySparkAuthSettings", "PySparkMode", "PYSPARK_SPEC"]
+__all__ = ["PySparkBackendProfile", "PySparkMode", "PYSPARK_SPEC"]
 
 
 class PySparkMode(StrEnum):
@@ -33,25 +32,24 @@ PYSPARK_SPEC = BackendSpec(
     provider_type=CONST_DB_PROVIDER_TYPE.PYSPARK,
     connection_string_scheme=None,  # SparkSession, not URL
     ibis_dialect="pyspark",
-    auth_modes=[NoAuth],
+    supported_auth=(NoAuthProfile,),
     parameters=[
         ParameterSpec(name="SESSION", type=t.Optional[t.Any], tier="core",
-                      default=None),
+                      default=None, driver_key="session"),
         ParameterSpec(name="MODE", type=PySparkMode, tier="core",
-                      default=PySparkMode.BATCH),
+                      default=PySparkMode.BATCH, driver_key="mode"),
         ParameterSpec(name="SPARK_MASTER", type=t.Optional[str], tier="advanced",
-                      default=None),
+                      default=None, driver_key="spark.master"),
         ParameterSpec(name="APPLICATION_NAME", type=t.Optional[str], tier="advanced",
-                      default=None),
+                      default=None, driver_key="spark.app.name"),
         ParameterSpec(name="WAREHOUSE_DIR", type=t.Optional[str], tier="advanced",
-                      default=None),
+                      default=None, driver_key="spark.sql.warehouse.dir"),
         ParameterSpec(name="PARTITIONS", type=t.Optional[int], tier="advanced",
-                      default=None),
+                      default=None, driver_key="spark.sql.shuffle.partitions"),
     ],
 )
 
 
 @register
-class PySparkAuthSettings(ConnectionProfile):
+class PySparkBackendProfile(BackendProfile):
     __spec__ = PYSPARK_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)

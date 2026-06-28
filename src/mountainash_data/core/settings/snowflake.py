@@ -10,10 +10,10 @@ import typing as t
 from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import snowflake as _adapter
-from mountainash_settings.auth import CertificateAuth, OAuth2Auth, PasswordAuth, TokenAuth
+from mountainash_auth_client import CertificateAuthProfile, OAuth2AuthProfile, PasswordAuthProfile, TokenAuthProfile
+from .adapters import snowflake as _snow
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -30,7 +30,7 @@ SNOWFLAKE_SPEC = BackendSpec(
     provider_type=CONST_DB_PROVIDER_TYPE.SNOWFLAKE,
     connection_string_scheme="snowflake://",
     ibis_dialect="snowflake",
-    auth_modes=[PasswordAuth, OAuth2Auth, CertificateAuth, TokenAuth],
+    supported_auth=(PasswordAuthProfile, OAuth2AuthProfile, CertificateAuthProfile, TokenAuthProfile),
     parameters=[
         ParameterSpec(name="ACCOUNT", type=str, tier="core",
                       driver_key="account"),
@@ -44,7 +44,8 @@ SNOWFLAKE_SPEC = BackendSpec(
                       default=None, driver_key="role"),
         ParameterSpec(name="AUTHENTICATOR",
                       type=t.Optional[SnowflakeAuthenticator], tier="core",
-                      default=None),
+                      default=None, driver_key="authenticator",
+                      transform=lambda p: str(p)),
         ParameterSpec(name="CONNECTION_NAME", type=t.Optional[str],
                       tier="core", default=None, driver_key="connection_name"),
         ParameterSpec(name="TIMEZONE", type=t.Optional[str], tier="advanced",
@@ -68,6 +69,6 @@ SNOWFLAKE_SPEC = BackendSpec(
 
 
 @register
-class SnowflakeAuthSettings(ConnectionProfile):
+class SnowflakeBackendProfile(BackendProfile):
     __spec__ = SNOWFLAKE_SPEC
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.SNOWFLAKE: _snow.session_params}

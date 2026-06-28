@@ -10,12 +10,12 @@ from __future__ import annotations
 import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth
+from mountainash_auth_client import NoAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
-__all__ = ["SQLiteAuthSettings", "SQLITE_SPEC"]
+__all__ = ["SQLiteBackendProfile", "SQLITE_SPEC"]
 
 
 SQLITE_SPEC = BackendSpec(
@@ -23,7 +23,7 @@ SQLITE_SPEC = BackendSpec(
     provider_type=CONST_DB_PROVIDER_TYPE.SQLITE,
     connection_string_scheme="sqlite://",
     ibis_dialect="sqlite",
-    auth_modes=[NoAuth],
+    supported_auth=(NoAuthProfile,),
     parameters=[
         ParameterSpec(
             name="DATABASE",
@@ -46,5 +46,5 @@ SQLITE_SPEC = BackendSpec(
 
 
 @register
-class SQLiteAuthSettings(ConnectionProfile):
+class SQLiteBackendProfile(BackendProfile):
     __spec__ = SQLITE_SPEC

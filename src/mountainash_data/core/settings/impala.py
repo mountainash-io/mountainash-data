@@ -12,9 +12,9 @@ from enum import StrEnum
 from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -31,7 +31,7 @@ IMPALA_SPEC = BackendSpec(
     default_port=21050,
     connection_string_scheme="impala://",
     ibis_dialect="impala",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=21050,
@@ -55,5 +55,5 @@ IMPALA_SPEC = BackendSpec(
 
 
 @register
-class ImpalaAuthSettings(ConnectionProfile):
+class ImpalaBackendProfile(BackendProfile):
     __spec__ = IMPALA_SPEC

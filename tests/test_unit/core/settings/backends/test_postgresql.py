@@ -2,24 +2,19 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
-from mountainash_data.core.settings.auth import PasswordAuth
 from mountainash_data.core.settings.postgresql import (
     PostgresRequireAuthMethods,
     PostgresSSLMode,
-    PostgreSQLAuthSettings,
+    PostgreSQLBackendProfile,
 )
 
 
 @pytest.mark.unit
-class TestPostgreSQLAuthSettings:
+class TestPostgreSQLBackendProfile:
     def _minimal(self, **extra):
-        return PostgreSQLAuthSettings(
-            HOST="h", DATABASE="d",
-            auth=PasswordAuth(username="u", password=SecretStr("p")),
-            **extra,
-        )
+        return PostgreSQLBackendProfile(HOST="h", DATABASE="d", **extra)
 
     def test_provider_type_is_postgresql(self):
         """Audit regression: previously returned BIGQUERY."""
@@ -46,11 +41,10 @@ class TestPostgreSQLAuthSettings:
         )
         assert len(s.REQUIRE_AUTH) == 2
 
-    def test_to_driver_kwargs_plumbs_ssl_and_keepalives(self):
+    def test_emit_plumbs_ssl_and_keepalives(self):
         """Audit regression: only SCHEMA was being plumbed."""
         s = self._minimal(SSL_MODE=PostgresSSLMode.REQUIRE, KEEPALIVES_IDLE=30)
-        kwargs = s.to_driver_kwargs()
+        kwargs = s.emit()
         assert kwargs["sslmode"] == "require"
         assert kwargs["keepalives_idle"] == 30
-        assert kwargs["user"] == "u"
-        assert kwargs["password"] == "p"  # SecretStr unwrapped
+        assert kwargs["host"] == "h"

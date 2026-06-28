@@ -1,32 +1,22 @@
-"""Redshift adapter: endpoint resolution hook, IAM/password routing."""
-
+"""Redshift auth adapter functions."""
 from __future__ import annotations
-
 import typing as t
 
-from mountainash_settings.auth import IAMAuth, PasswordAuth
 
-if t.TYPE_CHECKING:
-    from mountainash_data.core.settings.redshift import RedshiftAuthSettings
+def password(auth: t.Any, base: dict[str, t.Any]) -> dict[str, t.Any]:
+    return {**base, "user": auth.USERNAME, "password": auth.PASSWORD.get_secret_value()}
 
 
-def build_driver_kwargs(profile: "RedshiftAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_kwargs()
-
-    auth = profile.auth
-    if isinstance(auth, PasswordAuth):
-        kwargs["user"] = auth.username
-        kwargs["password"] = auth.password.get_secret_value()
-    elif isinstance(auth, IAMAuth):
-        kwargs["iam"] = True
-        if auth.role_arn is not None:
-            kwargs["iam_role_arn"] = auth.role_arn
-        if auth.access_key_id is not None:
-            kwargs["aws_access_key_id"] = auth.access_key_id
-        if auth.secret_access_key is not None:
-            kwargs["aws_secret_access_key"] = auth.secret_access_key.get_secret_value()
-        if auth.session_token is not None:
-            kwargs["aws_session_token"] = auth.session_token.get_secret_value()
-        if auth.profile_name is not None:
-            kwargs["profile_name"] = auth.profile_name
-    return kwargs
+def iam(auth: t.Any, base: dict[str, t.Any]) -> dict[str, t.Any]:
+    out = {**base, "iam": True}
+    if auth.ROLE_ARN is not None:
+        out["iam_role_arn"] = auth.ROLE_ARN
+    if auth.ACCESS_KEY_ID is not None:
+        out["aws_access_key_id"] = auth.ACCESS_KEY_ID
+    if auth.SECRET_ACCESS_KEY is not None:
+        out["aws_secret_access_key"] = auth.SECRET_ACCESS_KEY.get_secret_value()
+    if auth.SESSION_TOKEN is not None:
+        out["aws_session_token"] = auth.SESSION_TOKEN.get_secret_value()
+    if auth.PROFILE_NAME is not None:
+        out["profile_name"] = auth.PROFILE_NAME
+    return out

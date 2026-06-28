@@ -11,12 +11,12 @@ from __future__ import annotations
 import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import TokenAuth
+from mountainash_auth_client import TokenAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import ConnectionProfile
+from .profile import BackendProfile, UrlParts
 from .registry import register
 
-__all__ = ["MotherDuckAuthSettings", "MOTHERDUCK_SPEC"]
+__all__ = ["MotherDuckBackendProfile", "MOTHERDUCK_SPEC"]
 
 
 MOTHERDUCK_SPEC = BackendSpec(
@@ -25,7 +25,7 @@ MOTHERDUCK_SPEC = BackendSpec(
     connection_string_scheme="duckdb://md:",  # md:<db>?motherduck_token=...
     ibis_dialect="duckdb",
     rides_on="duckdb",
-    auth_modes=[TokenAuth],
+    supported_auth=(TokenAuthProfile,),
     parameters=[
         ParameterSpec(name="DATABASE", type=t.Optional[str], tier="core",
                       default=None),
@@ -36,5 +36,12 @@ MOTHERDUCK_SPEC = BackendSpec(
 
 
 @register
-class MotherDuckAuthSettings(ConnectionProfile):
+class MotherDuckBackendProfile(BackendProfile):
     __spec__ = MOTHERDUCK_SPEC
+
+    def to_url_parts(self) -> UrlParts:
+        return UrlParts(
+            scheme="md",
+            host=None,
+            database=getattr(self, "DATABASE", None),
+        )
