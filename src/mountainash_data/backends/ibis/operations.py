@@ -562,6 +562,10 @@ def _render_on_conflict(
     parts = [p for p in (database, schema, name) if p]
     target = qualified_name(parts, dialect)
 
+    # update_condition only shapes the DO UPDATE arm; ON CONFLICT … DO NOTHING
+    # has no WHERE, so the condition is intentionally not compiled here. The
+    # caller-facing validate/warn for a condition under NOTHING lives in
+    # _generic_upsert (the entry point); this branch just skips rendering it.
     condition_sql: str | None = None
     if update_condition is not None and conflict_action == "UPDATE":
         # EXCLUDED is the unquoted pseudo-relation for the incoming row; tgt is
@@ -624,10 +628,12 @@ def _generic_upsert(
     if name not in _tables:
         raise ValueError(f"target table {name!r} does not exist")
 
-    # §10.3 — identifier validation
+    # §10.3 — identifier validation (every part that reaches qualified_name)
     _validate_simple_identifier(name, kind="name")
     if database is not None:
         _validate_simple_identifier(database, kind="database")
+    if schema is not None:
+        _validate_simple_identifier(schema, kind="schema")
 
     # §10.4 — conflict_action validity
     if conflict_action not in ("UPDATE", "NOTHING"):
