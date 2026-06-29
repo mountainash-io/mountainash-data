@@ -11,7 +11,7 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
-from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table
+from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table, _generic_upsert
 from mountainash_data.core.inspection import (
     CatalogInfo,
     NamespaceInfo,
@@ -524,24 +524,32 @@ class IbisBackend:
         conflict_columns: list[str] | str,
         update_columns: list[str] | str | None = None,
         conflict_action: str = "UPDATE",
-        update_condition: str | None = None,
+        update_condition: t.Any = None,  # ConditionPredicate | None
         database: str | None = None,
         schema: str | None = None,
     ) -> IbisBackend:
-        if self._spec.upsert_hook is None:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support upsert"
-            )
         conn = self._require_connected()
-        self._spec.upsert_hook(
-            conn._ibis_conn, name, obj,
-            conflict_columns=conflict_columns,
-            update_columns=update_columns,
-            conflict_action=conflict_action,
-            update_condition=update_condition,
-            database=database,
-            schema=schema,
-        )
+        hook = self._spec.upsert_hook
+        if hook is not None:
+            hook(
+                conn._ibis_conn, name, obj,
+                conflict_columns=conflict_columns,
+                update_columns=update_columns,
+                conflict_action=conflict_action,
+                update_condition=update_condition,
+                database=database,
+                schema=schema,
+            )
+        else:
+            _generic_upsert(
+                conn._ibis_conn, name, obj, style=self._spec.upsert_style,
+                conflict_columns=conflict_columns,
+                update_columns=update_columns,
+                conflict_action=conflict_action,
+                update_condition=update_condition,
+                database=database,
+                schema=schema,
+            )
         return self
 
     def add_columns(

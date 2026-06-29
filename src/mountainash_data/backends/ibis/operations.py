@@ -3,20 +3,17 @@
 Contains:
 - Module-level helper functions: _generate_index_name, _format_qualified_table, _normalize_columns
 - Per-dialect SQL functions: duckdb, sqlite, motherduck index SQL generators
-- Standalone hook functions: duckdb_family_create_index, duckdb_family_drop_index,
-  duckdb_family_upsert
+- Standalone hook functions: duckdb_family_create_index, duckdb_family_drop_index
+- Generic dispatcher: _generic_upsert (dialect-agnostic, replaces duckdb_family_upsert)
 """
 
 import typing as t
 import contextlib
 import warnings
-import uuid
 
 import ibis
-import mountainash as ma
 
 from mountainash_data.core.constants import (
-    CONST_CONFLICT_ACTION,
     CONST_INDEX_TYPE,
 )
 from sqlglot import exp
@@ -400,91 +397,6 @@ def duckdb_family_drop_index(
         cur.execute(drop_sql)
 
 
-def duckdb_family_upsert(
-    ibis_conn: t.Any,
-    table_name: str,
-    df: t.Any,
-    *,
-    conflict_columns: list[str] | str,
-    update_columns: list[str] | str | None = None,
-    conflict_action: str = CONST_CONFLICT_ACTION.UPDATE,
-    update_condition: str | None = None,
-    database: str | None = None,
-    schema: str | None = None,
-) -> None:
-    """Perform upsert using INSERT ... ON CONFLICT syntax (DuckDB/SQLite)."""
-    conflict_cols = _normalize_columns(conflict_columns)
-    all_columns = ma.relation(df).columns
-
-    if update_columns is None:
-        update_cols = [col for col in all_columns if col not in conflict_cols]
-    else:
-        update_cols = _normalize_columns(update_columns)
-
-    tables = ibis_conn.list_tables()
-    if table_name not in tables:
-        raise ValueError(f"Target table '{table_name}' does not exist")
-
-    if conflict_action not in [CONST_CONFLICT_ACTION.UPDATE, CONST_CONFLICT_ACTION.NOTHING]:
-        raise ValueError(
-            f"conflict_action must be '{CONST_CONFLICT_ACTION.UPDATE}' or "
-            f"'{CONST_CONFLICT_ACTION.NOTHING}', got '{conflict_action}'"
-        )
-
-    if conflict_action == CONST_CONFLICT_ACTION.NOTHING:
-        if update_cols or update_condition:
-            warnings.warn(
-                "update_columns and update_condition are ignored when "
-                "conflict_action='NOTHING'"
-            )
-
-    staging_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
-    qualified_table = _format_qualified_table(table_name, database=database, schema=schema)
-
-    all_cols_sql = ", ".join(all_columns)
-    conflict_cols_sql = ", ".join(conflict_cols)
-
-    if conflict_action == CONST_CONFLICT_ACTION.UPDATE:
-        if not update_cols:
-            raise ValueError(
-                "No columns to update. Either provide update_columns or ensure "
-                "dataframe has columns beyond conflict_columns"
-            )
-        update_set_sql = ", ".join([f"{col} = EXCLUDED.{col}" for col in update_cols])
-        where_sql = f" WHERE {update_condition}" if update_condition else ""
-        on_conflict_sql = (
-            f"ON CONFLICT ({conflict_cols_sql}) DO UPDATE SET {update_set_sql}{where_sql}"
-        )
-    else:
-        on_conflict_sql = f"ON CONFLICT ({conflict_cols_sql}) DO NOTHING"
-
-    upsert_sql = f"""
-        INSERT INTO {qualified_table} ({all_cols_sql})
-        SELECT {all_cols_sql} FROM {staging_table}
-        WHERE true
-        {on_conflict_sql}
-    """
-
-    if hasattr(ibis_conn.con, 'register'):
-        with contextlib.closing(ibis_conn.con.cursor()) as cur:
-            cur.execute("BEGIN TRANSACTION")
-            cur.register(staging_table, df)
-            cur.execute(upsert_sql)
-            cur.unregister(staging_table)
-            cur.execute("COMMIT")
-    else:
-        ibis_conn.create_table(staging_table, df, temp=True, overwrite=True)
-        try:
-            with contextlib.closing(ibis_conn.con.cursor()) as cur:
-                cur.execute(upsert_sql)
-                ibis_conn.con.commit()
-        finally:
-            try:
-                ibis_conn.drop_table(staging_table, force=True)
-            except Exception:
-                pass
-
-
 # ===========================================================================
 # GENERIC UPSERT — dialect-agnostic dispatcher
 # ===========================================================================
@@ -864,9 +776,10 @@ def _generic_upsert(
          (malformed predicate must error regardless of action path)
       6. updatable columns check
 
-    MERGE and ON_DUPLICATE_KEY raise ``NotImplementedError`` placeholders
-    (Tasks 7/8 fill them). Public ``be.upsert()`` dispatch is NOT flipped yet
-    (Task 9); tests call this directly.
+    Covers all three SQL families: ON_CONFLICT (DuckDB/SQLite/Postgres/RisingWave),
+    MERGE (MSSQL/Oracle/Snowflake/BigQuery/Redshift/Trino/Databricks/Exasol),
+    ON_DUPLICATE_KEY (MySQL/SingleStoreDB). Public ``be.upsert()`` dispatches here
+    when no dialect hook is registered.
     """
     # §10.1 — style check first
     if style is None:

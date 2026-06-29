@@ -61,3 +61,29 @@ def test_merge_nothing_postgres(postgres_backend):
     )
     assert rows == {1: "a", 2: "b"}, f"Expected {{1:'a', 2:'b'}}, got {rows}"
     con.raw_sql("DROP TABLE mrg_nothing")
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_postgres(postgres_backend):
+    """be.upsert() public dispatch — ON_CONFLICT via generic path (postgres)."""
+    be = postgres_backend
+    be.create_table("up_pg", pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}), overwrite=True)
+    be._require_connected()._ibis_conn.raw_sql("ALTER TABLE up_pg ADD PRIMARY KEY (id)")
+    be.upsert("up_pg", pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}), conflict_columns=["id"])
+    rows = dict(be.table("up_pg").order_by("id").execute()[["id", "v"]].itertuples(index=False))
+    assert rows == {1: "a", 2: "B", 3: "c"}
+    be.drop_table("up_pg", force=True)
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_mysql(mysql_backend):
+    """be.upsert() public dispatch — ON_DUPLICATE_KEY via generic path (mysql/mariadb)."""
+    be = mysql_backend
+    con = be._require_connected()._ibis_conn
+    con.raw_sql("DROP TABLE IF EXISTS up_my")
+    con.raw_sql("CREATE TABLE up_my (id INT PRIMARY KEY, v VARCHAR(16) NOT NULL)")
+    con.raw_sql("INSERT INTO up_my VALUES (1, 'a')")
+    be.upsert("up_my", pl.DataFrame({"id": [1, 2], "v": ["A", "b"]}), conflict_columns=["id"])
+    rows = dict(con.table("up_my").order_by("id").execute()[["id", "v"]].itertuples(index=False))
+    assert rows == {1: "A", 2: "b"}
+    con.raw_sql("DROP TABLE up_my")
