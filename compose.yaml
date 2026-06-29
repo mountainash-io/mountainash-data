@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ibis_testing
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 1s
+      retries: 20
+    ports:
+      - "5432:5432"
+  mysql:
+    image: mariadb:12.1.2
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+      MYSQL_DATABASE: ibis_testing
+      MYSQL_USER: ibis
+      MYSQL_PASSWORD: ibis
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 1s
+      retries: 20
+    ports:
+      - "3306:3306"

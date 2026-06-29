@@ -27,6 +27,47 @@ jobs:
         os: [ubuntu-24.04]
         python-version: ["3.12"]
 
+    env:
+      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
+      IBIS_TEST_POSTGRES_HOST: localhost
+      IBIS_TEST_POSTGRES_PORT: "5432"
+      IBIS_TEST_POSTGRES_USER: postgres
+      IBIS_TEST_POSTGRES_PASSWORD: postgres
+      IBIS_TEST_POSTGRES_DATABASE: ibis_testing
+      IBIS_TEST_MYSQL_HOST: localhost
+      IBIS_TEST_MYSQL_PORT: "3306"
+      IBIS_TEST_MYSQL_USER: ibis
+      IBIS_TEST_MYSQL_PASSWORD: ibis
+      IBIS_TEST_MYSQL_DATABASE: ibis_testing
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ibis_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 1s
+          --health-retries 20
+
+      mysql:
+        image: mariadb:12.1.2
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MYSQL_DATABASE: ibis_testing
+          MYSQL_USER: ibis
+          MYSQL_PASSWORD: ibis
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mariadb-admin ping -h localhost"
+          --health-interval 1s
+          --health-retries 20
+
     steps:
       - name: Set fallback branch
         run: |
@@ -47,6 +88,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
 
       - name: Display SQLite version
         run: |

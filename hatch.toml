@@ -82,6 +82,11 @@ dependencies = [
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
 
+    # Live-db extras (system libmariadb-dev installed in CI before this env)
+    "psycopg-binary>=3.1.0",
+    "ibis-framework[postgres]>=12.0.0",
+    "ibis-framework[mysql]>=12.0.0",
+
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
@@ -120,6 +125,13 @@ dependencies = [
 
     "psutil>=7.0.0",
 
+    # Live-db test extras: postgres driver for integration tests.
+    # ibis 12 uses psycopg (psycopg3) for postgres — needs psycopg-binary for
+    # a pure-Python/bundled-libpq build that works without system libpq-dev.
+    # mysql/mariadb (ibis-framework[mysql]) requires mysqlclient which needs
+    # libmariadb-dev system headers — installed via apt in CI, skipped locally.
+    "psycopg-binary>=3.1.0",
+    "ibis-framework[postgres]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
@@ -181,6 +193,7 @@ test-perf-target = "pytest --benchmark-only {args}"
 test-unit = "pytest -m unit"
 test-integration = "pytest -m integration"
 test-performance = "pytest -m performance"
+test-live = "docker compose up -d --wait && pytest -m integration {args}"
 
 # ===========================================
 # CI/REPORTING - For automated environments
