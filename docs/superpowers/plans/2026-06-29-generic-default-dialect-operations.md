@@ -515,7 +515,19 @@ class TestRenameGoldenPerDialect:
         assert ("sp_rename" in sql.lower()) or ("rename" in sql.lower())
 ```
 
-Add the imports this test needs to the top of the file: `from mountainash_data.backends.ibis.dialects._registry import DIALECTS` and the shared `_IBIS_TO_SQLGLOT = {"mssql": "tsql"}` map (define once; reuse in the upsert golden test).
+Add the imports this test needs to the top of the file: `from mountainash_data.backends.ibis.dialects._registry import DIALECTS` and the shared ibis→sqlglot dialect map (define once; reuse in the upsert golden test):
+
+```python
+# ibis backend name -> sqlglot dialect name (identity unless noted).
+# Pinned by probe (see below): sqlglot 30.x has no "motherduck"/"singlestoredb".
+_IBIS_TO_SQLGLOT = {
+    "mssql": "tsql",
+    "motherduck": "duckdb",
+    "singlestoredb": "singlestore",
+}
+```
+
+> **Pin the full map by probe (required before the golden tests run).** For every `DIALECTS` entry, confirm `sqlglot.Dialect.get_or_raise(<mapped name>)` succeeds — a name sqlglot 30.x doesn't know (e.g. it may not register `risingwave`/`exasol`/`databricks` under those exact strings) makes the golden test error, not assert. Where sqlglot lacks a dialect, map to its closest wire-compatible base (e.g. risingwave→`postgres`) and note it in the test; this is rendering-shape verification, so the base dialect's quoting/keywords are what we assert. (Codex HIGH-2.)
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -799,7 +811,21 @@ def compile_condition(
         return n
 
     return on.transform(_remap)
+
+
+def validate_condition(target_schema: t.Any, target_name: str, predicate) -> None:
+    """Grammar + sentinel-collision validation only (no rendering) — for the
+    unconditional §10.5 check in `_generic_upsert`."""
+    if target_name in (INCOMING_SENTINEL, EXISTING_SENTINEL):
+        raise ValueError(
+            f"target table name {target_name!r} collides with a reserved sentinel."
+        )
+    incoming = ibis.table(target_schema, name=INCOMING_SENTINEL)
+    existing = ibis.table(target_schema, name=EXISTING_SENTINEL)
+    validate_predicate(predicate(incoming, existing))
 ```
+
+`compile_condition` should call `validate_condition` at its top rather than duplicating the collision/grammar checks (keep the validation in one place).
 
 Add `import dataclasses` and `import ibis.expr.operations as ops` to `_render.py`, plus the forbidden/subquery op tuples near the top:
 
@@ -845,7 +871,7 @@ git commit -m "feat(ibis): conditional-predicate compiler (sentinel join->AST->r
 - Produces:
   - `compiled_source(ibis_conn, obj, target_schema) -> tuple[str, list[str]]` — `(subquery_sql, source_columns)`; columns cast to the target type and projected in target order.
   - `_generic_upsert(ibis_conn, name, obj, *, style, conflict_columns, update_columns, conflict_action, update_condition, database, schema) -> None`.
-  - `_render_on_conflict(...) -> str`.
+  - `build_on_conflict_sql(*, dialect, target, cols, conflict, update, conflict_action, source_sql, condition_sql=None) -> str` — the pure, dialect-parameterized builder (mirrors `build_merge_sql`, Task 7). `_render_on_conflict(ibis_conn, ...)` is the thin wrapper that derives `dialect`/`source_sql`/`condition_sql` from the live conn and delegates — so the registry-iterating upsert golden test (Task 7/10) can render the ON CONFLICT family per dialect without a live connection.
 
 This task wires `_generic_upsert` and the ON_CONFLICT branch only; MERGE/ON_DUPLICATE raise `NotImplementedError("unimplemented style")` as placeholders until Tasks 7/8. Dispatch is NOT flipped yet (Task 9), so this is exercised directly against a raw connection.
 
@@ -962,7 +988,7 @@ def compiled_source(
 
 - [ ] **Step 4: Implement `_generic_upsert` + `_render_on_conflict` in `operations.py`**
 
-Add imports at top: `from mountainash_data.backends.ibis._render import (compile_condition, compiled_source, qualified_name, quote_identifier, dialect_of)` and `from mountainash_data.backends.ibis.dialects._registry import UpsertStyle`. Then:
+Add imports at top: `from mountainash_data.backends.ibis._render import (ConditionAliases, compile_condition, compiled_source, qualified_name, quote_identifier, dialect_of, validate_condition)` and `from mountainash_data.backends.ibis.dialects._registry import UpsertStyle`. Keep `import warnings` (used by the NOTHING-ignores-condition warning; it predates this work). Then:
 
 ```python
 def _generic_upsert(
@@ -1006,11 +1032,18 @@ def _generic_upsert(
         if missing_u:
             raise ValueError(f"update_columns absent from target: {missing_u}")
 
-    # update_condition validated unconditionally, BEFORE conflict_action handling (§10.5)
-    if update_condition is not None and style is UpsertStyle.ON_DUPLICATE_KEY:
-        raise ValueError(
-            "update_condition is not supported for the MySQL ON DUPLICATE KEY family"
-        )
+    # update_condition validated UNCONDITIONALLY, before any action-specific path
+    # (§10.5) — a malformed predicate must error even under NOTHING.
+    if update_condition is not None:
+        if style is UpsertStyle.ON_DUPLICATE_KEY:
+            raise ValueError(
+                "update_condition is not supported for the MySQL ON DUPLICATE KEY family"
+            )
+        # validate grammar + sentinel collision now (raises on aggregate/window/
+        # subquery or a target name colliding with a sentinel)
+        validate_condition(target_schema, name, update_condition)
+        if conflict_action == "NOTHING":
+            warnings.warn("update_condition is ignored when conflict_action='NOTHING'")
 
     if conflict_action == "UPDATE" and not update:
         raise ValueError("no columns to update; provide update_columns or non-key columns")
@@ -1063,9 +1096,12 @@ def _render_on_conflict(
             where = f" WHERE {cond}"
         action = f"ON CONFLICT ({conflict_list}) DO UPDATE SET {set_sql}{where}"
 
+    # `WHERE true` is REQUIRED by SQLite to disambiguate INSERT…SELECT…ON CONFLICT
+    # (its parser errors near DO without it); harmless on duckdb/postgres. This
+    # mirrors the original duckdb_family_upsert template. (Codex CRITICAL-2.)
     return (
         f"INSERT INTO {target} AS tgt ({col_list}) "
-        f"SELECT {col_list} FROM ({source_sql}) AS __src {action}"
+        f"SELECT {col_list} FROM ({source_sql}) AS __src WHERE true {action}"
     )
 ```
 
@@ -1159,9 +1195,10 @@ def _render_merge(
         set_sql = ", ".join(f"{q(c)} = src.{q(c)}" for c in update)
         cond = ""
         if update_condition is not None:
+            # NEW compile_condition signature (Task 5): target_name + aliases.
             cond = " AND " + compile_condition(
-                ibis_conn, target_schema, update_condition,
-                incoming_alias="src", existing_alias="tgt",
+                ibis_conn, target_schema, name, update_condition,
+                aliases=ConditionAliases(incoming="src", existing="tgt"),
             ).sql(dialect=dialect)
         clauses.append(f"WHEN MATCHED{cond} THEN UPDATE SET {set_sql}")
     clauses.append(not_matched)
@@ -1171,6 +1208,8 @@ def _render_merge(
         f"ON {on} " + " ".join(clauses)
     )
 ```
+
+Add `ConditionAliases` to the `_render` import in `operations.py` (shared with Task 6).
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -1210,7 +1249,9 @@ import pytest
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, UpsertStyle
 from mountainash_data.backends.ibis.operations import build_merge_sql
 
-_IBIS_TO_SQLGLOT = {"mssql": "tsql"}  # extend if any other name differs
+# Reuse the shared, probe-pinned map (mssql->tsql, motherduck->duckdb,
+# singlestoredb->singlestore, + any sqlglot-unknown dialect mapped to its base).
+from tests.test_unit.backends.ibis.test_rename_table_render import _IBIS_TO_SQLGLOT
 
 
 def _sqlglot_dialect(spec):
@@ -1256,7 +1297,7 @@ git commit -m "feat(ibis): generic upsert MERGE branch (composite keys + conflic
 
 **Interfaces:**
 - Consumes: `compiled_source`, `qualified_name`, `quote_identifier` (Tasks 1/6).
-- Produces: `_render_on_duplicate_key(...) -> str`; `_mysql_validate_conflict_key(ibis_conn, name, conflict, database) -> None` (prove-safe-or-raise preflight, §6.2); wired into the `_generic_upsert` ON_DUPLICATE_KEY branch.
+- Produces: `build_on_duplicate_key_sql(*, dialect, target, cols, conflict, update, conflict_action, source_sql) -> str` (pure builder, mirrors `build_merge_sql`); `_render_on_duplicate_key(ibis_conn, ...)` thin wrapper that runs `_mysql_validate_conflict_key` then delegates; `_mysql_validate_conflict_key(ibis_conn, name, conflict, database) -> None` (prove-safe-or-raise preflight, §6.2); wired into the `_generic_upsert` ON_DUPLICATE_KEY branch.
 
 - [ ] **Step 1: Write the failing live tests**
 
@@ -1353,18 +1394,21 @@ def _mysql_validate_conflict_key(ibis_conn, name, conflict, database) -> None:
     """
     db = database or _current_schema(ibis_conn)  # see note: pin the resolver
     # ORDER BY SEQ_IN_INDEX so composite-key column order is correct.
-    # EXPRESSION is non-NULL for functional/expression index parts (MySQL 8 /
-    # MariaDB); SUB_PART is non-NULL for prefix index parts.
+    # NOTE: do NOT select EXPRESSION — it exists only in MySQL 8's STATISTICS,
+    # not MariaDB's (the test image is mariadb:12.1.2), so selecting it errors
+    # the query (Codex CRITICAL-1). Functional/expression index PARTS have a
+    # NULL COLUMN_NAME on BOTH MariaDB and MySQL 8 — detect them that way.
+    # SUB_PART is non-NULL for prefix index parts (present on both engines).
     rows = ibis_conn.raw_sql(
-        "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, EXPRESSION, NON_UNIQUE "
+        "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, NON_UNIQUE "
         "FROM information_schema.STATISTICS "
         f"WHERE TABLE_SCHEMA = '{db}' AND TABLE_NAME = '{name}' "
         "ORDER BY INDEX_NAME, SEQ_IN_INDEX"
     ).fetchall()
     uniques: dict[str, list] = {}
-    for index_name, _seq, column_name, sub_part, expression, non_unique in rows:
+    for index_name, _seq, column_name, sub_part, non_unique in rows:
         if int(non_unique) == 0:
-            uniques.setdefault(index_name, []).append((column_name, sub_part, expression))
+            uniques.setdefault(index_name, []).append((column_name, sub_part))
     if not uniques:
         raise ValueError(f"table {name!r} has no unique/PK index for conflict_columns")
     if len(uniques) > 1:
@@ -1374,19 +1418,19 @@ def _mysql_validate_conflict_key(ibis_conn, name, conflict, database) -> None:
             f"conflict_columns={conflict}. Use the upsert_hook override."
         )
     (idx_name, parts), = uniques.items()
-    if any(expr is not None for _, _, expr in parts):
+    if any(col is None for col, _ in parts):  # NULL COLUMN_NAME = functional part
         raise ValueError(
             f"unique index {idx_name!r} is a functional/expression index; cannot "
             f"prove it matches conflict_columns={conflict}. Use the upsert_hook override."
         )
-    if any(sub is not None for _, sub, _ in parts):
+    if any(sub is not None for _, sub in parts):
         raise ValueError(
             f"unique index {idx_name!r} has a prefix (SUB_PART); it detects on a "
             f"truncated value, not the full column. Use the upsert_hook override."
         )
-    if [c for c, _, _ in parts] != list(conflict):
+    if [c for c, _ in parts] != list(conflict):
         raise ValueError(
-            f"unique index {idx_name!r} columns {[c for c, _, _ in parts]} do not "
+            f"unique index {idx_name!r} columns {[c for c, _ in parts]} do not "
             f"exactly match conflict_columns={list(conflict)}; refusing to guess. "
             f"Use the upsert_hook override."
         )
@@ -1631,3 +1675,10 @@ Two-pass-reviewed spec; this plan then went through a Codex pass that found 3 CR
 - **H3 validator** — detects specific subquery ops (`_SUBQUERY_OPS`), not `ops.Relation` (which would match the sentinels); probe-pinned.
 - **H4 golden rendering** — replaced DuckDB-as-Snowflake with registry-iterating golden tests over pure `build_*_sql(*, dialect, …)` builders rendering each dialect's correct sqlglot dialect; added the `rename_table` registry-iterating golden.
 - **MEDIUM** — column-existence validation + §10 precedence ordering in `_generic_upsert`; pure-builder structure (over string-concat-on-a-conn); added predicate-shape tests. **LOW** — `VALUES()` MariaDB/MySQL-8 note; `_current_schema` resolver pinned.
+
+A second Codex pass verified the above all RESOLVED and caught issues the revisions introduced — all fixed:
+- **CRITICAL (MariaDB `EXPRESSION`)** — that column is MySQL-8-only; the preflight query would error on `mariadb:12.1.2`. Dropped it; functional indexes detected via `COLUMN_NAME IS NULL` (portable across MariaDB + MySQL 8).
+- **CRITICAL (SQLite UPSERT)** — `INSERT … SELECT … ON CONFLICT` needs a discriminating `WHERE true`; added (mirrors the original `duckdb_family_upsert` template).
+- **HIGH (stale call)** — Task 7's MERGE renderer still used the old `compile_condition` positional signature; updated to `target_name` + `ConditionAliases(incoming="src", existing="tgt")`.
+- **HIGH (dialect map)** — expanded `_IBIS_TO_SQLGLOT` (`+motherduck→duckdb`, `+singlestoredb→singlestore`) with a probe directive to validate every name against sqlglot 30.x and map sqlglot-unknown dialects to their wire-compatible base.
+- **MEDIUM** — `update_condition` grammar now validated unconditionally via `validate_condition` (errors even under NOTHING, which warns-and-ignores); `build_on_conflict_sql` / `build_on_duplicate_key_sql` made explicit pure-builder outputs.
