@@ -5,7 +5,11 @@ import polars as pl
 import pytest
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, UpsertStyle
-from mountainash_data.backends.ibis.operations import _generic_upsert, build_merge_sql
+from mountainash_data.backends.ibis.operations import (
+    _generic_upsert,
+    build_merge_sql,
+    build_on_duplicate_key_sql,
+)
 
 # ibis backend name -> sqlglot dialect name (identity unless listed).
 # Mirrors _IBIS_TO_SQLGLOT in test_rename_table_render.py; kept here to avoid
@@ -141,3 +145,48 @@ def test_merge_golden_nothing_omits_matched(name: str) -> None:
     assert sql.startswith("MERGE INTO"), f"{name}: expected MERGE INTO"
     assert "WHEN MATCHED" not in sql, f"{name}: NOTHING should omit WHEN MATCHED: {sql}"
     assert "WHEN NOT MATCHED THEN INSERT" in sql, f"{name}: missing WHEN NOT MATCHED"
+
+
+# ---------------------------------------------------------------------------
+# ON DUPLICATE KEY golden tests (pure builder — no live MySQL required)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "name",
+    [n for n, s in DIALECTS.items() if s.upsert_style is UpsertStyle.ON_DUPLICATE_KEY],
+)
+def test_on_duplicate_key_golden_update(name: str) -> None:
+    """Every ON_DUPLICATE_KEY dialect renders INSERT … ON DUPLICATE KEY UPDATE … VALUES(…)."""
+    d = _sqlglot_dialect(DIALECTS[name])
+    sql = build_on_duplicate_key_sql(
+        dialect=d,
+        target=f"`{name}`",
+        cols=["id", "v"],
+        conflict=["id"],
+        update=["v"],
+        conflict_action="UPDATE",
+        source_sql="SELECT 1 AS id, 'a' AS v",
+    )
+    assert "ON DUPLICATE KEY UPDATE" in sql, f"{name}: missing ON DUPLICATE KEY UPDATE: {sql}"
+    assert "VALUES(" in sql, f"{name}: missing VALUES(: {sql}"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [n for n, s in DIALECTS.items() if s.upsert_style is UpsertStyle.ON_DUPLICATE_KEY],
+)
+def test_on_duplicate_key_golden_nothing(name: str) -> None:
+    """ON_DUPLICATE_KEY with conflict_action=NOTHING uses self-assign no-op."""
+    d = _sqlglot_dialect(DIALECTS[name])
+    sql = build_on_duplicate_key_sql(
+        dialect=d,
+        target=f"`{name}`",
+        cols=["id", "v"],
+        conflict=["id"],
+        update=["v"],
+        conflict_action="NOTHING",
+        source_sql="SELECT 1 AS id, 'a' AS v",
+    )
+    assert "ON DUPLICATE KEY UPDATE" in sql, f"{name}: missing ON DUPLICATE KEY UPDATE: {sql}"
+    # NOTHING uses self-assign: the first conflict column appears twice with =
+    assert "VALUES(" not in sql, f"{name}: NOTHING should not use VALUES(): {sql}"

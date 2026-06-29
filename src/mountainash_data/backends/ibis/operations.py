@@ -675,6 +675,165 @@ def _render_merge(
     )
 
 
+def _mysql_validate_conflict_key(
+    ibis_conn: t.Any,
+    name: str,
+    conflict: list[str],
+    database: str | None,
+) -> None:
+    """Prove the safe MySQL/MariaDB ON DUPLICATE KEY case or raise (spec §6.2).
+
+    Fails closed on: no unique index, >1 unique index, prefix index (SUB_PART),
+    functional/expression index (COLUMN_NAME IS NULL), a unique index whose
+    ORDERED columns don't exactly equal conflict_columns, or any nullable
+    conflict column.
+
+    NOTE: do NOT select EXPRESSION from information_schema.STATISTICS — that
+    column is MySQL-8-only; on MariaDB 12.x it errors ``Unknown column
+    'EXPRESSION'``. Functional/expression index parts have a NULL COLUMN_NAME
+    on both MariaDB and MySQL 8; detect them that way instead.
+
+    NOTE: ``ibis_conn.current_database`` is a PROPERTY in ibis >=12 (no parens).
+    """
+    db = database or ibis_conn.current_database
+    rows = ibis_conn.raw_sql(
+        "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, NON_UNIQUE "
+        "FROM information_schema.STATISTICS "
+        f"WHERE TABLE_SCHEMA = '{db}' AND TABLE_NAME = '{name}' "
+        "ORDER BY INDEX_NAME, SEQ_IN_INDEX"
+    ).fetchall()
+    uniques: dict[str, list[tuple[t.Any, t.Any]]] = {}
+    for index_name, _seq, column_name, sub_part, non_unique in rows:
+        if int(non_unique) == 0:
+            uniques.setdefault(index_name, []).append((column_name, sub_part))
+    if not uniques:
+        raise ValueError(f"table {name!r} has no unique/PK index for conflict_columns")
+    if len(uniques) > 1:
+        raise ValueError(
+            f"table {name!r} has multiple unique indexes {list(uniques)}; MySQL "
+            f"ON DUPLICATE KEY detects on any of them — ambiguous for "
+            f"conflict_columns={conflict}. Use the upsert_hook override."
+        )
+    (idx_name, parts), = uniques.items()
+    if any(col is None for col, _ in parts):  # NULL COLUMN_NAME = functional/expression part
+        raise ValueError(
+            f"unique index {idx_name!r} is a functional/expression index; cannot "
+            f"prove it matches conflict_columns={conflict}. Use the upsert_hook override."
+        )
+    if any(sub is not None for _, sub in parts):
+        raise ValueError(
+            f"unique index {idx_name!r} has a prefix (SUB_PART); it detects on a "
+            f"truncated value, not the full column. Use the upsert_hook override."
+        )
+    if [c for c, _ in parts] != list(conflict):
+        raise ValueError(
+            f"unique index {idx_name!r} columns {[c for c, _ in parts]} do not "
+            f"exactly match conflict_columns={list(conflict)}; refusing to guess. "
+            f"Use the upsert_hook override."
+        )
+    # nullable check
+    cols_meta = ibis_conn.raw_sql(
+        "SELECT COLUMN_NAME, IS_NULLABLE FROM information_schema.COLUMNS "
+        f"WHERE TABLE_SCHEMA = '{db}' AND TABLE_NAME = '{name}'"
+    ).fetchall()
+    nullable = {c for c, isn in cols_meta if isn == "YES"}
+    bad = [c for c in conflict if c in nullable]
+    if bad:
+        raise ValueError(
+            f"conflict columns {bad} are nullable; MySQL unique indexes are "
+            f"NULL-distinct, so duplicates would insert instead of update. Make "
+            f"them NOT NULL or use the upsert_hook override."
+        )
+
+
+def build_on_duplicate_key_sql(
+    *,
+    dialect: t.Any,
+    target: str,
+    cols: list[str],
+    conflict: list[str],
+    update: list[str],
+    conflict_action: str,
+    source_sql: str,
+) -> str:
+    """Pure builder: render an INSERT … ON DUPLICATE KEY UPDATE statement.
+
+    Takes all pre-computed parts explicitly so registry golden tests can render
+    the ON_DUPLICATE_KEY family without a live connection.
+
+    Args:
+        dialect: sqlglot dialect (from ``dialect_of(ibis_conn)``).
+        target: Fully-qualified, already-quoted target table reference.
+        cols: Ordered list of source/insert column names (unquoted).
+        conflict: Conflict-key column names (unquoted).  Used only for the
+            NOTHING self-assign no-op (first conflict column).
+        update: Columns to update on duplicate (unquoted; ignored for NOTHING).
+        conflict_action: ``"UPDATE"`` or ``"NOTHING"``.
+        source_sql: Compiled SELECT subquery SQL string (from ``compiled_source``).
+
+    Returns:
+        A complete ``INSERT INTO … ON DUPLICATE KEY UPDATE …`` SQL string.
+
+    Note:
+        ``VALUES(col)`` is valid on the MariaDB 12.x target.  MySQL 8.0.20+
+        deprecates ``VALUES()`` in favour of a row alias; that switch is
+        out-of-scope for the MariaDB-tested target here.
+
+        For ``conflict_action="NOTHING"`` the self-assign ``k0 = k0`` is used
+        as a documented no-op (it is not a true no-op on MySQL — the row is
+        still "touched" — but it suppresses the update semantics with minimal
+        side-effects, per spec §6.2).
+    """
+    q = lambda c: quote_identifier(c, dialect)  # noqa: E731
+    col_list = ", ".join(q(c) for c in cols)
+
+    if conflict_action == "NOTHING":
+        k0 = q(conflict[0])
+        set_sql = f"{k0} = {k0}"  # self-assign; see §6.2 (not a true no-op)
+    else:
+        set_sql = ", ".join(f"{q(c)} = VALUES({q(c)})" for c in update)
+
+    return (
+        f"INSERT INTO {target} ({col_list}) SELECT {col_list} FROM ({source_sql}) AS __src "
+        f"ON DUPLICATE KEY UPDATE {set_sql}"
+    )
+
+
+def _render_on_duplicate_key(
+    ibis_conn: t.Any,
+    name: str,
+    obj: t.Any,
+    *,
+    target_schema: t.Any,
+    conflict: list[str],
+    update: list[str],
+    conflict_action: str,
+    update_condition: t.Any,
+    database: str | None,
+    schema: str | None,
+) -> str:
+    """Thin wrapper: run the MySQL prove-safe preflight, then render the SQL.
+
+    Delegates SQL construction to ``build_on_duplicate_key_sql`` so the pure
+    builder is testable without a live MySQL connection.
+    """
+    _mysql_validate_conflict_key(ibis_conn, name, conflict, database)
+    dialect = dialect_of(ibis_conn)
+    source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
+    parts = [p for p in (database, schema, name) if p]
+    target = qualified_name(parts, dialect)
+
+    return build_on_duplicate_key_sql(
+        dialect=dialect,
+        target=target,
+        cols=cols,
+        conflict=conflict,
+        update=update,
+        conflict_action=conflict_action,
+        source_sql=source_sql,
+    )
+
+
 def _generic_upsert(
     ibis_conn: t.Any,
     name: str,
@@ -773,7 +932,11 @@ def _generic_upsert(
             update_condition=update_condition, database=database, schema=schema,
         )
     elif style is UpsertStyle.ON_DUPLICATE_KEY:
-        raise NotImplementedError("unimplemented style: ON_DUPLICATE_KEY")  # Task 8
+        stmt = _render_on_duplicate_key(
+            ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
+            update=update, conflict_action=conflict_action,
+            update_condition=update_condition, database=database, schema=schema,
+        )
     else:
         raise NotImplementedError(f"unknown upsert_style: {style!r}")
 
