@@ -77,6 +77,11 @@ the engine rejects while presenting as supported).
 ### 4.1 `upsert` (signature unchanged)
 
 ```python
+# A conditional-update predicate: receives two ibis tables (the incoming
+# source row-set and the existing target row-set, both with the target schema)
+# and returns an ibis boolean. Rendered per-dialect through ibis/sqlglot.
+ConditionPredicate = t.Callable[[ir.Table, ir.Table], ir.BooleanValue]
+
 def upsert(
     self,
     name: str,
@@ -85,7 +90,7 @@ def upsert(
     conflict_columns: list[str] | str,
     update_columns: list[str] | str | None = None,
     conflict_action: str = "UPDATE",  # "UPDATE" | "NOTHING"
-    update_condition: str | None = None,
+    update_condition: ConditionPredicate | None = None,
     database: str | None = None,
     schema: str | None = None,
 ) -> IbisBackend: ...
@@ -93,6 +98,17 @@ def upsert(
 
 Fluent. Composite `conflict_columns` is supported (unlike Ibis 12's native
 `upsert`, whose `on` is a single column — a key reason we render our own).
+
+`update_condition` is an **ibis-expression predicate**, not a raw SQL string —
+e.g. `lambda incoming, existing: incoming.updated_at > existing.updated_at`
+("merge only when the incoming row is newer"). This is the conditional-upsert
+capability that powers idempotent late-arriving-data merges and optimistic
+last-write-wins. Expressed as ibis, it renders portably per dialect — row
+references, **functions, and types alike** — is type-validated, and carries no
+SQL-injection surface, consistent with the package's render-through-ibis
+discipline. The previous raw-string form is dropped (pre-release clean break);
+callers needing raw SQL use the `upsert_hook` override. See §6.1 for the
+rendering mechanism (verified by probe, §9).
 
 ### 4.2 `rename_table` (signature unchanged)
 
@@ -267,32 +283,67 @@ byte-equivalent.
 | `update_condition` | `DO UPDATE SET … WHERE <cond>` | `WHEN MATCHED AND <cond> THEN UPDATE` | unsupported → `ValueError` |
 | default `update_columns` | all non-key columns | all non-key columns | all non-key columns |
 
-### 6.1 `update_condition` alias contract (cross-family)
+### 6.1 `update_condition` — ibis-expression predicate (cross-family rendering)
 
-`update_condition` is a raw SQL boolean expression. A bare string cannot be
-both ON-CONFLICT-valid and MERGE-valid (`EXCLUDED.x` vs `src.x`), so the
-package **fixes the alias contract**: the condition references the **incoming
-row as `EXCLUDED.<col>`** and the **existing row by the bare target table
-name** — the ON CONFLICT convention. The MERGE renderer makes the same string
-valid by aliasing the source subquery **`AS EXCLUDED`** and the target **`AS
-<table_name>`**, so `EXCLUDED.updated_at > orders.updated_at` renders
-correctly in both families. The matched/not-matched semantics are equivalent:
-a row matching the key but failing the condition stays matched and is neither
-updated nor re-inserted (no duplicate). `on_duplicate_key` cannot express a
-per-row update predicate → `update_condition` raises `ValueError` rather than
-silently dropping it.
+`update_condition` is an ibis-expression predicate, not raw SQL (§4.1). The
+caller receives two ibis tables — `incoming` (the source row-set) and
+`existing` (the target row-set), both bound to the target's resolved schema —
+and returns an ibis boolean. The renderer turns it into the per-family clause
+through ibis + sqlglot, verified by probe (§9):
+
+1. Form `existing.join(incoming, predicate)` and obtain its **sqlglot AST**
+   via `ibis_conn.compiler.to_sqlglot(...)`. ibis already knows how to render
+   a two-table predicate as a join condition (it refused a bare two-table
+   boolean — the join is the supported path).
+2. Identify ibis's auto-assigned join aliases by walking `exp.Table` nodes and
+   reading each alias's **underlying real table name** (deterministic — not
+   positional): `{ibis_alias → "incoming"/"existing"}`.
+3. Extract the join's `ON` sub-AST and `.transform()` the column qualifiers to
+   the family's aliases:
+   - **ON CONFLICT** → incoming columns to `EXCLUDED`, existing columns to the
+     bare target table name → spliced into `DO UPDATE SET … WHERE <cond>`.
+   - **MERGE** → incoming to the source alias `src`, existing to the target
+     alias `tgt` → spliced into `WHEN MATCHED AND <cond> THEN UPDATE`.
+4. Render the remapped sub-AST with the live dialect.
+
+Because the predicate is ibis, **functions and types render per-dialect too**
+(`incoming.name.upper()` → `UPPER(...)`), not just column references — probe
+output confirmed correct rendering across duckdb/postgres/mysql/mssql/
+snowflake/bigquery/oracle/trino. The matched/not-matched semantics are
+equivalent across the two families: a row matching the key but failing the
+condition stays matched and is neither updated nor re-inserted (no duplicate).
+
+`on_duplicate_key` cannot express a per-row update predicate → a non-`None`
+`update_condition` raises `ValueError` rather than silently dropping it.
+
+> **Implementation note (dialect names).** The remapped sub-AST is rendered
+> with the live connection's *sqlglot* dialect (`ibis_conn.compiler.dialect`),
+> not ibis's backend name — these differ (ibis `mssql` ↔ sqlglot `tsql`). The
+> probe used the live compiler dialect throughout. The alias-remap helper
+> lives in `_render.py` (§5.2).
 
 ### 6.2 `ON DUPLICATE KEY` documented divergences
 
-- **Conflict targeting:** MySQL/MariaDB `ON DUPLICATE KEY UPDATE` fires on a
-  collision with **any** unique or primary key, not a named subset.
-  `conflict_columns` therefore governs only which columns are *excluded from
-  the UPDATE set* (and is validated non-empty); it does **not** select the
-  detection key. Callers must ensure `conflict_columns` corresponds to the
-  table's intended unique constraint — on a table with multiple unique
-  constraints the engine may update on a different collision. Documented
-  limitation (§11); the `upsert_hook` override is the escape hatch for
-  stricter needs. We do **not** introspect constraints in this iteration.
+- **Conflict targeting (introspect + fail-closed):** MySQL/MariaDB `ON
+  DUPLICATE KEY UPDATE` fires on a collision with **any** unique or primary
+  key, not a named subset — so a silent contract violation is possible
+  (`conflict_columns=["external_id"]` updating a row that collided on
+  `email`). Because that failure **silently corrupts the data the caller
+  intended**, the `on_duplicate_key` renderer does **not** ship the
+  document-only contract — it introspects the target's unique/PK indexes
+  (`information_schema.STATISTICS` — cheap, and `upsert` already issues
+  existence checks) and validates:
+  - exactly one unique/PK index, equal to `conflict_columns` → proceed;
+  - additional unique constraints exist that make detection ambiguous w.r.t.
+    `conflict_columns` → **raise `ValueError`** naming them, pointing at the
+    `upsert_hook` override;
+  - no unique index matches `conflict_columns` → raise (it would never
+    conflict-detect on those columns anyway).
+
+  `conflict_columns` also governs which columns are excluded from the UPDATE
+  set (validated non-empty). This is the one MySQL divergence we *fail closed*
+  on rather than document, because — unlike the `NOTHING` side effects below —
+  the failure is data corruption, not a cosmetic effect.
 - **`NOTHING` is not a true no-op:** rendered as `ON DUPLICATE KEY UPDATE
   k0=k0` (self-assigning the first key column). Depending on table definition
   this may advance `ON UPDATE CURRENT_TIMESTAMP` columns, fire UPDATE
@@ -417,6 +468,18 @@ job. A `hatch` script (`test-live`) brings the local compose services up.
 - Ibis 12 `SQLBackend.upsert` exists (MERGE-based) but its `on` is a single
   column — insufficient for the composite natural keys real consumers use —
   which is why we render our own, using Ibis's `sge.merge` shape as template.
+- **Conditional-predicate rendering (§6.1) probed end-to-end.** A bare
+  two-table ibis boolean is rejected by ibis (`RelationError: … multiple base
+  table references`), but `existing.join(incoming, predicate)` →
+  `compiler.to_sqlglot` → extract the `ON` sub-AST → remap ibis's auto-aliases
+  (identified by each `exp.Table`'s underlying name, not positionally) →
+  `.sql(dialect=…)` produces correct, portable output. Verified: a compound
+  predicate with a function (`incoming.name.upper() != existing.name.upper()`)
+  rendered to `"EXCLUDED"."…" > "target"."…" AND UPPER(…) <> UPPER(…)` for the
+  ON CONFLICT alias mapping and `"src"…/"tgt"…` for MERGE, with correct
+  per-dialect quoting/functions across duckdb/postgres/mysql/mssql/snowflake/
+  bigquery/oracle/trino. Implementation depth is bounded to one `_render.py`
+  helper.
 
 ## 10. Error Handling & Edge Cases
 
@@ -426,8 +489,14 @@ job. A `hatch` script (`test-live`) brings the local compose services up.
 - `conflict_action="NOTHING"` with `update_columns`/`update_condition` →
   warn-and-ignore (preserves current behaviour), except MERGE where NOTHING
   simply omits the matched clause.
-- `update_condition` on `on_duplicate_key` → `ValueError` (family cannot
-  express it).
+- `update_condition` (a predicate) on `on_duplicate_key` → `ValueError`
+  (family cannot express a per-row update predicate).
+- `on_duplicate_key` where `conflict_columns` is ambiguous or unmatched
+  against the table's unique/PK indexes → `ValueError` (introspection
+  fail-closed, §6.2).
+- `update_condition` predicate that references a column absent from the target
+  schema → `ValueError` (caught when binding the predicate to the resolved
+  `incoming`/`existing` tables — ibis raises on the unknown field).
 - `upsert_style=None` → `NotImplementedError` naming the dialect.
 - Target table absent → `ValueError` (preserves current behaviour).
 - Identifiers: `name`/`database`/rename names validated simple (non-dotted)
@@ -446,8 +515,11 @@ job. A `hatch` script (`test-live`) brings the local compose services up.
   portable behaviour. Documented, not handled (an optional `deduplicate=` flag
   is a future extension, not in this iteration).
 - **MySQL-family conflict targeting** detects on *any* unique index, not
-  `conflict_columns` (§6.2) — unenforceable on tables with multiple unique
-  constraints; use the override hook for stricter needs.
+  `conflict_columns` (§6.2). Rather than silently mis-target, the renderer
+  introspects unique/PK indexes and **raises `ValueError`** when
+  `conflict_columns` is ambiguous or unmatched — fail-closed, because the
+  failure would be data corruption. The `upsert_hook` override is the escape
+  hatch for tables that legitimately need the broader behaviour.
 - **MySQL-family `conflict_action="NOTHING"` is not a true no-op** (§6.2) — may
   fire `ON UPDATE` timestamps / triggers / locks. Documented; not `INSERT
   IGNORE`.
@@ -464,8 +536,12 @@ job. A `hatch` script (`test-live`) brings the local compose services up.
   on such an engine may surface engine-specific quirks (or outright rejection,
   e.g. connector-dependent Trino MERGE), handled then via the `upsert_hook`
   override seam. `unverified`-basis rows (e.g. risingwave) are hypotheses.
-- **`update_condition` semantics** differ subtly across families (pre- vs
-  post-match predicate); documented per family in §6.
+- **`update_condition`** renders to different *clauses* per family (`DO UPDATE
+  … WHERE` vs `WHEN MATCHED AND`), but the observable semantics are equivalent
+  (§6.1): a key-matched row failing the predicate is left untouched and not
+  re-inserted. The predicate is ibis-expressed, so functions/types are
+  portable; the alias-remap mechanism is the one piece of real implementation
+  depth (verified, §9).
 
 ## 12. Dependency
 
@@ -481,14 +557,18 @@ job. A `hatch` script (`test-live`) brings the local compose services up.
 - `dialects/_registry.py` — `UpsertStyle` enum, `upsert_style` field; assign
   styles per the matrix; remove the three `upsert_hook=duckdb_family_upsert`
   registrations.
-- `backends/ibis/_render.py` (new) — shared rendering primitives.
+- `backends/ibis/_render.py` (new) — shared rendering primitives **and** the
+  conditional-predicate compiler (`ConditionPredicate` type; join → sqlglot
+  AST → alias-remap → per-family clause, §6.1).
 - `backends/ibis/operations.py` — `_generic_rename_table`, `_generic_upsert`,
-  `_render_on_conflict`, `_render_merge`, `_render_on_duplicate_key`; migrate
+  `_render_on_conflict`, `_render_merge`, `_render_on_duplicate_key` (incl. the
+  unique-index introspection + fail-closed validation, §6.2); migrate
   `_generic_add_columns` to the helper; **delete** `duckdb_family_upsert` —
   the duckdb family routes through `_render_on_conflict` via
   `upsert_style=ON_CONFLICT`.
 - `backends/ibis/backend.py` — `upsert`/`rename_table` dispatch updated to the
-  hook-or-generic shape.
+  hook-or-generic shape; `upsert`'s `update_condition` param retyped from
+  `str | None` to `ConditionPredicate | None`.
 - `compose.yaml` (new) — postgres + mariadb stock services.
 - `tests/test_unit/backends/ibis/test_upsert_render.py`,
   `test_rename_table_render.py` (new) — golden-SQL per dialect.
