@@ -20,7 +20,16 @@ from mountainash_data.core.constants import (
     CONST_INDEX_TYPE,
 )
 from sqlglot import exp
-from mountainash_data.backends.ibis._render import dialect_of, quote_identifier
+from mountainash_data.backends.ibis._render import (
+    ConditionAliases,
+    compile_condition,
+    compiled_source,
+    dialect_of,
+    qualified_name,
+    quote_identifier,
+    validate_condition,
+)
+from mountainash_data.backends.ibis.dialects._registry import UpsertStyle
 
 
 # ===========================================================================
@@ -474,3 +483,202 @@ def duckdb_family_upsert(
                 ibis_conn.drop_table(staging_table, force=True)
             except Exception:
                 pass
+
+
+# ===========================================================================
+# GENERIC UPSERT — dialect-agnostic dispatcher
+# ===========================================================================
+
+
+def build_on_conflict_sql(
+    *,
+    dialect: t.Any,
+    target: str,
+    cols: list[str],
+    conflict: list[str],
+    update: list[str],
+    conflict_action: str,
+    source_sql: str,
+    condition_sql: str | None = None,
+) -> str:
+    """Pure builder: render an INSERT … ON CONFLICT statement for *dialect*.
+
+    Takes all pre-computed parts explicitly so registry golden tests (Task 7/10)
+    can render the ON CONFLICT family without a live connection.
+
+    Args:
+        dialect: sqlglot dialect (from ``dialect_of(ibis_conn)``).
+        target: Fully-qualified, already-quoted target table reference.
+        cols: Ordered list of source/insert column names (unquoted).
+        conflict: Conflict-key column names (unquoted).
+        update: Columns to update on conflict (unquoted; ignored for NOTHING).
+        conflict_action: ``"UPDATE"`` or ``"NOTHING"``.
+        source_sql: Compiled SELECT subquery SQL string (from ``compiled_source``).
+        condition_sql: Optional rendered WHERE condition for the DO UPDATE clause.
+
+    Returns:
+        A complete ``INSERT INTO … ON CONFLICT …`` SQL string.
+    """
+    col_list = ", ".join(quote_identifier(c, dialect) for c in cols)
+    conflict_list = ", ".join(quote_identifier(c, dialect) for c in conflict)
+    # EXCLUDED is the unquoted pseudo-relation (Postgres/DuckDB/SQLite convention).
+    excl = "EXCLUDED"
+
+    if conflict_action == "NOTHING":
+        action = f"ON CONFLICT ({conflict_list}) DO NOTHING"
+    else:
+        set_sql = ", ".join(
+            f"{quote_identifier(c, dialect)} = {excl}.{quote_identifier(c, dialect)}"
+            for c in update
+        )
+        where = f" WHERE {condition_sql}" if condition_sql else ""
+        action = f"ON CONFLICT ({conflict_list}) DO UPDATE SET {set_sql}{where}"
+
+    # ``WHERE true`` is required by SQLite to disambiguate INSERT … SELECT … ON
+    # CONFLICT (its parser errors near DO without it); harmless on duckdb/postgres.
+    return (
+        f"INSERT INTO {target} AS tgt ({col_list}) "
+        f"SELECT {col_list} FROM ({source_sql}) AS __src WHERE true {action}"
+    )
+
+
+def _render_on_conflict(
+    ibis_conn: t.Any,
+    name: str,
+    obj: t.Any,
+    *,
+    target_schema: t.Any,
+    conflict: list[str],
+    update: list[str],
+    conflict_action: str,
+    update_condition: t.Any,
+    database: str | None,
+    schema: str | None,
+) -> str:
+    """Thin wrapper: derive dialect/source_sql/condition_sql from the live
+    connection and delegate to ``build_on_conflict_sql``."""
+    dialect = dialect_of(ibis_conn)
+    source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
+    parts = [p for p in (database, schema, name) if p]
+    target = qualified_name(parts, dialect)
+
+    condition_sql: str | None = None
+    if update_condition is not None and conflict_action == "UPDATE":
+        # EXCLUDED is the unquoted pseudo-relation for the incoming row; tgt is
+        # the target alias used in INSERT INTO … AS tgt.
+        aliases = ConditionAliases(
+            incoming="EXCLUDED", existing="tgt", incoming_quoted=False
+        )
+        condition_sql = compile_condition(
+            ibis_conn, target_schema, name, update_condition, aliases=aliases,
+        ).sql(dialect=dialect)
+
+    return build_on_conflict_sql(
+        dialect=dialect,
+        target=target,
+        cols=cols,
+        conflict=conflict,
+        update=update,
+        conflict_action=conflict_action,
+        source_sql=source_sql,
+        condition_sql=condition_sql,
+    )
+
+
+def _generic_upsert(
+    ibis_conn: t.Any,
+    name: str,
+    obj: t.Any,
+    *,
+    style: t.Any,
+    conflict_columns: t.Any,
+    update_columns: t.Any,
+    conflict_action: str,
+    update_condition: t.Any,
+    database: str | None,
+    schema: str | None,
+) -> None:
+    """Dialect-agnostic upsert dispatcher.
+
+    Validation precedence (spec §10):
+      1. style (unknown → NotImplementedError)
+      2. target existence
+      3. identifier validation (name, database)
+      4. conflict_action validity
+      5. update_condition — validated UNCONDITIONALLY even under NOTHING
+         (malformed predicate must error regardless of action path)
+      6. updatable columns check
+
+    MERGE and ON_DUPLICATE_KEY raise ``NotImplementedError`` placeholders
+    (Tasks 7/8 fill them). Public ``be.upsert()`` dispatch is NOT flipped yet
+    (Task 9); tests call this directly.
+    """
+    # §10.1 — style check first
+    if style is None:
+        raise NotImplementedError(
+            f"Dialect (connection {type(ibis_conn).__name__}) does not support upsert"
+        )
+
+    # §10.2 — target existence
+    _tables = ibis_conn.list_tables(database=database) if database is not None else ibis_conn.list_tables()
+    if name not in _tables:
+        raise ValueError(f"target table {name!r} does not exist")
+
+    # §10.3 — identifier validation
+    _validate_simple_identifier(name, kind="name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
+
+    # §10.4 — conflict_action validity
+    if conflict_action not in ("UPDATE", "NOTHING"):
+        raise ValueError(
+            f"conflict_action must be UPDATE or NOTHING, got {conflict_action!r}"
+        )
+
+    target_schema = ibis_conn.table(name, database=database).schema()
+    conflict = _normalize_columns(conflict_columns)
+
+    # conflict column existence
+    missing = [c for c in conflict if c not in target_schema.names]
+    if missing:
+        raise ValueError(f"conflict_columns absent from target: {missing}")
+
+    if update_columns is None:
+        update = [c for c in target_schema.names if c not in conflict]
+    else:
+        update = _normalize_columns(update_columns)
+        missing_u = [c for c in update if c not in target_schema.names]
+        if missing_u:
+            raise ValueError(f"update_columns absent from target: {missing_u}")
+
+    # §10.5 — update_condition validated UNCONDITIONALLY (even under NOTHING)
+    if update_condition is not None:
+        if style is UpsertStyle.ON_DUPLICATE_KEY:
+            raise ValueError(
+                "update_condition is not supported for the MySQL ON DUPLICATE KEY family"
+            )
+        validate_condition(target_schema, name, update_condition)
+        if conflict_action == "NOTHING":
+            warnings.warn("update_condition is ignored when conflict_action='NOTHING'")
+
+    # §10.6 — updatable columns check
+    if conflict_action == "UPDATE" and not update:
+        raise ValueError(
+            "no columns to update; provide update_columns or non-key columns"
+        )
+
+    # Dispatch
+    if style is UpsertStyle.ON_CONFLICT:
+        stmt = _render_on_conflict(
+            ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
+            update=update, conflict_action=conflict_action,
+            update_condition=update_condition, database=database, schema=schema,
+        )
+    elif style is UpsertStyle.MERGE:
+        raise NotImplementedError("unimplemented style: MERGE")  # Task 7
+    elif style is UpsertStyle.ON_DUPLICATE_KEY:
+        raise NotImplementedError("unimplemented style: ON_DUPLICATE_KEY")  # Task 8
+    else:
+        raise NotImplementedError(f"unknown upsert_style: {style!r}")
+
+    ibis_conn.raw_sql(stmt)

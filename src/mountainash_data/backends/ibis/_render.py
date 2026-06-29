@@ -120,6 +120,33 @@ def validate_condition(
     validate_predicate(predicate(incoming, existing))
 
 
+def compiled_source(
+    ibis_conn: t.Any, obj: t.Any, target_schema: t.Any
+) -> tuple[str, list[str]]:
+    """Compile `obj` to a SELECT subquery, casting each column to the target
+    type and projecting in target-column order. Returns (sql, columns).
+
+    Columns present in the target but absent from the source are omitted;
+    columns present in the source but absent from the target raise ValueError.
+
+    ``_register_in_memory_tables`` is called before ``compile`` so that
+    memtable-backed expressions (the common case when `obj` is a DataFrame)
+    are staged in the backend catalog.  Without this step, ``compile`` emits
+    SQL referencing ``ibis_polars_memtable_<hash>`` which is not registered,
+    causing a CatalogException at ``raw_sql`` time.  This matches ibis's own
+    memtable-staging mechanism (``SQLBackend._register_in_memory_tables``).
+    """
+    src = obj if isinstance(obj, ir.Table) else ibis.memtable(obj)
+    src_cols = set(src.columns)
+    extra = src_cols - set(target_schema.names)
+    if extra:
+        raise ValueError(f"source columns absent from target: {sorted(extra)}")
+    cols = [c for c in target_schema.names if c in src_cols]
+    projected = src.select([src[c].cast(target_schema[c]).name(c) for c in cols])
+    ibis_conn._register_in_memory_tables(projected)  # REQUIRED: stage memtables
+    return ibis_conn.compile(projected), cols
+
+
 def compile_condition(
     ibis_conn: t.Any,
     target_schema: t.Any,
