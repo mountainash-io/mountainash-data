@@ -11,7 +11,7 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
-from mountainash_data.backends.ibis.operations import _generic_add_columns
+from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table
 from mountainash_data.core.inspection import (
     CatalogInfo,
     NamespaceInfo,
@@ -461,12 +461,12 @@ class IbisBackend:
         return self
 
     def rename_table(self, old_name: str, new_name: str) -> IbisBackend:
-        if self._spec.rename_table_hook is None:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support rename_table"
-            )
         conn = self._require_connected()
-        self._spec.rename_table_hook(conn._ibis_conn, old_name, new_name)
+        hook = self._spec.rename_table_hook
+        if hook is not None:
+            hook(conn._ibis_conn, old_name, new_name)
+        else:
+            _generic_rename_table(conn._ibis_conn, old_name, new_name)
         return self
 
     # --- Terminal operations (return data) ---

@@ -19,7 +19,8 @@ from mountainash_data.core.constants import (
     CONST_CONFLICT_ACTION,
     CONST_INDEX_TYPE,
 )
-from mountainash_data.backends.ibis._render import quote_identifier
+from sqlglot import exp
+from mountainash_data.backends.ibis._render import dialect_of, quote_identifier
 
 
 # ===========================================================================
@@ -133,6 +134,29 @@ def _validate_simple_identifier(value: str, *, kind: str) -> None:
             f"{kind} {value!r} must be a simple (non-dotted) identifier; "
             f"multi-part qualified names are out of scope."
         )
+
+
+def build_rename_sql(old_name: str, new_name: str, *, dialect: t.Any) -> str:
+    """Pure builder: render a portable rename for an explicit sqlglot dialect.
+
+    sqlglot renders ALTER TABLE … RENAME TO … for most dialects, EXEC sp_rename
+    for SQL Server (tsql), and ALTER TABLE … RENAME … for MySQL/SingleStore.
+    Taking `dialect` explicitly lets the registry golden test render every
+    dialect without a live connection. Identifiers are built directly via
+    to_identifier(quoted=True) — never pre-quoted-then-reparsed (that double-quotes).
+    """
+    return exp.Alter(
+        this=exp.Table(this=exp.to_identifier(old_name, quoted=True)),
+        kind="TABLE",
+        actions=[exp.AlterRename(this=exp.to_identifier(new_name, quoted=True))],
+    ).sql(dialect=dialect)
+
+
+def _generic_rename_table(ibis_conn: t.Any, old_name: str, new_name: str) -> None:
+    """Rename a table via the sqlglot generic default off the live connection."""
+    _validate_simple_identifier(old_name, kind="old_name")
+    _validate_simple_identifier(new_name, kind="new_name")
+    ibis_conn.raw_sql(build_rename_sql(old_name, new_name, dialect=dialect_of(ibis_conn)))
 
 
 def _generic_add_columns(
