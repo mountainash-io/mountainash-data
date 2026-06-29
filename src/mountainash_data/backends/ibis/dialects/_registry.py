@@ -50,6 +50,7 @@ class DialectSpec:
     get_index_exists_sql: t.Optional[GetIndexExistsSql] = None
     get_list_indexes_sql: t.Optional[GetListIndexesSql] = None
     upsert_hook: t.Optional[UpsertHook] = None
+    # None = upsert not supported (no hook + no style -> NotImplementedError).
     upsert_style: t.Optional[UpsertStyle] = None
     create_index_hook: t.Optional[CreateIndexHook] = None
     drop_index_hook: t.Optional[DropIndexHook] = None
