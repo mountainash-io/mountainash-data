@@ -50,6 +50,8 @@ class TestCompileCondition:
         con = ibis.duckdb.connect()
         sql = _render(con, lambda inc, exi: inc.v.notnull(), _MERGE)
         assert "NULL" in sql.upper()
+        # the alias remap must have applied: the incoming column is qualified by src
+        assert '"src"."v"' in sql
 
     def test_rejects_target_name_colliding_with_sentinel(self):
         con = ibis.duckdb.connect()
@@ -71,8 +73,9 @@ class TestCompileCondition:
         """WindowFunction op triggers the forbidden-ops check."""
         schema = ibis.schema({"id": "int64", "updated_at": "timestamp", "v": "string"})
         t = ibis.table(schema, name="x")
-        # row_number() over window produces a WindowFunction op
-        win_expr = t.id.sum().over(ibis.window()) > 0
+        # rank() is an analytic function -> a pure WindowFunction op (no
+        # Reduction), so this isolates the window arm of the forbidden check.
+        win_expr = t.id.rank() > 0
         with pytest.raises(ValueError, match="aggregat|window|scalar|subquer|row predicate"):
             validate_predicate(win_expr)
 
