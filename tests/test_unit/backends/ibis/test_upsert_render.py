@@ -188,5 +188,7 @@ def test_on_duplicate_key_golden_nothing(name: str) -> None:
         source_sql="SELECT 1 AS id, 'a' AS v",
     )
     assert "ON DUPLICATE KEY UPDATE" in sql, f"{name}: missing ON DUPLICATE KEY UPDATE: {sql}"
-    # NOTHING uses self-assign: the first conflict column appears twice with =
+    # NOTHING uses self-assign on the first conflict column (NOT an empty SET,
+    # which is a syntax error). Both ODK dialects (mysql/singlestore) backtick.
+    assert "`id` = `id`" in sql, f"{name}: NOTHING should self-assign `id` = `id`: {sql}"
     assert "VALUES(" not in sql, f"{name}: NOTHING should not use VALUES(): {sql}"

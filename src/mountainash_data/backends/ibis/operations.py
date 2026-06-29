@@ -695,6 +695,12 @@ def _mysql_validate_conflict_key(
 
     NOTE: ``ibis_conn.current_database`` is a PROPERTY in ibis >=12 (no parens).
     """
+    # Defense-in-depth: name/database are validated in _generic_upsert, but this
+    # function interpolates them into the introspection SQL, so re-validate here
+    # to stay safe for any direct caller (name is the upstream guard's contract).
+    _validate_simple_identifier(name, kind="name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
     db = database or ibis_conn.current_database
     rows = ibis_conn.raw_sql(
         "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, NON_UNIQUE "
