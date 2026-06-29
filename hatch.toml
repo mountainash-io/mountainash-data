@@ -129,9 +129,10 @@ dependencies = [
     # ibis 12 uses psycopg (psycopg3) for postgres — needs psycopg-binary for
     # a pure-Python/bundled-libpq build that works without system libpq-dev.
     # mysql/mariadb (ibis-framework[mysql]) requires mysqlclient which needs
-    # libmariadb-dev system headers — installed via apt in CI, skipped locally.
+    # libmariadb-dev system headers — installed via apt in CI and locally.
     "psycopg-binary>=3.1.0",
     "ibis-framework[postgres]>=12.0.0",
+    "ibis-framework[mysql]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",

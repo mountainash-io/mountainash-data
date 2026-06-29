@@ -112,8 +112,10 @@ def test_merge_golden_per_dialect(name: str) -> None:
     assert sql.startswith("MERGE INTO"), f"{name}: expected MERGE INTO, got: {sql[:60]}"
     assert "WHEN MATCHED THEN UPDATE SET" in sql, f"{name}: missing WHEN MATCHED: {sql}"
     assert "WHEN NOT MATCHED THEN INSERT" in sql, f"{name}: missing WHEN NOT MATCHED: {sql}"
-    # backtick quoting is used by mysql, bigquery, and databricks dialects
-    _BACKTICK_DIALECTS = {"mysql", "bigquery", "databricks"}
+    # backtick-quoting MERGE-family dialects. mysql also backticks but is
+    # ON_DUPLICATE_KEY (never reaches this MERGE-only parametrization), so it
+    # is intentionally not listed here.
+    _BACKTICK_DIALECTS = {"bigquery", "databricks"}
     uses_backtick = "`" in sql
     assert uses_backtick == (d in _BACKTICK_DIALECTS), (
         f"{name} (dialect={d}): unexpected quoting style in: {sql}"
