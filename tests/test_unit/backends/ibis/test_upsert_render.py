@@ -1,11 +1,22 @@
-"""Generic upsert — ON CONFLICT family (sqlite/duckdb)."""
+"""Generic upsert — ON CONFLICT family (sqlite/duckdb) + MERGE golden tests."""
 
 import ibis
 import polars as pl
 import pytest
 
-from mountainash_data.backends.ibis.dialects._registry import UpsertStyle
-from mountainash_data.backends.ibis.operations import _generic_upsert
+from mountainash_data.backends.ibis.dialects._registry import DIALECTS, UpsertStyle
+from mountainash_data.backends.ibis.operations import _generic_upsert, build_merge_sql
+
+# ibis backend name -> sqlglot dialect name (identity unless listed).
+# Mirrors _IBIS_TO_SQLGLOT in test_rename_table_render.py; kept here to avoid
+# a cross-test-module import (tests/ has no top-level __init__.py).
+_IBIS_TO_SQLGLOT = {
+    "mssql": "tsql",
+    "motherduck": "duckdb",
+    "singlestoredb": "singlestore",
+    "impala": "hive",
+    "pyspark": "spark",
+}
 
 
 def _seed(con):
@@ -74,3 +85,57 @@ class TestOnConflictUpsert:
                 conflict_action="UPDATE", update_condition=None,
                 database=None, schema=None,
             )
+
+
+def _sqlglot_dialect(spec: object) -> str:
+    """Map a DialectSpec to its sqlglot dialect name."""
+    ibis_name: str = spec.ibis_backend_name  # type: ignore[attr-defined]
+    return _IBIS_TO_SQLGLOT.get(ibis_name, ibis_name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [n for n, s in DIALECTS.items() if s.upsert_style is UpsertStyle.MERGE],
+)
+def test_merge_golden_per_dialect(name: str) -> None:
+    """Every MERGE-family dialect renders a valid MERGE INTO statement."""
+    d = _sqlglot_dialect(DIALECTS[name])
+    sql = build_merge_sql(
+        dialect=d,
+        target=f'"{name}"',
+        cols=["id", "v"],
+        conflict=["id"],
+        update=["v"],
+        conflict_action="UPDATE",
+        source_sql="SELECT 1 AS id, 'a' AS v",
+    )
+    assert sql.startswith("MERGE INTO"), f"{name}: expected MERGE INTO, got: {sql[:60]}"
+    assert "WHEN MATCHED THEN UPDATE SET" in sql, f"{name}: missing WHEN MATCHED: {sql}"
+    assert "WHEN NOT MATCHED THEN INSERT" in sql, f"{name}: missing WHEN NOT MATCHED: {sql}"
+    # backtick quoting is used by mysql, bigquery, and databricks dialects
+    _BACKTICK_DIALECTS = {"mysql", "bigquery", "databricks"}
+    uses_backtick = "`" in sql
+    assert uses_backtick == (d in _BACKTICK_DIALECTS), (
+        f"{name} (dialect={d}): unexpected quoting style in: {sql}"
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [n for n, s in DIALECTS.items() if s.upsert_style is UpsertStyle.MERGE],
+)
+def test_merge_golden_nothing_omits_matched(name: str) -> None:
+    """MERGE with conflict_action=NOTHING omits the WHEN MATCHED clause."""
+    d = _sqlglot_dialect(DIALECTS[name])
+    sql = build_merge_sql(
+        dialect=d,
+        target=f'"{name}"',
+        cols=["id", "v"],
+        conflict=["id"],
+        update=["v"],
+        conflict_action="NOTHING",
+        source_sql="SELECT 1 AS id, 'a' AS v",
+    )
+    assert sql.startswith("MERGE INTO"), f"{name}: expected MERGE INTO"
+    assert "WHEN MATCHED" not in sql, f"{name}: NOTHING should omit WHEN MATCHED: {sql}"
+    assert "WHEN NOT MATCHED THEN INSERT" in sql, f"{name}: missing WHEN NOT MATCHED"

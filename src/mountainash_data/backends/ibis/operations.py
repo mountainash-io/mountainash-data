@@ -589,6 +589,92 @@ def _render_on_conflict(
     )
 
 
+def build_merge_sql(
+    *,
+    dialect: t.Any,
+    target: str,
+    cols: list[str],
+    conflict: list[str],
+    update: list[str],
+    conflict_action: str,
+    source_sql: str,
+    condition_sql: str | None = None,
+) -> str:
+    """Pure builder: render a MERGE INTO … statement for *dialect*.
+
+    Takes all pre-computed parts explicitly so registry golden tests can render
+    any MERGE-family dialect without a live connection.
+
+    Args:
+        dialect: sqlglot dialect (from ``dialect_of(ibis_conn)``).
+        target: Fully-qualified, already-quoted target table reference.
+        cols: Ordered list of source/insert column names (unquoted).
+        conflict: Conflict-key column names (unquoted).
+        update: Columns to update on match (unquoted; ignored for NOTHING).
+        conflict_action: ``"UPDATE"`` or ``"NOTHING"``.
+        source_sql: Compiled SELECT subquery SQL string (from ``compiled_source``).
+        condition_sql: Optional rendered condition for the WHEN MATCHED clause.
+
+    Returns:
+        A complete ``MERGE INTO … USING … ON … WHEN …`` SQL string.
+    """
+    q = lambda c: quote_identifier(c, dialect)  # noqa: E731
+    on = " AND ".join(f"tgt.{q(c)} = src.{q(c)}" for c in conflict)
+    not_matched = (
+        f"WHEN NOT MATCHED THEN INSERT ({', '.join(q(c) for c in cols)}) "
+        f"VALUES ({', '.join(f'src.{q(c)}' for c in cols)})"
+    )
+    clauses: list[str] = []
+    if conflict_action == "UPDATE":
+        set_sql = ", ".join(f"{q(c)} = src.{q(c)}" for c in update)
+        cond = f" AND {condition_sql}" if condition_sql else ""
+        clauses.append(f"WHEN MATCHED{cond} THEN UPDATE SET {set_sql}")
+    clauses.append(not_matched)
+    return (
+        f"MERGE INTO {target} AS tgt USING ({source_sql}) AS src "
+        f"ON {on} " + " ".join(clauses)
+    )
+
+
+def _render_merge(
+    ibis_conn: t.Any,
+    name: str,
+    obj: t.Any,
+    *,
+    target_schema: t.Any,
+    conflict: list[str],
+    update: list[str],
+    conflict_action: str,
+    update_condition: t.Any,
+    database: str | None,
+    schema: str | None,
+) -> str:
+    """Thin wrapper: derive dialect/source_sql/condition_sql from the live
+    connection and delegate to ``build_merge_sql``."""
+    dialect = dialect_of(ibis_conn)
+    source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
+    parts = [p for p in (database, schema, name) if p]
+    target = qualified_name(parts, dialect)
+
+    condition_sql: str | None = None
+    if update_condition is not None and conflict_action == "UPDATE":
+        aliases = ConditionAliases(incoming="src", existing="tgt")
+        condition_sql = compile_condition(
+            ibis_conn, target_schema, name, update_condition, aliases=aliases,
+        ).sql(dialect=dialect)
+
+    return build_merge_sql(
+        dialect=dialect,
+        target=target,
+        cols=cols,
+        conflict=conflict,
+        update=update,
+        conflict_action=conflict_action,
+        source_sql=source_sql,
+        condition_sql=condition_sql,
+    )
+
+
 def _generic_upsert(
     ibis_conn: t.Any,
     name: str,
@@ -681,7 +767,11 @@ def _generic_upsert(
             update_condition=update_condition, database=database, schema=schema,
         )
     elif style is UpsertStyle.MERGE:
-        raise NotImplementedError("unimplemented style: MERGE")  # Task 7
+        stmt = _render_merge(
+            ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
+            update=update, conflict_action=conflict_action,
+            update_condition=update_condition, database=database, schema=schema,
+        )
     elif style is UpsertStyle.ON_DUPLICATE_KEY:
         raise NotImplementedError("unimplemented style: ON_DUPLICATE_KEY")  # Task 8
     else:
