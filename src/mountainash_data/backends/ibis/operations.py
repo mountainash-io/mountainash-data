@@ -14,12 +14,12 @@ import uuid
 
 import ibis
 import mountainash as ma
-from sqlglot import exp
 
 from mountainash_data.core.constants import (
     CONST_CONFLICT_ACTION,
     CONST_INDEX_TYPE,
 )
+from mountainash_data.backends.ibis._render import quote_identifier
 
 
 # ===========================================================================
@@ -165,11 +165,8 @@ def _generic_add_columns(
     type_mapper = ibis_conn.compiler.type_mapper
     dialect = ibis_conn.compiler.dialect
 
-    def _quote(identifier: str) -> str:
-        return exp.to_identifier(identifier, quoted=True).sql(dialect=dialect)
-
     table_parts = [database, table_name] if database else [table_name]
-    qualified = ".".join(_quote(part) for part in table_parts)
+    qualified = ".".join(quote_identifier(part, dialect) for part in table_parts)
 
     for col_name, dtype in candidate.items():
         if col_name in existing:
@@ -178,7 +175,7 @@ def _generic_add_columns(
             dtype = ibis.dtype("string")
         type_sql = type_mapper.to_string(dtype)
         ibis_conn.raw_sql(
-            f"ALTER TABLE {qualified} ADD COLUMN {_quote(col_name)} {type_sql}"
+            f"ALTER TABLE {qualified} ADD COLUMN {quote_identifier(col_name, dialect)} {type_sql}"
         )
 
 
