@@ -231,60 +231,127 @@ a subquery — `compiled_source()` returns `(SELECT … )` — used as the
 (<subquery>) AS src`. This is exactly Ibis 12's mechanism. No staging table,
 no cleanup, portable by construction.
 
+**Column ordering (mandatory).** Every family renders an **explicit target
+column list** and projects the source subquery columns **in target-column
+order** — never `INSERT … SELECT *` or positional value lists. A source whose
+columns are ordered `[name, id]` against a target `[id, name]` must not swap
+values. The renderer derives the column list from the source schema,
+intersected with the target schema, and projects both `INSERT` and the MERGE
+`WHEN NOT MATCHED … INSERT (cols) VALUES (src.cols)` in that exact order.
+
+**Type alignment across the subquery boundary (mandatory).** The source
+projection **casts each column to the target table's column type** via the
+connection's `compiler.type_mapper` (the same type-parity mechanism
+`add_columns` uses). This is required because an all-null source column
+compiles as an untyped `NULL` literal that warehouse `MERGE` engines reject
+or mis-coerce against a typed/non-nullable target, and because temporal /
+decimal types are backend-sensitive. Columns present in the target but absent
+from the source are omitted from the column list (engine default / NULL
+applies); columns present in the source but absent from the target raise
+`ValueError`.
+
 ## 6. Semantics Mapping
 
-The public semantics map onto each family as follows. All three honour the
-identical public contract.
+The public semantics map onto each family as below. The `ON CONFLICT` and
+`MERGE` families honour an identical public contract; `ON DUPLICATE KEY`
+honours it with two **documented divergences** (conflict targeting and the
+`NOTHING` action), spelled out under the table — it is *not* claimed
+byte-equivalent.
 
 | Public param | `ON CONFLICT` | `MERGE` | `ON DUPLICATE KEY` |
 |---|---|---|---|
-| `conflict_columns` (composite) | `ON CONFLICT (c1,c2)` | `ON tgt.c1=src.c1 AND tgt.c2=src.c2` | unique-key implied; key cols excluded from SET |
+| `conflict_columns` (composite) | `ON CONFLICT (c1,c2)` | `ON tgt.c1=src.c1 AND tgt.c2=src.c2` | **detection is by the table's unique indexes, not this list** — see §6.1 |
 | `conflict_action="UPDATE"` | `DO UPDATE SET …` | `WHEN MATCHED THEN UPDATE SET …` + `WHEN NOT MATCHED THEN INSERT …` | `ON DUPLICATE KEY UPDATE …` |
-| `conflict_action="NOTHING"` | `DO NOTHING` | omit `WHEN MATCHED` (insert-if-absent only) | `… UPDATE c1=c1` (no-op self-assign) |
+| `conflict_action="NOTHING"` | `DO NOTHING` | omit `WHEN MATCHED` (insert-if-absent only) | `… UPDATE k0=k0` self-assign — **not a true no-op**, see §6.2 |
 | `update_columns` (subset) | restrict `SET` list | restrict `WHEN MATCHED … SET` list | restrict `UPDATE` list |
-| `update_condition` | `DO UPDATE SET … WHERE <cond>` | `WHEN MATCHED AND <cond> THEN UPDATE` | unsupported → `ValueError` (MySQL has no per-row update predicate) |
+| `update_condition` | `DO UPDATE SET … WHERE <cond>` | `WHEN MATCHED AND <cond> THEN UPDATE` | unsupported → `ValueError` |
 | default `update_columns` | all non-key columns | all non-key columns | all non-key columns |
 
-`update_condition` on `ON_DUPLICATE_KEY` raises `ValueError` (honest: the
-family cannot express it) rather than silently dropping it.
+### 6.1 `update_condition` alias contract (cross-family)
 
-## 7. Coverage Matrix (all 21 registry dialects)
+`update_condition` is a raw SQL boolean expression. A bare string cannot be
+both ON-CONFLICT-valid and MERGE-valid (`EXCLUDED.x` vs `src.x`), so the
+package **fixes the alias contract**: the condition references the **incoming
+row as `EXCLUDED.<col>`** and the **existing row by the bare target table
+name** — the ON CONFLICT convention. The MERGE renderer makes the same string
+valid by aliasing the source subquery **`AS EXCLUDED`** and the target **`AS
+<table_name>`**, so `EXCLUDED.updated_at > orders.updated_at` renders
+correctly in both families. The matched/not-matched semantics are equivalent:
+a row matching the key but failing the condition stays matched and is neither
+updated nor re-inserted (no duplicate). `on_duplicate_key` cannot express a
+per-row update predicate → `update_condition` raises `ValueError` rather than
+silently dropping it.
 
-Confidence: **live** = executed against a real engine in CI/local; **render**
-= golden-SQL assertion only (no credentials/engine available); **n/a** =
-`upsert_style=None`, honest `NotImplementedError`.
+### 6.2 `ON DUPLICATE KEY` documented divergences
 
-| Dialect | `upsert_style` | Confidence | Notes |
-|---|---|---|---|
-| sqlite | on_conflict | **live** | in-memory |
-| duckdb | on_conflict | **live** | in-memory; also exercises MERGE renderer (duckdb supports MERGE) |
-| motherduck | on_conflict | render | duckdb engine |
-| postgres | on_conflict | **live** | Docker; also exercises MERGE renderer (PG15+) |
-| mysql | on_duplicate_key | **live** | Docker (mariadb, per Ibis) |
-| singlestoredb | on_duplicate_key | render | MySQL-compatible |
-| snowflake | merge | render | |
-| bigquery | merge | render | |
-| mssql | merge | render | sp_rename for rename |
-| oracle | merge | render | |
-| databricks | merge | render | Delta MERGE |
-| exasol | merge | render | |
-| trino | merge | render | connector-dependent at runtime |
-| redshift | merge | render | postgres protocol but no `ON CONFLICT`; MERGE (2023+) |
-| risingwave | on_conflict | render | postgres-wire table upsert |
-| clickhouse | None | n/a | ReplacingMergeTree / ALTER UPDATE — divergent model |
-| impala | None | n/a | MERGE only for Iceberg targets |
-| materialize | None | n/a | restricts INSERT to write-only txns |
-| druid | None | n/a | append-only analytics store |
-| pyspark | None | n/a | MERGE only for Delta/Iceberg; Ibis marks notyet |
+- **Conflict targeting:** MySQL/MariaDB `ON DUPLICATE KEY UPDATE` fires on a
+  collision with **any** unique or primary key, not a named subset.
+  `conflict_columns` therefore governs only which columns are *excluded from
+  the UPDATE set* (and is validated non-empty); it does **not** select the
+  detection key. Callers must ensure `conflict_columns` corresponds to the
+  table's intended unique constraint — on a table with multiple unique
+  constraints the engine may update on a different collision. Documented
+  limitation (§11); the `upsert_hook` override is the escape hatch for
+  stricter needs. We do **not** introspect constraints in this iteration.
+- **`NOTHING` is not a true no-op:** rendered as `ON DUPLICATE KEY UPDATE
+  k0=k0` (self-assigning the first key column). Depending on table definition
+  this may advance `ON UPDATE CURRENT_TIMESTAMP` columns, fire UPDATE
+  triggers, take update locks, and alter affected-row counts — unlike `ON
+  CONFLICT DO NOTHING`. We deliberately do **not** use `INSERT IGNORE` (it
+  also silently suppresses unrelated type / NOT NULL / FK errors). Documented
+  (§11); strict-skip callers use the override hook.
 
-`rename_table`: generic sqlglot default for **all** dialects (render-verified
-across the registry; live on sqlite/duckdb/postgres/mysql). The override hook
-stays available for any engine later found to diverge beyond sqlglot's
-rendering.
+## 7. Coverage Matrix (all 20 registry dialects)
 
-The matrix is shipped as a documented table in the module and asserted by the
-golden-SQL tests (per-dialect rendered statement), so "render" coverage is
-real verification of the emitted SQL, not an assumption.
+The registry currently has **20** dialects; every one appears below. The
+matrix is not hand-counted in tests — the golden-SQL suite **iterates the live
+`DIALECTS` registry** (§8.4) and asserts each entry renders or is explicitly
+`None`, so adding a 21st dialect *forces* a matrix decision (no hardcoded
+count to drift).
+
+Columns: **Style** = assigned `upsert_style`. **Exec** = engine-execution
+confidence: **live** (round-tripped against a real engine) / **render**
+(rendered SQL asserted; engine acceptance and semantic support **not**
+verified) / **n/a** (`upsert_style=None` → honest `NotImplementedError`).
+**Basis** = how the style assignment was established: **verified** (live or
+vendor-doc confirmed) / **inferred** (protocol/family compatibility) /
+**unverified** (hypothesis pending docs/tests).
+
+| Dialect | Style | Exec | Basis | Notes |
+|---|---|---|---|---|
+| sqlite | on_conflict | **live** | verified | in-memory |
+| duckdb | on_conflict | **live** | verified | in-memory; also exercises MERGE renderer (duckdb supports MERGE) |
+| motherduck | on_conflict | render | inferred | duckdb engine |
+| postgres | on_conflict | **live** | verified | Docker; also exercises MERGE renderer (PG15+) |
+| mysql | on_duplicate_key | **live** | verified | Docker (mariadb, per Ibis) |
+| singlestoredb | on_duplicate_key | render | inferred | MySQL-compatible wire/syntax |
+| snowflake | merge | render | verified | vendor MERGE |
+| bigquery | merge | render | verified | vendor MERGE |
+| mssql | merge | render | verified | vendor MERGE; sp_rename for rename |
+| oracle | merge | render | verified | vendor MERGE |
+| databricks | merge | render | verified | Delta MERGE |
+| exasol | merge | render | inferred | MERGE documented |
+| trino | merge | render | inferred | MERGE is **connector-dependent** at runtime — may reject |
+| redshift | merge | render | verified | postgres protocol but no `ON CONFLICT`; MERGE (AWS docs, 2023+) |
+| risingwave | on_conflict | render | **unverified** | postgres-wire; ON CONFLICT on tables assumed, not confirmed |
+| clickhouse | None | n/a | verified | ReplacingMergeTree / ALTER UPDATE — divergent model |
+| impala | None | n/a | verified | MERGE only for Iceberg targets |
+| materialize | None | n/a | verified | restricts INSERT to write-only txns |
+| druid | None | n/a | verified | append-only analytics store |
+| pyspark | None | n/a | verified | MERGE only for Delta/Iceberg; Ibis marks notyet |
+
+`rename_table`: generic sqlglot default for **all** dialects (rendered SQL
+asserted across the registry; engine-executed live on
+sqlite/duckdb/postgres/mysql). The override hook stays available for any
+engine later found to diverge beyond sqlglot's rendering.
+
+**Render coverage is syntax-emission verification only** — it confirms the
+exact SQL string sqlglot emits per dialect, *not* that the engine accepts or
+semantically supports it. The public-facing support matrix carries the
+**Exec** and **Basis** caveats above so consumers do not mistake a green
+golden-SQL test for runtime support (e.g. Trino MERGE may render cleanly yet
+be rejected by the connector). `unverified` rows are flagged as hypotheses
+until a live test or vendor doc upgrades them.
 
 ## 8. Testing
 
@@ -302,26 +369,37 @@ Connection parameters read from environment with Ibis-compatible defaults
 (`IBIS_TEST_POSTGRES_*` / `PG*`, `IBIS_TEST_MYSQL_*`) so the same env works
 locally and in CI.
 
-### 8.2 Skip-if-unreachable fixtures
+### 8.2 Skip-if-unreachable fixtures — but fail-closed in CI
 
-`postgres` / `mysql` fixtures attempt a connection; on failure they
-`pytest.skip(...)` (not fail), so a developer without Docker and a CI job
-without the service still pass green. The live tests are marked
-`@pytest.mark.integration` (existing marker).
+`postgres` / `mysql` fixtures attempt a connection; on failure behaviour is
+**environment-gated** to avoid silently-green CI:
+
+- **Locally** (default): unreachable service → `pytest.skip(...)`, so a
+  developer without Docker still passes green.
+- **In CI**: the workflow sets `MOUNTAINASH_REQUIRE_LIVE_DB=1`; under that flag
+  an unreachable required service **fails** (not skips). A misconfigured
+  service password/port then breaks the build instead of silently skipping the
+  promised live matrix.
+
+Live tests are marked `@pytest.mark.integration` (existing marker).
 
 ### 8.3 CI
 
 The existing `python-run-pytest.yml` gains GitHub Actions `services:`
 containers for postgres and mariadb (native service-container support; no
-compose needed in CI). A `make test-live` / hatch script brings the compose
-services up locally.
+compose needed in CI) and sets `MOUNTAINASH_REQUIRE_LIVE_DB=1` for the live
+job. A `hatch` script (`test-live`) brings the local compose services up.
 
 ### 8.4 Test layers
 
 1. **Unit / golden-SQL** (`tests/test_unit/backends/ibis/test_upsert_render.py`,
-   `test_rename_table_render.py`): for every registry dialect, assert the
-   exact rendered statement per `upsert_style` and for rename. No live engine.
-   This is where the full matrix is verified.
+   `test_rename_table_render.py`): the suite **iterates the live `DIALECTS`
+   registry** (not a hand-listed set) and, for each dialect, asserts the exact
+   rendered statement for its `upsert_style` — or, for `None`, asserts
+   `NotImplementedError` — and the rendered `rename_table`. Because it iterates
+   the registry, a newly added dialect with no decision fails the suite,
+   keeping the §7 matrix complete by construction. This layer verifies
+   **emitted SQL only**, not engine acceptance (§7).
 2. **Live integration** (`tests/test_integration/test_write_ops_live.py`):
    sqlite + duckdb (in-memory) + postgres + mysql — round-trip upsert
    (insert + update + NOTHING + composite key + update_condition where
@@ -358,16 +436,34 @@ services up locally.
 
 ## 11. Known Limitations
 
+- **Duplicate source rows are the caller's responsibility.** If the source
+  frame contains two rows with the same conflict key, behaviour is
+  engine-divergent: `MERGE` raises a cardinality-violation error on most
+  engines (e.g. Redshift) when multiple source rows match one target row,
+  whereas `ON CONFLICT` / `ON DUPLICATE KEY` apply conflicts row-by-row with
+  order-dependent last-write-wins. The renderer does **not** deduplicate.
+  Callers must deduplicate the source on the conflict key for deterministic,
+  portable behaviour. Documented, not handled (an optional `deduplicate=` flag
+  is a future extension, not in this iteration).
+- **MySQL-family conflict targeting** detects on *any* unique index, not
+  `conflict_columns` (§6.2) — unenforceable on tables with multiple unique
+  constraints; use the override hook for stricter needs.
+- **MySQL-family `conflict_action="NOTHING"` is not a true no-op** (§6.2) — may
+  fire `ON UPDATE` timestamps / triggers / locks. Documented; not `INSERT
+  IGNORE`.
 - **Not concurrency-safe / not atomic** beyond the engine's own statement
   atomicity — single-statement upsert is atomic where the engine makes it so;
   no cross-statement transaction is added.
 - **Subquery staging** inlines the source data as a compiled `VALUES`/`SELECT`
-  subquery (Ibis's mechanism). Very large frames produce large SQL; callers
-  with bulk loads should use a staging table + `upsert`-from-table directly.
-  Acceptable and matches upstream Ibis behaviour.
-- **Render-only dialects** (matrix §7) are verified at the SQL-emission layer,
-  not by execution; first real use on such an engine may surface
-  engine-specific quirks, handled then via the `upsert_hook` override seam.
+  subquery (Ibis's mechanism), with every column cast to the target type
+  (§5.5). Very large frames produce large SQL; callers with bulk loads should
+  use a staging table + `upsert`-from-table directly. Acceptable and matches
+  upstream Ibis behaviour.
+- **Render-only dialects** (matrix §7) are verified at the SQL-emission layer
+  only, **not** by execution or semantic-support confirmation; first real use
+  on such an engine may surface engine-specific quirks (or outright rejection,
+  e.g. connector-dependent Trino MERGE), handled then via the `upsert_hook`
+  override seam. `unverified`-basis rows (e.g. risingwave) are hypotheses.
 - **`update_condition` semantics** differ subtly across families (pre- vs
   post-match predicate); documented per family in §6.
 
