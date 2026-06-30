@@ -24,8 +24,8 @@ def token(auth, base):
 
 
 def oauth2(auth, base):
-    # token-only: never reads CLIENT_ID/SECRET/SERVER_URI/SCOPE (smell #1)
-    return {**base, "authenticator": "oauth", "token": auth.TOKEN.get_secret_value()}
+    # token-only: never reads CLIENT_ID/SECRET/SCOPE (smell #1)
+    return {**base, "authenticator": "oauth", "token": auth.ACCESS_TOKEN.get_secret_value()}
 
 
 def certificate(auth, base):
