@@ -179,3 +179,4 @@ coverage.*
 #hiivmind
 .hiivmind/github/user.yaml
 .benchmarks/
+.superpowers/
