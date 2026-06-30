@@ -41,7 +41,7 @@
 |---|---|
 | `src/mountainash_data/backends/ibis/dialects/_registry.py` | Add `DropScope`, `IndexCapability`, `index_caps` field + per-dialect assignment; remove `duckdb_family_*` registrations; wire 5 new `get_index_exists_sql` |
 | `src/mountainash_data/backends/ibis/_render.py` | Add `compile_index_predicate` (single-relation WHERE compiler, AST-level qualifier strip) |
-| `src/mountainash_data/backends/ibis/_index.py` | **New** — pure builders (`build_create_index_sql`, `build_drop_index_sql`) + generic dispatchers (`_generic_create_index`, `_generic_drop_index`, `_generic_index_exists`) + `_USING_BEFORE_COLUMNS` placement map |
+| `src/mountainash_data/backends/ibis/_index.py` | **New** — pure builders (`build_create_index_sql`, `build_drop_index_sql`) + generic dispatchers (`_generic_create_index`, `_generic_drop_index`, `_generic_index_exists`) + `_USING_BEFORE_ON`/`_USING_BEFORE_COLUMNS` placement maps |
 | `src/mountainash_data/backends/ibis/operations.py` | Add `_sql_literal` escape helper; harden existing 3 + add 5 new `get_index_exists_sql`; delete `duckdb_family_create_index`/`drop_index` |
 | `src/mountainash_data/backends/ibis/backend.py` | `create_index`/`drop_index`/`index_exists` → hook→generic→NotImplementedError; table-scoped `table_name` validation; `where` predicate param |
 | `tests/test_unit/backends/ibis/test_index_capability.py` | **New** — capability dataclass + registry matrix/invariant |
@@ -156,15 +156,17 @@ git commit -m "feat(ibis): add DropScope + IndexCapability model + index_caps fi
 
 ---
 
-## Task 2: Per-dialect `index_caps` assignment + registry invariant
+## Task 2: `index_caps` for the 3 introspection-ready dialects + invariant
+
+**Why only 3 here:** the §3 invariant is `index_caps ⇒ get_index_exists_sql`. Only sqlite/duckdb/motherduck already have introspection SQL, so only they may receive `index_caps` now. The other 5 (postgres/mysql/mssql/oracle/singlestoredb) get their caps **and** introspection together in Task 5 — keeping the invariant TRUE at every commit (the registry must never be committed in a broken state).
 
 **Files:**
-- Modify: `src/mountainash_data/backends/ibis/dialects/_registry.py` (the 8 conventional `DialectSpec(...)` entries in `DIALECTS`, lines ~658-690 for sqlite/duckdb/motherduck and the postgres/mysql/mssql/oracle/singlestoredb entries)
+- Modify: `src/mountainash_data/backends/ibis/dialects/_registry.py` (the sqlite/duckdb/motherduck `DialectSpec(...)` entries, lines ~658-690)
 - Test: `tests/test_unit/backends/ibis/test_index_capability.py` (append)
 
 **Interfaces:**
 - Consumes: `DropScope`, `IndexCapability` (Task 1).
-- Produces: `index_caps=IndexCapability(...)` on sqlite, duckdb, motherduck, postgres, mysql, singlestoredb, mssql, oracle; left `None` (default) on all 12 others.
+- Produces: `index_caps=IndexCapability(...)` on sqlite, duckdb, motherduck. The reference `_EXPECTED` table holds all 8 dialects' values (Task 5 will assign the remaining 5).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -174,6 +176,7 @@ Append to `tests/test_unit/backends/ibis/test_index_capability.py`:
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS
 
 # Verified against official vendor docs 2026-06-30 (spec §4). frozenset of USING types.
+# (drop_scope, partial, native_if_not_exists, native_if_exists, index_types)
 _EXPECTED = {
     "sqlite":        (DropScope.SCHEMA_GLOBAL, True,  True,  True,  frozenset()),
     "duckdb":        (DropScope.SCHEMA_GLOBAL, False, True,  True,  frozenset()),
@@ -186,17 +189,20 @@ _EXPECTED = {
     "oracle":        (DropScope.SCHEMA_GLOBAL, False, False, False, frozenset()),
 }
 
+# Dialects that carry index_caps after THIS task. Task 5 appends the other 5.
+_ASSIGNED_NOW = ["sqlite", "duckdb", "motherduck"]
+
 _UNSUPPORTED = {
     "snowflake", "bigquery", "redshift", "trino", "clickhouse", "databricks",
     "exasol", "impala", "materialize", "risingwave", "druid", "pyspark",
 }
 
 
-@pytest.mark.parametrize("name,expected", _EXPECTED.items())
-def test_index_caps_matrix(name, expected):
+@pytest.mark.parametrize("name", _ASSIGNED_NOW)
+def test_index_caps_matrix(name):
     caps = DIALECTS[name].index_caps
     assert caps is not None, f"{name} must have index_caps"
-    drop_scope, partial, ine, ie, types = expected
+    drop_scope, partial, ine, ie, types = _EXPECTED[name]
     assert caps.drop_scope is drop_scope
     assert caps.partial is partial
     assert caps.native_if_not_exists is ine
@@ -209,34 +215,32 @@ def test_unsupported_dialects_have_no_index_caps(name):
     assert DIALECTS[name].index_caps is None
 
 
-@pytest.mark.parametrize("name", _EXPECTED.keys())
+@pytest.mark.parametrize("name", _ASSIGNED_NOW)
 def test_invariant_caps_implies_exists_sql(name):
     """Spec §3 invariant: a dialect with index_caps must also introspect indexes."""
     spec = DIALECTS[name]
     assert spec.index_caps is not None
-    assert spec.get_index_exists_sql is not None, (
-        f"{name}: index_caps set but get_index_exists_sql missing"
-    )
+    assert spec.get_index_exists_sql is not None
+
+
+def test_no_dialect_violates_invariant():
+    """Stronger guard: NO dialect may have index_caps without exists_sql — true at
+    every commit, including this one (the other 5 caps are not assigned yet)."""
+    for name, spec in DIALECTS.items():
+        if spec.index_caps is not None:
+            assert spec.get_index_exists_sql is not None, (
+                f"{name}: index_caps set but get_index_exists_sql missing"
+            )
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/test_index_capability.py::test_index_caps_matrix`
-Expected: FAIL — `assert caps is not None` (no dialect has `index_caps` yet). The invariant test will also fail for postgres/mysql/mssql/oracle/singlestoredb (no `get_index_exists_sql` yet) — that part is satisfied by Task 5; for now assign `index_caps` and the invariant passes only for sqlite/duckdb/motherduck. **To keep this task self-contained, also temporarily wire the 5 new `get_index_exists_sql` stubs are NOT done here** — instead, scope the invariant test to the 3 that already have introspection and the 5 to Task 5. Adjust the invariant test to:
+Expected: FAIL — `assert caps is not None` (no dialect has `index_caps` yet).
 
-```python
-@pytest.mark.parametrize("name", ["sqlite", "duckdb", "motherduck"])
-def test_invariant_caps_implies_exists_sql(name):
-    spec = DIALECTS[name]
-    assert spec.index_caps is not None
-    assert spec.get_index_exists_sql is not None
-```
+- [ ] **Step 3: Assign `index_caps` on sqlite, duckdb, motherduck only**
 
-(Task 5 re-broadens this to all 8 once the introspection SQL exists.)
-
-- [ ] **Step 3: Assign `index_caps` on the 8 conventional dialects**
-
-In `_registry.py`, add an `index_caps=IndexCapability(...)` argument to each entry. Example for `sqlite` (mirror for the others using the matrix in Global Constraints):
+In `_registry.py`, add `index_caps=IndexCapability(...)` to the three entries. `sqlite`:
 
 ```python
     "sqlite": DialectSpec(
@@ -247,8 +251,8 @@ In `_registry.py`, add an `index_caps=IndexCapability(...)` argument to each ent
         get_index_exists_sql=sqlite_get_index_exists_sql,
         get_list_indexes_sql=sqlite_get_list_indexes_sql,
         upsert_style=UpsertStyle.ON_CONFLICT,
-        create_index_hook=duckdb_family_create_index,  # removed in Task 8
-        drop_index_hook=duckdb_family_drop_index,       # removed in Task 8
+        create_index_hook=duckdb_family_create_index,  # removed in Task 7 cutover
+        drop_index_hook=duckdb_family_drop_index,       # removed in Task 7 cutover
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
             native_if_not_exists=True, native_if_exists=True,
@@ -257,47 +261,8 @@ In `_registry.py`, add an `index_caps=IndexCapability(...)` argument to each ent
     ),
 ```
 
-Add to `postgres`:
-```python
-        index_caps=IndexCapability(
-            drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
-            native_if_not_exists=True, native_if_exists=True,
-            index_types=frozenset({"btree", "hash", "gist", "gin", "brin", "spgist"}),
-        ),
-```
-Add to `mysql`:
-```python
-        index_caps=IndexCapability(
-            drop_scope=DropScope.TABLE_SCOPED, partial=False,
-            native_if_not_exists=False, native_if_exists=False,
-            index_types=frozenset({"btree"}),
-        ),
-```
-Add to `singlestoredb`:
-```python
-        index_caps=IndexCapability(
-            drop_scope=DropScope.TABLE_SCOPED, partial=False,
-            native_if_not_exists=False, native_if_exists=False,
-            index_types=frozenset({"btree", "hash"}),
-        ),
-```
-Add to `mssql`:
-```python
-        index_caps=IndexCapability(
-            drop_scope=DropScope.TABLE_SCOPED, partial=True,
-            native_if_not_exists=False, native_if_exists=True,
-            index_types=frozenset(),
-        ),
-```
-Add to `oracle`:
-```python
-        index_caps=IndexCapability(
-            drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
-            native_if_not_exists=False, native_if_exists=False,
-            index_types=frozenset(),
-        ),
-```
-And `duckdb` / `motherduck` (identical to each other):
+`duckdb` and `motherduck` get the identical capability (note `partial=False` — DuckDB has no partial index):
+
 ```python
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
@@ -305,17 +270,19 @@ And `duckdb` / `motherduck` (identical to each other):
             index_types=frozenset(),
         ),
 ```
+
+Do **not** touch postgres/mysql/mssql/oracle/singlestoredb here — Task 5 assigns those.
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/test_index_capability.py`
-Expected: PASS (matrix + unsupported + scoped invariant all green).
+Expected: PASS (3-dialect matrix + unsupported + both invariant guards green).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/mountainash_data/backends/ibis/dialects/_registry.py tests/test_unit/backends/ibis/test_index_capability.py
-git commit -m "feat(ibis): assign verified index_caps to the 8 conventional dialects"
+git commit -m "feat(ibis): assign index_caps to sqlite/duckdb/motherduck (introspection-ready)"
 ```
 
 ---
@@ -329,6 +296,8 @@ git commit -m "feat(ibis): assign verified index_caps to the 8 conventional dial
 **Interfaces:**
 - Consumes: `dialect_of`, `validate_predicate`, `INCOMING_SENTINEL` patterns (existing in `_render.py`).
 - Produces: module constant `INDEX_SENTINEL = "__ma_index_tbl__"`; `IndexPredicate = t.Callable[[ir.Table], ir.BooleanValue]`; `compile_index_predicate(ibis_conn, schema, table_name, predicate) -> str` — returns a dialect-rendered, **unqualified** boolean SQL string.
+
+**Scope note (spec §5.2):** `validate_predicate` is a STRUCTURAL guard (rejects aggregate/window/subquery) — it does NOT model per-dialect filter grammars. `mssql` is `partial=True`, but SQL Server filtered-index predicates are far narrower than a general boolean (simple comparisons / `IN`, no computed columns). We deliberately do NOT add per-dialect predicate grammar validation: mssql partial is **render-capable but engine-restricted**, and since mssql is render-only (no live container) a too-rich predicate surfaces as a SQL Server error at execution. This is a documented limitation, not a gap to close in code.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -459,7 +428,7 @@ git commit -m "feat(ibis): add compile_index_predicate single-relation WHERE com
 **Interfaces:**
 - Consumes: `_render.quote_identifier`; `_registry.DropScope`.
 - Produces:
-  - `_USING_BEFORE_COLUMNS: frozenset[str] = frozenset({"postgres"})` (sqlglot dialect names whose `USING <method>` precedes the column list).
+  - `_USING_BEFORE_ON: frozenset[str] = frozenset({"mysql"})` and `_USING_BEFORE_COLUMNS: frozenset[str] = frozenset({"postgres"})` — the two non-default `USING <method>` placements (mysql: after the index name, before `ON`; postgres: after `ON`, before columns; everything else: after the column list).
   - `build_create_index_sql(*, dialect, target, index_name, cols, unique, index_type, guard, where_sql) -> str`
   - `build_drop_index_sql(*, dialect, drop_scope, index_name, target, guard) -> str`
 
@@ -504,12 +473,21 @@ class TestBuildCreateIndexSql:
         )
         assert sql == 'CREATE INDEX "g" ON "t" USING gin ("doc")'
 
-    def test_using_after_columns_mysql(self):
+    def test_using_before_on_mysql(self):
+        # MySQL/MariaDB place USING between the index name and ON (verified:
+        # dev.mysql.com 8.4 CREATE INDEX grammar `index_name [index_type] ON`).
         sql = build_create_index_sql(
             dialect="mysql", target="`t`", index_name="i", cols=["id"],
             unique=False, index_type="btree", guard="", where_sql=None,
         )
-        assert sql == "CREATE INDEX `i` ON `t` (`id`) USING btree"
+        assert sql == "CREATE INDEX `i` USING btree ON `t` (`id`)"
+
+    def test_using_after_columns_singlestore(self):
+        sql = build_create_index_sql(
+            dialect="singlestore", target="`t`", index_name="i", cols=["id"],
+            unique=False, index_type="hash", guard="", where_sql=None,
+        )
+        assert sql == "CREATE INDEX `i` ON `t` (`id`) USING hash"
 
 
 class TestBuildDropIndexSql:
@@ -549,9 +527,12 @@ import typing as t
 from mountainash_data.backends.ibis._render import quote_identifier
 from mountainash_data.backends.ibis.dialects._registry import DropScope
 
-# sqlglot dialect names whose `USING <method>` precedes the column list.
-# Postgres: CREATE INDEX name ON tbl USING gin (cols). MySQL/SingleStore put
-# USING after the column list. Default is after-columns.
+# USING <method> position differs across dialects (verified against official docs):
+#   - Postgres:    CREATE INDEX i ON tbl USING gin (cols)   -> after ON, before columns
+#   - MySQL/MariaDB: CREATE INDEX i USING btree ON tbl (cols) -> after index name, before ON
+#   - SingleStore: CREATE INDEX i ON tbl (cols) USING hash   -> after columns (the default)
+# sqlite/duckdb/motherduck/mssql/oracle have empty index_types -> no USING emitted.
+_USING_BEFORE_ON: frozenset[str] = frozenset({"mysql"})
 _USING_BEFORE_COLUMNS: frozenset[str] = frozenset({"postgres"})
 
 
@@ -582,17 +563,24 @@ def build_create_index_sql(
     cols_sql = ", ".join(quote_identifier(c, dialect) for c in cols)
     name_sql = quote_identifier(index_name, dialect)
     where = f" WHERE {where_sql}" if where_sql else ""
+    name_part = f"{guard}{name_sql}"
+    d = str(dialect)
+    using = f"USING {index_type}" if index_type else None
 
-    if index_type:
-        using = f"USING {index_type}"
-        if str(dialect) in _USING_BEFORE_COLUMNS:
-            body = f"ON {target} {using} ({cols_sql})"
-        else:
-            body = f"ON {target} ({cols_sql}) {using}"
+    if using and d in _USING_BEFORE_ON:
+        # MySQL/MariaDB: USING sits between the index name and ON.
+        name_part = f"{name_part} {using}"
+        tail = f"ON {target} ({cols_sql})"
+    elif using and d in _USING_BEFORE_COLUMNS:
+        # Postgres: USING sits after ON, before the column list.
+        tail = f"ON {target} {using} ({cols_sql})"
+    elif using:
+        # SingleStore (and the general default): USING after the column list.
+        tail = f"ON {target} ({cols_sql}) {using}"
     else:
-        body = f"ON {target} ({cols_sql})"
+        tail = f"ON {target} ({cols_sql})"
 
-    return f"CREATE {unique_sql}INDEX {guard}{name_sql} {body}{where}"
+    return f"CREATE {unique_sql}INDEX {name_part} {tail}{where}"
 
 
 def build_drop_index_sql(
@@ -676,9 +664,12 @@ class TestIntrospectionSql:
         sql = mssql_get_index_exists_sql("idx", "t", None)
         assert "sys.indexes" in sql and "OBJECT_ID" in sql.upper()
 
-    def test_oracle_upper_folds(self):
+    def test_oracle_matches_exact_quoted_name(self):
+        # Always-quoted create -> Oracle stores as written -> match exactly, no UPPER().
         sql = oracle_get_index_exists_sql("idx", "t", None)
-        assert "user_indexes" in sql.lower() and "UPPER" in sql.upper()
+        assert "user_indexes" in sql.lower()
+        assert "UPPER" not in sql.upper()
+        assert "'idx'" in sql
 
     def test_singlestore_shape(self):
         sql = singlestore_get_index_exists_sql("idx", "t", None)
@@ -690,8 +681,13 @@ class TestIntrospectionSql:
         singlestore_get_index_exists_sql,
     ])
     def test_injection_payload_is_escaped_not_broken(self, fn):
+        # These pure SQL builders are ALLOWLIST-EXEMPT by design: the front-door
+        # rejection (the primary gate) is enforced by the generic dispatcher
+        # (_generic_index_exists) before any builder is called — see Task 6's
+        # `test_bad_identifier_rejected`. This test asserts the SECOND layer:
+        # even if a hostile value reached a builder, it is contained in an
+        # escaped literal (doubled quote), not interpolated raw.
         sql = fn("x'; DROP TABLE t; --", "t", None)
-        # the payload is contained in an escaped literal (doubled quote), not raw
         assert "''" in sql
 ```
 
@@ -771,7 +767,15 @@ def mysql_get_index_exists_sql(
 def mssql_get_index_exists_sql(
     index_name: str, table_name: str | None, database: str | None
 ) -> str:
-    """sys.indexes joined to the table via OBJECT_ID (table-scoped)."""
+    """sys.indexes joined to the table via OBJECT_ID (table-scoped).
+
+    NOTE on the `database` parameter: across this package `database` denotes the
+    immediate NAMESPACE qualifier, which SQL Server interprets as the *schema* in
+    a two-part name. The generic CREATE renders ``"<database>"."<table>"`` (a
+    schema.object reference to SQL Server), so OBJECT_ID('<database>.<table>')
+    targets the same object — consistent, not conflated. Cross-database
+    (three-part) index DDL is out of scope for the generic path.
+    """
     obj = table_name if table_name else ""
     if database and table_name:
         obj = f"{database}.{table_name}"
@@ -787,11 +791,13 @@ def mssql_get_index_exists_sql(
 def oracle_get_index_exists_sql(
     index_name: str, table_name: str | None, database: str | None
 ) -> str:
-    """user_indexes (schema-global). Oracle folds unquoted identifiers to
-    upper case, so match UPPER()."""
-    where = [f"index_name = UPPER({_sql_literal(index_name)})"]
+    """user_indexes (schema-global). The generic builder ALWAYS quotes
+    identifiers (quote_identifier), so Oracle stores them case-sensitively as
+    written — match the EXACT name, do NOT fold with UPPER() (a UPPER() match
+    would never find a quoted-lowercase index)."""
+    where = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
-        where.append(f"table_name = UPPER({_sql_literal(table_name)})")
+        where.append(f"table_name = {_sql_literal(table_name)}")
     return f"SELECT COUNT(*) AS count FROM user_indexes WHERE {' AND '.join(where)}"
 
 
@@ -832,12 +838,62 @@ from mountainash_data.backends.ibis.operations import (  # noqa: E402
 )
 ```
 
-Add `get_index_exists_sql=postgres_get_index_exists_sql` to the `postgres` spec, `=mysql_get_index_exists_sql` to `mysql`, `=mssql_get_index_exists_sql` to `mssql`, `=oracle_get_index_exists_sql` to `oracle`, `=singlestore_get_index_exists_sql` to `singlestoredb`.
-
-Re-broaden the invariant test in `test_index_capability.py` to all 8:
+For each of postgres/mysql/mssql/oracle/singlestoredb, add **both** `get_index_exists_sql=...` **and** `index_caps=IndexCapability(...)` to the spec in the SAME edit (so the §3 invariant holds at this commit). Use the verified values:
 
 ```python
-@pytest.mark.parametrize("name", _EXPECTED.keys())
+    # postgres:
+        get_index_exists_sql=postgres_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
+            native_if_not_exists=True, native_if_exists=True,
+            index_types=frozenset({"btree", "hash", "gist", "gin", "brin", "spgist"}),
+        ),
+    # mysql:
+        get_index_exists_sql=mysql_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.TABLE_SCOPED, partial=False,
+            native_if_not_exists=False, native_if_exists=False,
+            index_types=frozenset({"btree"}),
+        ),
+    # singlestoredb:
+        get_index_exists_sql=singlestore_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.TABLE_SCOPED, partial=False,
+            native_if_not_exists=False, native_if_exists=False,
+            index_types=frozenset({"btree", "hash"}),
+        ),
+    # mssql:
+        get_index_exists_sql=mssql_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.TABLE_SCOPED, partial=True,
+            native_if_not_exists=False, native_if_exists=True,
+            index_types=frozenset(),
+        ),
+    # oracle:
+        get_index_exists_sql=oracle_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
+            native_if_not_exists=False, native_if_exists=False,
+            index_types=frozenset(),
+        ),
+```
+
+Broaden the capability tests in `test_index_capability.py` to all 8 by re-pointing the parametrized lists (the `_EXPECTED` table already holds all 8):
+
+```python
+@pytest.mark.parametrize("name", list(_EXPECTED))
+def test_index_caps_matrix(name):
+    caps = DIALECTS[name].index_caps
+    assert caps is not None, f"{name} must have index_caps"
+    drop_scope, partial, ine, ie, types = _EXPECTED[name]
+    assert caps.drop_scope is drop_scope
+    assert caps.partial is partial
+    assert caps.native_if_not_exists is ine
+    assert caps.native_if_exists is ie
+    assert caps.index_types == types
+
+
+@pytest.mark.parametrize("name", list(_EXPECTED))
 def test_invariant_caps_implies_exists_sql(name):
     spec = DIALECTS[name]
     assert spec.index_caps is not None
@@ -853,7 +909,7 @@ Expected: PASS (introspection golden + full 8-dialect invariant).
 
 ```bash
 git add src/mountainash_data/backends/ibis/operations.py src/mountainash_data/backends/ibis/dialects/_registry.py tests/test_unit/backends/ibis/test_index_render.py tests/test_unit/backends/ibis/test_index_capability.py
-git commit -m "feat(ibis): escape+harden index introspection SQL; add pg/mysql/mssql/oracle/singlestore"
+git commit -m "feat(ibis): escape+harden index introspection SQL + assign caps for pg/mysql/mssql/oracle/singlestore"
 ```
 
 ---
@@ -870,6 +926,8 @@ git commit -m "feat(ibis): escape+harden index introspection SQL; add pg/mysql/m
   - `_generic_index_exists(ibis_conn, index_name, *, table_name=None, database=None, exists_sql_fn) -> bool`
   - `_generic_create_index(ibis_conn, table_name, columns, *, index_name=None, unique=False, index_type=None, where=None, database=None, if_not_exists=True, caps, exists_sql_fn) -> None`
   - `_generic_drop_index(ibis_conn, index_name, *, table_name=None, database=None, if_exists=True, caps, exists_sql_fn) -> None`
+
+**Emulation correctness assumptions (spec §6):** the emulation precheck trusts `index_exists` as authoritative for the current session/principal. Per the spec, the following are documented-and-accepted failure modes (the engine's error is surfaced, never swallowed): the TOCTOU window between check and act; a false negative when the principal can create/drop but cannot see the index in the catalog (privilege); cached/transaction-isolated catalog metadata lagging a recent DDL; and the fact that MySQL/Oracle auto-commit DDL — which is *why* the check+act window cannot be closed transactionally. No catch-and-swallow, no lock wrapping. (Add a one-line docstring reference to spec §6 on `_generic_create_index`/`_generic_drop_index`.)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1026,7 +1084,13 @@ def _generic_index_exists(
         return False
     import mountainash as ma
 
-    return ma.relation(result).to_dict()["count"][0] > 0
+    # Read the single returned column BY POSITION, not by the alias name:
+    # Oracle upper-cases the unquoted `count` alias ("count" -> "COUNT"), so
+    # keying by "count" would KeyError. Every introspection query returns
+    # exactly one column.
+    data = ma.relation(result).to_dict()
+    first_col = next(iter(data.values()))
+    return first_col[0] > 0
 
 
 def _target_ref(ibis_conn: t.Any, table_name: str, database: t.Optional[str]) -> str:
@@ -1149,19 +1213,23 @@ git commit -m "feat(ibis): generic create/drop/exists dispatchers with emulation
 
 ---
 
-## Task 7: Backend wiring — dispatch + `where` predicate + table-scoped validation
+## Task 7: Backend wiring + atomic cutover
+
+**Why merged:** the backend's `create_index` checks `create_index_hook` first. While sqlite/duckdb/motherduck still carry `create_index_hook=duckdb_family_create_index`, the rewritten backend would dispatch `where=<predicate>` to that hook — whose signature is the OLD `where_condition=str` — raising `TypeError`. And removing the hooks *before* the backend rewrite leaves `create_index` raising `NotImplementedError` (old code path), breaking the existing functional tests. The hook removal and the backend rewrite must therefore land in ONE commit. This task fuses the wiring and the cutover so the suite is green at a single commit.
 
 **Files:**
-- Modify: `src/mountainash_data/backends/ibis/backend.py` (`create_index` lines 576-599, `create_unique_index` 601-614, `drop_index` 616-633, `index_exists` 635-654)
-- Test: `tests/test_unit/backends/ibis/test_index_ops.py` (append a backend-level class)
+- Modify: `src/mountainash_data/backends/ibis/backend.py` (`create_index` lines 576-599, `create_unique_index` 601-614, `drop_index` 616-633, `index_exists` 635-654; add the `_index` import)
+- Modify: `src/mountainash_data/backends/ibis/dialects/_registry.py` (remove `create_index_hook=`/`drop_index_hook=` from sqlite/duckdb/motherduck; drop the two names from the import block)
+- Modify: `src/mountainash_data/backends/ibis/operations.py` (delete `duckdb_family_create_index` ~lines 362-398 and `duckdb_family_drop_index` ~401-414; remove now-unused `contextlib`/`warnings`/`CONST_INDEX_TYPE` imports IF unused after deletion)
+- Test: `tests/test_unit/backends/ibis/test_index_ops.py` (append backend class), `tests/test_unit/backends/ibis/test_backend.py` (update 3 mechanism tests)
 
 **Interfaces:**
 - Consumes: `_index._generic_create_index`, `_index._generic_drop_index`, `_index._generic_index_exists`.
 - Produces: `IbisBackend.create_index(table_name, columns, *, index_name=None, unique=False, index_type=None, where=None, database=None, if_not_exists=True) -> IbisBackend`; `drop_index(index_name, *, table_name=None, database=None, if_exists=True) -> IbisBackend`; `index_exists(index_name, *, table_name=None, database=None) -> bool`.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
 
-Append to `tests/test_unit/backends/ibis/test_index_ops.py`:
+Append to `tests/test_unit/backends/ibis/test_index_ops.py` (note: seed via the backend's own `create_table`, NOT `be._ibis_conn` — the raw connection lives on `be._require_connected()._ibis_conn`, not on the backend):
 
 ```python
 from mountainash_data import IbisBackend
@@ -1172,9 +1240,8 @@ class TestBackendDispatch:
         be = IbisBackend(dialect="sqlite", database=":memory:")
         be.connect()
         try:
-            be._ibis_conn.create_table(
-                "t", pl.DataFrame({"id": [1], "active": [True]})
-            )
+            be.create_table("t", pl.DataFrame({"id": [1], "active": [True]}),
+                            overwrite=True)
             assert be.create_index("t", ["id"], index_name="ix") is be
             assert be.index_exists("ix", table_name="t") is True
             assert be.drop_index("ix", table_name="t") is be
@@ -1186,9 +1253,8 @@ class TestBackendDispatch:
         be = IbisBackend(dialect="sqlite", database=":memory:")
         be.connect()
         try:
-            be._ibis_conn.create_table(
-                "t", pl.DataFrame({"id": [1], "active": [True]})
-            )
+            be.create_table("t", pl.DataFrame({"id": [1], "active": [True]}),
+                            overwrite=True)
             be.create_index("t", ["id"], index_name="ixp",
                             where=lambda r: r.active == True)  # noqa: E712
             assert be.index_exists("ixp", table_name="t") is True
@@ -1214,12 +1280,30 @@ class TestBackendDispatch:
             be.close()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+In `tests/test_unit/backends/ibis/test_backend.py`, replace `test_sqlite_dialect_has_create_index_hook` (line ~229) with a generic-dispatch assertion, and add the retired-symbol guard:
 
-Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/test_index_ops.py::TestBackendDispatch`
-Expected: FAIL — `create_index` still routes only through the hook and rejects the `where=` kwarg (`TypeError: unexpected keyword argument 'where'`).
+```python
+def test_sqlite_dialect_uses_generic_index_path():
+    """After cutover, sqlite has no index hooks and dispatches via index_caps."""
+    from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+    spec = DIALECTS["sqlite"]
+    assert spec.create_index_hook is None
+    assert spec.drop_index_hook is None
+    assert spec.index_caps is not None
 
-- [ ] **Step 3: Rewrite the four backend methods**
+
+def test_duckdb_family_index_hooks_removed():
+    import mountainash_data.backends.ibis.operations as ops
+    assert not hasattr(ops, "duckdb_family_create_index")
+    assert not hasattr(ops, "duckdb_family_drop_index")
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/test_index_ops.py::TestBackendDispatch "tests/test_unit/backends/ibis/test_backend.py::test_duckdb_family_index_hooks_removed"`
+Expected: FAIL — backend still routes through the hook (rejecting `where=`), and the `duckdb_family_*` symbols still exist.
+
+- [ ] **Step 3a: Rewrite the four backend methods**
 
 Add the import near the other `_index`/operations imports at the top of `backend.py`:
 
@@ -1319,7 +1403,7 @@ Replace `drop_index`:
         return self
 ```
 
-Replace `index_exists` body to delegate to the shared dispatcher (keeps the `count` extraction in one place):
+Replace `index_exists` body to delegate to the shared dispatcher (single place for the count extraction):
 
 ```python
     def index_exists(
@@ -1341,88 +1425,36 @@ Replace `index_exists` body to delegate to the shared dispatcher (keeps the `cou
         )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 3b: Retire the duckdb-family hooks (same commit)**
 
-Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/test_index_ops.py::TestBackendDispatch`
-Expected: PASS (3 passed).
+In `_registry.py`: remove `duckdb_family_create_index` and `duckdb_family_drop_index` from the import block, and remove the `create_index_hook=duckdb_family_create_index,` / `drop_index_hook=duckdb_family_drop_index,` lines from the sqlite, duckdb, and motherduck specs.
 
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/mountainash_data/backends/ibis/backend.py tests/test_unit/backends/ibis/test_index_ops.py
-git commit -m "feat(ibis): wire create/drop/exists to generic dispatch; where predicate param"
-```
-
----
-
-## Task 8: Cutover — retire `duckdb_family_*`, update mechanism tests, `where_condition` audit
-
-**Files:**
-- Modify: `src/mountainash_data/backends/ibis/dialects/_registry.py` (remove `create_index_hook=`/`drop_index_hook=` from sqlite/duckdb/motherduck; drop the two names from the import block)
-- Modify: `src/mountainash_data/backends/ibis/operations.py` (delete `duckdb_family_create_index` lines 362-398 and `duckdb_family_drop_index` lines 401-414; remove now-unused imports `contextlib`/`warnings`/`CONST_INDEX_TYPE` IF they are unused after deletion — verify first)
-- Modify: `tests/test_unit/backends/ibis/test_backend.py` (lines 229-232 hook-mechanism assertion; 313-351 functional tests should keep passing through the generic path)
-- Test: full unit suite
-
-- [ ] **Step 1: Write/adjust the failing test**
-
-In `tests/test_unit/backends/ibis/test_backend.py`, replace `test_sqlite_dialect_has_create_index_hook` (line 229) with a generic-dispatch assertion:
-
-```python
-def test_sqlite_dialect_uses_generic_index_path():
-    """After cutover, sqlite has no index hooks and dispatches via index_caps."""
-    from mountainash_data.backends.ibis.dialects._registry import DIALECTS
-    spec = DIALECTS["sqlite"]
-    assert spec.create_index_hook is None
-    assert spec.drop_index_hook is None
-    assert spec.index_caps is not None
-```
-
-Add a guard test that the retired symbols are gone:
-
-```python
-def test_duckdb_family_index_hooks_removed():
-    import mountainash_data.backends.ibis.operations as ops
-    assert not hasattr(ops, "duckdb_family_create_index")
-    assert not hasattr(ops, "duckdb_family_drop_index")
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `hatch run test:test-target-quick "tests/test_unit/backends/ibis/test_backend.py::test_duckdb_family_index_hooks_removed"`
-Expected: FAIL — the symbols still exist.
-
-- [ ] **Step 3: Delete the functions and registrations**
-
-In `operations.py`, delete `duckdb_family_create_index` and `duckdb_family_drop_index` (lines ~362-414). Then check whether `contextlib`, `warnings`, and `CONST_INDEX_TYPE` are still referenced elsewhere in the file:
+In `operations.py`: delete `duckdb_family_create_index` and `duckdb_family_drop_index` (~lines 362-414). Then verify whether their now-orphaned imports are still used elsewhere:
 
 Run: `grep -n "contextlib\|warnings\.\|CONST_INDEX_TYPE" src/mountainash_data/backends/ibis/operations.py`
-Remove any import that is now unused (only if grep shows no remaining references).
+Remove any import that grep shows is no longer referenced.
 
-In `_registry.py`, remove `duckdb_family_create_index` and `duckdb_family_drop_index` from the import block (lines 652-653), and remove the `create_index_hook=duckdb_family_create_index,` and `drop_index_hook=duckdb_family_drop_index,` lines from the sqlite, duckdb, and motherduck specs.
+- [ ] **Step 4: `where_condition` audit + full suite + gates**
 
-- [ ] **Step 4: Run the audits and the full unit suite**
+Run: `grep -rn "where_condition" src/ tests/`
+Expected: no matches in `src/` or `tests/` (the spec doc may reference it historically — acceptable). Fix any live callsite found.
 
-`where_condition` removal audit:
-
-Run: `grep -rn "where_condition" src/ tests/ docs/`
-Expected: no matches in `src/` or `tests/` (docs spec may reference it historically — acceptable). Fix any live callsite found.
-
-Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/ tests/test_unit/backends/ibis/test_backend.py`
-Expected: PASS — including the previously-existing functional `test_create_index_returns_self` / `test_drop_index_returns_self` / `test_index_exists` (now flowing through the generic path).
+Run: `hatch run test:test-target-quick tests/test_unit/backends/ibis/`
+Expected: PASS — including the pre-existing functional `test_create_index_returns_self` / `test_drop_index_returns_self` / `test_index_exists` (now flowing through the generic path), plus the new dispatch + cutover tests.
 
 Run: `hatch run ruff:check` then `hatch run mypy:check`
 Expected: ruff clean; mypy Success.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (atomic)**
 
 ```bash
-git add src/mountainash_data/backends/ibis/operations.py src/mountainash_data/backends/ibis/dialects/_registry.py tests/test_unit/backends/ibis/test_backend.py
-git commit -m "refactor(ibis): cutover index ops to generic dispatch; retire duckdb_family hooks"
+git add src/mountainash_data/backends/ibis/backend.py src/mountainash_data/backends/ibis/dialects/_registry.py src/mountainash_data/backends/ibis/operations.py tests/test_unit/backends/ibis/test_index_ops.py tests/test_unit/backends/ibis/test_backend.py
+git commit -m "feat(ibis): wire generic index dispatch + atomic cutover of duckdb_family hooks"
 ```
 
 ---
 
-## Task 9: Live integration — postgres + mariadb round-trips, partial, table-scoped, emulation
+## Task 8: Live integration — postgres + mariadb round-trips, partial, table-scoped, emulation
 
 **Files:**
 - Create: `tests/test_integration/test_index_ops_live.py`
@@ -1445,7 +1477,8 @@ pytestmark = pytest.mark.integration
 
 
 def _fresh_table(be, name):
-    conn = be._ibis_conn
+    # the raw ibis connection lives on the IbisConnection, not on the backend
+    conn = be._require_connected()._ibis_conn
     try:
         conn.drop_table(name, force=True)
     except Exception:  # noqa: BLE001
@@ -1531,23 +1564,25 @@ git commit -m "test(ibis): live index round-trips (postgres native + mariadb emu
 
 ## Self-Review
 
+**Task count: 8** (after merging the original backend-wiring + cutover into Task 7 — they cannot land in separate commits without a broken intermediate state, per the Codex plan review).
+
 **1. Spec coverage:**
 - §2 scope (conventional only, None sentinel) → Task 2 (`_UNSUPPORTED`).
-- §3 capability model + invariant → Tasks 1, 2, 5.
-- §4 verified matrix → Task 2 (`_EXPECTED`), Global Constraints.
-- §5.1 builders + USING placement → Task 4.
-- §5.2 predicate compiler (AST strip, full-schema bind, non-indexed cols) → Task 3.
-- §6 idempotency/emulation + injection contract → Tasks 5 (escaping), 6 (validation + precheck).
+- §3 capability model + invariant (split-assignment keeps it true at every commit) → Tasks 1, 2, 5.
+- §4 verified matrix → Tasks 2 + 5 (`_EXPECTED`), Global Constraints.
+- §5.1 builders + 3-position USING placement → Task 4.
+- §5.2 predicate compiler (AST strip, full-schema bind, non-indexed cols, mssql limitation note) → Task 3.
+- §6 idempotency/emulation (+ failure-mode assumptions) + injection contract → Tasks 5 (escaping), 6 (validation + precheck + §6 note).
 - §7 public API (`where` predicate) → Task 7.
 - §8 error table (all rows) → Task 6 tests (`TestValidationErrors`), Task 7.
-- §9 testing (golden render-only, introspection golden, live, registry-consistency) → Tasks 2, 4, 5, 9.
-- §10 cutover (retire family, `where_condition` audit, new introspection) → Tasks 5, 8.
+- §9 testing (golden render-only, introspection golden, live, registry-consistency) → Tasks 2, 4, 5, 8.
+- §10 cutover (retire family, `where_condition` audit, new introspection) → Tasks 5, 7.
 - §11 file structure → matches.
 - mssql/oracle/singlestore are render-only (no live container) — covered by Task 4/5 golden tests; documented as render-only in the spec.
 
-**2. Placeholder scan:** No TBD/TODO. Every code step shows full code. The only conditional instruction (remove unused imports in Task 8) is gated on an explicit `grep` check.
+**2. Placeholder scan:** No TBD/TODO. Every code step shows full code. The only conditional instruction (remove unused imports in Task 7) is gated on an explicit `grep` check.
 
-**3. Type consistency:** `IndexCapability` fields, `DropScope` members, dispatcher signatures (`caps=`, `exists_sql_fn=`), and the `where`/`IndexPredicate` param name are identical across Tasks 1→2→6→7. `get_index_exists_sql` signature `(index_name, table_name, database)` matches the existing `GetIndexExistsSql` type alias and all 8 implementations. `count` column alias is consistent between the introspection builders (Task 5) and `_generic_index_exists` (Task 6).
+**3. Type consistency:** `IndexCapability` fields, `DropScope` members, dispatcher signatures (`caps=`, `exists_sql_fn=`), and the `where`/`IndexPredicate` param name are identical across Tasks 1→2→6→7. `get_index_exists_sql` signature `(index_name, table_name, database)` matches the existing `GetIndexExistsSql` type alias and all 8 implementations. The `count` extraction reads the single column **by position** (Task 6), so the alias casing is irrelevant across dialects (Oracle upper-cases it).
 
 ---
 
