@@ -91,6 +91,17 @@ A dialect with `index_caps is not None` **MUST** also set `get_index_exists_sql`
 Emulated idempotency (§6) depends on existence introspection, so a dialect that supports
 indexes must be able to introspect them. Enforced by a registry-consistency unit test.
 
+### Coverage is an all-three-operations contract
+
+`index_caps is not None` asserts the dialect supports **all of** `create_index`,
+`drop_index`, and `index_exists` via the generic path. We do **not** model per-operation
+partial coverage (e.g. create-without-drop): no conventional RDBMS in scope offers one
+without the others, and the invariant above already binds `exists` to the other two
+(emulation needs it). A dialect with genuinely irregular coverage uses the
+`create_index_hook` / `drop_index_hook` override path instead — and an override hook is
+held to the **same no-silent-degradation contract** (§8) as the generic renderer
+(validate-and-raise, never warn-and-downgrade).
+
 ## 4. Support matrix (verified against official vendor docs, 2026-06-30)
 
 | Dialect | `drop_scope` | `partial` | `native_if_not_exists` / `native_if_exists` | `index_types` | Test tier |
@@ -99,26 +110,43 @@ indexes must be able to introspect them. Enforced by a registry-consistency unit
 | duckdb | SCHEMA_GLOBAL | **False** | True / True | ∅ | live |
 | motherduck | SCHEMA_GLOBAL | False | True / True | ∅ | render-only |
 | postgres | SCHEMA_GLOBAL | True | True / True | btree,hash,gist,gin,brin,spgist | live |
-| mysql¹ | TABLE_SCOPED | False | **False / False** (emulate) | btree,hash | live (MariaDB) |
-| singlestoredb | TABLE_SCOPED | False | False / False (emulate) | btree,hash | render-only |
+| mysql¹ | TABLE_SCOPED | False | **False / False** (emulate) | btree | live (MariaDB) |
+| singlestoredb³ | TABLE_SCOPED | False | False / False (emulate) | btree,hash | render-only |
 | mssql | TABLE_SCOPED | **True** (filtered) | **False / True** | ∅ | render-only |
 | oracle² | SCHEMA_GLOBAL | False | False / False (emulate) | ∅ | render-only |
 | snowflake, bigquery, redshift, trino, clickhouse, databricks, exasol, impala, materialize, risingwave, druid, pyspark | — | — | — | — | `None` (NotImplementedError) |
 
-¹ The single `"mysql"` dialect serves **both** MySQL and MariaDB servers. MariaDB has
-native `IF [NOT] EXISTS`; **MySQL 8.0/8.4 does not**. Because one dialect must be correct
-against both engines, the dialect emulates (treats native as `False`/`False`). The live
-test env is MariaDB, so the emulation code path is genuinely exercised (we force the
-dialect path, not the server's latent capability).
+¹ The single `"mysql"` dialect serves **both** MySQL and MariaDB servers, so it
+implements the **intersection** of their behaviours:
+- `IF [NOT] EXISTS`: MariaDB has it, **MySQL 8.0/8.4 does not** → emulate (`False`/`False`).
+- `index_types`: MariaDB documents `USING {BTREE|HASH|RTREE}`; MySQL is
+  **storage-engine-dependent** — InnoDB supports only `BTREE` and **silently maps
+  `USING HASH` to BTREE with a warning** (the exact silent-degradation this design
+  forbids). The intersection that is universally valid and never silently degraded is
+  **`{btree}`**. `RTREE`/`HASH`/`SPATIAL` are out of the generic path; a dialect that
+  needs them registers a `create_index_hook`.
+- The live test env is MariaDB, so the emulation code path is genuinely exercised (we
+  force the dialect path, not the server's latent capability).
 
 ² Oracle gained `IF [NOT] EXISTS` only in Release 19.28+/23ai. To avoid depending on the
 server patch level, the dialect emulates. Oracle's "partial index" is partition-level
 `INDEXING PARTIAL`, **not** a `WHERE` filter → `partial=False`.
 
-**Sources:** sqlite.org/lang_createindex + partialindex; duckdb.org CREATE INDEX;
-dev.mysql.com 8.4 + mariadb.com DROP/CREATE INDEX; docs.singlestore.com;
-learn.microsoft.com DROP INDEX + filtered-indexes; docs.oracle.com 19/23/26 CREATE/DROP
-INDEX; risingwave.com + materialize.com CREATE INDEX.
+³ SingleStore's valid `index_type` is **table-type-dependent** (columnstore tables accept
+only `HASH`; rowstore accepts `BTREE`/`HASH`). Unlike MySQL/InnoDB, SingleStore **errors**
+on an inapplicable type rather than silently mapping it — so the generic path exposes the
+documented `{btree,hash}` set and surfaces the engine's error to the caller (not silent
+degradation). Render-only; no live SingleStore in the test matrix.
+
+**Sources (verified 2026-06-30):**
+- SQLite — https://sqlite.org/lang_createindex.html , https://sqlite.org/partialindex.html
+- DuckDB — https://duckdb.org/docs/stable/sql/statements/create_index (no `WHERE`; has `IF [NOT] EXISTS`)
+- MySQL 8.4 — https://dev.mysql.com/doc/refman/8.4/en/create-index.html , https://dev.mysql.com/doc/refman/8.4/en/drop-index.html (no `IF [NOT] EXISTS`; `USING {BTREE|HASH}` engine-dependent, InnoDB=BTREE)
+- MariaDB — https://mariadb.com/docs/server/reference/sql-statements/data-definition/create/create-index , .../drop/drop-index (`IF [NOT] EXISTS` native; `USING {BTREE|HASH|RTREE}`)
+- SingleStore — https://docs.singlestore.com/cloud/reference/sql-reference/data-definition-language-ddl/create-index/ , .../drop-index/ (`USING {BTREE|HASH}`; `DROP INDEX … ON tbl`; no `IF [NOT] EXISTS`)
+- SQL Server — https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-index-transact-sql (`DROP INDEX [IF EXISTS] … ON tbl`, 2016+) , https://learn.microsoft.com/en-us/sql/relational-databases/indexes/create-filtered-indexes (filtered `WHERE`, restricted grammar; no `CREATE … IF NOT EXISTS`)
+- Oracle — https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/CREATE-INDEX.html (`IF [NOT] EXISTS` "only from Release 19.28 and up") , .../23/sqlrf/DROP-INDEX.html
+- RisingWave — https://docs.risingwave.com/processing/indexes ("a specialized materialized view") ; Materialize — https://materialize.com/docs/sql/create-index/ (`USING arrangement`, in-memory)
 
 > Note: `partial` for sqlite/postgres is taken from docs; `index_types` for postgres is
 > the documented method set. The live-tier dialects (sqlite, duckdb, postgres, MariaDB)
@@ -183,12 +211,28 @@ def compile_index_predicate(con, schema, table_name, predicate) -> str:
 ```
 
 - Binds one ibis table at the table's schema (introspected from the live connection, or
-  passed explicitly in render-only tests).
-- Reuses `_render.validate_predicate` (rejects aggregate / window / subquery — which also
-  matches SQLite's documented partial-index restriction: no subqueries, no other tables,
-  no non-deterministic functions).
-- Renders the boolean **unqualified** (strips the table alias) — a partial-index `WHERE`
-  references bare column names.
+  passed explicitly in render-only tests). The predicate **may reference any column of the
+  table, not only the indexed columns** (Postgres and SQLite both allow this); binding the
+  full schema — not just `cols` — is therefore required.
+- Reuses `_render.validate_predicate` (rejects aggregate / window / subquery). This is a
+  **structural** guard, not a per-dialect grammar check. It does **not** validate function
+  volatility, and it does **not** model dialect-specific filter restrictions. Where an
+  engine restricts partial-index predicates more tightly than a general boolean, an
+  unsupported predicate **fails at execution** with the engine's error (surfaced, not
+  swallowed) — see the SQL Server note below.
+- **Unqualified rendering is AST-level, not string substitution.** After compilation, the
+  qualifier (table alias / schema) is stripped by walking the sqlglot AST and removing the
+  `table`/`db`/`catalog` parts of each `Column` node, then rendering. String replacement of
+  an alias token is explicitly rejected (breaks on quoted/mixed-case aliases, substrings,
+  and literals). Golden tests must include predicates that compile to schema-qualified and
+  alias-qualified columns to prove the strip.
+
+**SQL Server filtered-index caveat:** `mssql` is `partial=True`, but SQL Server filtered
+predicates are materially narrower than a general boolean (simple comparison / `IN` forms,
+no computed columns, `NULL` only via `IS [NOT] NULL`). The compiler does **not** model
+that grammar; mssql partial support is **render-capable but engine-restricted**, and since
+mssql is render-only (no live test), a too-rich filtered predicate surfaces as a SQL Server
+error at execution. Documented as a known limitation rather than over-validated.
 
 ## 6. Idempotency & emulation
 
@@ -202,17 +246,43 @@ The convenient defaults stay: `create_index(if_not_exists=True)`,
   **skip** the CREATE/DROP if the desired state already holds. This is the same
   prove-state-then-act shape as the MySQL upsert preflight.
 
-**TOCTOU:** emulation is two statements (check, then act), so a concurrent session can
-change the index between them, producing a duplicate-index (CREATE) or no-such-index
-(DROP) error. This window is **accepted and documented** — DDL is rare and typically
-single-writer, the failure is a clear, bounded, re-runnable error (not data corruption),
-and transactional DDL is unavailable on several of these engines (MySQL/Oracle auto-commit
-DDL). No catch-and-swallow, no lock wrapping.
+**Emulation correctness assumptions.** Emulation trusts `index_exists` to be an
+authoritative yes/no for the current session and principal. It can be wrong, and the design
+accepts each case as the engine's error surfaced to the caller (never swallowed):
 
-`index_exists` introspection SQL interpolates the index/table/schema names as **escaped
-string literals** (`sqlglot exp.Literal.string`) and validates them through the identifier
-allowlist first — identical hardening to the MySQL upsert preflight (the PR #91
-final-review injection fix).
+- **TOCTOU:** a concurrent session creates/drops the index between check and act →
+  duplicate-index (CREATE) or no-such-index (DROP) error. Accepted: DDL is rare and
+  typically single-writer; the failure is bounded, re-runnable, non-corrupting; and
+  transactional DDL is unavailable on several engines (MySQL/Oracle auto-commit DDL), so a
+  lock-wrapped check+act isn't even possible. No catch-and-swallow, no lock wrapping.
+- **Catalog privilege:** the principal can `CREATE`/`DROP` but cannot see the index in the
+  catalog view → `index_exists` returns a false negative and the subsequent native CREATE
+  may still collide. Documented; not mitigated (a privilege misconfiguration, surfaced as
+  the engine error).
+- **Metadata visibility / isolation:** cached or transaction-isolated catalog metadata may
+  lag a recent DDL in another session. Emulation assumes the catalog query reflects
+  committed state for the current session.
+- **Auto-commit DDL:** on MySQL/Oracle the precheck and the act are separately committed —
+  this is *why* the window can't be closed transactionally, and is the basis for accepting
+  it rather than engineering around it.
+
+These are limitations of emulated (non-native) idempotency, not of the native path.
+
+**Injection hardening — exact contract.** `index_exists` introspection SQL is assembled by
+interpolating values into a catalog query, so each value is handled explicitly:
+
+- **Identifier-validated then literal-escaped** (allowlist `_validate_simple_identifier` →
+  `sqlglot exp.Literal.string`): `index_name`, `table_name`, and the resolved schema /
+  database value — including any **default schema/catalog obtained from the connection**
+  when `database` is omitted (that connection-derived value is validated too, never trusted
+  blindly).
+- **Identifier-validated then quoted** (allowlist → `_render.quote_identifier`): the column
+  names and the table reference used in the CREATE/DROP statements themselves.
+- **Intentional exclusions:** the allowlist (`_SIMPLE_IDENTIFIER_RE`) rejects identifiers
+  with spaces, dots, mixed-case-requiring quotes, leading digits, and SQL Server temp-table
+  prefixes (`#`, `##`). Names that need those are **out of scope** for the generic path and
+  must be reached via an override hook. This is the same gate as the PR #91 final-review
+  injection fix; it is deliberately stricter than the engines' full identifier grammar.
 
 ## 7. Public API (clean break — pre-release, no downstream consumers)
 
@@ -258,6 +328,16 @@ Changes from today:
   shape — `CREATE [UNIQUE] INDEX` body, the drop-scope clause (`ON tbl` present iff
   `TABLE_SCOPED`), guard present/absent per `native_*`, `USING <type>` rendering,
   partial-`WHERE` only where `partial`, identifier quoting.
+- **Golden — `index_exists` introspection SQL (render-only, every dialect's
+  `get_index_exists_sql`):** for all 8 conventional dialects assert the rendered catalog
+  query — string-literal escaping of `index_name`/`table_name`/schema (a `'`-bearing name
+  yields an escaped literal, not a broken query), table-scoped vs schema-global matching
+  (predicate includes the table for mysql/singlestore/mssql), default-schema behaviour when
+  `database` is omitted, and that a malicious / disallowed identifier is **rejected by the
+  allowlist** before any SQL is built.
+- **Golden — predicate qualifier strip:** predicates that compile to alias-qualified and
+  schema-qualified columns render **unqualified** (proves the AST-level strip, §5.2), and a
+  predicate referencing a non-indexed column compiles (Postgres/SQLite allow it).
 - **Live** (sqlite / duckdb / postgres / MariaDB, via the existing `compose.yaml`):
   - create → `index_exists` (True) → drop → `index_exists` (False) round-trip.
   - partial index on **postgres** and **sqlite** (`where=lambda t: t.active == True`).
@@ -281,6 +361,12 @@ Changes from today:
   round-trip tests (postgres, mysql, mssql, oracle, singlestoredb) — genuinely per-dialect
   introspection SQL (`pg_indexes`, `information_schema.STATISTICS`, `sys.indexes`,
   `user_indexes`), each literal-escaped and identifier-validated.
+- **`where_condition` removal audit:** grep the repo and docs for `where_condition` (and
+  any callsite of `create_index`/`create_unique_index`) and update each to the `where`
+  predicate. Because the new signatures take no `**kwargs`, a leftover
+  `where_condition=...` raises a natural `TypeError` at call time — the audit ensures no
+  internal caller or doc example still passes it. (Pre-release, no external consumers, so no
+  deprecation shim — but the audit is mandatory, not assumed.)
 
 ## 11. File structure
 
