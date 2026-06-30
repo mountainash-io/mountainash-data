@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 dependencies = [
-    "ibis-framework[polars,sqlite,duckdb]>=11.0.0",
+    "ibis-framework[polars,sqlite,duckdb]>=12.0.0",
     # "hatchling",
 
 
@@ -50,30 +50,30 @@ classifiers = [
 
 [project.optional-dependencies]
 all = [
-    "psycopg2-binary==2.9.9",
+    "psycopg-binary>=3.1.0",
     "pyodbc==5.2.0",
     "snowflake-connector-python==3.12.3",
     "setuptools",
-    "ibis-framework[mssql,snowflake,postgres,pyspark,trino]>=11.0.0",
+    "ibis-framework[mssql,snowflake,postgres,pyspark,trino]>=12.0.0",
     # "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino]>=10.8.0",
 ]
-mssql = ["pyodbc==5.2.0", "ibis-framework[mssql]>=11.0.0"]
+mssql = ["pyodbc==5.2.0", "ibis-framework[mssql]>=12.0.0"]
 snowflake = [
     "snowflake-connector-python==3.12.3",
-    "ibis-framework[snowflake]>=11.0.0",
+    "ibis-framework[snowflake]>=12.0.0",
 ]
-postgres = ["psycopg2-binary==2.9.9", "ibis-framework[postgres]>=11.0.0"]
-bigquery = ["ibis-framework[bigquery]>=11.0.0"]
-pyspark = ["setuptools", "ibis-framework[pyspark]>=11.0.0"]
-clickhouse = ["ibis-framework[clickhouse]>=11.0.0"]
-databricks = ["databricks-sql-connector>=4", "ibis-framework[databricks]>=11.0.0"]
-singlestoredb = ["singlestoredb>=1.0", "ibis-framework[singlestoredb]>=11.0.0"]
-exasol = ["pyexasol>=0.25.2", "ibis-framework[exasol]>=11.0.0"]
-impala = ["impyla>=0.17", "ibis-framework[impala]>=11.0.0"]
-materialize = ["psycopg>=3.2.0", "ibis-framework[materialize]>=11.0.0"]
-risingwave = ["psycopg2>=2.8.4", "ibis-framework[risingwave]>=11.0.0"]
-druid = ["pydruid>=0.6.7", "ibis-framework[druid]>=11.0.0"]
-trino = ["ibis-framework[trino]>=11.0.0"]
+postgres = ["psycopg-binary>=3.1.0", "ibis-framework[postgres]>=12.0.0"]
+bigquery = ["ibis-framework[bigquery]>=12.0.0"]
+pyspark = ["setuptools", "ibis-framework[pyspark]>=12.0.0"]
+clickhouse = ["ibis-framework[clickhouse]>=12.0.0"]
+databricks = ["databricks-sql-connector>=4", "ibis-framework[databricks]>=12.0.0"]
+singlestoredb = ["singlestoredb>=1.0", "ibis-framework[singlestoredb]>=12.0.0"]
+exasol = ["pyexasol>=0.25.2", "ibis-framework[exasol]>=12.0.0"]
+impala = ["impyla>=0.17", "ibis-framework[impala]>=12.0.0"]
+materialize = ["psycopg>=3.2.0", "ibis-framework[materialize]>=12.0.0"]
+risingwave = ["psycopg2>=2.8.4", "ibis-framework[risingwave]>=12.0.0"]
+druid = ["pydruid>=0.6.7", "ibis-framework[druid]>=12.0.0"]
+trino = ["ibis-framework[trino]>=12.0.0"]
 
 
 [project.urls]

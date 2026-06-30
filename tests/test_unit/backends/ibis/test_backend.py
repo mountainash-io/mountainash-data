@@ -218,10 +218,12 @@ def test_get_connection_accessor():
 # DialectSpec hooks
 # ---------------------------------------------------------------------------
 
-def test_duckdb_dialect_has_upsert_hook():
-    """DuckDB DialectSpec must have upsert_hook wired."""
+def test_duckdb_dialect_routes_generic_upsert():
+    """DuckDB DialectSpec has no hook (retired) but has upsert_style=ON_CONFLICT for generic path."""
+    from mountainash_data.backends.ibis.dialects._registry import UpsertStyle
     spec = DIALECTS["duckdb"]
-    assert spec.upsert_hook is not None
+    assert spec.upsert_hook is None
+    assert spec.upsert_style == UpsertStyle.ON_CONFLICT
 
 
 def test_sqlite_dialect_has_create_index_hook():
@@ -369,10 +371,15 @@ def test_upsert_duckdb():
 
 
 def test_upsert_unsupported_dialect_raises():
-    """upsert() on a dialect without upsert_hook must raise NotImplementedError."""
-    backend = IbisBackend(dialect="postgres")
-    # Can't actually connect to postgres, so mock the connection state
+    """upsert() on a dialect with no upsert_style and no hook must raise NotImplementedError.
+
+    clickhouse has neither upsert_style nor upsert_hook, so _generic_upsert receives
+    style=None and raises NotImplementedError — the correct sentinel for unsupported dialects.
+    postgres now has upsert_style=ON_CONFLICT so it routes through _generic_upsert successfully.
+    """
+    backend = IbisBackend(dialect="clickhouse")
+    # Can't actually connect, so mock the connection state
     from mountainash_data.backends.ibis.backend import IbisConnection
-    backend._conn = IbisConnection(None, DIALECTS["postgres"])
+    backend._conn = IbisConnection(None, DIALECTS["clickhouse"])
     with pytest.raises(NotImplementedError, match="does not support upsert"):
         backend.upsert("t", {}, conflict_columns=["id"])

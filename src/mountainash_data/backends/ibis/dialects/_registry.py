@@ -17,8 +17,15 @@ CONNECTION_STRING or KWARGS (bigquery).
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass, field
 import typing as t
+
+
+class UpsertStyle(str, enum.Enum):
+    ON_CONFLICT = "on_conflict"
+    MERGE = "merge"
+    ON_DUPLICATE_KEY = "on_duplicate_key"
 
 
 # Capability hook signatures
@@ -43,6 +50,8 @@ class DialectSpec:
     get_index_exists_sql: t.Optional[GetIndexExistsSql] = None
     get_list_indexes_sql: t.Optional[GetListIndexesSql] = None
     upsert_hook: t.Optional[UpsertHook] = None
+    # None = upsert not supported (no hook + no style -> NotImplementedError).
+    upsert_style: t.Optional[UpsertStyle] = None
     create_index_hook: t.Optional[CreateIndexHook] = None
     drop_index_hook: t.Optional[DropIndexHook] = None
     rename_table_hook: t.Optional[RenameTableHook] = None
@@ -640,7 +649,6 @@ from mountainash_data.backends.ibis.operations import (  # noqa: E402
     sqlite_get_list_indexes_sql,
     motherduck_get_index_exists_sql,
     motherduck_get_list_indexes_sql,
-    duckdb_family_upsert,
     duckdb_family_create_index,
     duckdb_family_drop_index,
 )
@@ -654,7 +662,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_builder=_build_sqlite_connection,
         get_index_exists_sql=sqlite_get_index_exists_sql,
         get_list_indexes_sql=sqlite_get_list_indexes_sql,
-        upsert_hook=duckdb_family_upsert,
+        upsert_style=UpsertStyle.ON_CONFLICT,
         create_index_hook=duckdb_family_create_index,
         drop_index_hook=duckdb_family_drop_index,
     ),
@@ -665,7 +673,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_builder=_build_duckdb_connection,
         get_index_exists_sql=duckdb_get_index_exists_sql,
         get_list_indexes_sql=duckdb_get_list_indexes_sql,
-        upsert_hook=duckdb_family_upsert,
+        upsert_style=UpsertStyle.ON_CONFLICT,
         create_index_hook=duckdb_family_create_index,
         drop_index_hook=duckdb_family_drop_index,
     ),
@@ -676,7 +684,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_builder=_build_motherduck_connection,
         get_index_exists_sql=motherduck_get_index_exists_sql,
         get_list_indexes_sql=motherduck_get_list_indexes_sql,
-        upsert_hook=duckdb_family_upsert,
+        upsert_style=UpsertStyle.ON_CONFLICT,
         create_index_hook=duckdb_family_create_index,
         drop_index_hook=duckdb_family_drop_index,
     ),
@@ -685,48 +693,56 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="postgres://",
         connection_builder=_build_postgres_connection,
+        upsert_style=UpsertStyle.ON_CONFLICT,
     ),
     "mysql": DialectSpec(
         ibis_backend_name="mysql",
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="mysql://",
         connection_builder=_build_mysql_connection,
+        upsert_style=UpsertStyle.ON_DUPLICATE_KEY,
     ),
     "mssql": DialectSpec(
         ibis_backend_name="mssql",
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="mssql://",
         connection_builder=_build_mssql_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "oracle": DialectSpec(
         ibis_backend_name="oracle",
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="oracle://",
         connection_builder=_build_oracle_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "snowflake": DialectSpec(
         ibis_backend_name="snowflake",
         connection_mode=_HYBRID,  # confirmed: snowflake defaults to HYBRID
         connection_string_scheme="snowflake://",
         connection_builder=_build_snowflake_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "bigquery": DialectSpec(
         ibis_backend_name="bigquery",
         connection_mode=_KWARGS,  # confirmed: bigquery defaults to KWARGS
         connection_string_scheme="bigquery://",
         connection_builder=_build_bigquery_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "redshift": DialectSpec(
         ibis_backend_name="postgres",  # Redshift uses postgres protocol
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="postgres://",  # confirmed: redshift uses postgres://
         connection_builder=_build_redshift_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "trino": DialectSpec(
         ibis_backend_name="trino",
         connection_mode=_HYBRID,  # confirmed: trino defaults to HYBRID
         connection_string_scheme="trino://",
         connection_builder=_build_trino_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "clickhouse": DialectSpec(
         ibis_backend_name="clickhouse",
@@ -739,18 +755,21 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_KWARGS,
         connection_string_scheme="",
         connection_builder=_build_databricks_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "singlestoredb": DialectSpec(
         ibis_backend_name="singlestoredb",
         connection_mode=_KWARGS,
         connection_string_scheme="singlestoredb://",
         connection_builder=_build_singlestoredb_connection,
+        upsert_style=UpsertStyle.ON_DUPLICATE_KEY,
     ),
     "exasol": DialectSpec(
         ibis_backend_name="exasol",
         connection_mode=_KWARGS,
         connection_string_scheme="exasol://",
         connection_builder=_build_exasol_connection,
+        upsert_style=UpsertStyle.MERGE,
     ),
     "impala": DialectSpec(
         ibis_backend_name="impala",
@@ -769,6 +788,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_KWARGS,
         connection_string_scheme="risingwave://",
         connection_builder=_build_risingwave_connection,
+        upsert_style=UpsertStyle.ON_CONFLICT,
     ),
     "druid": DialectSpec(
         ibis_backend_name="druid",

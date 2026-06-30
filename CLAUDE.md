@@ -109,7 +109,7 @@ src/mountainash_data/
 ## Dependencies
 
 ### Core Dependencies
-- **ibis-framework[polars,pandas,sqlite,duckdb]** == 10.4.0 - Core data processing framework
+- **ibis-framework[polars,pandas,sqlite,duckdb]** >= 12.0.0 - Core data processing framework
 - **numpy** >=1.23.2,<3 - Numerical computing
 - **pandas** >=2.2.0 - Data manipulation and analysis
 - **polars** ==1.16.0 - Fast DataFrame library
