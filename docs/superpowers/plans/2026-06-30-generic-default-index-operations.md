@@ -674,6 +674,9 @@ class TestIntrospectionSql:
     def test_singlestore_shape(self):
         sql = singlestore_get_index_exists_sql("idx", "t", None)
         assert "STATISTICS" in sql.upper() and "'t'" in sql
+        # always schema-constrained (defaults to DATABASE() when omitted) to
+        # avoid cross-schema false positives
+        assert "TABLE_SCHEMA = DATABASE()" in sql.upper()
 
     @pytest.mark.parametrize("fn", [
         postgres_get_index_exists_sql, mysql_get_index_exists_sql,
@@ -806,12 +809,17 @@ def oracle_get_index_exists_sql(
 def singlestore_get_index_exists_sql(
     index_name: str, table_name: str | None, database: str | None
 ) -> str:
-    """information_schema.STATISTICS (MySQL-compatible, table-scoped)."""
+    """information_schema.STATISTICS (MySQL-compatible, table-scoped). Like
+    MySQL, ALWAYS constrain TABLE_SCHEMA — defaulting to DATABASE() when
+    `database` is omitted — so an index/table name shared across schemas cannot
+    produce a cross-schema false positive."""
     where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
-    if database:
-        where.append(f"TABLE_SCHEMA = {_sql_literal(database)}")
+    schema_pred = (
+        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+    )
+    where.append(schema_pred)
     return (
         "SELECT COUNT(*) AS count FROM information_schema.STATISTICS "
         f"WHERE {' AND '.join(where)}"
@@ -1296,6 +1304,20 @@ def test_duckdb_family_index_hooks_removed():
     import mountainash_data.backends.ibis.operations as ops
     assert not hasattr(ops, "duckdb_family_create_index")
     assert not hasattr(ops, "duckdb_family_drop_index")
+
+
+def test_no_dialect_carries_an_index_hook_post_cutover():
+    """The generic path is the ONLY index path after cutover: no dialect carries
+    a create/drop index hook, so the backend's hook-first branch (which forwards
+    the new `where=` predicate) is never exercised — keeping it dead and safe.
+    The hook fields remain only as a future override escape hatch; CONTRACT: any
+    future create_index_hook MUST accept create_index's keyword signature,
+    including `where` (the ibis predicate), and any drop_index_hook MUST accept
+    `table_name`/`database`/`if_exists`."""
+    from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+    for name, spec in DIALECTS.items():
+        assert spec.create_index_hook is None, f"{name} unexpectedly has create_index_hook"
+        assert spec.drop_index_hook is None, f"{name} unexpectedly has drop_index_hook"
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
