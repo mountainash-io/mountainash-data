@@ -12,8 +12,9 @@ from mountainash_data.backends.ibis._render import (
 
 _SCHEMA = ibis.schema({"id": "int64", "updated_at": "timestamp", "v": "string"})
 
-# ON CONFLICT: incoming is the unquoted `excluded` pseudo-relation; existing is `tgt`.
-_ONCONFLICT = ConditionAliases(incoming="excluded", existing="tgt", incoming_quoted=False)
+# ON CONFLICT: incoming is the unquoted EXCLUDED pseudo-relation; existing is `tgt`.
+# Use the exact casing production passes (_render_on_conflict uses "EXCLUDED").
+_ONCONFLICT = ConditionAliases(incoming="EXCLUDED", existing="tgt", incoming_quoted=False)
 # MERGE: both sides are normal quoted aliases.
 _MERGE = ConditionAliases(incoming="src", existing="tgt")
 

@@ -7,6 +7,7 @@ import pytest
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, UpsertStyle
 from mountainash_data.backends.ibis.operations import (
     _generic_upsert,
+    _validate_simple_identifier,
     build_merge_sql,
     build_on_duplicate_key_sql,
 )
@@ -192,3 +193,33 @@ def test_on_duplicate_key_golden_nothing(name: str) -> None:
     # which is a syntax error). Both ODK dialects (mysql/singlestore) backtick.
     assert "`id` = `id`" in sql, f"{name}: NOTHING should self-assign `id` = `id`: {sql}"
     assert "VALUES(" not in sql, f"{name}: NOTHING should not use VALUES(): {sql}"
+
+
+class TestIdentifierValidationHardening:
+    """_validate_simple_identifier is the primary gate against SQL injection in
+    the MySQL preflight's string-literal interpolation (final-review finding)."""
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "x'y",                 # single quote — would break out of a literal
+            "x' OR '1'='1",        # classic injection payload
+            "a.b",                 # dotted (namespace) — still rejected
+            "a b",                 # whitespace
+            "tbl;DROP TABLE x",    # statement separator
+            "tbl--",               # comment
+            "1abc",                # leading digit
+            "tbl`name",            # backtick
+            'tbl"name',            # double quote
+            "",                    # empty
+        ],
+    )
+    def test_rejects_unsafe_identifiers(self, bad: str) -> None:
+        with pytest.raises(ValueError, match="simple identifier"):
+            _validate_simple_identifier(bad, kind="name")
+
+    @pytest.mark.parametrize(
+        "good", ["users", "_private", "T1", "wearables_events", "col$x", "a1_b2"]
+    )
+    def test_accepts_safe_identifiers(self, good: str) -> None:
+        _validate_simple_identifier(good, kind="name")  # no raise

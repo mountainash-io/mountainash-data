@@ -4,11 +4,13 @@ Contains:
 - Module-level helper functions: _generate_index_name, _format_qualified_table, _normalize_columns
 - Per-dialect SQL functions: duckdb, sqlite, motherduck index SQL generators
 - Standalone hook functions: duckdb_family_create_index, duckdb_family_drop_index
-- Generic dispatcher: _generic_upsert (dialect-agnostic, replaces duckdb_family_upsert)
+- Generic, dialect-agnostic write ops: _generic_rename_table, _generic_add_columns,
+  _generic_upsert (with the three upsert-family renderers + MySQL preflight)
 """
 
 import typing as t
 import contextlib
+import re
 import warnings
 
 import ibis
@@ -128,17 +130,32 @@ def _normalize_to_schema(source: t.Any) -> ibis.Schema:
     return ibis.memtable(source).schema()
 
 
-def _validate_simple_identifier(value: str, *, kind: str) -> None:
-    """Reject dotted/multi-part names — only simple identifiers are supported.
+_SIMPLE_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*\Z")
 
-    A dotted ``table_name``/``database`` would otherwise be quoted as a single
-    literal identifier (``"a.b"``) rather than a namespace, silently violating
-    the documented contract. Fail loudly instead.
+
+def _validate_simple_identifier(value: str, *, kind: str) -> None:
+    """Require a simple, safe SQL identifier: ``[A-Za-z_][A-Za-z0-9_$]*``.
+
+    Two guarantees in one check:
+
+    1. **Namespace correctness** — a dotted ``table_name``/``database`` would be
+       quoted as a single literal identifier (``"a.b"``) rather than a
+       namespace, silently violating the documented contract.
+    2. **Injection safety** — the MySQL/MariaDB preflight builds
+       ``information_schema`` queries by interpolating ``name``/``database`` into
+       SQL string literals. Restricting them to this charset (no quotes,
+       semicolons, whitespace, or other metacharacters) means a hostile or
+       malformed identifier cannot break out of that literal context. The
+       preflight ALSO renders the literals via sqlglot as defense in depth, but
+       this validator is the primary gate.
+
+    Anything outside the charset fails loudly instead of emitting unsafe SQL.
     """
-    if "." in value:
+    if not _SIMPLE_IDENTIFIER_RE.match(value):
         raise ValueError(
-            f"{kind} {value!r} must be a simple (non-dotted) identifier; "
-            f"multi-part qualified names are out of scope."
+            f"{kind} {value!r} must be a simple identifier (letters, digits, "
+            f"underscore, $; starting with a letter or underscore); dotted, "
+            f"quoted, or whitespace-bearing names are out of scope."
         )
 
 
@@ -607,17 +624,23 @@ def _mysql_validate_conflict_key(
 
     NOTE: ``ibis_conn.current_database`` is a PROPERTY in ibis >=12 (no parens).
     """
-    # Defense-in-depth: name/database are validated in _generic_upsert, but this
-    # function interpolates them into the introspection SQL, so re-validate here
-    # to stay safe for any direct caller (name is the upstream guard's contract).
+    # Primary gate: name/database must be simple identifiers (charset-allowlisted
+    # by _validate_simple_identifier). _generic_upsert validates them upstream;
+    # re-validate here so a direct caller is equally safe.
     _validate_simple_identifier(name, kind="name")
     if database is not None:
         _validate_simple_identifier(database, kind="database")
     db = database or ibis_conn.current_database
+    # Defense in depth: these values go into SQL *string literals*, so render
+    # them as escaped literals via sqlglot rather than bare f-string interpolation
+    # (belt-and-suspenders behind the allowlist above).
+    dialect = dialect_of(ibis_conn)
+    name_lit = exp.Literal.string(name).sql(dialect=dialect)
+    db_lit = exp.Literal.string(db).sql(dialect=dialect)
     rows = ibis_conn.raw_sql(
         "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, NON_UNIQUE "
         "FROM information_schema.STATISTICS "
-        f"WHERE TABLE_SCHEMA = '{db}' AND TABLE_NAME = '{name}' "
+        f"WHERE TABLE_SCHEMA = {db_lit} AND TABLE_NAME = {name_lit} "
         "ORDER BY INDEX_NAME, SEQ_IN_INDEX"
     ).fetchall()
     uniques: dict[str, list[tuple[t.Any, t.Any]]] = {}
@@ -652,7 +675,7 @@ def _mysql_validate_conflict_key(
     # nullable check
     cols_meta = ibis_conn.raw_sql(
         "SELECT COLUMN_NAME, IS_NULLABLE FROM information_schema.COLUMNS "
-        f"WHERE TABLE_SCHEMA = '{db}' AND TABLE_NAME = '{name}'"
+        f"WHERE TABLE_SCHEMA = {db_lit} AND TABLE_NAME = {name_lit}"
     ).fetchall()
     nullable = {c for c, isn in cols_meta if isn == "YES"}
     bad = [c for c in conflict if c in nullable]
