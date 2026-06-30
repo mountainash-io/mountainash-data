@@ -26,7 +26,7 @@ def test_snowflake_token_oauth():
 
 
 def test_snowflake_oauth2_token_only():
-    assert _snow.oauth2(OAuth2AuthProfile(TOKEN="t"), {}) == {"authenticator": "oauth", "token": "t"}
+    assert _snow.oauth2(OAuth2AuthProfile(ACCESS_TOKEN="t"), {}) == {"authenticator": "oauth", "token": "t"}
 
 
 def test_snowflake_password():
