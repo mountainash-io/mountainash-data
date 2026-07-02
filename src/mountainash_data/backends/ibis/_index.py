@@ -8,8 +8,13 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.backends.ibis._render import quote_identifier
-from mountainash_data.backends.ibis.dialects._registry import DropScope
+from mountainash_data.backends.ibis._render import (
+    compile_index_predicate,
+    dialect_of,
+    qualified_name,
+    quote_identifier,
+)
+from mountainash_data.backends.ibis.dialects._registry import DropScope, IndexCapability
 
 # USING <method> position differs across dialects (verified against official docs):
 #   - Postgres:    CREATE INDEX i ON tbl USING gin (cols)   -> after ON, before columns
@@ -81,3 +86,158 @@ def build_drop_index_sql(
     if drop_scope is DropScope.TABLE_SCOPED:
         return f"DROP INDEX {guard}{name_sql} ON {target}"
     return f"DROP INDEX {guard}{name_sql}"
+
+
+# ---------------------------------------------------------------------------
+# Generic dispatchers (spec §5-§8)
+# ---------------------------------------------------------------------------
+
+from mountainash_data.backends.ibis.operations import (  # noqa: E402
+    _generate_index_name,
+    _normalize_columns,
+    _validate_simple_identifier,
+)
+
+
+def _generic_index_exists(
+    ibis_conn: t.Any,
+    index_name: str,
+    *,
+    table_name: t.Optional[str] = None,
+    database: t.Optional[str] = None,
+    exists_sql_fn: t.Any,
+) -> bool:
+    """Run the dialect's introspection SQL and return whether the index exists."""
+    if exists_sql_fn is None:
+        raise NotImplementedError("dialect has no get_index_exists_sql")
+    _validate_simple_identifier(index_name, kind="index_name")
+    if table_name is not None:
+        _validate_simple_identifier(table_name, kind="table_name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
+    result = ibis_conn.sql(exists_sql_fn(index_name, table_name, database))
+    if result is None:
+        return False
+    import mountainash as ma
+
+    # Read the single returned column BY POSITION, not by the alias name:
+    # Oracle upper-cases the unquoted `count` alias ("count" -> "COUNT"), so
+    # keying by "count" would KeyError. Every introspection query returns
+    # exactly one column.
+    data = ma.relation(result).to_dict()
+    first_col = next(iter(data.values()))
+    return first_col[0] > 0
+
+
+def _target_ref(ibis_conn: t.Any, table_name: str, database: t.Optional[str]) -> str:
+    dialect = dialect_of(ibis_conn)
+    parts = [database, table_name] if database else [table_name]
+    return qualified_name(parts, dialect)
+
+
+def _generic_create_index(
+    ibis_conn: t.Any,
+    table_name: str,
+    columns: t.Union[list[str], str],
+    *,
+    index_name: t.Optional[str] = None,
+    unique: bool = False,
+    index_type: t.Optional[str] = None,
+    where: t.Any = None,
+    database: t.Optional[str] = None,
+    if_not_exists: bool = True,
+    caps: IndexCapability,
+    exists_sql_fn: t.Any,
+) -> None:
+    """Render and execute a CREATE INDEX via the generic path (spec §5-§8).
+
+    Emulation failure modes (TOCTOU / privilege / catalog-isolation /
+    auto-commit DDL) are documented-and-accepted per spec §6: the engine's
+    error is surfaced, never swallowed.
+    """
+    _validate_simple_identifier(table_name, kind="table_name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
+    cols = _normalize_columns(columns)
+    for c in cols:
+        _validate_simple_identifier(c, kind="column")
+
+    if index_type is not None and index_type not in caps.index_types:
+        raise ValueError(
+            f"index_type {index_type!r} not supported by this dialect; "
+            f"valid: {sorted(caps.index_types) or 'none'}"
+        )
+    if where is not None and not caps.partial:
+        raise ValueError("this dialect does not support partial indexes (where=)")
+
+    if index_name is None:
+        index_name = _generate_index_name(table_name, cols, unique=unique)
+    _validate_simple_identifier(index_name, kind="index_name")
+
+    # Idempotency: native guard, or emulate via precheck.
+    guard = ""
+    if if_not_exists:
+        if caps.native_if_not_exists:
+            guard = "IF NOT EXISTS "
+        elif _generic_index_exists(
+            ibis_conn, index_name, table_name=table_name, database=database,
+            exists_sql_fn=exists_sql_fn,
+        ):
+            return  # emulated: already present
+
+    where_sql = None
+    if where is not None:
+        schema = ibis_conn.table(table_name, database=database).schema()
+        where_sql = compile_index_predicate(ibis_conn, schema, table_name, where)
+
+    sql = build_create_index_sql(
+        dialect=dialect_of(ibis_conn),
+        target=_target_ref(ibis_conn, table_name, database),
+        index_name=index_name, cols=cols, unique=unique,
+        index_type=index_type, guard=guard, where_sql=where_sql,
+    )
+    ibis_conn.raw_sql(sql)
+
+
+def _generic_drop_index(
+    ibis_conn: t.Any,
+    index_name: str,
+    *,
+    table_name: t.Optional[str] = None,
+    database: t.Optional[str] = None,
+    if_exists: bool = True,
+    caps: IndexCapability,
+    exists_sql_fn: t.Any,
+) -> None:
+    """Render and execute a DROP INDEX via the generic path (spec §5-§8).
+
+    Emulation failure modes (TOCTOU / privilege / catalog-isolation /
+    auto-commit DDL) are documented-and-accepted per spec §6: the engine's
+    error is surfaced, never swallowed.
+    """
+    _validate_simple_identifier(index_name, kind="index_name")
+    if caps.drop_scope is DropScope.TABLE_SCOPED and table_name is None:
+        raise ValueError(
+            "drop_index requires table_name for this dialect (DROP INDEX ... ON tbl)"
+        )
+    if table_name is not None:
+        _validate_simple_identifier(table_name, kind="table_name")
+    if database is not None:
+        _validate_simple_identifier(database, kind="database")
+
+    guard = ""
+    if if_exists:
+        if caps.native_if_exists:
+            guard = "IF EXISTS "
+        elif not _generic_index_exists(
+            ibis_conn, index_name, table_name=table_name, database=database,
+            exists_sql_fn=exists_sql_fn,
+        ):
+            return  # emulated: already absent
+
+    target = _target_ref(ibis_conn, table_name, database) if table_name else None
+    sql = build_drop_index_sql(
+        dialect=dialect_of(ibis_conn), drop_scope=caps.drop_scope,
+        index_name=index_name, target=target, guard=guard,
+    )
+    ibis_conn.raw_sql(sql)
