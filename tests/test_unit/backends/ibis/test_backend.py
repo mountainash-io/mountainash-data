@@ -340,7 +340,7 @@ def test_table_exists_honors_database_namespace():
         assert backend.table_exists("main_only", database="tenant_a") is False
 
 
-def test_table_exists_forwards_database_to_introspection(mocker):
+def test_table_exists_forwards_database_to_introspection(monkeypatch):
     """The ``database`` arg must reach the introspection call, not be dropped.
 
     Guards the swallowed-error path: ``IbisConnection.list_tables`` returns ``[]``
@@ -348,9 +348,15 @@ def test_table_exists_forwards_database_to_introspection(mocker):
     never forwards ``database``. Assert the forwarding directly.
     """
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
-        spy = mocker.patch.object(backend, "list_tables", return_value=["sleep"])
+        seen: dict[str, str | None] = {}
+
+        def fake_list_tables(namespace=None):
+            seen["namespace"] = namespace
+            return ["sleep"]
+
+        monkeypatch.setattr(backend, "list_tables", fake_list_tables)
         assert backend.table_exists("sleep", database="tenant_a") is True
-        spy.assert_called_once_with(namespace="tenant_a")
+        assert seen == {"namespace": "tenant_a"}
 
 
 def test_fluent_chaining():
