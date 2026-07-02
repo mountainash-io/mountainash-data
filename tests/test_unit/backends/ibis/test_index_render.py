@@ -92,6 +92,25 @@ class TestBuildCreateIndexSql:
         )
         assert sql == "CREATE INDEX `i` ON `t` (`id`) USING hash"
 
+    def test_using_placement_with_sqlglot_dialect_class(self):
+        # dialect_of(ibis_conn) returns a sqlglot Dialect CLASS, not a string.
+        # Regression guard: the class must normalise to its lowercase name so
+        # USING placement matches (bug: str(class) never matched the frozensets).
+        from sqlglot.dialects.postgres import Postgres
+        from sqlglot.dialects.mysql import MySQL
+
+        pg = build_create_index_sql(
+            dialect=Postgres, target='"t"', index_name="g", cols=["doc"],
+            unique=False, index_type="gin", guard="", where_sql=None,
+        )
+        assert pg == 'CREATE INDEX "g" ON "t" USING gin ("doc")'  # USING before columns
+
+        my = build_create_index_sql(
+            dialect=MySQL, target="`t`", index_name="i", cols=["id"],
+            unique=False, index_type="btree", guard="", where_sql=None,
+        )
+        assert my == "CREATE INDEX `i` USING btree ON `t` (`id`)"  # USING before ON
+
 
 class TestBuildDropIndexSql:
     def test_schema_global(self):
