@@ -15,6 +15,11 @@ from mountainash_data.backends.ibis._render import (
     quote_identifier,
 )
 from mountainash_data.backends.ibis.dialects._registry import DropScope, IndexCapability
+from mountainash_data.backends.ibis.operations import (
+    _generate_index_name,
+    _normalize_columns,
+    _validate_simple_identifier,
+)
 
 # USING <method> position differs across dialects (verified against official docs):
 #   - Postgres:    CREATE INDEX i ON tbl USING gin (cols)   -> after ON, before columns
@@ -98,12 +103,6 @@ def build_drop_index_sql(
 # ---------------------------------------------------------------------------
 # Generic dispatchers (spec §5-§8)
 # ---------------------------------------------------------------------------
-
-from mountainash_data.backends.ibis.operations import (  # noqa: E402
-    _generate_index_name,
-    _normalize_columns,
-    _validate_simple_identifier,
-)
 
 
 def _generic_index_exists(

@@ -67,7 +67,7 @@ class TestBuildCreateIndexSql:
             dialect="duckdb", target='"t"', index_name="p", cols=["id"],
             unique=False, index_type=None, guard="", where_sql='"active"',
         )
-        assert sql.endswith('("id") WHERE "active"')
+        assert sql == 'CREATE INDEX "p" ON "t" ("id") WHERE "active"'
 
     def test_using_before_columns_postgres(self):
         sql = build_create_index_sql(
@@ -158,6 +158,7 @@ class TestIntrospectionSql:
         sql = mysql_get_index_exists_sql("idx", "t", None)
         assert "STATISTICS" in sql.upper()
         assert "'idx'" in sql and "'t'" in sql
+        assert "TABLE_SCHEMA = DATABASE()" in sql.upper()
 
     def test_mssql_uses_object_id(self):
         sql = mssql_get_index_exists_sql("idx", "t", None)
