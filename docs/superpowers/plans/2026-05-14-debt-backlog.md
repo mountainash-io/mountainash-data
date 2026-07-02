@@ -5,39 +5,38 @@ Source hash at time of discovery: `1254928c55c9b0c5932707a6255c0325dd96f3c9`
 
 ---
 
-## DEBT-1 — `mountainash` meta-package is an undeclared hard dependency
+## DEBT-1 — `mountainash` meta-package is an undeclared dependency (lazy call-time only)
 
-**Priority:** High
-**Severity:** Runtime import failure if `mountainash` is not installed
+**Priority:** Medium (was High)
+**Severity:** Runtime `ModuleNotFoundError` at call time for two methods — no longer an import-time crash
 
-### What is broken
+> **UPDATE 2026-07-02 (PR mountainash-io/mountainash-data#93, index-ops generic-default):**
+> The high-severity part of this debt — the **module-level** `import mountainash as ma`
+> in `operations.py` that crashed the entire package import — is **RESOLVED**. The index
+> cutover deleted the `duckdb_family_*` functions and their reading logic, and `operations.py`
+> no longer imports `mountainash` at all. The package now imports cleanly without `mountainash`
+> installed. Only two **lazy, call-time** imports remain (they fail only if the specific method
+> is called without `mountainash` present), so this is downgraded High → Medium.
 
-`backends/ibis/operations.py:15` contains a module-level import:
+### What remains
+
+Two lazy `import mountainash as ma` sites, both reading index-introspection result sets via
+`ma.relation(result)`:
 
 ```python
-import mountainash as ma
+# _index.py — inside _generic_index_exists(): ma.relation(result).to_dict()
+# backend.py — inside list_indexes():           ma.relation(result).to_dicts()
 ```
 
-This file is imported at package load time by `dialects/_registry.py`, which is imported by
-`backends/ibis/backend.py`, which is imported by `__init__.py`. If `mountainash` is not
-installed, the entire package fails to import with `ModuleNotFoundError`.
-
-Two additional lazy imports exist in `backend.py` at lines 559 and 578 inside
-`index_exists()` and `list_indexes()` — those fail at call time, not import time.
-
-`mountainash` does not appear anywhere in `pyproject.toml` — not in core dependencies
-and not in any optional extra.
+These fail at **call time** (only when `index_exists()`/`create_index()` idempotency-precheck
+or `list_indexes()` is invoked without `mountainash`), not at import time. `mountainash` still
+does not appear in `pyproject.toml` — not in core dependencies and not in any optional extra.
 
 ### Affected files
 
-- `src/mountainash_data/backends/ibis/operations.py:15`
-- `src/mountainash_data/backends/ibis/backend.py:559,578`
+- `src/mountainash_data/backends/ibis/_index.py` — lazy import in `_generic_index_exists`
+- `src/mountainash_data/backends/ibis/backend.py` — lazy import in `list_indexes`
 - `pyproject.toml` (missing declaration)
-
-### What `mountainash` is used for
-
-`operations.py` uses `ma.relation(result).to_dict()` and `ma.relation(result).to_dicts()`
-to read the result sets of index-introspection SQL queries. It is not used for anything else.
 
 ### Options
 
@@ -46,18 +45,17 @@ Add `mountainash` to `[project].dependencies` in `pyproject.toml`. Clean if `mou
 is always a reasonable peer dep for users of this package.
 
 **Option B — move to optional:**
-Gate `index_exists()` and `list_indexes()` behind a try/import with a clear error message
-if `mountainash` is missing. Appropriate if most users don't need index operations.
+Gate the two call sites behind a try/import with a clear error message if `mountainash` is
+missing. Appropriate if most users don't need index introspection.
 
 **Option C — remove the dependency:**
-Replace `ma.relation(result).to_dict()` with direct ibis `.execute().to_dict()` calls,
-eliminating the `mountainash` import entirely. The ibis connection object already has
+Replace `ma.relation(result).to_dict()` / `.to_dicts()` with direct ibis `.execute().to_dict()`
+calls, eliminating the `mountainash` import entirely. The ibis connection object already has
 `.sql(query)` returning an ibis relation — `.execute()` converts it to pandas, from which
-`to_dict()` works natively.
+`to_dict()` works natively. (Note: `_generic_index_exists` reads the single count column by
+**position**, not by alias — preserve that when refactoring; Oracle upper-cases the `count` alias.)
 
-**Recommended:** Option C for the module-level import in `operations.py` (zero new deps,
-moves this forward). Option A for the lazy imports in `backend.py` if `mountainash` is
-otherwise a declared peer.
+**Recommended:** Option C for both remaining lazy sites (zero new deps, closes the debt entirely).
 
 ---
 
@@ -254,13 +252,81 @@ refactor, add Option C guard and a TODO. If not, delete.
 
 ---
 
+## DEBT-7 — `list_indexes` is the last per-dialect write/introspection op still hook-required
+
+**Priority:** Medium
+**Severity:** Inconsistent surface — the odd op out after four convergences
+
+Added 2026-07-02 (follow-up tracked out of PR #93, index-ops generic-default).
+
+### Context
+
+The dialect-divergent operation surface has converged on a single pattern —
+**generic-default rendering driven by a structured capability descriptor, with the hook
+field retained only as an override escape hatch** — across four features:
+
+- `add_columns` (PR #90)
+- `upsert` / `rename_table` (PR #91, via `UpsertStyle`)
+- `create_index` / `drop_index` / `index_exists` (PR #93, via `IndexCapability`)
+
+`list_indexes` (`get_list_indexes_sql`) is now the **only** index op still purely
+hook-required: it has no capability descriptor, no generic default, and returns raw
+per-dialect catalog rows with no shared shape. `backend.py:list_indexes` still reads them
+via `ma.relation(result).to_dicts()` (see DEBT-1).
+
+### Recommended
+
+A follow-up generic-default `list_indexes` spec: introspection SQL for the 8 conventional
+dialects that already carry `index_caps`, parsed into a shared `IndexInfo` shape (name,
+table, columns, unique, partial-predicate where available) — mirroring how `inspect_table`
+returns `TableInfo`. Gate on `index_caps is not None`, same `hook → generic → NotImplementedError`
+dispatch. This also unblocks removing the last `mountainash` lazy import (DEBT-1 Option C).
+
+### Affected files (future work)
+
+- `src/mountainash_data/backends/ibis/_index.py` (new generic `_generic_list_indexes`)
+- `src/mountainash_data/backends/ibis/operations.py` (per-dialect `*_get_list_indexes_sql`)
+- `src/mountainash_data/backends/ibis/backend.py:list_indexes`
+- `src/mountainash_data/core/inspection.py` (new `IndexInfo` dataclass)
+
+---
+
+## DEBT-8 — Non-conventional index families are out of scope (documented `NotImplementedError`)
+
+**Priority:** Low
+**Severity:** None — deliberate scope boundary, tracked for future demand
+
+Added 2026-07-02 (follow-up tracked out of PR #93).
+
+### Context
+
+PR #93 covers **conventional B-tree secondary indexes** only. Dialects whose index model is
+not conventional-B-tree carry `index_caps=None` and correctly raise `NotImplementedError`:
+
+- **clickhouse** — data-skipping indexes (`INDEX ... TYPE minmax/set/bloom_filter ... GRANULARITY`)
+- **risingwave / materialize** — streaming-arrangement indexes, not physical B-trees
+
+These need **per-family specs** if a real consumer needs them — they are not a matter of
+flipping `index_caps` on; the DDL grammar and semantics differ fundamentally.
+
+### Also deferred (from PR #93 final review)
+
+- **mssql emulated-CREATE / native-DROP asymmetry** has no render-only golden test asserting
+  the CREATE-side precheck emission for the `tsql` dialect specifically (the asymmetry is
+  reasoned and live-covered on postgres/mariadb, but tsql is render-only with no live container).
+  A small builder-level golden would lock it. Low priority.
+
+---
+
 ## Summary table
 
 | ID | Issue | Priority | Effort | Breaking if unaddressed |
 |----|-------|----------|--------|------------------------|
-| DEBT-1 | `mountainash` undeclared dep — module-level import crash | High | Small | Yes — full package import failure |
+| DEBT-1 | `mountainash` undeclared dep — 2 lazy call-time imports (module-level crash RESOLVED by #93) | Medium | Small | No — call-time only, not import-time |
 | DEBT-2 | `IcebergBackend.inspect_*` typed `t.Any` | Medium | Trivial | No — runtime works, types mislead |
 | DEBT-3 | Oracle half-registered (no settings class, no extra) | Medium | Medium | No — misleads but doesn't crash |
 | DEBT-4 | `connect_default()` hardcodes `RestCatalog` in abstract base | Medium | Medium | No — only breaks future catalog impls |
 | DEBT-5 | `init_ssh()` dead code + latent `AttributeError` | Low | Trivial | No — never called |
 | DEBT-6 | `core/registry.py` empty placeholder | Low | Decision | No — nobody calls it |
+| DEBT-7 | `list_indexes` still hook-required (last op not generic-default) | Medium | Medium | No — inconsistent surface |
+| DEBT-8 | Non-B-tree index families out of scope (clickhouse/streaming) + mssql render-only golden gap | Low | Decision | No — documented `NotImplementedError` |
