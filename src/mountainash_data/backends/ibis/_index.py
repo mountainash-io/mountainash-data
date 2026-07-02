@@ -110,7 +110,7 @@ def _generic_index_exists(
     index_name: str,
     *,
     table_name: t.Optional[str] = None,
-    database: t.Optional[str] = None,
+    namespace: t.Optional[str] = None,
     exists_sql_fn: t.Any,
 ) -> bool:
     """Run the dialect's introspection SQL and return whether the index exists."""
@@ -119,9 +119,9 @@ def _generic_index_exists(
     _validate_simple_identifier(index_name, kind="index_name")
     if table_name is not None:
         _validate_simple_identifier(table_name, kind="table_name")
-    if database is not None:
-        _validate_simple_identifier(database, kind="database")
-    result = ibis_conn.sql(exists_sql_fn(index_name, table_name, database))
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
+    result = ibis_conn.sql(exists_sql_fn(index_name, table_name, namespace))
     if result is None:
         return False
     import mountainash as ma
@@ -135,9 +135,9 @@ def _generic_index_exists(
     return first_col[0] > 0
 
 
-def _target_ref(ibis_conn: t.Any, table_name: str, database: t.Optional[str]) -> str:
+def _target_ref(ibis_conn: t.Any, table_name: str, namespace: t.Optional[str]) -> str:
     dialect = dialect_of(ibis_conn)
-    parts = [database, table_name] if database else [table_name]
+    parts = [namespace, table_name] if namespace else [table_name]
     return qualified_name(parts, dialect)
 
 
@@ -150,7 +150,7 @@ def _generic_create_index(
     unique: bool = False,
     index_type: t.Optional[str] = None,
     where: t.Any = None,
-    database: t.Optional[str] = None,
+    namespace: t.Optional[str] = None,
     if_not_exists: bool = True,
     caps: IndexCapability,
     exists_sql_fn: t.Any,
@@ -162,8 +162,8 @@ def _generic_create_index(
     error is surfaced, never swallowed.
     """
     _validate_simple_identifier(table_name, kind="table_name")
-    if database is not None:
-        _validate_simple_identifier(database, kind="database")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
     cols = _normalize_columns(columns)
     for c in cols:
         _validate_simple_identifier(c, kind="column")
@@ -186,19 +186,19 @@ def _generic_create_index(
         if caps.native_if_not_exists:
             guard = "IF NOT EXISTS "
         elif _generic_index_exists(
-            ibis_conn, index_name, table_name=table_name, database=database,
+            ibis_conn, index_name, table_name=table_name, namespace=namespace,
             exists_sql_fn=exists_sql_fn,
         ):
             return  # emulated: already present
 
     where_sql = None
     if where is not None:
-        schema = ibis_conn.table(table_name, database=database).schema()
+        schema = ibis_conn.table(table_name, database=namespace).schema()
         where_sql = compile_index_predicate(ibis_conn, schema, table_name, where)
 
     sql = build_create_index_sql(
         dialect=dialect_of(ibis_conn),
-        target=_target_ref(ibis_conn, table_name, database),
+        target=_target_ref(ibis_conn, table_name, namespace),
         index_name=index_name, cols=cols, unique=unique,
         index_type=index_type, guard=guard, where_sql=where_sql,
     )
@@ -210,7 +210,7 @@ def _generic_drop_index(
     index_name: str,
     *,
     table_name: t.Optional[str] = None,
-    database: t.Optional[str] = None,
+    namespace: t.Optional[str] = None,
     if_exists: bool = True,
     caps: IndexCapability,
     exists_sql_fn: t.Any,
@@ -228,20 +228,20 @@ def _generic_drop_index(
         )
     if table_name is not None:
         _validate_simple_identifier(table_name, kind="table_name")
-    if database is not None:
-        _validate_simple_identifier(database, kind="database")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
 
     guard = ""
     if if_exists:
         if caps.native_if_exists:
             guard = "IF EXISTS "
         elif not _generic_index_exists(
-            ibis_conn, index_name, table_name=table_name, database=database,
+            ibis_conn, index_name, table_name=table_name, namespace=namespace,
             exists_sql_fn=exists_sql_fn,
         ):
             return  # emulated: already absent
 
-    target = _target_ref(ibis_conn, table_name, database) if table_name else None
+    target = _target_ref(ibis_conn, table_name, namespace) if table_name else None
     sql = build_drop_index_sql(
         dialect=dialect_of(ibis_conn), drop_scope=caps.drop_scope,
         index_name=index_name, target=target, guard=guard,

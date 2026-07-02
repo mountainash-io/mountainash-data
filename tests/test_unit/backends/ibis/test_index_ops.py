@@ -147,3 +147,35 @@ class TestBackendDispatch:
                 be.create_index("t", ["id"])
         finally:
             be.close()
+
+
+def test_create_index_accepts_namespace_kwarg():
+    from mountainash_data import IbisBackend
+
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.ibis_connection().raw_sql("CREATE SCHEMA idx_ns")
+        backend.create_table("t", {"id": [1], "name": ["a"]}, namespace="idx_ns")
+        backend.create_index("t", ["name"], namespace="idx_ns", index_name="idx_t_name")
+        assert backend.index_exists("idx_t_name", table_name="t", namespace="idx_ns") is True
+
+
+def test_index_ops_reject_database_kwarg():
+    import pytest
+    from mountainash_data import IbisBackend
+
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        with pytest.raises(TypeError):
+            backend.create_index("t", ["id"], database="x")
+
+
+def test_create_index_rejects_catalog_qualified_namespace():
+    """Index DDL builds engine-native SQL; catalog-qualified must raise (not reach SQL)."""
+    import pytest
+    from mountainash_data import IbisBackend
+    from mountainash_data.core.namespace import Namespace
+
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        with pytest.raises(ValueError, match="does not support catalog-qualified"):
+            backend.create_index("t", ["id"], namespace=Namespace(catalog="wh", path=("s",)))

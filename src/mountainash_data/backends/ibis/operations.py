@@ -237,14 +237,18 @@ def _generic_add_columns(
 def duckdb_get_index_exists_sql(
     index_name: str,
     table_name: str | None,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """DuckDB uses duckdb_indexes() system function."""
+    """DuckDB uses duckdb_indexes() system function. `namespace` is a single-
+    level qualifier, which DuckDB's ibis backend (and this package's own
+    `database=` convention) treats as the SCHEMA, not the catalog — so it is
+    matched against duckdb_indexes()'s `schema_name` column, not
+    `database_name` (which holds the catalog, e.g. "memory")."""
     where_clauses = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if database:
-        where_clauses.append(f"database_name = {_sql_literal(database)}")
+    if namespace:
+        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
 
     where_sql = " AND ".join(where_clauses)
     return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
@@ -252,12 +256,14 @@ def duckdb_get_index_exists_sql(
 
 def duckdb_get_list_indexes_sql(
     table_name: str,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """DuckDB uses duckdb_indexes() system function."""
+    """DuckDB uses duckdb_indexes() system function. See `namespace` note on
+    `duckdb_get_index_exists_sql` — matched against `schema_name`, not
+    `database_name`."""
     where_clauses = [f"table_name = '{table_name}'"]
-    if database:
-        where_clauses.append(f"database_name = '{database}'")
+    if namespace:
+        where_clauses.append(f"schema_name = '{namespace}'")
 
     where_sql = " AND ".join(where_clauses)
     return f"""
@@ -275,9 +281,9 @@ def duckdb_get_list_indexes_sql(
 def sqlite_get_index_exists_sql(
     index_name: str,
     table_name: str | None,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """SQLite uses the sqlite_master system table. `database` is unused (no
+    """SQLite uses the sqlite_master system table. `namespace` is unused (no
     cross-database queries)."""
     where_clauses = ["type = 'index'", f"name = {_sql_literal(index_name)}"]
     if table_name:
@@ -288,10 +294,10 @@ def sqlite_get_index_exists_sql(
 
 def sqlite_get_list_indexes_sql(
     table_name: str,
-    database: str | None
+    namespace: str | None
 ) -> str:
     """SQLite uses sqlite_master system table.
-    Note: database parameter is not used as SQLite doesn't support cross-database queries.
+    Note: namespace parameter is not used as SQLite doesn't support cross-database queries.
     """
     return f"""
         SELECT
@@ -309,14 +315,16 @@ def sqlite_get_list_indexes_sql(
 def motherduck_get_index_exists_sql(
     index_name: str,
     table_name: str | None,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function."""
+    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
+    `namespace` note on `duckdb_get_index_exists_sql` — matched against
+    `schema_name`, not `database_name`."""
     where_clauses = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if database:
-        where_clauses.append(f"database_name = {_sql_literal(database)}")
+    if namespace:
+        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
 
     where_sql = " AND ".join(where_clauses)
     return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
@@ -324,12 +332,14 @@ def motherduck_get_index_exists_sql(
 
 def motherduck_get_list_indexes_sql(
     table_name: str,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function."""
+    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
+    `namespace` note on `duckdb_get_index_exists_sql` — matched against
+    `schema_name`, not `database_name`."""
     where_clauses = [f"table_name = '{table_name}'"]
-    if database:
-        where_clauses.append(f"database_name = '{database}'")
+    if namespace:
+        where_clauses.append(f"schema_name = '{namespace}'")
 
     where_sql = " AND ".join(where_clauses)
     return f"""
@@ -345,29 +355,29 @@ def motherduck_get_list_indexes_sql(
 # --- PostgreSQL ---
 
 def postgres_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
-    """PostgreSQL pg_indexes catalog view. `database` maps to schemaname."""
+    """PostgreSQL pg_indexes catalog view. `namespace` maps to schemaname."""
     where = [f"indexname = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"tablename = {_sql_literal(table_name)}")
-    if database:
-        where.append(f"schemaname = {_sql_literal(database)}")
+    if namespace:
+        where.append(f"schemaname = {_sql_literal(namespace)}")
     return f"SELECT COUNT(*) AS count FROM pg_indexes WHERE {' AND '.join(where)}"
 
 
 # --- MySQL / MariaDB ---
 
 def mysql_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """information_schema.STATISTICS (table-scoped). Defaults schema to the
-    current database when `database` is omitted."""
+    current database when `namespace` is omitted."""
     where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
     schema_pred = (
-        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+        f"TABLE_SCHEMA = {_sql_literal(namespace)}" if namespace else "TABLE_SCHEMA = DATABASE()"
     )
     where.append(schema_pred)
     return (
@@ -379,20 +389,20 @@ def mysql_get_index_exists_sql(
 # --- SQL Server ---
 
 def mssql_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """sys.indexes joined to the table via OBJECT_ID (table-scoped).
 
-    NOTE on the `database` parameter: across this package `database` denotes the
+    NOTE on the `namespace` parameter: across this package `namespace` denotes the
     immediate NAMESPACE qualifier, which SQL Server interprets as the *schema* in
-    a two-part name. The generic CREATE renders ``"<database>"."<table>"`` (a
-    schema.object reference to SQL Server), so OBJECT_ID('<database>.<table>')
+    a two-part name. The generic CREATE renders ``"<namespace>"."<table>"`` (a
+    schema.object reference to SQL Server), so OBJECT_ID('<namespace>.<table>')
     targets the same object — consistent, not conflated. Cross-database
     (three-part) index DDL is out of scope for the generic path.
     """
     obj = table_name if table_name else ""
-    if database and table_name:
-        obj = f"{database}.{table_name}"
+    if namespace and table_name:
+        obj = f"{namespace}.{table_name}"
     return (
         "SELECT COUNT(*) AS count FROM sys.indexes "
         f"WHERE name = {_sql_literal(index_name)} "
@@ -403,7 +413,7 @@ def mssql_get_index_exists_sql(
 # --- Oracle ---
 
 def oracle_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """user_indexes (schema-global). The generic builder ALWAYS quotes
     identifiers (quote_identifier), so Oracle stores them case-sensitively as
@@ -418,17 +428,17 @@ def oracle_get_index_exists_sql(
 # --- SingleStore ---
 
 def singlestore_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """information_schema.STATISTICS (MySQL-compatible, table-scoped). Like
     MySQL, ALWAYS constrain TABLE_SCHEMA — defaulting to DATABASE() when
-    `database` is omitted — so an index/table name shared across schemas cannot
+    `namespace` is omitted — so an index/table name shared across schemas cannot
     produce a cross-schema false positive."""
     where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
     schema_pred = (
-        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+        f"TABLE_SCHEMA = {_sql_literal(namespace)}" if namespace else "TABLE_SCHEMA = DATABASE()"
     )
     where.append(schema_pred)
     return (
@@ -441,10 +451,10 @@ def singlestore_get_index_exists_sql(
 def motherduck_list_tables(
     ibis_backend: t.Any,
     like: str | None = None,
-    database: str | None = None,
+    namespace: str | None = None,
 ) -> list[str]:
     """MotherDuck-specific list_tables using DuckDB backend's database parameter."""
-    return ibis_backend.list_tables(like=like, database=database) if ibis_backend is not None else []
+    return ibis_backend.list_tables(like=like, database=namespace) if ibis_backend is not None else []
 
 
 # ===========================================================================

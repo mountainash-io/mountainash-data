@@ -663,22 +663,23 @@ class IbisBackend:
         unique: bool = False,
         index_type: str | None = None,
         where: t.Any = None,  # IndexPredicate | None
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         if_not_exists: bool = True,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_index")
         hook = self._spec.create_index_hook
         if hook is not None:
             hook(
                 conn._ibis_conn, table_name, columns,
                 index_name=index_name, unique=unique, index_type=index_type,
-                where=where, database=database, if_not_exists=if_not_exists,
+                where=where, namespace=rendered, if_not_exists=if_not_exists,
             )
         elif self._spec.index_caps is not None:
             _generic_create_index(
                 conn._ibis_conn, table_name, columns,
                 index_name=index_name, unique=unique, index_type=index_type,
-                where=where, database=database, if_not_exists=if_not_exists,
+                where=where, namespace=rendered, if_not_exists=if_not_exists,
                 caps=self._spec.index_caps,
                 exists_sql_fn=self._spec.get_index_exists_sql,
             )
@@ -695,11 +696,15 @@ class IbisBackend:
         *,
         index_name: str | None = None,
         where: t.Any = None,  # IndexPredicate | None
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> IbisBackend:
+        # Gate here so a catalog-qualified namespace raises naming THIS method,
+        # not the create_index it delegates to (the delegated call re-renders,
+        # but by then the namespace has passed and won't raise again).
+        _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_unique_index")
         return self.create_index(
             table_name, columns,
-            index_name=index_name, unique=True, where=where, database=database,
+            index_name=index_name, unique=True, where=where, namespace=namespace,
         )
 
     def drop_index(
@@ -707,20 +712,21 @@ class IbisBackend:
         index_name: str,
         *,
         table_name: str | None = None,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         if_exists: bool = True,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="drop_index")
         hook = self._spec.drop_index_hook
         if hook is not None:
             hook(
                 conn._ibis_conn, index_name,
-                table_name=table_name, database=database, if_exists=if_exists,
+                table_name=table_name, namespace=rendered, if_exists=if_exists,
             )
         elif self._spec.index_caps is not None:
             _generic_drop_index(
                 conn._ibis_conn, index_name,
-                table_name=table_name, database=database, if_exists=if_exists,
+                table_name=table_name, namespace=rendered, if_exists=if_exists,
                 caps=self._spec.index_caps,
                 exists_sql_fn=self._spec.get_index_exists_sql,
             )
@@ -735,16 +741,17 @@ class IbisBackend:
         index_name: str,
         *,
         table_name: str | None = None,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> bool:
         if self._spec.get_index_exists_sql is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support index_exists"
             )
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="index_exists")
         return _generic_index_exists(
             conn._ibis_conn, index_name,
-            table_name=table_name, database=database,
+            table_name=table_name, namespace=rendered,
             exists_sql_fn=self._spec.get_index_exists_sql,
         )
 
@@ -752,14 +759,15 @@ class IbisBackend:
         self,
         table_name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> list[dict]:
         if self._spec.get_list_indexes_sql is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support list_indexes"
             )
         conn = self._require_connected()
-        list_sql = self._spec.get_list_indexes_sql(table_name, database)
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="list_indexes")
+        list_sql = self._spec.get_list_indexes_sql(table_name, rendered)
         result = conn._ibis_conn.sql(list_sql)
         if result is None:
             return []
