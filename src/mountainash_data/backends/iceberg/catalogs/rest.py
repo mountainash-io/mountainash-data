@@ -71,7 +71,7 @@ class IcebergRestConnection(IcebergConnectionBase):
 
     def _list_tables(
         self,
-        namespace: str | None = None,
+        namespace: str | t.Tuple[str, ...] | None = None,
     ) -> t.List[str]:
         """Return table names within ``namespace`` from the REST catalog."""
         return (

@@ -14,22 +14,21 @@ from mountainash_data.core.inspection import (
     NamespaceInfo,
     TableInfo,
 )
+from mountainash_data.core.namespace import Namespace
 
 
 def table_to_info(
     iceberg_table,
     *,
     name: str,
-    namespace: t.Optional[str] = None,
-    catalog: t.Optional[str] = None,
+    location: Namespace = Namespace(),
 ) -> TableInfo:
     """Convert a pyiceberg Table object into a TableInfo.
 
     Args:
         iceberg_table: A ``pyiceberg.table.Table`` instance.
         name: The simple table name (without namespace prefix).
-        namespace: The namespace (schema) the table belongs to, if known.
-        catalog: The catalog name, if known.
+        location: The table's namespace/catalog location.
 
     Returns:
         A ``TableInfo`` populated from the table's current schema.
@@ -42,34 +41,25 @@ def table_to_info(
         )
         for field in iceberg_table.schema().fields
     ]
-    return TableInfo(
-        name=name,
-        columns=columns,
-        namespace=namespace,
-        catalog=catalog,
-    )
+    return TableInfo(name=name, columns=columns, location=location)
 
 
 def namespace_to_info(
-    namespace_name: str,
+    namespace_path: t.Sequence[str],
     table_names: t.Sequence[str],
-    *,
-    catalog: t.Optional[str] = None,
 ) -> NamespaceInfo:
-    """Build a NamespaceInfo from a list of table names.
+    """Build a NamespaceInfo from a namespace path and its table names.
 
     Args:
-        namespace_name: The namespace identifier.
+        namespace_path: The namespace path segments.
         table_names: Names of tables within this namespace.
-        catalog: The catalog this namespace belongs to, if known.
 
     Returns:
         A populated ``NamespaceInfo``.
     """
     return NamespaceInfo(
-        name=namespace_name,
+        location=Namespace(path=tuple(namespace_path)),
         tables=list(table_names),
-        catalog=catalog,
     )
 
 

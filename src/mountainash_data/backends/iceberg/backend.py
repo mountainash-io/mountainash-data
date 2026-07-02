@@ -60,19 +60,20 @@ class IcebergBackend:
             )
         return self._conn
 
-    def list_tables(self, namespace: str | None = None) -> list[str]:
+    def list_tables(self, namespace: t.Any = None) -> list[str]:
         return self._require_connected().list_tables(namespace=namespace)
 
-    def list_namespaces(self) -> list[str]:
-        return self._require_connected().list_namespaces()
+    def list_namespaces(self, catalog: str | None = None) -> list[str]:
+        return self._require_connected().list_namespaces(catalog=catalog)
 
-    def inspect_table(
-        self, name: str, namespace: str | None = None
-    ) -> t.Any:
+    def list_catalogs(self) -> list[str]:
+        return self._require_connected().list_catalogs()
+
+    def inspect_table(self, name: str, namespace: t.Any = None) -> t.Any:
         return self._require_connected().inspect_table(name, namespace=namespace)
 
     def inspect_namespace(self, name: str) -> t.Any:
         return self._require_connected().inspect_namespace(name)
 
-    def inspect_catalog(self) -> t.Any:
-        return self._require_connected().inspect_catalog()
+    def inspect_catalog(self, catalog: str | None = None) -> t.Any:
+        return self._require_connected().inspect_catalog(catalog=catalog)
