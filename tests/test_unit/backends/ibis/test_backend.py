@@ -6,6 +6,7 @@ import polars as pl
 from mountainash_data.backends.ibis.backend import IbisBackend
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS
 from mountainash_data.core.protocol import Backend
+from mountainash_data.core.namespace import Namespace
 
 
 def test_ibis_backend_satisfies_protocol():
@@ -443,3 +444,39 @@ def test_upsert_unsupported_dialect_raises():
     backend._conn = IbisConnection(None, DIALECTS["clickhouse"])
     with pytest.raises(NotImplementedError, match="does not support upsert"):
         backend.upsert("t", {}, conflict_columns=["id"])
+
+
+# ---------------------------------------------------------------------------
+# Namespace-carrying inspection + discovery (DEBT-10 Task 5)
+# ---------------------------------------------------------------------------
+
+def test_list_catalogs_degrades_to_current():
+    """A catalog-less/simple backend still answers list_catalogs()."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        cats = backend.list_catalogs()
+        assert isinstance(cats, list)
+        assert len(cats) >= 1
+
+
+def test_inspect_table_location_default_namespace():
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        info = backend.inspect_table("t")
+        assert info.name == "t"
+        assert info.location == Namespace()
+
+
+def test_inspect_table_location_reflects_namespace():
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        raw = backend.ibis_connection()
+        raw.raw_sql("CREATE SCHEMA tenant_a")
+        raw.raw_sql("CREATE TABLE tenant_a.widgets (id INTEGER)")
+        info = backend.inspect_table("widgets", namespace="tenant_a")
+        assert info.location == Namespace(path=("tenant_a",))
+        assert info.qualified_name == "tenant_a.widgets"
+
+
+def test_list_namespaces_accepts_catalog_kwarg():
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        # catalog=None is the default; the kwarg must be accepted without error.
+        assert isinstance(backend.list_namespaces(catalog=None), list)

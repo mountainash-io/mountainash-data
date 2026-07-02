@@ -28,7 +28,7 @@ from mountainash_data.core.factories.connection_factory import (
     provider_for_dialect,
     provider_for_scheme,
 )
-from mountainash_data.core.namespace import Namespace, NamespaceLike  # noqa: F401 (NamespaceLike: Task 5 signatures)
+from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_auth_client import PasswordAuthProfile
 
 
@@ -87,11 +87,13 @@ class IbisConnection:
         self._dialect_spec = dialect_spec
         self._closed = False
 
-    def list_namespaces(self) -> list[str]:
+    def list_namespaces(self, catalog: str | None = None) -> list[str]:
         """Return the names of all namespaces (schemas/databases) visible to this connection."""
         try:
             # ibis backends vary — some expose list_databases, some list_schemas
             if hasattr(self._ibis_conn, "list_databases"):
+                if catalog is not None:
+                    return self._ibis_conn.list_databases(catalog=catalog)
                 return self._ibis_conn.list_databases()
             if hasattr(self._ibis_conn, "list_schemas"):
                 return self._ibis_conn.list_schemas()
@@ -100,25 +102,45 @@ class IbisConnection:
             print(f"Error listing namespaces: {e}")
             return []
 
-    def list_tables(self, namespace: str | None = None) -> list[str]:
-        """Return the names of tables in the given namespace."""
+    def list_catalogs(self) -> list[str]:
+        """Return catalogs visible to this connection. Degrades, never raises.
+
+        Not every ibis backend exposes catalogs (only the CanListCatalog mixin
+        does). Fall back to the connection's current catalog, then — for
+        backends with no catalog concept at all (e.g. sqlite) — to the
+        dialect's own ibis backend name as a single-entry pseudo-catalog, so
+        callers always get at least one entry back for a live connection.
+        """
         try:
-            if namespace is not None:
-                return self._ibis_conn.list_tables(database=namespace)
+            if hasattr(self._ibis_conn, "list_catalogs"):
+                return list(self._ibis_conn.list_catalogs())
+        except Exception as e:
+            print(f"Error listing catalogs: {e}")
+        current = getattr(self._ibis_conn, "current_catalog", None)
+        if current is not None:
+            return [current]
+        return [self._dialect_spec.ibis_backend_name]
+
+    def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
+        """Return the names of tables in the given namespace."""
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        try:
+            if rendered is not None:
+                return self._ibis_conn.list_tables(database=rendered)
             return self._ibis_conn.list_tables()
         except Exception as e:
             print(f"Error listing tables: {e}")
             return []
 
-    def inspect_table(
-        self, name: str, namespace: str | None = None
-    ) -> TableInfo:
+    def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
         """Return shared-model metadata for one table."""
         from mountainash_data.backends.ibis.inspect import table_to_info
 
+        ns = Namespace.coerce(namespace)
+        rendered = _render_ibis_database(ns)
         try:
-            ibis_table = self._ibis_conn.table(name, database=namespace)
-            return table_to_info(ibis_table, name=name, namespace=namespace)
+            ibis_table = self._ibis_conn.table(name, database=rendered)
+            return table_to_info(ibis_table, name=name, location=ns)
         except Exception as e:
             raise ValueError(f"Could not inspect table {name!r}: {e}") from e
 
@@ -126,19 +148,19 @@ class IbisConnection:
         """Return shared-model metadata for one namespace."""
         try:
             tables = self.list_tables(namespace=name)
-            return NamespaceInfo(name=name, tables=tables)
+            return NamespaceInfo(location=Namespace(path=(name,)), tables=tables)
         except Exception as e:
             raise ValueError(f"Could not inspect namespace {name!r}: {e}") from e
 
-    def inspect_catalog(self) -> CatalogInfo:
+    def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
         """Return shared-model metadata for the connection's catalog."""
-        namespaces = self.list_namespaces()
+        namespaces = self.list_namespaces(catalog=catalog)
         ns_infos = [
-            NamespaceInfo(name=ns, tables=self.list_tables(namespace=ns))
+            NamespaceInfo(location=Namespace(path=(ns,)), tables=self.list_tables(namespace=ns))
             for ns in namespaces
         ]
         return CatalogInfo(
-            name=self._dialect_spec.ibis_backend_name,
+            name=catalog or self._dialect_spec.ibis_backend_name,
             namespaces=ns_infos,
         )
 
@@ -411,22 +433,23 @@ class IbisBackend:
 
     # --- Inspection (terminal — delegates to IbisConnection) ---
 
-    def list_tables(self, namespace: str | None = None) -> list[str]:
+    def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
         return self._require_connected().list_tables(namespace=namespace)
 
-    def list_namespaces(self) -> list[str]:
-        return self._require_connected().list_namespaces()
+    def list_namespaces(self, catalog: str | None = None) -> list[str]:
+        return self._require_connected().list_namespaces(catalog=catalog)
 
-    def inspect_table(
-        self, name: str, namespace: str | None = None
-    ) -> TableInfo:
+    def list_catalogs(self) -> list[str]:
+        return self._require_connected().list_catalogs()
+
+    def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
         return self._require_connected().inspect_table(name, namespace=namespace)
 
     def inspect_namespace(self, name: str) -> NamespaceInfo:
         return self._require_connected().inspect_namespace(name)
 
-    def inspect_catalog(self) -> CatalogInfo:
-        return self._require_connected().inspect_catalog()
+    def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
+        return self._require_connected().inspect_catalog(catalog=catalog)
 
     # --- Thin wrapper operations (fluent — return self) ---
 
