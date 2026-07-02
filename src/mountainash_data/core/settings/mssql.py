@@ -1,6 +1,6 @@
 """MSSQL backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/mssql.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/mssql.md``.
 Driver: PyODBC connect + ODBC Driver 17/18 for SQL Server.
 """
 

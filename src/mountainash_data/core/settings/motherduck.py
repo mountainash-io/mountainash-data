@@ -1,6 +1,6 @@
 """MotherDuck backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/motherduck.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/motherduck.md``.
 Driver auth docs:
   https://motherduck.com/docs/getting-started/connect-query-from-python/installation-authentication/
 Ibis: routes via the duckdb backend (``rides_on="duckdb"``).

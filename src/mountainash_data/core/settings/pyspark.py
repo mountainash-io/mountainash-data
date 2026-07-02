@@ -1,6 +1,6 @@
 """PySpark backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/pyspark.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/pyspark.md``.
 Ibis: ``ibis.backends.pyspark.do_connect(session=None, mode='batch', **kwargs)``
 where kwargs flow to ``SparkSession.builder.config(**kwargs)``.
 

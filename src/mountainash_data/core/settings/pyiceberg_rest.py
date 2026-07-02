@@ -1,6 +1,6 @@
 """PyIceberg REST catalog backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/pyiceberg_rest.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/pyiceberg_rest.md``.
 Driver: https://py.iceberg.apache.org/configuration/
 """
 
