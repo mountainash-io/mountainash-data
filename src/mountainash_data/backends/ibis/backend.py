@@ -604,10 +604,11 @@ class IbisBackend:
         update_columns: list[str] | str | None = None,
         conflict_action: str = "UPDATE",
         update_condition: t.Any = None,  # ConditionPredicate | None
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         schema: str | None = None,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="upsert")
         hook = self._spec.upsert_hook
         if hook is not None:
             hook(
@@ -616,7 +617,7 @@ class IbisBackend:
                 update_columns=update_columns,
                 conflict_action=conflict_action,
                 update_condition=update_condition,
-                database=database,
+                namespace=rendered,
                 schema=schema,
             )
         else:
@@ -626,7 +627,7 @@ class IbisBackend:
                 update_columns=update_columns,
                 conflict_action=conflict_action,
                 update_condition=update_condition,
-                database=database,
+                namespace=rendered,
                 schema=schema,
             )
         return self
@@ -636,19 +637,20 @@ class IbisBackend:
         name: str,
         source: t.Any,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> IbisBackend:
         """Additively evolve `name`: add columns present in `source` but
         missing from the table. `source` is a frame (types inferred) or a
         ``{column: dtype}`` mapping. Additive, idempotent, dialect-agnostic.
         """
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="add_columns")
         hook = self._spec.add_columns_hook
         if hook is not None:
-            hook(conn._ibis_conn, name, source, database=database)
+            hook(conn._ibis_conn, name, source, namespace=rendered)
         else:
             _generic_add_columns(
-                conn._ibis_conn, name, source, database=database
+                conn._ibis_conn, name, source, namespace=rendered
             )
         return self
 

@@ -37,7 +37,7 @@ class TestOnConflictUpsert:
             con, "t", pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}),
             style=UpsertStyle.ON_CONFLICT, conflict_columns=["id"],
             update_columns=None, conflict_action="UPDATE",
-            update_condition=None, database=None, schema=None,
+            update_condition=None, namespace=None, schema=None,
         )
         rows = dict(con.table("t").order_by("id").execute()[["id", "v"]].itertuples(index=False))
         assert rows == {1: "a", 2: "B", 3: "c"}
@@ -49,7 +49,7 @@ class TestOnConflictUpsert:
             con, "t", pl.DataFrame({"id": [2], "v": ["X"]}),
             style=UpsertStyle.ON_CONFLICT, conflict_columns="id",
             update_columns=None, conflict_action="NOTHING",
-            update_condition=None, database=None, schema=None,
+            update_condition=None, namespace=None, schema=None,
         )
         assert con.table("t").filter(ibis._.id == 2).execute()["v"].iloc[0] == "b"
 
@@ -62,7 +62,7 @@ class TestOnConflictUpsert:
             con, "t", pl.DataFrame({"a": [1], "b": [1], "v": ["y"]}),
             style=UpsertStyle.ON_CONFLICT, conflict_columns=["a", "b"],
             update_columns=None, conflict_action="UPDATE",
-            update_condition=None, database=None, schema=None,
+            update_condition=None, namespace=None, schema=None,
         )
         assert con.table("t").execute()["v"].iloc[0] == "y"
 
@@ -75,7 +75,7 @@ class TestOnConflictUpsert:
             style=UpsertStyle.ON_CONFLICT, conflict_columns=["id"],
             update_columns=None, conflict_action="UPDATE",
             update_condition=lambda inc, exi: inc.ver > exi.ver,
-            database=None, schema=None,
+            namespace=None, schema=None,
         )
         # incoming ver(3) is NOT newer than existing(5) -> unchanged
         assert con.table("t").execute()["v"].iloc[0] == "old"
@@ -88,7 +88,7 @@ class TestOnConflictUpsert:
                 con, "t", pl.DataFrame({"id": [9], "v": ["z"]}),
                 style=None, conflict_columns=["id"], update_columns=None,
                 conflict_action="UPDATE", update_condition=None,
-                database=None, schema=None,
+                namespace=None, schema=None,
             )
 
 
@@ -223,3 +223,20 @@ class TestIdentifierValidationHardening:
     )
     def test_accepts_safe_identifiers(self, good: str) -> None:
         _validate_simple_identifier(good, kind="name")  # no raise
+
+
+def test_upsert_rejects_catalog_qualified_namespace():
+    """upsert builds engine-native SQL; a catalog-qualified namespace must raise
+    a clean ValueError, never reach the SQL builders."""
+    import pytest
+    from mountainash_data import IbisBackend
+    from mountainash_data.core.namespace import Namespace
+
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.create_table("accounts", {"id": [1], "bal": [10]})
+        with pytest.raises(ValueError, match="does not support catalog-qualified"):
+            backend.upsert(
+                "accounts", {"id": [1], "bal": [20]},
+                conflict_columns=["id"],
+                namespace=Namespace(catalog="wh", path=("sales",)),
+            )

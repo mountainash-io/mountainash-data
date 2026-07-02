@@ -21,7 +21,7 @@ def _odk(con, name, df, conflict):
     _generic_upsert(
         con, name, df, style=UpsertStyle.ON_DUPLICATE_KEY,
         conflict_columns=conflict, update_columns=None, conflict_action="UPDATE",
-        update_condition=None, database=None, schema=None,
+        update_condition=None, namespace=None, schema=None,
     )
 
 
