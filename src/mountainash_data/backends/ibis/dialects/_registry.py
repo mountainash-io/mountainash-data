@@ -687,6 +687,11 @@ DIALECTS: dict[str, DialectSpec] = {
         upsert_style=UpsertStyle.ON_CONFLICT,
         create_index_hook=duckdb_family_create_index,
         drop_index_hook=duckdb_family_drop_index,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
+            native_if_not_exists=True, native_if_exists=True,
+            index_types=frozenset(),
+        ),
     ),
     "duckdb": DialectSpec(
         ibis_backend_name="duckdb",
@@ -698,6 +703,11 @@ DIALECTS: dict[str, DialectSpec] = {
         upsert_style=UpsertStyle.ON_CONFLICT,
         create_index_hook=duckdb_family_create_index,
         drop_index_hook=duckdb_family_drop_index,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
+            native_if_not_exists=True, native_if_exists=True,
+            index_types=frozenset(),
+        ),
     ),
     "motherduck": DialectSpec(
         ibis_backend_name="duckdb",
@@ -709,6 +719,11 @@ DIALECTS: dict[str, DialectSpec] = {
         upsert_style=UpsertStyle.ON_CONFLICT,
         create_index_hook=duckdb_family_create_index,
         drop_index_hook=duckdb_family_drop_index,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
+            native_if_not_exists=True, native_if_exists=True,
+            index_types=frozenset(),
+        ),
     ),
     "postgres": DialectSpec(
         ibis_backend_name="postgres",
