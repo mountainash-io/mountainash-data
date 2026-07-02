@@ -483,8 +483,9 @@ class IbisBackend:
     def table_exists(
         self, name: str, database: str | None = None
     ) -> bool:
-        tables = self.list_tables()
-        return name in tables
+        # ibis exposes no native table_exists; scope the membership check to the
+        # requested namespace by forwarding database= through list_tables (DEBT-9).
+        return name in self.list_tables(namespace=database)
 
     def run_sql(
         self,
