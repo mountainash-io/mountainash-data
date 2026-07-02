@@ -12,6 +12,11 @@ import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
 from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table, _generic_upsert
+from mountainash_data.backends.ibis._index import (
+    _generic_create_index,
+    _generic_drop_index,
+    _generic_index_exists,
+)
 from mountainash_data.core.inspection import (
     CatalogInfo,
     NamespaceInfo,
@@ -581,21 +586,30 @@ class IbisBackend:
         index_name: str | None = None,
         unique: bool = False,
         index_type: str | None = None,
-        where_condition: str | None = None,
+        where: t.Any = None,  # IndexPredicate | None
         database: str | None = None,
         if_not_exists: bool = True,
     ) -> IbisBackend:
-        if self._spec.create_index_hook is None:
+        conn = self._require_connected()
+        hook = self._spec.create_index_hook
+        if hook is not None:
+            hook(
+                conn._ibis_conn, table_name, columns,
+                index_name=index_name, unique=unique, index_type=index_type,
+                where=where, database=database, if_not_exists=if_not_exists,
+            )
+        elif self._spec.index_caps is not None:
+            _generic_create_index(
+                conn._ibis_conn, table_name, columns,
+                index_name=index_name, unique=unique, index_type=index_type,
+                where=where, database=database, if_not_exists=if_not_exists,
+                caps=self._spec.index_caps,
+                exists_sql_fn=self._spec.get_index_exists_sql,
+            )
+        else:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support create_index"
             )
-        conn = self._require_connected()
-        self._spec.create_index_hook(
-            conn._ibis_conn, table_name, columns,
-            index_name=index_name, unique=unique, index_type=index_type,
-            where_condition=where_condition, database=database,
-            if_not_exists=if_not_exists,
-        )
         return self
 
     def create_unique_index(
@@ -604,13 +618,12 @@ class IbisBackend:
         columns: list[str] | str,
         *,
         index_name: str | None = None,
-        where_condition: str | None = None,
+        where: t.Any = None,  # IndexPredicate | None
         database: str | None = None,
     ) -> IbisBackend:
         return self.create_index(
             table_name, columns,
-            index_name=index_name, unique=True,
-            where_condition=where_condition, database=database,
+            index_name=index_name, unique=True, where=where, database=database,
         )
 
     def drop_index(
@@ -621,15 +634,24 @@ class IbisBackend:
         database: str | None = None,
         if_exists: bool = True,
     ) -> IbisBackend:
-        if self._spec.drop_index_hook is None:
+        conn = self._require_connected()
+        hook = self._spec.drop_index_hook
+        if hook is not None:
+            hook(
+                conn._ibis_conn, index_name,
+                table_name=table_name, database=database, if_exists=if_exists,
+            )
+        elif self._spec.index_caps is not None:
+            _generic_drop_index(
+                conn._ibis_conn, index_name,
+                table_name=table_name, database=database, if_exists=if_exists,
+                caps=self._spec.index_caps,
+                exists_sql_fn=self._spec.get_index_exists_sql,
+            )
+        else:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support drop_index"
             )
-        conn = self._require_connected()
-        self._spec.drop_index_hook(
-            conn._ibis_conn, index_name,
-            table_name=table_name, database=database, if_exists=if_exists,
-        )
         return self
 
     def index_exists(
@@ -644,14 +666,11 @@ class IbisBackend:
                 f"Dialect {self.dialect!r} does not support index_exists"
             )
         conn = self._require_connected()
-        # pre-existing: hook signature types table_name as str; not migration scope
-        check_sql = self._spec.get_index_exists_sql(index_name, table_name, database)  # type: ignore[arg-type]
-        result = conn._ibis_conn.sql(check_sql)
-        if result is None:
-            return False
-        import mountainash as ma
-        count = ma.relation(result).to_dict()["count"][0]
-        return count > 0
+        return _generic_index_exists(
+            conn._ibis_conn, index_name,
+            table_name=table_name, database=database,
+            exists_sql_fn=self._spec.get_index_exists_sql,
+        )
 
     def list_indexes(
         self,

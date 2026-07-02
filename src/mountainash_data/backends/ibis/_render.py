@@ -209,3 +209,60 @@ def compile_condition(
         return n
 
     return on.transform(_remap)
+
+
+# ---------------------------------------------------------------------------
+# Index-predicate compiler (§5.2)
+# ---------------------------------------------------------------------------
+
+INDEX_SENTINEL = "__ma_index_tbl__"
+
+IndexPredicate = t.Callable[[ir.Table], ir.BooleanValue]
+
+
+def compile_index_predicate(
+    ibis_conn: t.Any,
+    schema: t.Any,
+    table_name: str,
+    predicate: IndexPredicate,
+) -> str:
+    """Compile a single-table ``(table) -> bool`` predicate to an UNQUALIFIED
+    boolean SQL string for the connection's dialect (partial-index WHERE).
+
+    Mechanism (spec §5.2): bind one sentinel-named ibis table at `schema`,
+    filter it by the predicate, compile to sqlglot, extract the WHERE, then
+    strip every column's table/db/catalog qualifier at the AST level (NOT by
+    string replacement). The predicate may reference any column of the table,
+    not only the indexed columns, so the full `schema` is bound. The
+    `table_name` parameter is validated only (sentinel-collision check) and
+    does NOT appear in the returned SQL.
+
+    Raises:
+        ValueError: if `table_name` collides with the reserved sentinel, or the
+            predicate contains a forbidden op (aggregation/window/subquery).
+    """
+    if table_name == INDEX_SENTINEL:
+        raise ValueError(
+            f"target table name {table_name!r} collides with a reserved sentinel."
+        )
+    tbl = ibis.table(schema, name=INDEX_SENTINEL)
+    pred = predicate(tbl)
+    validate_predicate(pred)
+
+    filtered = tbl.filter(pred)
+    ast = ibis_conn.compiler.to_sqlglot(filtered)
+    ast = ast if isinstance(ast, exp.Expression) else ast[0]
+
+    where = next(ast.find_all(exp.Where), None)
+    if where is None or where.this is None:
+        raise ValueError("could not extract WHERE predicate from compiled AST")
+    cond = where.this.copy()
+
+    def _strip(n: exp.Expression) -> exp.Expression:
+        if isinstance(n, exp.Column):
+            n.set("table", None)
+            n.set("db", None)
+            n.set("catalog", None)
+        return n
+
+    return cond.transform(_strip).sql(dialect=dialect_of(ibis_conn))

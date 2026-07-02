@@ -226,10 +226,31 @@ def test_duckdb_dialect_routes_generic_upsert():
     assert spec.upsert_style == UpsertStyle.ON_CONFLICT
 
 
-def test_sqlite_dialect_has_create_index_hook():
-    """SQLite DialectSpec must have create_index_hook wired."""
+def test_sqlite_dialect_uses_generic_index_path():
+    """After cutover, sqlite has no index hooks and dispatches via index_caps."""
     spec = DIALECTS["sqlite"]
-    assert spec.create_index_hook is not None
+    assert spec.create_index_hook is None
+    assert spec.drop_index_hook is None
+    assert spec.index_caps is not None
+
+
+def test_duckdb_family_index_hooks_removed():
+    import mountainash_data.backends.ibis.operations as ops
+    assert not hasattr(ops, "duckdb_family_create_index")
+    assert not hasattr(ops, "duckdb_family_drop_index")
+
+
+def test_no_dialect_carries_an_index_hook_post_cutover():
+    """The generic path is the ONLY index path after cutover: no dialect carries
+    a create/drop index hook, so the backend's hook-first branch (which forwards
+    the new `where=` predicate) is never exercised — keeping it dead and safe.
+    The hook fields remain only as a future override escape hatch; CONTRACT: any
+    future create_index_hook MUST accept create_index's keyword signature,
+    including `where` (the ibis predicate), and any drop_index_hook MUST accept
+    `table_name`/`database`/`if_exists`."""
+    for name, spec in DIALECTS.items():
+        assert spec.create_index_hook is None, f"{name} unexpectedly has create_index_hook"
+        assert spec.drop_index_hook is None, f"{name} unexpectedly has drop_index_hook"
 
 
 def test_postgres_dialect_has_no_upsert_hook():

@@ -158,7 +158,7 @@ operations.create_unique_index(backend, "users", ["email"])
 # Create partial index
 operations.create_index(
     backend, "orders", ["customer_id"],
-    where_condition="status = 'active'"
+    where=lambda r: r.status == "active"
 )
 
 # Check existence

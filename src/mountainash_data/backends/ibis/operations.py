@@ -3,21 +3,15 @@
 Contains:
 - Module-level helper functions: _generate_index_name, _format_qualified_table, _normalize_columns
 - Per-dialect SQL functions: duckdb, sqlite, motherduck index SQL generators
-- Standalone hook functions: duckdb_family_create_index, duckdb_family_drop_index
 - Generic, dialect-agnostic write ops: _generic_rename_table, _generic_add_columns,
   _generic_upsert (with the three upsert-family renderers + MySQL preflight)
 """
 
 import typing as t
-import contextlib
 import re
 import warnings
 
 import ibis
-
-from mountainash_data.core.constants import (
-    CONST_INDEX_TYPE,
-)
 from sqlglot import exp
 from mountainash_data.backends.ibis._render import (
     ConditionAliases,
@@ -159,6 +153,13 @@ def _validate_simple_identifier(value: str, *, kind: str) -> None:
         )
 
 
+def _sql_literal(value: str) -> str:
+    """Render `value` as an escaped SQL string literal (defense-in-depth for the
+    catalog-introspection queries; identifiers are also allowlist-validated by
+    the generic dispatcher before reaching here)."""
+    return exp.Literal.string(value).sql()
+
+
 def build_rename_sql(old_name: str, new_name: str, *, dialect: t.Any) -> str:
     """Pure builder: render a portable rename for an explicit sqlglot dialect.
 
@@ -238,11 +239,11 @@ def duckdb_get_index_exists_sql(
     database: str | None
 ) -> str:
     """DuckDB uses duckdb_indexes() system function."""
-    where_clauses = [f"index_name = '{index_name}'"]
+    where_clauses = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
-        where_clauses.append(f"table_name = '{table_name}'")
+        where_clauses.append(f"table_name = {_sql_literal(table_name)}")
     if database:
-        where_clauses.append(f"database_name = '{database}'")
+        where_clauses.append(f"database_name = {_sql_literal(database)}")
 
     where_sql = " AND ".join(where_clauses)
     return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
@@ -275,18 +276,13 @@ def sqlite_get_index_exists_sql(
     table_name: str | None,
     database: str | None
 ) -> str:
-    """SQLite uses sqlite_master system table.
-    Note: database parameter is not used as SQLite doesn't support cross-database queries.
-    """
-    where_clauses = [
-        "type = 'index'",
-        f"name = '{index_name}'"
-    ]
+    """SQLite uses the sqlite_master system table. `database` is unused (no
+    cross-database queries)."""
+    where_clauses = ["type = 'index'", f"name = {_sql_literal(index_name)}"]
     if table_name:
-        where_clauses.append(f"tbl_name = '{table_name}'")
-
+        where_clauses.append(f"tbl_name = {_sql_literal(table_name)}")
     where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) as count FROM sqlite_master WHERE {where_sql}"
+    return f"SELECT COUNT(*) AS count FROM sqlite_master WHERE {where_sql}"
 
 
 def sqlite_get_list_indexes_sql(
@@ -315,11 +311,11 @@ def motherduck_get_index_exists_sql(
     database: str | None
 ) -> str:
     """MotherDuck uses DuckDB's duckdb_indexes() system function."""
-    where_clauses = [f"index_name = '{index_name}'"]
+    where_clauses = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
-        where_clauses.append(f"table_name = '{table_name}'")
+        where_clauses.append(f"table_name = {_sql_literal(table_name)}")
     if database:
-        where_clauses.append(f"database_name = '{database}'")
+        where_clauses.append(f"database_name = {_sql_literal(database)}")
 
     where_sql = " AND ".join(where_clauses)
     return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
@@ -345,6 +341,101 @@ def motherduck_get_list_indexes_sql(
     """
 
 
+# --- PostgreSQL ---
+
+def postgres_get_index_exists_sql(
+    index_name: str, table_name: str | None, database: str | None
+) -> str:
+    """PostgreSQL pg_indexes catalog view. `database` maps to schemaname."""
+    where = [f"indexname = {_sql_literal(index_name)}"]
+    if table_name:
+        where.append(f"tablename = {_sql_literal(table_name)}")
+    if database:
+        where.append(f"schemaname = {_sql_literal(database)}")
+    return f"SELECT COUNT(*) AS count FROM pg_indexes WHERE {' AND '.join(where)}"
+
+
+# --- MySQL / MariaDB ---
+
+def mysql_get_index_exists_sql(
+    index_name: str, table_name: str | None, database: str | None
+) -> str:
+    """information_schema.STATISTICS (table-scoped). Defaults schema to the
+    current database when `database` is omitted."""
+    where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
+    if table_name:
+        where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
+    schema_pred = (
+        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+    )
+    where.append(schema_pred)
+    return (
+        "SELECT COUNT(*) AS count FROM information_schema.STATISTICS "
+        f"WHERE {' AND '.join(where)}"
+    )
+
+
+# --- SQL Server ---
+
+def mssql_get_index_exists_sql(
+    index_name: str, table_name: str | None, database: str | None
+) -> str:
+    """sys.indexes joined to the table via OBJECT_ID (table-scoped).
+
+    NOTE on the `database` parameter: across this package `database` denotes the
+    immediate NAMESPACE qualifier, which SQL Server interprets as the *schema* in
+    a two-part name. The generic CREATE renders ``"<database>"."<table>"`` (a
+    schema.object reference to SQL Server), so OBJECT_ID('<database>.<table>')
+    targets the same object — consistent, not conflated. Cross-database
+    (three-part) index DDL is out of scope for the generic path.
+    """
+    obj = table_name if table_name else ""
+    if database and table_name:
+        obj = f"{database}.{table_name}"
+    return (
+        "SELECT COUNT(*) AS count FROM sys.indexes "
+        f"WHERE name = {_sql_literal(index_name)} "
+        f"AND object_id = OBJECT_ID({_sql_literal(obj)})"
+    )
+
+
+# --- Oracle ---
+
+def oracle_get_index_exists_sql(
+    index_name: str, table_name: str | None, database: str | None
+) -> str:
+    """user_indexes (schema-global). The generic builder ALWAYS quotes
+    identifiers (quote_identifier), so Oracle stores them case-sensitively as
+    written — match the EXACT name, do NOT fold with UPPER() (a UPPER() match
+    would never find a quoted-lowercase index)."""
+    where = [f"index_name = {_sql_literal(index_name)}"]
+    if table_name:
+        where.append(f"table_name = {_sql_literal(table_name)}")
+    return f"SELECT COUNT(*) AS count FROM user_indexes WHERE {' AND '.join(where)}"
+
+
+# --- SingleStore ---
+
+def singlestore_get_index_exists_sql(
+    index_name: str, table_name: str | None, database: str | None
+) -> str:
+    """information_schema.STATISTICS (MySQL-compatible, table-scoped). Like
+    MySQL, ALWAYS constrain TABLE_SCHEMA — defaulting to DATABASE() when
+    `database` is omitted — so an index/table name shared across schemas cannot
+    produce a cross-schema false positive."""
+    where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
+    if table_name:
+        where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
+    schema_pred = (
+        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+    )
+    where.append(schema_pred)
+    return (
+        "SELECT COUNT(*) AS count FROM information_schema.STATISTICS "
+        f"WHERE {' AND '.join(where)}"
+    )
+
+
 # MotherDuck-specific list_tables override
 def motherduck_list_tables(
     ibis_backend: t.Any,
@@ -353,65 +444,6 @@ def motherduck_list_tables(
 ) -> list[str]:
     """MotherDuck-specific list_tables using DuckDB backend's database parameter."""
     return ibis_backend.list_tables(like=like, database=database) if ibis_backend is not None else []
-
-
-# ===========================================================================
-# STANDALONE HOOK FUNCTIONS
-# ===========================================================================
-
-def duckdb_family_create_index(
-    ibis_conn: t.Any,
-    table_name: str,
-    columns: list[str] | str,
-    *,
-    index_name: str | None = None,
-    unique: bool = False,
-    index_type: str | None = None,
-    where_condition: str | None = None,
-    database: str | None = None,
-    if_not_exists: bool = True,
-) -> None:
-    """Create an index using DuckDB/SQLite syntax."""
-    columns_list = _normalize_columns(columns)
-
-    if index_name is None:
-        index_name = _generate_index_name(table_name, columns_list, unique=unique)
-
-    qualified_table = _format_qualified_table(table_name, database=database)
-    columns_sql = ", ".join(columns_list)
-
-    unique_sql = "UNIQUE " if unique else ""
-    if_not_exists_sql = "IF NOT EXISTS " if if_not_exists else ""
-    where_sql = f" WHERE {where_condition}" if where_condition else ""
-
-    if index_type and index_type != CONST_INDEX_TYPE.BTREE:
-        warnings.warn(
-            f"Index type {index_type} not supported, using default BTREE"
-        )
-
-    create_sql = (
-        f"CREATE {unique_sql}INDEX {if_not_exists_sql}{index_name} "
-        f"ON {qualified_table} ({columns_sql}){where_sql}"
-    )
-
-    with contextlib.closing(ibis_conn.con.cursor()) as cur:
-        cur.execute(create_sql)
-
-
-def duckdb_family_drop_index(
-    ibis_conn: t.Any,
-    index_name: str,
-    *,
-    table_name: str | None = None,
-    database: str | None = None,
-    if_exists: bool = True,
-) -> None:
-    """Drop an index using DuckDB/SQLite syntax."""
-    if_exists_sql = "IF EXISTS " if if_exists else ""
-    drop_sql = f"DROP INDEX {if_exists_sql}{index_name}"
-
-    with contextlib.closing(ibis_conn.con.cursor()) as cur:
-        cur.execute(drop_sql)
 
 
 # ===========================================================================
