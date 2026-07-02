@@ -53,7 +53,14 @@ def build_create_index_sql(
     name_sql = quote_identifier(index_name, dialect)
     where = f" WHERE {where_sql}" if where_sql else ""
     name_part = f"{guard}{name_sql}"
-    d = str(dialect)
+    # dialect may be a sqlglot Dialect class (live path) or a plain string (tests/golden).
+    # Normalise to the lowercase name so membership checks work in both cases.
+    if isinstance(dialect, type):
+        d = dialect.__name__.lower()
+    elif isinstance(dialect, str):
+        d = dialect.lower()
+    else:
+        d = str(dialect).lower()
     using = f"USING {index_type}" if index_type else None
 
     if using and d in _USING_BEFORE_ON:
