@@ -28,7 +28,51 @@ from mountainash_data.core.factories.connection_factory import (
     provider_for_dialect,
     provider_for_scheme,
 )
+from mountainash_data.core.namespace import Namespace, NamespaceLike  # noqa: F401 (NamespaceLike: Task 5 signatures)
 from mountainash_auth_client import PasswordAuthProfile
+
+
+def _render_ibis_database(ns: Namespace) -> tuple[str, str] | str | None:
+    """Render a coerced Namespace to ibis's native `database=` value (native ops).
+
+    ibis models exactly `catalog -> database -> table`, so a namespace path
+    deeper than one level is unrepresentable and raises at this boundary.
+    """
+    if len(ns.path) > 1:
+        raise ValueError(
+            f"ibis backends support a single namespace level; got path={ns.path!r}. "
+            f"Use Namespace(catalog=..., path=(one_level,)) to target a catalog."
+        )
+    level = ns.path[0] if ns.path else None
+    if ns.catalog is not None:
+        if level is None:
+            raise ValueError(
+                "A catalog-qualified ibis namespace requires one path level."
+            )
+        return (ns.catalog, level)
+    return level
+
+
+def _render_ibis_namespace_single(ns: Namespace, *, op: str) -> str | None:
+    """Render for the manual-SQL families (upsert/add_columns/index).
+
+    These build engine-native SQL and feed scalar index-introspection literals,
+    which cannot address a foreign catalog (postgres has no cross-database SQL;
+    the index builders take one scalar namespace literal). Reject a
+    catalog-qualified namespace here with a remedial ValueError (spec §8) rather
+    than emit broken three-part SQL downstream.
+    """
+    if ns.catalog is not None:
+        raise ValueError(
+            f"{op} does not support catalog-qualified namespaces "
+            f"(catalog={ns.catalog!r}): it builds engine-native SQL that cannot "
+            f"address a foreign catalog. Use a native-delegating op, or omit the catalog."
+        )
+    if len(ns.path) > 1:
+        raise ValueError(
+            f"ibis backends support a single namespace level; got path={ns.path!r}."
+        )
+    return ns.path[0] if ns.path else None
 
 
 class IbisConnection:
