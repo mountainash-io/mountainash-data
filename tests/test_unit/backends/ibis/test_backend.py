@@ -320,6 +320,39 @@ def test_table_exists_returns_bool():
         assert backend.table_exists("t") is True
 
 
+def test_table_exists_honors_database_namespace():
+    """table_exists(database=...) must scope the check to that namespace (DEBT-9).
+
+    A table living only in a non-default schema must be found via ``database=``
+    and must NOT be found in the default namespace, and vice versa.
+    """
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        raw = backend.ibis_connection()
+        raw.raw_sql("CREATE SCHEMA tenant_a")
+        raw.raw_sql("CREATE TABLE tenant_a.sleep (id INTEGER)")
+        raw.raw_sql("CREATE TABLE main_only (id INTEGER)")
+
+        # Table exists only in tenant_a.
+        assert backend.table_exists("sleep", database="tenant_a") is True
+        assert backend.table_exists("sleep") is False
+        # Table exists only in the default namespace.
+        assert backend.table_exists("main_only") is True
+        assert backend.table_exists("main_only", database="tenant_a") is False
+
+
+def test_table_exists_forwards_database_to_introspection(mocker):
+    """The ``database`` arg must reach the introspection call, not be dropped.
+
+    Guards the swallowed-error path: ``IbisConnection.list_tables`` returns ``[]``
+    on failure, so a test asserting only a bool return can pass on a version that
+    never forwards ``database``. Assert the forwarding directly.
+    """
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        spy = mocker.patch.object(backend, "list_tables", return_value=["sleep"])
+        assert backend.table_exists("sleep", database="tenant_a") is True
+        spy.assert_called_once_with(namespace="tenant_a")
+
+
 def test_fluent_chaining():
     """Multiple fluent calls can be chained."""
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
