@@ -47,6 +47,32 @@ def test_duckdb_depth_over_one_raises():
             backend.list_tables(namespace=("a", "b"))
 
 
+def test_inspect_catalog_scopes_tables_to_attached_catalog(tmp_path):
+    """inspect_catalog(catalog=X) must read each namespace's tables from X.
+
+    Two catalogs each have a `sales` schema, but only the ATTACHed
+    `other_cat.sales` has an `orders` table. If inspect_catalog resolved
+    namespaces against the CURRENT catalog (the bug) instead of the
+    requested one, the `sales` NamespaceInfo would come back with an empty
+    (or wrong-catalog) table list and location.catalog would be lost.
+    """
+    other = tmp_path / "other.duckdb"
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        raw = backend.ibis_connection()
+        raw.raw_sql(f"ATTACH '{other}' AS other_cat")
+        raw.raw_sql("CREATE SCHEMA other_cat.sales")
+        raw.raw_sql("CREATE TABLE other_cat.sales.orders (id INTEGER)")
+        # Same-named schema in the default (in-memory) catalog, deliberately
+        # left without an "orders" table, so a mix-up would be visible.
+        raw.raw_sql("CREATE SCHEMA sales")
+
+        info = backend.inspect_catalog(catalog="other_cat")
+
+        sales = next(ns for ns in info.namespaces if ns.name == "sales")
+        assert "orders" in sales.tables
+        assert sales.location.catalog == "other_cat"
+
+
 # --- Render-only spies: postgres/snowflake/bigquery -----------------------
 
 class _RecordingConn:

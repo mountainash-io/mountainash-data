@@ -155,10 +155,12 @@ class IbisConnection:
     def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
         """Return shared-model metadata for the connection's catalog."""
         namespaces = self.list_namespaces(catalog=catalog)
-        ns_infos = [
-            NamespaceInfo(location=Namespace(path=(ns,)), tables=self.list_tables(namespace=ns))
-            for ns in namespaces
-        ]
+        ns_infos = []
+        for ns in namespaces:
+            location = Namespace(catalog=catalog, path=(ns,))
+            ns_infos.append(
+                NamespaceInfo(location=location, tables=self.list_tables(namespace=location))
+            )
         return CatalogInfo(
             name=catalog or self._dialect_spec.ibis_backend_name,
             namespaces=ns_infos,
