@@ -35,7 +35,7 @@ def test_merge_insert_and_update_postgres(postgres_backend):
     _generic_upsert(
         con, "mrg", pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}),
         style=UpsertStyle.MERGE, conflict_columns=["id"], update_columns=None,
-        conflict_action="UPDATE", update_condition=None, database=None, schema=None,
+        conflict_action="UPDATE", update_condition=None, namespace=None, schema=None,
     )
     rows = dict(
         con.table("mrg").order_by("id").execute()[["id", "v"]].itertuples(index=False)
@@ -54,7 +54,7 @@ def test_merge_nothing_postgres(postgres_backend):
     _generic_upsert(
         con, "mrg_nothing", pl.DataFrame({"id": [1, 2], "v": ["X", "b"]}),
         style=UpsertStyle.MERGE, conflict_columns=["id"], update_columns=None,
-        conflict_action="NOTHING", update_condition=None, database=None, schema=None,
+        conflict_action="NOTHING", update_condition=None, namespace=None, schema=None,
     )
     rows = dict(
         con.table("mrg_nothing").order_by("id").execute()[["id", "v"]].itertuples(index=False)

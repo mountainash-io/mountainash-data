@@ -49,13 +49,13 @@ def _generate_index_name(
 def _format_qualified_table(
     table_name: str,
     *,
-    database: str | None = None,
+    namespace: str | None = None,
     schema: str | None = None
 ) -> str:
     """Format fully qualified table name."""
     parts = []
-    if database:
-        parts.append(database)
+    if namespace:
+        parts.append(namespace)
     if schema:
         parts.append(schema)
     parts.append(table_name)
@@ -188,7 +188,7 @@ def _generic_add_columns(
     table_name: str,
     source: t.Any,
     *,
-    database: str | None = None,
+    namespace: str | None = None,
 ) -> None:
     """Add columns present in `source` but missing from `table_name`.
 
@@ -201,19 +201,20 @@ def _generic_add_columns(
     TABLE … ADD COLUMN`` is issued per new column (SQLite permits only one per
     statement).
 
-    `table_name` and `database` must each be a simple (non-dotted) identifier;
+    `table_name` and `namespace` must each be a simple (non-dotted) identifier;
     each is quoted as a single part. Dotted/multi-part qualified names are out
-    of scope.
+    of scope. `namespace` is a single namespace level (str | None); catalog-
+    qualified targets are rejected upstream by `_render_ibis_namespace_single`.
     """
     _validate_simple_identifier(table_name, kind="table_name")
-    if database is not None:
-        _validate_simple_identifier(database, kind="database")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
     candidate = _normalize_to_schema(source)
-    existing = set(ibis_conn.table(table_name, database=database).schema().names)
+    existing = set(ibis_conn.table(table_name, database=namespace).schema().names)
     type_mapper = ibis_conn.compiler.type_mapper
     dialect = ibis_conn.compiler.dialect
 
-    table_parts = [database, table_name] if database else [table_name]
+    table_parts = [namespace, table_name] if namespace else [table_name]
     qualified = ".".join(quote_identifier(part, dialect) for part in table_parts)
 
     for col_name, dtype in candidate.items():
@@ -236,14 +237,18 @@ def _generic_add_columns(
 def duckdb_get_index_exists_sql(
     index_name: str,
     table_name: str | None,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """DuckDB uses duckdb_indexes() system function."""
+    """DuckDB uses duckdb_indexes() system function. `namespace` is a single-
+    level qualifier, which DuckDB's ibis backend (and this package's own
+    `database=` convention) treats as the SCHEMA, not the catalog — so it is
+    matched against duckdb_indexes()'s `schema_name` column, not
+    `database_name` (which holds the catalog, e.g. "memory")."""
     where_clauses = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if database:
-        where_clauses.append(f"database_name = {_sql_literal(database)}")
+    if namespace:
+        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
 
     where_sql = " AND ".join(where_clauses)
     return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
@@ -251,12 +256,14 @@ def duckdb_get_index_exists_sql(
 
 def duckdb_get_list_indexes_sql(
     table_name: str,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """DuckDB uses duckdb_indexes() system function."""
+    """DuckDB uses duckdb_indexes() system function. See `namespace` note on
+    `duckdb_get_index_exists_sql` — matched against `schema_name`, not
+    `database_name`."""
     where_clauses = [f"table_name = '{table_name}'"]
-    if database:
-        where_clauses.append(f"database_name = '{database}'")
+    if namespace:
+        where_clauses.append(f"schema_name = '{namespace}'")
 
     where_sql = " AND ".join(where_clauses)
     return f"""
@@ -274,9 +281,9 @@ def duckdb_get_list_indexes_sql(
 def sqlite_get_index_exists_sql(
     index_name: str,
     table_name: str | None,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """SQLite uses the sqlite_master system table. `database` is unused (no
+    """SQLite uses the sqlite_master system table. `namespace` is unused (no
     cross-database queries)."""
     where_clauses = ["type = 'index'", f"name = {_sql_literal(index_name)}"]
     if table_name:
@@ -287,10 +294,10 @@ def sqlite_get_index_exists_sql(
 
 def sqlite_get_list_indexes_sql(
     table_name: str,
-    database: str | None
+    namespace: str | None
 ) -> str:
     """SQLite uses sqlite_master system table.
-    Note: database parameter is not used as SQLite doesn't support cross-database queries.
+    Note: namespace parameter is not used as SQLite doesn't support cross-database queries.
     """
     return f"""
         SELECT
@@ -308,14 +315,16 @@ def sqlite_get_list_indexes_sql(
 def motherduck_get_index_exists_sql(
     index_name: str,
     table_name: str | None,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function."""
+    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
+    `namespace` note on `duckdb_get_index_exists_sql` — matched against
+    `schema_name`, not `database_name`."""
     where_clauses = [f"index_name = {_sql_literal(index_name)}"]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if database:
-        where_clauses.append(f"database_name = {_sql_literal(database)}")
+    if namespace:
+        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
 
     where_sql = " AND ".join(where_clauses)
     return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
@@ -323,12 +332,14 @@ def motherduck_get_index_exists_sql(
 
 def motherduck_get_list_indexes_sql(
     table_name: str,
-    database: str | None
+    namespace: str | None
 ) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function."""
+    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
+    `namespace` note on `duckdb_get_index_exists_sql` — matched against
+    `schema_name`, not `database_name`."""
     where_clauses = [f"table_name = '{table_name}'"]
-    if database:
-        where_clauses.append(f"database_name = '{database}'")
+    if namespace:
+        where_clauses.append(f"schema_name = '{namespace}'")
 
     where_sql = " AND ".join(where_clauses)
     return f"""
@@ -344,29 +355,29 @@ def motherduck_get_list_indexes_sql(
 # --- PostgreSQL ---
 
 def postgres_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
-    """PostgreSQL pg_indexes catalog view. `database` maps to schemaname."""
+    """PostgreSQL pg_indexes catalog view. `namespace` maps to schemaname."""
     where = [f"indexname = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"tablename = {_sql_literal(table_name)}")
-    if database:
-        where.append(f"schemaname = {_sql_literal(database)}")
+    if namespace:
+        where.append(f"schemaname = {_sql_literal(namespace)}")
     return f"SELECT COUNT(*) AS count FROM pg_indexes WHERE {' AND '.join(where)}"
 
 
 # --- MySQL / MariaDB ---
 
 def mysql_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """information_schema.STATISTICS (table-scoped). Defaults schema to the
-    current database when `database` is omitted."""
+    current database when `namespace` is omitted."""
     where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
     schema_pred = (
-        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+        f"TABLE_SCHEMA = {_sql_literal(namespace)}" if namespace else "TABLE_SCHEMA = DATABASE()"
     )
     where.append(schema_pred)
     return (
@@ -378,20 +389,20 @@ def mysql_get_index_exists_sql(
 # --- SQL Server ---
 
 def mssql_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """sys.indexes joined to the table via OBJECT_ID (table-scoped).
 
-    NOTE on the `database` parameter: across this package `database` denotes the
+    NOTE on the `namespace` parameter: across this package `namespace` denotes the
     immediate NAMESPACE qualifier, which SQL Server interprets as the *schema* in
-    a two-part name. The generic CREATE renders ``"<database>"."<table>"`` (a
-    schema.object reference to SQL Server), so OBJECT_ID('<database>.<table>')
+    a two-part name. The generic CREATE renders ``"<namespace>"."<table>"`` (a
+    schema.object reference to SQL Server), so OBJECT_ID('<namespace>.<table>')
     targets the same object — consistent, not conflated. Cross-database
     (three-part) index DDL is out of scope for the generic path.
     """
     obj = table_name if table_name else ""
-    if database and table_name:
-        obj = f"{database}.{table_name}"
+    if namespace and table_name:
+        obj = f"{namespace}.{table_name}"
     return (
         "SELECT COUNT(*) AS count FROM sys.indexes "
         f"WHERE name = {_sql_literal(index_name)} "
@@ -402,7 +413,7 @@ def mssql_get_index_exists_sql(
 # --- Oracle ---
 
 def oracle_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """user_indexes (schema-global). The generic builder ALWAYS quotes
     identifiers (quote_identifier), so Oracle stores them case-sensitively as
@@ -417,17 +428,17 @@ def oracle_get_index_exists_sql(
 # --- SingleStore ---
 
 def singlestore_get_index_exists_sql(
-    index_name: str, table_name: str | None, database: str | None
+    index_name: str, table_name: str | None, namespace: str | None
 ) -> str:
     """information_schema.STATISTICS (MySQL-compatible, table-scoped). Like
     MySQL, ALWAYS constrain TABLE_SCHEMA — defaulting to DATABASE() when
-    `database` is omitted — so an index/table name shared across schemas cannot
+    `namespace` is omitted — so an index/table name shared across schemas cannot
     produce a cross-schema false positive."""
     where = [f"INDEX_NAME = {_sql_literal(index_name)}"]
     if table_name:
         where.append(f"TABLE_NAME = {_sql_literal(table_name)}")
     schema_pred = (
-        f"TABLE_SCHEMA = {_sql_literal(database)}" if database else "TABLE_SCHEMA = DATABASE()"
+        f"TABLE_SCHEMA = {_sql_literal(namespace)}" if namespace else "TABLE_SCHEMA = DATABASE()"
     )
     where.append(schema_pred)
     return (
@@ -440,10 +451,10 @@ def singlestore_get_index_exists_sql(
 def motherduck_list_tables(
     ibis_backend: t.Any,
     like: str | None = None,
-    database: str | None = None,
+    namespace: str | None = None,
 ) -> list[str]:
     """MotherDuck-specific list_tables using DuckDB backend's database parameter."""
-    return ibis_backend.list_tables(like=like, database=database) if ibis_backend is not None else []
+    return ibis_backend.list_tables(like=like, database=namespace) if ibis_backend is not None else []
 
 
 # ===========================================================================
@@ -513,14 +524,14 @@ def _render_on_conflict(
     update: list[str],
     conflict_action: str,
     update_condition: t.Any,
-    database: str | None,
+    namespace: str | None,
     schema: str | None,
 ) -> str:
     """Thin wrapper: derive dialect/source_sql/condition_sql from the live
     connection and delegate to ``build_on_conflict_sql``."""
     dialect = dialect_of(ibis_conn)
     source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
-    parts = [p for p in (database, schema, name) if p]
+    parts = [p for p in (namespace, schema, name) if p]
     target = qualified_name(parts, dialect)
 
     # update_condition only shapes the DO UPDATE arm; ON CONFLICT … DO NOTHING
@@ -607,14 +618,14 @@ def _render_merge(
     update: list[str],
     conflict_action: str,
     update_condition: t.Any,
-    database: str | None,
+    namespace: str | None,
     schema: str | None,
 ) -> str:
     """Thin wrapper: derive dialect/source_sql/condition_sql from the live
     connection and delegate to ``build_merge_sql``."""
     dialect = dialect_of(ibis_conn)
     source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
-    parts = [p for p in (database, schema, name) if p]
+    parts = [p for p in (namespace, schema, name) if p]
     target = qualified_name(parts, dialect)
 
     condition_sql: str | None = None
@@ -640,7 +651,7 @@ def _mysql_validate_conflict_key(
     ibis_conn: t.Any,
     name: str,
     conflict: list[str],
-    database: str | None,
+    namespace: str | None,
 ) -> None:
     """Prove the safe MySQL/MariaDB ON DUPLICATE KEY case or raise (spec §6.2).
 
@@ -656,13 +667,13 @@ def _mysql_validate_conflict_key(
 
     NOTE: ``ibis_conn.current_database`` is a PROPERTY in ibis >=12 (no parens).
     """
-    # Primary gate: name/database must be simple identifiers (charset-allowlisted
+    # Primary gate: name/namespace must be simple identifiers (charset-allowlisted
     # by _validate_simple_identifier). _generic_upsert validates them upstream;
     # re-validate here so a direct caller is equally safe.
     _validate_simple_identifier(name, kind="name")
-    if database is not None:
-        _validate_simple_identifier(database, kind="database")
-    db = database or ibis_conn.current_database
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
+    db = namespace or ibis_conn.current_database
     # Defense in depth: these values go into SQL *string literals*, so render
     # them as escaped literals via sqlglot rather than bare f-string interpolation
     # (belt-and-suspenders behind the allowlist above).
@@ -782,7 +793,7 @@ def _render_on_duplicate_key(
     update: list[str],
     conflict_action: str,
     update_condition: t.Any,
-    database: str | None,
+    namespace: str | None,
     schema: str | None,
 ) -> str:
     """Thin wrapper: run the MySQL prove-safe preflight, then render the SQL.
@@ -790,10 +801,10 @@ def _render_on_duplicate_key(
     Delegates SQL construction to ``build_on_duplicate_key_sql`` so the pure
     builder is testable without a live MySQL connection.
     """
-    _mysql_validate_conflict_key(ibis_conn, name, conflict, database)
+    _mysql_validate_conflict_key(ibis_conn, name, conflict, namespace)
     dialect = dialect_of(ibis_conn)
     source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
-    parts = [p for p in (database, schema, name) if p]
+    parts = [p for p in (namespace, schema, name) if p]
     target = qualified_name(parts, dialect)
 
     return build_on_duplicate_key_sql(
@@ -817,7 +828,7 @@ def _generic_upsert(
     update_columns: t.Any,
     conflict_action: str,
     update_condition: t.Any,
-    database: str | None,
+    namespace: str | None,
     schema: str | None,
 ) -> None:
     """Dialect-agnostic upsert dispatcher.
@@ -825,7 +836,7 @@ def _generic_upsert(
     Validation precedence (spec §10):
       1. style (unknown → NotImplementedError)
       2. target existence
-      3. identifier validation (name, database)
+      3. identifier validation (name, namespace)
       4. conflict_action validity
       5. update_condition — validated UNCONDITIONALLY even under NOTHING
          (malformed predicate must error regardless of action path)
@@ -843,14 +854,14 @@ def _generic_upsert(
         )
 
     # §10.2 — target existence
-    _tables = ibis_conn.list_tables(database=database) if database is not None else ibis_conn.list_tables()
+    _tables = ibis_conn.list_tables(database=namespace) if namespace is not None else ibis_conn.list_tables()
     if name not in _tables:
         raise ValueError(f"target table {name!r} does not exist")
 
     # §10.3 — identifier validation (every part that reaches qualified_name)
     _validate_simple_identifier(name, kind="name")
-    if database is not None:
-        _validate_simple_identifier(database, kind="database")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
     if schema is not None:
         _validate_simple_identifier(schema, kind="schema")
 
@@ -860,7 +871,7 @@ def _generic_upsert(
             f"conflict_action must be UPDATE or NOTHING, got {conflict_action!r}"
         )
 
-    target_schema = ibis_conn.table(name, database=database).schema()
+    target_schema = ibis_conn.table(name, database=namespace).schema()
     conflict = _normalize_columns(conflict_columns)
 
     # conflict column existence
@@ -897,19 +908,19 @@ def _generic_upsert(
         stmt = _render_on_conflict(
             ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
             update=update, conflict_action=conflict_action,
-            update_condition=update_condition, database=database, schema=schema,
+            update_condition=update_condition, namespace=namespace, schema=schema,
         )
     elif style is UpsertStyle.MERGE:
         stmt = _render_merge(
             ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
             update=update, conflict_action=conflict_action,
-            update_condition=update_condition, database=database, schema=schema,
+            update_condition=update_condition, namespace=namespace, schema=schema,
         )
     elif style is UpsertStyle.ON_DUPLICATE_KEY:
         stmt = _render_on_duplicate_key(
             ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
             update=update, conflict_action=conflict_action,
-            update_condition=update_condition, database=database, schema=schema,
+            update_condition=update_condition, namespace=namespace, schema=schema,
         )
     else:
         raise NotImplementedError(f"unknown upsert_style: {style!r}")

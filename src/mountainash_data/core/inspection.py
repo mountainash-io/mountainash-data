@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import typing as t
 
+from mountainash_data.core.namespace import Namespace
+
 
 @dataclass(frozen=True)
 class ColumnInfo:
@@ -28,8 +30,7 @@ class TableInfo:
 
     name: str
     columns: t.Sequence[ColumnInfo]
-    namespace: t.Optional[str] = None
-    catalog: t.Optional[str] = None
+    location: Namespace = field(default_factory=Namespace)
     description: t.Optional[str] = None
     metadata: t.Mapping[str, t.Any] = field(default_factory=dict)
 
@@ -39,18 +40,21 @@ class TableInfo:
 
     @property
     def qualified_name(self) -> str:
-        parts = [p for p in (self.catalog, self.namespace, self.name) if p]
-        return ".".join(parts)
+        return ".".join(p for p in (self.location.dotted, self.name) if p)
 
 
 @dataclass(frozen=True)
 class NamespaceInfo:
     """Physical metadata for a namespace (schema/database/dataset)."""
 
-    name: str
+    location: Namespace
     tables: t.Sequence[str]
-    catalog: t.Optional[str] = None
     metadata: t.Mapping[str, t.Any] = field(default_factory=dict)
+
+    @property
+    def name(self) -> str:
+        """The last path segment (the immediate namespace name), or "" for default."""
+        return self.location.path[-1] if self.location.path else ""
 
 
 @dataclass(frozen=True)

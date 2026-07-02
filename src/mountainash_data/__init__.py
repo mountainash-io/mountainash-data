@@ -15,6 +15,7 @@ from mountainash_data.core.inspection import (
     NamespaceInfo,
     TableInfo,
 )
+from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_data.backends.ibis.backend import IbisBackend
 
 try:
@@ -29,6 +30,8 @@ __all__ = [
     "ColumnInfo",
     "NamespaceInfo",
     "TableInfo",
+    "Namespace",
+    "NamespaceLike",
     "IbisBackend",
     "IcebergBackend",
 ]

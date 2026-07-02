@@ -34,6 +34,7 @@ from mountainash_data.core.inspection import (
     NamespaceInfo,
     TableInfo,
 )
+from mountainash_data.core.namespace import Namespace, NamespaceLike
 
 from mountainash_data.core.factories.connection_factory import build_driver_kwargs
 from mountainash_dataframes import DataFrameUtils, SupportedDataFrames
@@ -256,29 +257,42 @@ class IcebergConnectionBase(BaseDBConnection):
     # Inspection (satisfies core.protocol.Connection)
     # ------------------------------------------------------------------
 
-    def list_namespaces(
-        self,
-        parent: t.Optional[str | t.Tuple[str, ...]] = None,
-    ) -> t.Optional[list]:
+    def _catalog_name(self) -> str:
+        return getattr(self.catalog_backend, "name", "iceberg")
+
+    def _check_catalog(self, catalog: str | None) -> None:
+        """iceberg's catalog IS the connection; a foreign catalog is unaddressable."""
+        if catalog is not None and catalog != self._catalog_name():
+            raise ValueError(
+                f"iceberg connection is bound to catalog {self._catalog_name()!r}; "
+                f"cannot address catalog {catalog!r}."
+            )
+
+    def list_catalogs(self) -> list[str]:
+        """One catalog per iceberg connection."""
+        self.connect()
+        return [self._catalog_name()]
+
+    def list_namespaces(self, catalog: str | None = None) -> list[str]:
         """Return all namespaces visible to this catalog connection.
 
         Args:
-            parent: Optional parent namespace to list sub-namespaces of.
+            catalog: Must match this connection's catalog name, or be None.
 
         Returns:
-            List of namespace tuples/names, or None if not connected.
+            List of namespace names (dotted for multi-level).
         """
         self.connect()
-        return (
-            self.catalog_backend.list_namespaces(parent)
-            if self.catalog_backend is not None
-            else None
-        )
+        self._check_catalog(catalog)
+        if self.catalog_backend is None:
+            return []
+        raw = self.catalog_backend.list_namespaces()
+        # DEFERRED (DEBT-11): multi-level namespaces are joined to a dotted string;
+        # this is NOT round-trippable as a bare string. Structured round-trip is
+        # tracked in DEBT-11 (list[Namespace] vs dotted list[str] fork).
+        return [".".join(ns) if isinstance(ns, (tuple, list)) else str(ns) for ns in raw]
 
-    def list_tables(
-        self,
-        namespace: str | t.Tuple[str, ...] | None = None,
-    ) -> list[str]:
+    def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
         """Return the names of tables in ``namespace``.
 
         Args:
@@ -289,11 +303,14 @@ class IcebergConnectionBase(BaseDBConnection):
             List of table name strings.
         """
         self.connect()
-        return self._list_tables(namespace=namespace)
+        ns = Namespace.coerce(namespace)
+        self._check_catalog(ns.catalog)
+        # pyiceberg accepts a namespace tuple directly (behavior-preserving).
+        return self._list_tables(namespace=(ns.path or None))
 
     def _list_tables(
         self,
-        namespace: str | None = None,
+        namespace: str | t.Tuple[str, ...] | None = None,
     ) -> list[str]:
         """Hook for subclasses to implement namespace-scoped table listing."""
         raise NotImplementedError
@@ -301,7 +318,7 @@ class IcebergConnectionBase(BaseDBConnection):
     def inspect_table(
         self,
         name: str,
-        namespace: t.Optional[str] = None,
+        namespace: NamespaceLike = None,
     ) -> TableInfo:
         """Return shared-model metadata for one table.
 
@@ -314,18 +331,13 @@ class IcebergConnectionBase(BaseDBConnection):
         """
         from mountainash_data.backends.iceberg.inspect import table_to_info
 
-        identifier = (namespace, name) if namespace else name
+        ns = Namespace.coerce(namespace)
+        self._check_catalog(ns.catalog)
+        identifier = (*ns.path, name) if ns.path else name
         iceberg_table = self.table(identifier)
         if iceberg_table is None:
             raise ValueError(f"Table not found: {identifier!r}")
-
-        catalog_name = getattr(self.catalog_backend, "name", None)
-        return table_to_info(
-            iceberg_table,
-            name=name,
-            namespace=namespace,
-            catalog=catalog_name,
-        )
+        return table_to_info(iceberg_table, name=name, location=ns)
 
     def inspect_namespace(self, name: str) -> NamespaceInfo:
         """Return shared-model metadata for one namespace.
@@ -338,11 +350,12 @@ class IcebergConnectionBase(BaseDBConnection):
         """
         from mountainash_data.backends.iceberg.inspect import namespace_to_info
 
-        table_names = self._list_tables(namespace=name)
-        catalog_name = getattr(self.catalog_backend, "name", None)
-        return namespace_to_info(name, table_names, catalog=catalog_name)
+        ns = Namespace.coerce(name)
+        self._check_catalog(ns.catalog)
+        table_names = self._list_tables(namespace=(ns.path or None))
+        return namespace_to_info(ns.path, table_names)
 
-    def inspect_catalog(self) -> CatalogInfo:
+    def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
         """Return shared-model metadata for the connection's catalog.
 
         Returns:
@@ -354,19 +367,20 @@ class IcebergConnectionBase(BaseDBConnection):
         )
 
         self.connect()
+        self._check_catalog(catalog)
+        catalog_name = self._catalog_name()
         raw_namespaces = self.catalog_backend.list_namespaces()
-        catalog_name = getattr(self.catalog_backend, "name", "iceberg")
 
         namespace_infos = []
         for ns in raw_namespaces:
+            # DEFERRED (DEBT-11): deep namespaces are flattened to their first
+            # segment here, mirroring current behavior. Faithful round-trip is DEBT-11.
             ns_name = ns[0] if isinstance(ns, (tuple, list)) else str(ns)
             try:
-                table_names = self._list_tables(namespace=ns_name)
+                table_names = self._list_tables(namespace=(ns_name,))
             except NotImplementedError:
                 table_names = []
-            namespace_infos.append(
-                namespace_to_info(ns_name, table_names, catalog=catalog_name)
-            )
+            namespace_infos.append(namespace_to_info((ns_name,), table_names))
 
         return catalog_to_info(catalog_name, namespace_infos)
 

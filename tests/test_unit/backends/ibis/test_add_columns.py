@@ -105,14 +105,14 @@ class TestGenericAddColumns:
         with pytest.raises(ValueError, match="simple"):
             _generic_add_columns(con, "schema.t", {"x": "float64"})
 
-    def test_rejects_dotted_database(self):
+    def test_rejects_dotted_namespace(self):
         con = ibis.duckdb.connect()
         con.create_table("t", pl.DataFrame({"id": [1]}))
         with pytest.raises(ValueError, match="simple"):
-            _generic_add_columns(con, "t", {"x": "float64"}, database="a.b")
+            _generic_add_columns(con, "t", {"x": "float64"}, namespace="a.b")
 
-    def test_database_qualified_add_on_duckdb(self):
-        """Happy-path: two-part qualified quoting (database.table) via ATTACH.
+    def test_namespace_qualified_add_on_duckdb(self):
+        """Happy-path: two-part qualified quoting (namespace.table) via ATTACH.
 
         ibis 10.4.0's duckdb backend does not support create_table(database=...)
         for attached databases — ``database=`` resolves to the DuckDB *schema*
@@ -125,7 +125,7 @@ class TestGenericAddColumns:
         con.raw_sql("ATTACH ':memory:' AS mem2")
         con.raw_sql("CREATE TABLE mem2.t (id INTEGER)")
         con.raw_sql("INSERT INTO mem2.t VALUES (1)")
-        _generic_add_columns(con, "t", {"score": "float64"}, database="mem2")
+        _generic_add_columns(con, "t", {"score": "float64"}, namespace="mem2")
         assert "score" in con.table("t", database="mem2").schema().names
 
 
@@ -166,7 +166,7 @@ class TestIbisBackendAddColumns:
     def test_hook_override_wins_over_generic(self):
         calls = []
 
-        def fake_hook(ibis_conn, name, source, *, database=None):
+        def fake_hook(ibis_conn, name, source, *, namespace=None):
             calls.append((name, source))
 
         with IbisBackend(dialect="duckdb", database=":memory:") as be:
@@ -177,3 +177,24 @@ class TestIbisBackendAddColumns:
             # generic path did NOT run -> column absent
             cols = {c.name for c in be.inspect_table("t").columns}
             assert "x" not in cols
+
+
+def test_add_columns_accepts_namespace_kwarg():
+    from mountainash_data import IbisBackend
+
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.ibis_connection().raw_sql("CREATE SCHEMA tn")
+        backend.create_table("evolving", {"id": [1]}, namespace="tn")
+        backend.add_columns("evolving", {"id": "int64", "extra": "string"}, namespace="tn")
+        info = backend.inspect_table("evolving", namespace="tn")
+        assert "extra" in info.column_names
+
+
+def test_add_columns_rejects_database_kwarg():
+    import pytest
+    from mountainash_data import IbisBackend
+
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        with pytest.raises(TypeError):
+            backend.add_columns("t", {"id": "int64"}, database="x")

@@ -28,7 +28,51 @@ from mountainash_data.core.factories.connection_factory import (
     provider_for_dialect,
     provider_for_scheme,
 )
+from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_auth_client import PasswordAuthProfile
+
+
+def _render_ibis_database(ns: Namespace) -> tuple[str, str] | str | None:
+    """Render a coerced Namespace to ibis's native `database=` value (native ops).
+
+    ibis models exactly `catalog -> database -> table`, so a namespace path
+    deeper than one level is unrepresentable and raises at this boundary.
+    """
+    if len(ns.path) > 1:
+        raise ValueError(
+            f"ibis backends support a single namespace level; got path={ns.path!r}. "
+            f"Use Namespace(catalog=..., path=(one_level,)) to target a catalog."
+        )
+    level = ns.path[0] if ns.path else None
+    if ns.catalog is not None:
+        if level is None:
+            raise ValueError(
+                "A catalog-qualified ibis namespace requires one path level."
+            )
+        return (ns.catalog, level)
+    return level
+
+
+def _render_ibis_namespace_single(ns: Namespace, *, op: str) -> str | None:
+    """Render for the manual-SQL families (upsert/add_columns/index).
+
+    These build engine-native SQL and feed scalar index-introspection literals,
+    which cannot address a foreign catalog (postgres has no cross-database SQL;
+    the index builders take one scalar namespace literal). Reject a
+    catalog-qualified namespace here with a remedial ValueError (spec §8) rather
+    than emit broken three-part SQL downstream.
+    """
+    if ns.catalog is not None:
+        raise ValueError(
+            f"{op} does not support catalog-qualified namespaces "
+            f"(catalog={ns.catalog!r}): it builds engine-native SQL that cannot "
+            f"address a foreign catalog. Use a native-delegating op, or omit the catalog."
+        )
+    if len(ns.path) > 1:
+        raise ValueError(
+            f"ibis backends support a single namespace level; got path={ns.path!r}."
+        )
+    return ns.path[0] if ns.path else None
 
 
 class IbisConnection:
@@ -43,11 +87,13 @@ class IbisConnection:
         self._dialect_spec = dialect_spec
         self._closed = False
 
-    def list_namespaces(self) -> list[str]:
+    def list_namespaces(self, catalog: str | None = None) -> list[str]:
         """Return the names of all namespaces (schemas/databases) visible to this connection."""
         try:
             # ibis backends vary — some expose list_databases, some list_schemas
             if hasattr(self._ibis_conn, "list_databases"):
+                if catalog is not None:
+                    return self._ibis_conn.list_databases(catalog=catalog)
                 return self._ibis_conn.list_databases()
             if hasattr(self._ibis_conn, "list_schemas"):
                 return self._ibis_conn.list_schemas()
@@ -56,25 +102,45 @@ class IbisConnection:
             print(f"Error listing namespaces: {e}")
             return []
 
-    def list_tables(self, namespace: str | None = None) -> list[str]:
-        """Return the names of tables in the given namespace."""
+    def list_catalogs(self) -> list[str]:
+        """Return catalogs visible to this connection. Degrades, never raises.
+
+        Not every ibis backend exposes catalogs (only the CanListCatalog mixin
+        does). Fall back to the connection's current catalog, then — for
+        backends with no catalog concept at all (e.g. sqlite) — to the
+        dialect's own ibis backend name as a single-entry pseudo-catalog, so
+        callers always get at least one entry back for a live connection.
+        """
         try:
-            if namespace is not None:
-                return self._ibis_conn.list_tables(database=namespace)
+            if hasattr(self._ibis_conn, "list_catalogs"):
+                return list(self._ibis_conn.list_catalogs())
+        except Exception as e:
+            print(f"Error listing catalogs: {e}")
+        current = getattr(self._ibis_conn, "current_catalog", None)
+        if current is not None:
+            return [current]
+        return [self._dialect_spec.ibis_backend_name]
+
+    def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
+        """Return the names of tables in the given namespace."""
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        try:
+            if rendered is not None:
+                return self._ibis_conn.list_tables(database=rendered)
             return self._ibis_conn.list_tables()
         except Exception as e:
             print(f"Error listing tables: {e}")
             return []
 
-    def inspect_table(
-        self, name: str, namespace: str | None = None
-    ) -> TableInfo:
+    def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
         """Return shared-model metadata for one table."""
         from mountainash_data.backends.ibis.inspect import table_to_info
 
+        ns = Namespace.coerce(namespace)
+        rendered = _render_ibis_database(ns)
         try:
-            ibis_table = self._ibis_conn.table(name, database=namespace)
-            return table_to_info(ibis_table, name=name, namespace=namespace)
+            ibis_table = self._ibis_conn.table(name, database=rendered)
+            return table_to_info(ibis_table, name=name, location=ns)
         except Exception as e:
             raise ValueError(f"Could not inspect table {name!r}: {e}") from e
 
@@ -82,19 +148,21 @@ class IbisConnection:
         """Return shared-model metadata for one namespace."""
         try:
             tables = self.list_tables(namespace=name)
-            return NamespaceInfo(name=name, tables=tables)
+            return NamespaceInfo(location=Namespace(path=(name,)), tables=tables)
         except Exception as e:
             raise ValueError(f"Could not inspect namespace {name!r}: {e}") from e
 
-    def inspect_catalog(self) -> CatalogInfo:
+    def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
         """Return shared-model metadata for the connection's catalog."""
-        namespaces = self.list_namespaces()
-        ns_infos = [
-            NamespaceInfo(name=ns, tables=self.list_tables(namespace=ns))
-            for ns in namespaces
-        ]
+        namespaces = self.list_namespaces(catalog=catalog)
+        ns_infos = []
+        for ns in namespaces:
+            location = Namespace(catalog=catalog, path=(ns,))
+            ns_infos.append(
+                NamespaceInfo(location=location, tables=self.list_tables(namespace=location))
+            )
         return CatalogInfo(
-            name=self._dialect_spec.ibis_backend_name,
+            name=catalog or self._dialect_spec.ibis_backend_name,
             namespaces=ns_infos,
         )
 
@@ -367,22 +435,23 @@ class IbisBackend:
 
     # --- Inspection (terminal — delegates to IbisConnection) ---
 
-    def list_tables(self, namespace: str | None = None) -> list[str]:
+    def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
         return self._require_connected().list_tables(namespace=namespace)
 
-    def list_namespaces(self) -> list[str]:
-        return self._require_connected().list_namespaces()
+    def list_namespaces(self, catalog: str | None = None) -> list[str]:
+        return self._require_connected().list_namespaces(catalog=catalog)
 
-    def inspect_table(
-        self, name: str, namespace: str | None = None
-    ) -> TableInfo:
+    def list_catalogs(self) -> list[str]:
+        return self._require_connected().list_catalogs()
+
+    def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
         return self._require_connected().inspect_table(name, namespace=namespace)
 
     def inspect_namespace(self, name: str) -> NamespaceInfo:
         return self._require_connected().inspect_namespace(name)
 
-    def inspect_catalog(self) -> CatalogInfo:
-        return self._require_connected().inspect_catalog()
+    def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
+        return self._require_connected().inspect_catalog(catalog=catalog)
 
     # --- Thin wrapper operations (fluent — return self) ---
 
@@ -392,13 +461,14 @@ class IbisBackend:
         obj: t.Any,
         *,
         schema: t.Any | None = None,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         temp: bool = False,
         overwrite: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
         conn._ibis_conn.create_table(
-            name, obj=obj, schema=schema, database=database,
+            name, obj=obj, schema=schema, database=rendered,
             temp=temp, overwrite=overwrite,
         )
         return self
@@ -407,11 +477,12 @@ class IbisBackend:
         self,
         name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         force: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.drop_table(name, database=database, force=force)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.drop_table(name, database=rendered, force=force)
         return self
 
     def create_view(
@@ -419,22 +490,24 @@ class IbisBackend:
         name: str,
         obj: t.Any,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         overwrite: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.create_view(name, obj=obj, database=database, overwrite=overwrite)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.create_view(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def drop_view(
         self,
         name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         force: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.drop_view(name, database=database, force=force)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.drop_view(name, database=rendered, force=force)
         return self
 
     def insert(
@@ -442,26 +515,28 @@ class IbisBackend:
         name: str,
         obj: t.Any,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         overwrite: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.insert(name, obj=obj, database=database, overwrite=overwrite)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def truncate(
         self,
         name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         schema: str | None = None,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
         # ibis SQLBackend.truncate_table() accepts only table_name + database;
         # schema is not a standard kwarg at the SQLBackend level.
         kwargs: dict[str, t.Any] = {}
-        if database is not None:
-            kwargs["database"] = database
+        if rendered is not None:
+            kwargs["database"] = rendered
         conn._ibis_conn.truncate_table(name, **kwargs)
         return self
 
@@ -476,16 +551,16 @@ class IbisBackend:
 
     # --- Terminal operations (return data) ---
 
-    def table(self, name: str, *, database: str | None = None) -> t.Any:
+    def table(self, name: str, *, namespace: NamespaceLike = None) -> t.Any:
         conn = self._require_connected()
-        return conn._ibis_conn.table(name, database=database)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        return conn._ibis_conn.table(name, database=rendered)
 
-    def table_exists(
-        self, name: str, database: str | None = None
-    ) -> bool:
+    def table_exists(self, name: str, namespace: NamespaceLike = None) -> bool:
         # ibis exposes no native table_exists; scope the membership check to the
-        # requested namespace by forwarding database= through list_tables (DEBT-9).
-        return name in self.list_tables(namespace=database)
+        # requested namespace by forwarding through list_tables (DEBT-9/10).
+        # Pass the RAW namespace — list_tables coerces once (no double render).
+        return name in self.list_tables(namespace=namespace)
 
     def run_sql(
         self,
@@ -531,10 +606,11 @@ class IbisBackend:
         update_columns: list[str] | str | None = None,
         conflict_action: str = "UPDATE",
         update_condition: t.Any = None,  # ConditionPredicate | None
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         schema: str | None = None,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="upsert")
         hook = self._spec.upsert_hook
         if hook is not None:
             hook(
@@ -543,7 +619,7 @@ class IbisBackend:
                 update_columns=update_columns,
                 conflict_action=conflict_action,
                 update_condition=update_condition,
-                database=database,
+                namespace=rendered,
                 schema=schema,
             )
         else:
@@ -553,7 +629,7 @@ class IbisBackend:
                 update_columns=update_columns,
                 conflict_action=conflict_action,
                 update_condition=update_condition,
-                database=database,
+                namespace=rendered,
                 schema=schema,
             )
         return self
@@ -563,19 +639,20 @@ class IbisBackend:
         name: str,
         source: t.Any,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> IbisBackend:
         """Additively evolve `name`: add columns present in `source` but
         missing from the table. `source` is a frame (types inferred) or a
         ``{column: dtype}`` mapping. Additive, idempotent, dialect-agnostic.
         """
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="add_columns")
         hook = self._spec.add_columns_hook
         if hook is not None:
-            hook(conn._ibis_conn, name, source, database=database)
+            hook(conn._ibis_conn, name, source, namespace=rendered)
         else:
             _generic_add_columns(
-                conn._ibis_conn, name, source, database=database
+                conn._ibis_conn, name, source, namespace=rendered
             )
         return self
 
@@ -588,22 +665,23 @@ class IbisBackend:
         unique: bool = False,
         index_type: str | None = None,
         where: t.Any = None,  # IndexPredicate | None
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         if_not_exists: bool = True,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_index")
         hook = self._spec.create_index_hook
         if hook is not None:
             hook(
                 conn._ibis_conn, table_name, columns,
                 index_name=index_name, unique=unique, index_type=index_type,
-                where=where, database=database, if_not_exists=if_not_exists,
+                where=where, namespace=rendered, if_not_exists=if_not_exists,
             )
         elif self._spec.index_caps is not None:
             _generic_create_index(
                 conn._ibis_conn, table_name, columns,
                 index_name=index_name, unique=unique, index_type=index_type,
-                where=where, database=database, if_not_exists=if_not_exists,
+                where=where, namespace=rendered, if_not_exists=if_not_exists,
                 caps=self._spec.index_caps,
                 exists_sql_fn=self._spec.get_index_exists_sql,
             )
@@ -620,11 +698,15 @@ class IbisBackend:
         *,
         index_name: str | None = None,
         where: t.Any = None,  # IndexPredicate | None
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> IbisBackend:
+        # Gate here so a catalog-qualified namespace raises naming THIS method,
+        # not the create_index it delegates to (the delegated call re-renders,
+        # but by then the namespace has passed and won't raise again).
+        _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_unique_index")
         return self.create_index(
             table_name, columns,
-            index_name=index_name, unique=True, where=where, database=database,
+            index_name=index_name, unique=True, where=where, namespace=namespace,
         )
 
     def drop_index(
@@ -632,20 +714,21 @@ class IbisBackend:
         index_name: str,
         *,
         table_name: str | None = None,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         if_exists: bool = True,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="drop_index")
         hook = self._spec.drop_index_hook
         if hook is not None:
             hook(
                 conn._ibis_conn, index_name,
-                table_name=table_name, database=database, if_exists=if_exists,
+                table_name=table_name, namespace=rendered, if_exists=if_exists,
             )
         elif self._spec.index_caps is not None:
             _generic_drop_index(
                 conn._ibis_conn, index_name,
-                table_name=table_name, database=database, if_exists=if_exists,
+                table_name=table_name, namespace=rendered, if_exists=if_exists,
                 caps=self._spec.index_caps,
                 exists_sql_fn=self._spec.get_index_exists_sql,
             )
@@ -660,16 +743,17 @@ class IbisBackend:
         index_name: str,
         *,
         table_name: str | None = None,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> bool:
         if self._spec.get_index_exists_sql is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support index_exists"
             )
         conn = self._require_connected()
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="index_exists")
         return _generic_index_exists(
             conn._ibis_conn, index_name,
-            table_name=table_name, database=database,
+            table_name=table_name, namespace=rendered,
             exists_sql_fn=self._spec.get_index_exists_sql,
         )
 
@@ -677,14 +761,15 @@ class IbisBackend:
         self,
         table_name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
     ) -> list[dict]:
         if self._spec.get_list_indexes_sql is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support list_indexes"
             )
         conn = self._require_connected()
-        list_sql = self._spec.get_list_indexes_sql(table_name, database)
+        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="list_indexes")
+        list_sql = self._spec.get_list_indexes_sql(table_name, rendered)
         result = conn._ibis_conn.sql(list_sql)
         if result is None:
             return []

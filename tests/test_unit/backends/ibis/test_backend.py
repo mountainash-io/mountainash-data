@@ -6,6 +6,7 @@ import polars as pl
 from mountainash_data.backends.ibis.backend import IbisBackend
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS
 from mountainash_data.core.protocol import Backend
+from mountainash_data.core.namespace import Namespace
 
 
 def test_ibis_backend_satisfies_protocol():
@@ -320,43 +321,48 @@ def test_table_exists_returns_bool():
         assert backend.table_exists("t") is True
 
 
-def test_table_exists_honors_database_namespace():
-    """table_exists(database=...) must scope the check to that namespace (DEBT-9).
-
-    A table living only in a non-default schema must be found via ``database=``
-    and must NOT be found in the default namespace, and vice versa.
-    """
+def test_table_exists_honors_namespace():
+    """table_exists(namespace=...) scopes the check to that namespace (DEBT-9/10)."""
     with IbisBackend(dialect="duckdb", database=":memory:") as backend:
         raw = backend.ibis_connection()
         raw.raw_sql("CREATE SCHEMA tenant_a")
         raw.raw_sql("CREATE TABLE tenant_a.sleep (id INTEGER)")
         raw.raw_sql("CREATE TABLE main_only (id INTEGER)")
-
-        # Table exists only in tenant_a.
-        assert backend.table_exists("sleep", database="tenant_a") is True
+        assert backend.table_exists("sleep", namespace="tenant_a") is True
         assert backend.table_exists("sleep") is False
-        # Table exists only in the default namespace.
         assert backend.table_exists("main_only") is True
-        assert backend.table_exists("main_only", database="tenant_a") is False
+        assert backend.table_exists("main_only", namespace="tenant_a") is False
 
 
-def test_table_exists_forwards_database_to_introspection(monkeypatch):
-    """The ``database`` arg must reach the introspection call, not be dropped.
-
-    Guards the swallowed-error path: ``IbisConnection.list_tables`` returns ``[]``
-    on failure, so a test asserting only a bool return can pass on a version that
-    never forwards ``database``. Assert the forwarding directly.
-    """
+def test_table_exists_forwards_namespace_to_introspection(monkeypatch):
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
-        seen: dict[str, str | None] = {}
+        seen: dict[str, object] = {}
 
         def fake_list_tables(namespace=None):
             seen["namespace"] = namespace
             return ["sleep"]
 
         monkeypatch.setattr(backend, "list_tables", fake_list_tables)
-        assert backend.table_exists("sleep", database="tenant_a") is True
+        assert backend.table_exists("sleep", namespace="tenant_a") is True
         assert seen == {"namespace": "tenant_a"}
+
+
+def test_database_keyword_rejected_on_table_exists():
+    """Clean break: the old database= keyword no longer exists."""
+    import pytest
+
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        with pytest.raises(TypeError):
+            backend.table_exists("t", database="x")
+
+
+def test_create_and_drop_table_in_namespace():
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.ibis_connection().raw_sql("CREATE SCHEMA tenant_b")
+        backend.create_table("gadgets", {"id": [1]}, namespace="tenant_b")
+        assert backend.table_exists("gadgets", namespace="tenant_b") is True
+        backend.drop_table("gadgets", namespace="tenant_b")
+        assert backend.table_exists("gadgets", namespace="tenant_b") is False
 
 
 def test_fluent_chaining():
@@ -443,3 +449,39 @@ def test_upsert_unsupported_dialect_raises():
     backend._conn = IbisConnection(None, DIALECTS["clickhouse"])
     with pytest.raises(NotImplementedError, match="does not support upsert"):
         backend.upsert("t", {}, conflict_columns=["id"])
+
+
+# ---------------------------------------------------------------------------
+# Namespace-carrying inspection + discovery (DEBT-10 Task 5)
+# ---------------------------------------------------------------------------
+
+def test_list_catalogs_degrades_to_current():
+    """A catalog-less/simple backend still answers list_catalogs()."""
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        cats = backend.list_catalogs()
+        assert isinstance(cats, list)
+        assert len(cats) >= 1
+
+
+def test_inspect_table_location_default_namespace():
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        backend.create_table("t", {"id": [1]})
+        info = backend.inspect_table("t")
+        assert info.name == "t"
+        assert info.location == Namespace()
+
+
+def test_inspect_table_location_reflects_namespace():
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        raw = backend.ibis_connection()
+        raw.raw_sql("CREATE SCHEMA tenant_a")
+        raw.raw_sql("CREATE TABLE tenant_a.widgets (id INTEGER)")
+        info = backend.inspect_table("widgets", namespace="tenant_a")
+        assert info.location == Namespace(path=("tenant_a",))
+        assert info.qualified_name == "tenant_a.widgets"
+
+
+def test_list_namespaces_accepts_catalog_kwarg():
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        # catalog=None is the default; the kwarg must be accepted without error.
+        assert isinstance(backend.list_namespaces(catalog=None), list)
