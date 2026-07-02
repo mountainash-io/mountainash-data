@@ -1,6 +1,6 @@
 """DuckDB backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/duckdb.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/duckdb.md``.
 Driver: https://duckdb.org/docs/current/configuration/overview.html
 Ibis: ``ibis.backends.duckdb.do_connect(database=':memory:', read_only=False,
        extensions=None, **config)``

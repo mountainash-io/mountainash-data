@@ -1,6 +1,6 @@
 """Snowflake backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/snowflake.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/snowflake.md``.
 Driver: https://docs.snowflake.com/en/developer-guide/python-connector/python-connector-api
 """
 

@@ -1,6 +1,6 @@
 """SQLite backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/sqlite.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/sqlite.md``.
 Driver: https://docs.python.org/3/library/sqlite3.html#sqlite3.connect
 Ibis: ``ibis.backends.sqlite.do_connect(database, type_map=None)``
 """

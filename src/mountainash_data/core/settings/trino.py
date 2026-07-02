@@ -1,6 +1,6 @@
 """Trino backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/trino.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/trino.md``.
 Driver: https://github.com/trinodb/trino-python-client/blob/master/trino/dbapi.py
 Ibis: ``ibis.backends.trino.do_connect``
 """

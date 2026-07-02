@@ -1,6 +1,6 @@
 """MySQL backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/mysql.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/mysql.md``.
 Driver: https://mysqlclient.readthedocs.io/user_guide.html#functions-and-attributes
 Ibis: ``ibis.backends.mysql.do_connect(host='localhost', user=None, password=None,
        port=3306, autocommit=True, **kwargs)``

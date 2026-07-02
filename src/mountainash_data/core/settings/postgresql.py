@@ -1,6 +1,6 @@
 """PostgreSQL backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/postgresql.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/postgresql.md``.
 Driver: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS
 Ibis: ``ibis.backends.postgres.do_connect(host, user, password, port=5432,
        database, schema, autocommit=True, **kwargs)`` (psycopg).

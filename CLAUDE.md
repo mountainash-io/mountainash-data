@@ -6,6 +6,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **mountainash-data** provides physical access to backend data services — relational databases via Ibis, and Iceberg table-format catalogs via PyIceberg. It collapses what was previously 13 per-dialect connection classes into a data-driven `DialectSpec` registry, exposes clean `Backend` / `Connection` protocols, and provides factories and a high-level facade (`DatabaseUtils`).
 
+## Planning, Specs & Principles (live in mountainash-central)
+
+This repo holds **code only**. All design specs, implementation plans, the technical-debt
+backlog, and the architecture principles live in the ecosystem repo **`mountainash-central`**
+(sibling checkout: `../mountainash-central`):
+
+| Artifact | Location in `mountainash-central` |
+|----------|-----------------------------------|
+| Design specs | `04.planning/mountainash-data/superpowers/specs/` |
+| Implementation plans | `04.planning/mountainash-data/superpowers/plans/` |
+| Technical-debt backlog (+ `archive/`) | `04.planning/mountainash-data/a.backlog/` |
+| ENFORCED architecture principles | `01.principles/mountainash-data/` |
+
+**When running the superpowers flow (brainstorming → writing-plans → SDD) for this repo,
+write the spec/plan to `mountainash-central/04.planning/mountainash-data/superpowers/{specs,plans}/`,
+not to a local `docs/superpowers/` directory.** (The superpowers skills default to a local
+`docs/superpowers/` path — override that default to the central location above.) Only source,
+tests, and this `CLAUDE.md` live in this repo's tree.
+
 ## Architecture
 
 ### Core Components

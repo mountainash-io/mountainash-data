@@ -1,6 +1,6 @@
 """Redshift backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/redshift.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/redshift.md``.
 Driver: redshift_connector OR psycopg (via Ibis postgres). Endpoint
 resolution via boto3 ``describe_clusters`` is a Phase-4 follow-up.
 """
