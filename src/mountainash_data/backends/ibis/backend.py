@@ -459,13 +459,14 @@ class IbisBackend:
         obj: t.Any,
         *,
         schema: t.Any | None = None,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         temp: bool = False,
         overwrite: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
         conn._ibis_conn.create_table(
-            name, obj=obj, schema=schema, database=database,
+            name, obj=obj, schema=schema, database=rendered,
             temp=temp, overwrite=overwrite,
         )
         return self
@@ -474,11 +475,12 @@ class IbisBackend:
         self,
         name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         force: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.drop_table(name, database=database, force=force)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.drop_table(name, database=rendered, force=force)
         return self
 
     def create_view(
@@ -486,22 +488,24 @@ class IbisBackend:
         name: str,
         obj: t.Any,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         overwrite: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.create_view(name, obj=obj, database=database, overwrite=overwrite)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.create_view(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def drop_view(
         self,
         name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         force: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.drop_view(name, database=database, force=force)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.drop_view(name, database=rendered, force=force)
         return self
 
     def insert(
@@ -509,26 +513,28 @@ class IbisBackend:
         name: str,
         obj: t.Any,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         overwrite: bool = False,
     ) -> IbisBackend:
         conn = self._require_connected()
-        conn._ibis_conn.insert(name, obj=obj, database=database, overwrite=overwrite)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def truncate(
         self,
         name: str,
         *,
-        database: str | None = None,
+        namespace: NamespaceLike = None,
         schema: str | None = None,
     ) -> IbisBackend:
         conn = self._require_connected()
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
         # ibis SQLBackend.truncate_table() accepts only table_name + database;
         # schema is not a standard kwarg at the SQLBackend level.
         kwargs: dict[str, t.Any] = {}
-        if database is not None:
-            kwargs["database"] = database
+        if rendered is not None:
+            kwargs["database"] = rendered
         conn._ibis_conn.truncate_table(name, **kwargs)
         return self
 
@@ -543,16 +549,16 @@ class IbisBackend:
 
     # --- Terminal operations (return data) ---
 
-    def table(self, name: str, *, database: str | None = None) -> t.Any:
+    def table(self, name: str, *, namespace: NamespaceLike = None) -> t.Any:
         conn = self._require_connected()
-        return conn._ibis_conn.table(name, database=database)
+        rendered = _render_ibis_database(Namespace.coerce(namespace))
+        return conn._ibis_conn.table(name, database=rendered)
 
-    def table_exists(
-        self, name: str, database: str | None = None
-    ) -> bool:
+    def table_exists(self, name: str, namespace: NamespaceLike = None) -> bool:
         # ibis exposes no native table_exists; scope the membership check to the
-        # requested namespace by forwarding database= through list_tables (DEBT-9).
-        return name in self.list_tables(namespace=database)
+        # requested namespace by forwarding through list_tables (DEBT-9/10).
+        # Pass the RAW namespace — list_tables coerces once (no double render).
+        return name in self.list_tables(namespace=namespace)
 
     def run_sql(
         self,

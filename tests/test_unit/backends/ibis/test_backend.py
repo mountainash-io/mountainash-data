@@ -321,43 +321,48 @@ def test_table_exists_returns_bool():
         assert backend.table_exists("t") is True
 
 
-def test_table_exists_honors_database_namespace():
-    """table_exists(database=...) must scope the check to that namespace (DEBT-9).
-
-    A table living only in a non-default schema must be found via ``database=``
-    and must NOT be found in the default namespace, and vice versa.
-    """
+def test_table_exists_honors_namespace():
+    """table_exists(namespace=...) scopes the check to that namespace (DEBT-9/10)."""
     with IbisBackend(dialect="duckdb", database=":memory:") as backend:
         raw = backend.ibis_connection()
         raw.raw_sql("CREATE SCHEMA tenant_a")
         raw.raw_sql("CREATE TABLE tenant_a.sleep (id INTEGER)")
         raw.raw_sql("CREATE TABLE main_only (id INTEGER)")
-
-        # Table exists only in tenant_a.
-        assert backend.table_exists("sleep", database="tenant_a") is True
+        assert backend.table_exists("sleep", namespace="tenant_a") is True
         assert backend.table_exists("sleep") is False
-        # Table exists only in the default namespace.
         assert backend.table_exists("main_only") is True
-        assert backend.table_exists("main_only", database="tenant_a") is False
+        assert backend.table_exists("main_only", namespace="tenant_a") is False
 
 
-def test_table_exists_forwards_database_to_introspection(monkeypatch):
-    """The ``database`` arg must reach the introspection call, not be dropped.
-
-    Guards the swallowed-error path: ``IbisConnection.list_tables`` returns ``[]``
-    on failure, so a test asserting only a bool return can pass on a version that
-    never forwards ``database``. Assert the forwarding directly.
-    """
+def test_table_exists_forwards_namespace_to_introspection(monkeypatch):
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
-        seen: dict[str, str | None] = {}
+        seen: dict[str, object] = {}
 
         def fake_list_tables(namespace=None):
             seen["namespace"] = namespace
             return ["sleep"]
 
         monkeypatch.setattr(backend, "list_tables", fake_list_tables)
-        assert backend.table_exists("sleep", database="tenant_a") is True
+        assert backend.table_exists("sleep", namespace="tenant_a") is True
         assert seen == {"namespace": "tenant_a"}
+
+
+def test_database_keyword_rejected_on_table_exists():
+    """Clean break: the old database= keyword no longer exists."""
+    import pytest
+
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        with pytest.raises(TypeError):
+            backend.table_exists("t", database="x")
+
+
+def test_create_and_drop_table_in_namespace():
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        backend.ibis_connection().raw_sql("CREATE SCHEMA tenant_b")
+        backend.create_table("gadgets", {"id": [1]}, namespace="tenant_b")
+        assert backend.table_exists("gadgets", namespace="tenant_b") is True
+        backend.drop_table("gadgets", namespace="tenant_b")
+        assert backend.table_exists("gadgets", namespace="tenant_b") is False
 
 
 def test_fluent_chaining():
