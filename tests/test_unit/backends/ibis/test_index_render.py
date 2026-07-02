@@ -23,11 +23,13 @@ class TestCompileIndexPredicate:
     def test_comparison_predicate(self):
         sql = _pred_sql(lambda t: t.ver > 5)
         assert '"ver"' in sql and "5" in sql
+        assert "." not in sql
 
     def test_predicate_may_reference_non_indexed_column(self):
         # binding the full schema (not just indexed cols) must allow this
         sql = _pred_sql(lambda t: t.active)
         assert '"active"' in sql
+        assert "." not in sql
 
     def test_rejects_sentinel_table_name(self):
         with pytest.raises(ValueError, match="sentinel"):

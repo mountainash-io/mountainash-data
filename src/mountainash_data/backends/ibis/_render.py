@@ -233,7 +233,9 @@ def compile_index_predicate(
     filter it by the predicate, compile to sqlglot, extract the WHERE, then
     strip every column's table/db/catalog qualifier at the AST level (NOT by
     string replacement). The predicate may reference any column of the table,
-    not only the indexed columns, so the full `schema` is bound.
+    not only the indexed columns, so the full `schema` is bound. The
+    `table_name` parameter is validated only (sentinel-collision check) and
+    does NOT appear in the returned SQL.
 
     Raises:
         ValueError: if `table_name` collides with the reserved sentinel, or the
