@@ -107,3 +107,68 @@ class TestBuildDropIndexSql:
             index_name="idx", target="`t`", guard="",
         )
         assert sql == "DROP INDEX `idx` ON `t`"
+
+
+from mountainash_data.backends.ibis.operations import (  # noqa: E402
+    _sql_literal,
+    postgres_get_index_exists_sql,
+    mysql_get_index_exists_sql,
+    mssql_get_index_exists_sql,
+    oracle_get_index_exists_sql,
+    singlestore_get_index_exists_sql,
+    sqlite_get_index_exists_sql,
+)
+
+
+class TestIntrospectionSql:
+    def test_sql_literal_escapes_quote(self):
+        assert _sql_literal("x'y") == "'x''y'"
+
+    def test_existing_sqlite_now_escapes(self):
+        sql = sqlite_get_index_exists_sql("a'b", "t", None)
+        assert "'a''b'" in sql
+        assert "count" in sql.lower()
+
+    def test_postgres_shape_and_escaping(self):
+        sql = postgres_get_index_exists_sql("idx", "t", "public")
+        assert "pg_indexes" in sql
+        assert "'idx'" in sql and "'t'" in sql and "'public'" in sql
+        assert "count" in sql.lower()
+
+    def test_mysql_is_table_scoped(self):
+        sql = mysql_get_index_exists_sql("idx", "t", None)
+        assert "STATISTICS" in sql.upper()
+        assert "'idx'" in sql and "'t'" in sql
+
+    def test_mssql_uses_object_id(self):
+        sql = mssql_get_index_exists_sql("idx", "t", None)
+        assert "sys.indexes" in sql and "OBJECT_ID" in sql.upper()
+
+    def test_oracle_matches_exact_quoted_name(self):
+        # Always-quoted create -> Oracle stores as written -> match exactly, no UPPER().
+        sql = oracle_get_index_exists_sql("idx", "t", None)
+        assert "user_indexes" in sql.lower()
+        assert "UPPER" not in sql.upper()
+        assert "'idx'" in sql
+
+    def test_singlestore_shape(self):
+        sql = singlestore_get_index_exists_sql("idx", "t", None)
+        assert "STATISTICS" in sql.upper() and "'t'" in sql
+        # always schema-constrained (defaults to DATABASE() when omitted) to
+        # avoid cross-schema false positives
+        assert "TABLE_SCHEMA = DATABASE()" in sql.upper()
+
+    @pytest.mark.parametrize("fn", [
+        postgres_get_index_exists_sql, mysql_get_index_exists_sql,
+        mssql_get_index_exists_sql, oracle_get_index_exists_sql,
+        singlestore_get_index_exists_sql,
+    ])
+    def test_injection_payload_is_escaped_not_broken(self, fn):
+        # These pure SQL builders are ALLOWLIST-EXEMPT by design: the front-door
+        # rejection (the primary gate) is enforced by the generic dispatcher
+        # (_generic_index_exists) before any builder is called — see Task 6's
+        # `test_bad_identifier_rejected`. This test asserts the SECOND layer:
+        # even if a hostile value reached a builder, it is contained in an
+        # escaped literal (doubled quote), not interpolated raw.
+        sql = fn("x'; DROP TABLE t; --", "t", None)
+        assert "''" in sql

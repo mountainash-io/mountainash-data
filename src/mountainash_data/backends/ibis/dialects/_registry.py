@@ -671,6 +671,11 @@ from mountainash_data.backends.ibis.operations import (  # noqa: E402
     sqlite_get_list_indexes_sql,
     motherduck_get_index_exists_sql,
     motherduck_get_list_indexes_sql,
+    postgres_get_index_exists_sql,
+    mysql_get_index_exists_sql,
+    mssql_get_index_exists_sql,
+    oracle_get_index_exists_sql,
+    singlestore_get_index_exists_sql,
     duckdb_family_create_index,
     duckdb_family_drop_index,
 )
@@ -731,6 +736,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="postgres://",
         connection_builder=_build_postgres_connection,
         upsert_style=UpsertStyle.ON_CONFLICT,
+        get_index_exists_sql=postgres_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
+            native_if_not_exists=True, native_if_exists=True,
+            index_types=frozenset({"btree", "hash", "gist", "gin", "brin", "spgist"}),
+        ),
     ),
     "mysql": DialectSpec(
         ibis_backend_name="mysql",
@@ -738,6 +749,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="mysql://",
         connection_builder=_build_mysql_connection,
         upsert_style=UpsertStyle.ON_DUPLICATE_KEY,
+        get_index_exists_sql=mysql_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.TABLE_SCOPED, partial=False,
+            native_if_not_exists=False, native_if_exists=False,
+            index_types=frozenset({"btree"}),
+        ),
     ),
     "mssql": DialectSpec(
         ibis_backend_name="mssql",
@@ -745,6 +762,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="mssql://",
         connection_builder=_build_mssql_connection,
         upsert_style=UpsertStyle.MERGE,
+        get_index_exists_sql=mssql_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.TABLE_SCOPED, partial=True,
+            native_if_not_exists=False, native_if_exists=True,
+            index_types=frozenset(),
+        ),
     ),
     "oracle": DialectSpec(
         ibis_backend_name="oracle",
@@ -752,6 +775,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="oracle://",
         connection_builder=_build_oracle_connection,
         upsert_style=UpsertStyle.MERGE,
+        get_index_exists_sql=oracle_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
+            native_if_not_exists=False, native_if_exists=False,
+            index_types=frozenset(),
+        ),
     ),
     "snowflake": DialectSpec(
         ibis_backend_name="snowflake",
@@ -800,6 +829,12 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="singlestoredb://",
         connection_builder=_build_singlestoredb_connection,
         upsert_style=UpsertStyle.ON_DUPLICATE_KEY,
+        get_index_exists_sql=singlestore_get_index_exists_sql,
+        index_caps=IndexCapability(
+            drop_scope=DropScope.TABLE_SCOPED, partial=False,
+            native_if_not_exists=False, native_if_exists=False,
+            index_types=frozenset({"btree", "hash"}),
+        ),
     ),
     "exasol": DialectSpec(
         ibis_backend_name="exasol",

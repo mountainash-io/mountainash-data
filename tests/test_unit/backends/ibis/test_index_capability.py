@@ -53,16 +53,13 @@ _EXPECTED = {
     "oracle":        (DropScope.SCHEMA_GLOBAL, False, False, False, frozenset()),
 }
 
-# Dialects that carry index_caps after THIS task. Task 5 appends the other 5.
-_ASSIGNED_NOW = ["sqlite", "duckdb", "motherduck"]
-
 _UNSUPPORTED = {
     "snowflake", "bigquery", "redshift", "trino", "clickhouse", "databricks",
     "exasol", "impala", "materialize", "risingwave", "druid", "pyspark",
 }
 
 
-@pytest.mark.parametrize("name", _ASSIGNED_NOW)
+@pytest.mark.parametrize("name", list(_EXPECTED))
 def test_index_caps_matrix(name):
     caps = DIALECTS[name].index_caps
     assert caps is not None, f"{name} must have index_caps"
@@ -79,9 +76,8 @@ def test_unsupported_dialects_have_no_index_caps(name):
     assert DIALECTS[name].index_caps is None
 
 
-@pytest.mark.parametrize("name", _ASSIGNED_NOW)
+@pytest.mark.parametrize("name", list(_EXPECTED))
 def test_invariant_caps_implies_exists_sql(name):
-    """Spec §3 invariant: a dialect with index_caps must also introspect indexes."""
     spec = DIALECTS[name]
     assert spec.index_caps is not None
     assert spec.get_index_exists_sql is not None
