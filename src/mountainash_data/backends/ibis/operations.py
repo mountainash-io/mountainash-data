@@ -3,21 +3,15 @@
 Contains:
 - Module-level helper functions: _generate_index_name, _format_qualified_table, _normalize_columns
 - Per-dialect SQL functions: duckdb, sqlite, motherduck index SQL generators
-- Standalone hook functions: duckdb_family_create_index, duckdb_family_drop_index
 - Generic, dialect-agnostic write ops: _generic_rename_table, _generic_add_columns,
   _generic_upsert (with the three upsert-family renderers + MySQL preflight)
 """
 
 import typing as t
-import contextlib
 import re
 import warnings
 
 import ibis
-
-from mountainash_data.core.constants import (
-    CONST_INDEX_TYPE,
-)
 from sqlglot import exp
 from mountainash_data.backends.ibis._render import (
     ConditionAliases,
@@ -450,65 +444,6 @@ def motherduck_list_tables(
 ) -> list[str]:
     """MotherDuck-specific list_tables using DuckDB backend's database parameter."""
     return ibis_backend.list_tables(like=like, database=database) if ibis_backend is not None else []
-
-
-# ===========================================================================
-# STANDALONE HOOK FUNCTIONS
-# ===========================================================================
-
-def duckdb_family_create_index(
-    ibis_conn: t.Any,
-    table_name: str,
-    columns: list[str] | str,
-    *,
-    index_name: str | None = None,
-    unique: bool = False,
-    index_type: str | None = None,
-    where_condition: str | None = None,
-    database: str | None = None,
-    if_not_exists: bool = True,
-) -> None:
-    """Create an index using DuckDB/SQLite syntax."""
-    columns_list = _normalize_columns(columns)
-
-    if index_name is None:
-        index_name = _generate_index_name(table_name, columns_list, unique=unique)
-
-    qualified_table = _format_qualified_table(table_name, database=database)
-    columns_sql = ", ".join(columns_list)
-
-    unique_sql = "UNIQUE " if unique else ""
-    if_not_exists_sql = "IF NOT EXISTS " if if_not_exists else ""
-    where_sql = f" WHERE {where_condition}" if where_condition else ""
-
-    if index_type and index_type != CONST_INDEX_TYPE.BTREE:
-        warnings.warn(
-            f"Index type {index_type} not supported, using default BTREE"
-        )
-
-    create_sql = (
-        f"CREATE {unique_sql}INDEX {if_not_exists_sql}{index_name} "
-        f"ON {qualified_table} ({columns_sql}){where_sql}"
-    )
-
-    with contextlib.closing(ibis_conn.con.cursor()) as cur:
-        cur.execute(create_sql)
-
-
-def duckdb_family_drop_index(
-    ibis_conn: t.Any,
-    index_name: str,
-    *,
-    table_name: str | None = None,
-    database: str | None = None,
-    if_exists: bool = True,
-) -> None:
-    """Drop an index using DuckDB/SQLite syntax."""
-    if_exists_sql = "IF EXISTS " if if_exists else ""
-    drop_sql = f"DROP INDEX {if_exists_sql}{index_name}"
-
-    with contextlib.closing(ibis_conn.con.cursor()) as cur:
-        cur.execute(drop_sql)
 
 
 # ===========================================================================

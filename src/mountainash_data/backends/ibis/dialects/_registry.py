@@ -676,8 +676,6 @@ from mountainash_data.backends.ibis.operations import (  # noqa: E402
     mssql_get_index_exists_sql,
     oracle_get_index_exists_sql,
     singlestore_get_index_exists_sql,
-    duckdb_family_create_index,
-    duckdb_family_drop_index,
 )
 
 
@@ -690,8 +688,6 @@ DIALECTS: dict[str, DialectSpec] = {
         get_index_exists_sql=sqlite_get_index_exists_sql,
         get_list_indexes_sql=sqlite_get_list_indexes_sql,
         upsert_style=UpsertStyle.ON_CONFLICT,
-        create_index_hook=duckdb_family_create_index,
-        drop_index_hook=duckdb_family_drop_index,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
             native_if_not_exists=True, native_if_exists=True,
@@ -706,8 +702,6 @@ DIALECTS: dict[str, DialectSpec] = {
         get_index_exists_sql=duckdb_get_index_exists_sql,
         get_list_indexes_sql=duckdb_get_list_indexes_sql,
         upsert_style=UpsertStyle.ON_CONFLICT,
-        create_index_hook=duckdb_family_create_index,
-        drop_index_hook=duckdb_family_drop_index,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
             native_if_not_exists=True, native_if_exists=True,
@@ -722,8 +716,6 @@ DIALECTS: dict[str, DialectSpec] = {
         get_index_exists_sql=motherduck_get_index_exists_sql,
         get_list_indexes_sql=motherduck_get_list_indexes_sql,
         upsert_style=UpsertStyle.ON_CONFLICT,
-        create_index_hook=duckdb_family_create_index,
-        drop_index_hook=duckdb_family_drop_index,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
             native_if_not_exists=True, native_if_exists=True,

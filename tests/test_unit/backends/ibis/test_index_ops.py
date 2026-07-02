@@ -99,3 +99,51 @@ class TestValidationErrors:
         con = _seed_sqlite()
         _generic_drop_index(con, "nope", table_name="t", if_exists=True,
                             caps=_SQLITE, exists_sql_fn=_SQLITE_FN)  # no raise
+
+
+from mountainash_data import IbisBackend  # noqa: E402
+
+
+class TestBackendDispatch:
+    def test_create_exists_drop_via_backend(self):
+        be = IbisBackend(dialect="sqlite", database=":memory:")
+        be.connect()
+        try:
+            be.create_table("t", pl.DataFrame({"id": [1], "active": [True]}),
+                            overwrite=True)
+            assert be.create_index("t", ["id"], index_name="ix") is be
+            assert be.index_exists("ix", table_name="t") is True
+            assert be.drop_index("ix", table_name="t") is be
+            assert be.index_exists("ix", table_name="t") is False
+        finally:
+            be.close()
+
+    def test_where_predicate_via_backend(self):
+        be = IbisBackend(dialect="sqlite", database=":memory:")
+        be.connect()
+        try:
+            be.create_table("t", pl.DataFrame({"id": [1], "active": [True]}),
+                            overwrite=True)
+            be.create_index("t", ["id"], index_name="ixp",
+                            where=lambda r: r.active == True)  # noqa: E712
+            assert be.index_exists("ixp", table_name="t") is True
+        finally:
+            be.close()
+
+    def test_unsupported_dialect_raises_notimplemented(self):
+        from mountainash_data.backends.ibis.dialects._registry import DialectSpec
+        be = IbisBackend(dialect="sqlite", database=":memory:")
+        be.connect()
+        try:
+            # Rebind the INSTANCE's _spec to a fresh no-index spec (index_caps and
+            # create_index_hook default to None). Never mutate the shared frozen
+            # singleton in DIALECTS — that would corrupt other tests.
+            be._spec = DialectSpec(
+                ibis_backend_name="sqlite",
+                connection_mode="connection_string",
+                connection_string_scheme="sqlite://",
+            )
+            with pytest.raises(NotImplementedError):
+                be.create_index("t", ["id"])
+        finally:
+            be.close()
