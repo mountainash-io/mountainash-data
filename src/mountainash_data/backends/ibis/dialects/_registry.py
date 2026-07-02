@@ -28,6 +28,26 @@ class UpsertStyle(str, enum.Enum):
     ON_DUPLICATE_KEY = "on_duplicate_key"
 
 
+class DropScope(str, enum.Enum):
+    SCHEMA_GLOBAL = "schema_global"   # DROP INDEX name
+    TABLE_SCOPED = "table_scoped"     # DROP INDEX name ON tbl
+
+
+@dataclass(frozen=True)
+class IndexCapability:
+    """Per-dialect conventional-B-tree index capability (spec §3).
+
+    None on DialectSpec.index_caps means the dialect has no conventional
+    secondary index -> create/drop raise NotImplementedError.
+    """
+
+    drop_scope: DropScope
+    partial: bool                     # supports a WHERE filter (partial/filtered index)
+    native_if_not_exists: bool        # engine has CREATE INDEX IF NOT EXISTS
+    native_if_exists: bool            # engine has DROP INDEX IF EXISTS
+    index_types: frozenset[str]       # valid USING <type> values; empty = no USING clause
+
+
 # Capability hook signatures
 GetIndexExistsSql = t.Callable[[str, str, t.Optional[str]], str]  # (index_name, table_name, database) -> SQL
 GetListIndexesSql = t.Callable[[str, t.Optional[str]], str]  # (table_name, database) -> SQL
@@ -52,6 +72,8 @@ class DialectSpec:
     upsert_hook: t.Optional[UpsertHook] = None
     # None = upsert not supported (no hook + no style -> NotImplementedError).
     upsert_style: t.Optional[UpsertStyle] = None
+    index_caps: t.Optional[IndexCapability] = None
+    # None = no conventional index support -> NotImplementedError.
     create_index_hook: t.Optional[CreateIndexHook] = None
     drop_index_hook: t.Optional[DropIndexHook] = None
     rename_table_hook: t.Optional[RenameTableHook] = None
