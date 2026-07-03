@@ -13,9 +13,11 @@ Iceberg catalog connections. It handles:
 - Schema caching
 - Thin delegation wrappers to ``operations.py`` for all mutations
 
-``to_relation()`` is intentionally NOT implemented — it requires
-mountainash-expressions to gain an Iceberg adapter, which is a separate
-work item tracked in the spec.
+There is deliberately no ``to_relation()`` here (or anywhere in this
+package): bridging to the unified ``mountainash`` package is pull-side —
+``ma.relation(...)`` over a backend-native handle. For Iceberg that handle
+is not an ibis Table; reaching mountainash goes via an Arrow scan of the
+loaded ``table()``, or via an Ibis engine reading the catalog.
 """
 
 from __future__ import annotations
