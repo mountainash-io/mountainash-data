@@ -18,7 +18,6 @@ Most library documentation tells you *what* the API does. This manual explains *
 - [**Chapters**](chapters/index.md) — 9 chapters covering everything from foundation concepts through advanced integration patterns
 - [**MicroSims**](sims/index.md) — Interactive simulations that let you experiment with concepts hands-on
 - [**Learning Graph**](learning-graph/index.md) — A dependency map showing how concepts build on each other
-- [**API Reference**](api/index.md) — Auto-generated reference for backends, core protocol, settings, and inspection models
 
 ## Who This Is For
 

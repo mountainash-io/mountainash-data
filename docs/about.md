@@ -35,7 +35,6 @@ After working through this manual, you will know how to:
 - **Use search** (top right) to jump to a specific class, method, or term.
 - **Try the MicroSims** when you encounter them — they are the fastest way to build intuition.
 - **Check the [Learning Graph](learning-graph/index.md)** to see how a concept fits into the larger picture.
-- **Use the [API Reference](api/index.md)** when you need exact signatures, parameters, and return types.
 
 ## About Mountainash
 
