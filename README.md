@@ -44,7 +44,10 @@ conn = backend.connect()
 try:
     tables = conn.list_tables()
     info = conn.inspect_table("my_table")
-    relation = conn.to_relation("my_table")  # → mountainash-expressions Relation
+    ibis_table = conn.table("my_table")  # backend-native ibis Table
+    # Bridge to the unified mountainash package (pull-side):
+    #   import mountainash as ma
+    #   rel = ma.relation(ibis_table)  # compiles against Ibis automatically
 finally:
     conn.close()
 
@@ -129,7 +132,7 @@ from mountainash_data import (
 
 - **12-dialect ibis registry** — SQLite, DuckDB, MotherDuck, PostgreSQL, MySQL, MSSQL, Oracle, Snowflake, BigQuery, Redshift, Trino, PySpark
 - **Protocol-first design** — `Backend` and `Connection` protocols enable type-safe composition
-- **Expressions seam** — `Connection.to_relation()` bridges to `mountainash-expressions`
+- **mountainash seam (pull-side)** — `table()` returns a backend-native ibis Table; `ma.relation(table)` in the unified `mountainash` package compiles against it directly. There is deliberately no push-side `to_relation()` bridge in this package.
 - **Settings-driven** — pydantic settings for every dialect, factory auto-detection from URLs
 - **Comprehensive test suite** ensuring reliability
 

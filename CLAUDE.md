@@ -30,8 +30,8 @@ tests, and this `CLAUDE.md` live in this repo's tree.
 ### Core Components
 
 1. **Protocol layer** (`src/mountainash_data/core/protocol.py`)
-   - `Backend` protocol — what every backend must implement (`connect()`)
-   - `Connection` protocol — what every connection must implement (`list_tables()`, `inspect_table()`, `to_relation()`, `close()`)
+   - `Backend` protocol — the single handle every backend must implement: `connect()`/`close()`/context-manager lifecycle, `list_tables()`/`list_namespaces()`/`list_catalogs()`, and `inspect_table()`/`inspect_namespace()`/`inspect_catalog()`
+   - There is deliberately no `to_relation()` on the protocol — bridging to the unified `mountainash` package is pull-side: `table()` returns a backend-native ibis Table and `ma.relation(ibis_table)` compiles against it directly
 
 2. **Inspection model** (`src/mountainash_data/core/inspection.py`)
    - `CatalogInfo`, `NamespaceInfo`, `TableInfo`, `ColumnInfo` — shared physical metadata dataclasses
@@ -244,7 +244,10 @@ conn = backend.connect()
 try:
     tables = conn.list_tables()
     info = conn.inspect_table("users")
-    relation = conn.to_relation("users")  # → mountainash-expressions Relation
+    ibis_table = conn.table("users")  # backend-native ibis Table
+    # Bridge to the unified mountainash package (pull-side):
+    #   import mountainash as ma
+    #   rel = ma.relation(ibis_table)  # compiles against Ibis automatically
 finally:
     conn.close()
 
