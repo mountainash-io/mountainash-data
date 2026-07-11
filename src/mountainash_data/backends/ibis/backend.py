@@ -82,10 +82,17 @@ class IbisConnection:
     Constructed by IbisBackend.connect() — not intended to be instantiated directly.
     """
 
-    def __init__(self, ibis_conn: t.Any, dialect_spec: DialectSpec) -> None:
+    def __init__(
+        self,
+        ibis_conn: t.Any,
+        dialect_spec: DialectSpec,
+        *,
+        owns_connection: bool = True,
+    ) -> None:
         self._ibis_conn = ibis_conn
         self._dialect_spec = dialect_spec
         self._closed = False
+        self._owns_connection = owns_connection
 
     def list_namespaces(self, catalog: str | None = None) -> list[str]:
         """Return the names of all namespaces (schemas/databases) visible to this connection."""
@@ -167,10 +174,15 @@ class IbisConnection:
         )
 
     def close(self) -> None:
-        """Release the connection. Idempotent."""
+        """Release the connection. Idempotent.
+
+        When the connection was adopted (owns_connection=False), the
+        underlying ibis connection belongs to the caller and is left open;
+        only this wrapper is marked closed.
+        """
         if not self._closed:
             try:
-                if hasattr(self._ibis_conn, "disconnect"):
+                if self._owns_connection and hasattr(self._ibis_conn, "disconnect"):
                     self._ibis_conn.disconnect()
             except Exception:
                 pass
@@ -244,6 +256,29 @@ class IbisBackend:
                 "Either a SettingsParameters/URL positional argument "
                 "or a dialect= keyword is required"
             )
+
+    @classmethod
+    def from_ibis_connection(
+        cls,
+        ibis_conn: t.Any,
+        *,
+        dialect: str,
+        owns_connection: bool = False,
+    ) -> IbisBackend:
+        """Adopt an existing live ibis connection.
+
+        The adopted connection shares the caller's session and transaction
+        state — e.g. ``ibis.duckdb.from_connection(raw_duckdb_conn)`` wraps
+        the caller's own DuckDB connection, so ``BEGIN``/``COMMIT`` issued on
+        the raw connection bracket this backend's writes too. By default the
+        backend does NOT own the connection: ``close()`` releases the wrapper
+        but leaves the underlying connection open for the caller.
+        """
+        backend = cls(dialect=dialect)
+        backend._conn = IbisConnection(
+            ibis_conn, backend._spec, owns_connection=owns_connection
+        )
+        return backend
 
     def _init_from_positional(
         self, value: str | t.Any, config: dict[str, t.Any]
