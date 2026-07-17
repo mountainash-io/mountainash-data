@@ -41,3 +41,15 @@ class Backend(t.Protocol):
 
     def inspect_namespace(self, name: str) -> NamespaceInfo: ...
     def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo: ...
+
+    def raw_driver_connection(self) -> t.Any:
+        """Return the underlying native driver handle (escape hatch).
+
+        For SQL backends this is a live PEP-249 / native connection
+        (duckdb.DuckDBPyConnection, psycopg.Connection, sqlite3.Connection,
+        ...) suitable for transactions, DDL, information_schema, and
+        driver-specific idioms. The handle *kind* varies by backend (DBAPI
+        connection / client object / session object). Raises if not connected
+        or the backend exposes no driver handle.
+        """
+        ...

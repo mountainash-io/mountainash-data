@@ -62,3 +62,7 @@ def test_connection_close_idempotent_marker():
     conn = _FakeConnection()
     conn.close()
     assert conn.closed is True
+
+
+def test_protocol_declares_raw_driver_connection():
+    assert hasattr(Backend, "raw_driver_connection")
