@@ -78,6 +78,8 @@ class DialectSpec:
     drop_index_hook: t.Optional[DropIndexHook] = None
     rename_table_hook: t.Optional[RenameTableHook] = None
     add_columns_hook: t.Optional[AddColumnsHook] = None
+    raw_handle_attr: str = "con"
+    # attribute on the ibis backend holding the native driver handle (Gap 2).
     extras: t.Mapping[str, t.Any] = field(default_factory=dict)
 
 
@@ -787,6 +789,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="bigquery://",
         connection_builder=_build_bigquery_connection,
         upsert_style=UpsertStyle.MERGE,
+        raw_handle_attr="client",
     ),
     "redshift": DialectSpec(
         ibis_backend_name="postgres",  # Redshift uses postgres protocol
@@ -865,5 +868,6 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_CONNECTION_STRING,
         connection_string_scheme="pyspark://",
         connection_builder=_build_pyspark_connection,
+        raw_handle_attr="_session",
     ),
 }

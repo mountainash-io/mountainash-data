@@ -47,3 +47,20 @@ def test_registry_entries_are_dialect_specs():
     for name, spec in DIALECTS.items():
         assert isinstance(spec, DialectSpec), f"{name} entry is not a DialectSpec"
         assert spec.ibis_backend_name, f"{name} missing ibis_backend_name"
+
+
+def test_raw_handle_attr_defaults_to_con():
+    assert DIALECTS["duckdb"].raw_handle_attr == "con"
+    assert DIALECTS["postgres"].raw_handle_attr == "con"
+    assert DIALECTS["sqlite"].raw_handle_attr == "con"
+
+
+def test_raw_handle_attr_overrides():
+    assert DIALECTS["bigquery"].raw_handle_attr == "client"
+    assert DIALECTS["pyspark"].raw_handle_attr == "_session"
+
+
+def test_every_dialect_has_raw_handle_attr():
+    for name, spec in DIALECTS.items():
+        assert isinstance(spec.raw_handle_attr, str) and spec.raw_handle_attr, \
+            f"{name} missing or empty raw_handle_attr"
