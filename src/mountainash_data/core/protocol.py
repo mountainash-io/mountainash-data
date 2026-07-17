@@ -70,3 +70,19 @@ class Backend(t.Protocol):
         (an adopted autocommit-off connection is refused with
         TransactionIntegrityError). See spec §5.1–5.3."""
         ...
+
+    def in_transaction(self) -> bool:
+        """True if a unit of work opened via transaction() is currently active
+        on this backend's connection (any nesting depth). Runtime companion to
+        the static supports_transactions flag.
+
+        Total: returns False — never raises — for backends with no transaction
+        concept, a backend that was never connected or has been closed, and a
+        connection whose native handle has gone away. This is a point-in-time
+        snapshot, NOT a lock: an answer may be stale the instant it returns, so
+        it must not be used as a correctness-critical mutual-exclusion gate
+        without external coordination. Intended use is an ownership guard
+        ("refuse to run nested inside an ambient unit of work"). Note: True
+        means a unit of work is open, not that a fresh transaction() join would
+        succeed — a poisoned unit is still reported active until it unwinds."""
+        ...

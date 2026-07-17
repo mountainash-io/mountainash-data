@@ -67,3 +67,17 @@ def test_transaction_not_required_noops():
         with be.transaction(required=False):
             pass
     assert any("iceberg" in str(x.message).lower() for x in w)
+
+
+def test_in_transaction_always_false():
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    # No connection-level unit of work — consistent with supports_transactions.
+    assert be.in_transaction() is False
+    assert be.supports_transactions is False
+
+
+def test_iceberg_satisfies_protocol_including_in_transaction():
+    from mountainash_data.core.protocol import Backend
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    assert isinstance(be, Backend)
+    assert callable(be.in_transaction)

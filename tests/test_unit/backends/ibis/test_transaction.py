@@ -142,3 +142,58 @@ def test_transport_uses_cursor_when_no_execute():
         pass
     assert ("cur", "BEGIN") in h.log and ("cur", "COMMIT") in h.log
     assert ("close", None) in h.log
+
+
+from mountainash_data.backends.ibis._transaction import is_active
+
+
+def test_is_active_false_when_not_registered():
+    h = FakeHandle()
+    assert is_active(h) is False
+
+
+def test_is_active_true_inside_outer_transaction():
+    h = FakeHandle()
+    with _tx(h):
+        assert is_active(h) is True
+    assert is_active(h) is False
+
+
+def test_is_active_true_at_nested_depth():
+    h = FakeHandle()
+    with _tx(h):
+        with _tx(h):
+            assert is_active(h) is True
+        assert is_active(h) is True  # still open at depth 1
+    assert is_active(h) is False
+
+
+def test_is_active_false_after_rollback():
+    h = FakeHandle()
+    with pytest.raises(ValueError):
+        with _tx(h):
+            assert is_active(h) is True
+            raise ValueError("boom")
+    assert is_active(h) is False
+
+
+def test_is_active_true_while_poisoned_before_unwind():
+    # A caught nested failure poisons the unit; while the outer block is still
+    # open the handle stays registered, so is_active must report True.
+    h = FakeHandle()
+    with pytest.raises(TransactionPoisonedError):
+        with _tx(h):
+            try:
+                with _tx(h):
+                    raise ValueError("inner")
+            except ValueError:
+                pass
+            assert is_active(h) is True  # poisoned but still an open unit of work
+    assert is_active(h) is False  # cleared after outer unwind
+
+
+def test_is_active_does_not_mutate_registry():
+    h = FakeHandle()
+    before = dict(_ACTIVE)
+    assert is_active(h) is False
+    assert _ACTIVE == before  # pure read

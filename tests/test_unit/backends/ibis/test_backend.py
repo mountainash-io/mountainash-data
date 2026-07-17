@@ -572,3 +572,84 @@ def test_transaction_nested_joins(tmp_path):
             with be.transaction():
                 raw.execute("INSERT INTO t VALUES (1)")
         assert raw.execute("SELECT count(*) FROM t").fetchone()[0] == 1
+
+
+def test_in_transaction_false_outside_and_true_inside():
+    with IbisBackend(dialect="duckdb", database=":memory:") as be:
+        assert be.in_transaction() is False
+        with be.transaction():
+            assert be.in_transaction() is True
+        assert be.in_transaction() is False
+
+
+def test_in_transaction_true_at_nested_depth():
+    with IbisBackend(dialect="duckdb", database=":memory:") as be:
+        with be.transaction():
+            with be.transaction():
+                assert be.in_transaction() is True
+            assert be.in_transaction() is True
+        assert be.in_transaction() is False
+
+
+def test_in_transaction_false_after_rollback():
+    with IbisBackend(dialect="duckdb", database=":memory:") as be:
+        with pytest.raises(ValueError):
+            with be.transaction():
+                raise ValueError("boom")
+        assert be.in_transaction() is False
+
+
+def test_in_transaction_true_while_poisoned_before_unwind():
+    # Public-surface pin of spec §5.4: poisoned-but-open reads True.
+    from mountainash_data.core.errors import TransactionPoisonedError
+    with IbisBackend(dialect="duckdb", database=":memory:") as be:
+        with pytest.raises(TransactionPoisonedError):
+            with be.transaction():
+                try:
+                    with be.transaction():
+                        raise ValueError("inner")
+                except ValueError:
+                    pass
+                assert be.in_transaction() is True  # poisoned, still open
+        assert be.in_transaction() is False
+
+
+def test_in_transaction_none_dialect_returns_false():
+    be = IbisBackend(dialect="clickhouse")  # TransactionSupport.NONE, not connected
+    assert be.in_transaction() is False
+
+
+def test_in_transaction_not_connected_returns_false():
+    be = IbisBackend(dialect="duckdb", database=":memory:")  # never connect()ed
+    assert be.in_transaction() is False
+
+
+def test_in_transaction_after_close_returns_false():
+    be = IbisBackend(dialect="duckdb", database=":memory:")
+    be.connect()
+    be.close()
+    assert be.in_transaction() is False
+
+
+def test_in_transaction_returns_false_when_handle_resolution_raises(monkeypatch):
+    # A property-backed raw_handle_attr could raise a driver-specific (non-
+    # RuntimeError) error on a dropped connection. The predicate must swallow
+    # it and answer False, never propagate. monkeypatch replaces the bound
+    # method with a zero-arg callable; in_transaction() calls it with no args.
+    be = IbisBackend(dialect="duckdb", database=":memory:")
+    be.connect()
+
+    def _boom():
+        raise OSError("driver connection dropped")
+
+    monkeypatch.setattr(be, "raw_driver_connection", _boom)
+    assert be.in_transaction() is False
+
+
+@pytest.mark.parametrize("dialect", ["duckdb", "sqlite"])
+def test_raw_driver_connection_identity_is_stable(dialect):
+    # Load-bearing for cross-wrapper correctness (spec §3.4/§5.6): the handle
+    # must be the SAME object on every call so two wrappers over one raw conn
+    # compute one id. Pinned for every locally testable dialect.
+    with IbisBackend(dialect=dialect, database=":memory:") as be:
+        assert be.raw_driver_connection() is be.raw_driver_connection()

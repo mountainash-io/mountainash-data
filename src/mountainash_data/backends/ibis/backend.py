@@ -11,7 +11,7 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
-from mountainash_data.backends.ibis._transaction import run_transaction
+from mountainash_data.backends.ibis._transaction import run_transaction, is_active
 from mountainash_data.backends.ibis._adoption import (
     apply_options, snapshot_options, restore_options,
 )
@@ -566,6 +566,30 @@ class IbisBackend:
             in_transaction_probe=self._spec.in_transaction_probe,
             raw_execute_hook=self._spec.raw_execute_hook,
         )
+
+    def in_transaction(self) -> bool:
+        """True if a unit of work opened via transaction() is currently active
+        on this backend's raw connection (any nesting depth).
+
+        Runtime companion to the static supports_transactions flag. Total:
+        returns False — never raises — for NONE dialects, a backend that was
+        never connected or has been closed, and a connection whose native
+        handle has gone away. A point-in-time snapshot, not a lock.
+        """
+        if self._spec.transaction_support is TransactionSupport.NONE:
+            return False
+        if self._conn is None:
+            return False
+        try:
+            raw = self.raw_driver_connection()
+        except Exception:
+            # Unresolvable/absent native handle == no live unit of work.
+            # raw_driver_connection() raises RuntimeError on an absent handle
+            # attr; a property-backed handle could raise a driver-specific
+            # error on a dropped connection. Either way the answer is "no
+            # active tx"; a genuine fault surfaces on the caller's next op.
+            return False
+        return is_active(raw)
 
     # --- Inspection (terminal — delegates to IbisConnection) ---
 

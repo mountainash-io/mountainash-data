@@ -166,3 +166,29 @@ def test_from_ibis_connection_default_unchanged():
     # no apply -> ibis default stands
     assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is False
     be.close()
+
+
+def test_in_transaction_visible_across_wrappers_from_ibis_connection(raw_db):
+    # Two IbisBackends adopting ONE raw connection must agree on tx state —
+    # the pointbreak F-09 scenario (guard runs on a different wrapper).
+    ibis_conn = ibis.duckdb.from_connection(raw_db)
+    a = IbisBackend.from_ibis_connection(ibis_conn, dialect="duckdb")
+    b = IbisBackend.from_ibis_connection(ibis_conn, dialect="duckdb")
+    assert a.in_transaction() is False
+    assert b.in_transaction() is False
+    with a.transaction():
+        assert b.in_transaction() is True  # B sees A's open unit of work
+    assert a.in_transaction() is False
+    assert b.in_transaction() is False
+
+
+def test_in_transaction_visible_across_wrappers_from_raw_connection(raw_db):
+    # from_raw_connection resolves the handle differently; must still agree.
+    # (duckdb has raw_adoption_verified=True.) ibis stores the passed raw conn
+    # directly as .con, so both wrappers key on id(raw_db).
+    a = IbisBackend.from_raw_connection(raw_db, dialect="duckdb")
+    b = IbisBackend.from_raw_connection(raw_db, dialect="duckdb")
+    with a.transaction():
+        assert a.in_transaction() is True
+        assert b.in_transaction() is True
+    assert b.in_transaction() is False
