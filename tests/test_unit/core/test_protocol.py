@@ -73,3 +73,8 @@ def test_iceberg_backend_satisfies_widened_protocol():
     pytest.importorskip("pyiceberg")
     from mountainash_data.backends.iceberg.backend import IcebergBackend
     assert hasattr(IcebergBackend, "raw_driver_connection")
+
+
+def test_protocol_declares_transaction():
+    from mountainash_data.core.protocol import Backend
+    assert hasattr(Backend, "transaction")
