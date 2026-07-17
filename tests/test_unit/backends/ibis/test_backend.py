@@ -1,5 +1,7 @@
 """Tests for IbisBackend factory."""
 
+import duckdb
+import sqlite3
 import pytest
 import polars as pl
 
@@ -213,6 +215,36 @@ def test_get_connection_accessor():
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
         conn = backend.get_connection()
         assert isinstance(conn, IbisConnection)
+
+
+def test_transaction_none_dialect_required_false_noops_without_connection():
+    # required=False must no-op even when the NONE backend is never connected
+    import warnings
+    be = IbisBackend(dialect="clickhouse")  # NONE support, not connected
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with be.transaction(required=False):
+            pass  # must not raise RuntimeError("not connected")
+
+
+def test_raw_driver_connection_duckdb_returns_native_handle():
+    with IbisBackend(dialect="duckdb", database=":memory:") as be:
+        raw = be.raw_driver_connection()
+        assert isinstance(raw, duckdb.DuckDBPyConnection)
+        # usable as a real handle
+        assert raw.execute("SELECT 1").fetchone()[0] == 1
+
+
+def test_raw_driver_connection_sqlite_returns_native_handle():
+    with IbisBackend(dialect="sqlite", database=":memory:") as be:
+        raw = be.raw_driver_connection()
+        assert isinstance(raw, sqlite3.Connection)
+
+
+def test_raw_driver_connection_requires_connected():
+    be = IbisBackend(dialect="duckdb", database=":memory:")
+    with pytest.raises(RuntimeError, match="not connected"):
+        be.raw_driver_connection()
 
 
 # ---------------------------------------------------------------------------
@@ -485,3 +517,58 @@ def test_list_namespaces_accepts_catalog_kwarg():
     with IbisBackend(dialect="duckdb", database=":memory:") as backend:
         # catalog=None is the default; the kwarg must be accepted without error.
         assert isinstance(backend.list_namespaces(catalog=None), list)
+
+
+# ---------------------------------------------------------------------------
+# transaction() / supports_transactions (Gap 3 Task 3)
+# ---------------------------------------------------------------------------
+
+def test_supports_transactions_introspection():
+    assert IbisBackend(dialect="duckdb", database=":memory:").supports_transactions is True
+    assert IbisBackend(dialect="clickhouse").supports_transactions is False
+
+
+def test_transaction_ibis_level_op_rolls_back(tmp_path):
+    # the consumer's REAL shape: an ibis-level op (create_table) inside transaction()
+    db = str(tmp_path / "t.db")
+    with IbisBackend(dialect="duckdb", database=db) as be:
+        import pandas as pd
+        with pytest.raises(ValueError):
+            with be.transaction():
+                be.create_table("t", pd.DataFrame({"x": [1]}))
+                raise ValueError("boom")
+        assert "t" not in be.list_tables()   # rolled back
+
+
+def test_transaction_commits(tmp_path):
+    db = str(tmp_path / "t.db")
+    with IbisBackend(dialect="duckdb", database=db) as be:
+        raw = be.raw_driver_connection()
+        raw.execute("CREATE TABLE t (x INT)")
+        with be.transaction():
+            raw.execute("INSERT INTO t VALUES (1)")
+        assert raw.execute("SELECT count(*) FROM t").fetchone()[0] == 1
+
+
+def test_transaction_rolls_back(tmp_path):
+    db = str(tmp_path / "t.db")
+    with IbisBackend(dialect="duckdb", database=db) as be:
+        raw = be.raw_driver_connection()
+        raw.execute("CREATE TABLE t (x INT)")
+        with pytest.raises(ValueError):
+            with be.transaction():
+                raw.execute("INSERT INTO t VALUES (1)")
+                raise ValueError("boom")
+        assert raw.execute("SELECT count(*) FROM t").fetchone()[0] == 0
+
+
+def test_transaction_nested_joins(tmp_path):
+    db = str(tmp_path / "t.db")
+    with IbisBackend(dialect="duckdb", database=db) as be:
+        raw = be.raw_driver_connection()
+        raw.execute("CREATE TABLE t (x INT)")
+        # nested MUST NOT raise "cannot start a transaction within a transaction"
+        with be.transaction():
+            with be.transaction():
+                raw.execute("INSERT INTO t VALUES (1)")
+        assert raw.execute("SELECT count(*) FROM t").fetchone()[0] == 1

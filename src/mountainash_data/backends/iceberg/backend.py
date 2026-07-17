@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import typing as t
 
 from mountainash_data.backends.iceberg.catalogs.rest import IcebergRestConnection
 from mountainash_data.backends.iceberg.connection import IcebergConnectionBase
+from mountainash_data.core.errors import TransactionUnsupportedError
+from mountainash_data.core._warn import warn_once
 
 
 _CATALOG_REGISTRY: dict[str, type[IcebergConnectionBase]] = {
@@ -77,3 +80,26 @@ class IcebergBackend:
 
     def inspect_catalog(self, catalog: str | None = None) -> t.Any:
         return self._require_connected().inspect_catalog(catalog=catalog)
+
+    def raw_driver_connection(self) -> t.Any:
+        """Return the underlying pyiceberg Catalog (native handle)."""
+        return self._require_connected().catalog_backend
+
+    @property
+    def supports_transactions(self) -> bool:
+        return False
+
+    @contextlib.contextmanager
+    def transaction(self, *, required: bool = True):
+        """Iceberg has no connection-level cross-table transaction; declines.
+
+        required=True raises; required=False warns ONCE and no-ops. (pyiceberg
+        offers table-scoped transactions — a future capability, not this one.)
+        """
+        if required:
+            raise TransactionUnsupportedError(
+                "iceberg has no connection-level transaction; use table-scoped "
+                "pyiceberg transactions, or call transaction(required=False)."
+            )
+        warn_once("iceberg", "iceberg has no transaction support; transaction() is a no-op.")
+        yield

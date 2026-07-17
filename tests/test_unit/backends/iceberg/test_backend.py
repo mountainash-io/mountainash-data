@@ -9,12 +9,15 @@ pyiceberg is an optional dependency that is not installed in the default
 test environment. All tests in this module are skipped when it is absent.
 """
 
+import warnings
 import pytest
+from unittest.mock import MagicMock
 
 pyiceberg = pytest.importorskip("pyiceberg", reason="pyiceberg not installed")
 
 from mountainash_data.backends.iceberg.backend import IcebergBackend  # noqa: E402
 from mountainash_data.core.protocol import Backend  # noqa: E402
+from mountainash_data.core.errors import TransactionUnsupportedError  # noqa: E402
 
 
 def test_iceberg_backend_satisfies_protocol():
@@ -31,3 +34,36 @@ def test_unknown_catalog_raises():
 def test_iceberg_backend_carries_config():
     backend = IcebergBackend(catalog="rest", uri="http://localhost:8181", token="abc")
     assert backend._config == {"uri": "http://localhost:8181", "token": "abc"}
+
+
+def test_raw_driver_connection_returns_catalog(monkeypatch):
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    fake_conn = MagicMock()
+    fake_catalog = object()
+    fake_conn.catalog_backend = fake_catalog
+    be._conn = fake_conn  # simulate connected
+    assert be.raw_driver_connection() is fake_catalog
+
+
+def test_raw_driver_connection_requires_connected():
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    with pytest.raises(RuntimeError, match="not connected"):
+        be.raw_driver_connection()
+
+
+def test_transaction_required_raises():
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    with pytest.raises(TransactionUnsupportedError):
+        with be.transaction():
+            pass
+
+
+def test_transaction_not_required_noops():
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    from mountainash_data.core import _warn as _warnmod
+    _warnmod._WARNED.discard("iceberg")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with be.transaction(required=False):
+            pass
+    assert any("iceberg" in str(x.message).lower() for x in w)

@@ -62,3 +62,19 @@ def test_connection_close_idempotent_marker():
     conn = _FakeConnection()
     conn.close()
     assert conn.closed is True
+
+
+def test_protocol_declares_raw_driver_connection():
+    assert hasattr(Backend, "raw_driver_connection")
+
+
+def test_iceberg_backend_satisfies_widened_protocol():
+    import pytest
+    pytest.importorskip("pyiceberg")
+    from mountainash_data.backends.iceberg.backend import IcebergBackend
+    assert hasattr(IcebergBackend, "raw_driver_connection")
+
+
+def test_protocol_declares_transaction():
+    from mountainash_data.core.protocol import Backend
+    assert hasattr(Backend, "transaction")
