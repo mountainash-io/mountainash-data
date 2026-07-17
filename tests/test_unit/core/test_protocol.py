@@ -78,3 +78,14 @@ def test_iceberg_backend_satisfies_widened_protocol():
 def test_protocol_declares_transaction():
     from mountainash_data.core.protocol import Backend
     assert hasattr(Backend, "transaction")
+
+
+def test_backend_protocol_declares_in_transaction():
+    assert hasattr(Backend, "in_transaction")
+
+
+def test_ibis_backend_satisfies_protocol_including_in_transaction():
+    from mountainash_data.backends.ibis.backend import IbisBackend
+    be = IbisBackend(dialect="duckdb", database=":memory:")
+    assert isinstance(be, Backend)  # runtime_checkable: presence of protocol methods
+    assert callable(be.in_transaction)
