@@ -55,3 +55,18 @@ class Backend(t.Protocol):
         a sentinel) if not connected or the backend exposes no driver handle.
         """
         ...
+
+    @property
+    def supports_transactions(self) -> bool:
+        """True if transaction() opens a real unit of work (transaction_support is not NONE)."""
+        ...
+
+    def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
+        """Reentrant unit of work. Outermost issues BEGIN, nested calls join,
+        outermost COMMITs, any exception ROLLBACKs the whole unit. required=True
+        raises TransactionUnsupportedError on a backend with no transaction
+        concept; required=False warns once and runs as a no-op. Statements run
+        through this backend/ibis participate only while the driver is autocommit
+        (an adopted autocommit-off connection is refused with
+        TransactionIntegrityError). See spec §5.1–5.3."""
+        ...

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import typing as t
 
-from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec
+from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
+from mountainash_data.backends.ibis._transaction import run_transaction
 from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table, _generic_upsert
 from mountainash_data.backends.ibis._index import (
     _generic_create_index,
@@ -484,6 +485,23 @@ class IbisBackend:
                 f"(expected attribute {attr!r}); the connection may be closed."
             )
         return handle
+
+    @property
+    def supports_transactions(self) -> bool:
+        return self._spec.transaction_support is not TransactionSupport.NONE
+
+    def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
+        raw = self.raw_driver_connection()
+        return run_transaction(
+            raw,
+            support=self._spec.transaction_support,
+            begin_statement=self._spec.begin_statement,
+            dialect=self.dialect,
+            required=required,
+            autocommit_probe=self._spec.autocommit_probe,
+            in_transaction_probe=self._spec.in_transaction_probe,
+            raw_execute_hook=self._spec.raw_execute_hook,
+        )
 
     # --- Inspection (terminal — delegates to IbisConnection) ---
 
