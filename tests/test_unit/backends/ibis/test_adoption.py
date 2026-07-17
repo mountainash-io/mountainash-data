@@ -50,9 +50,14 @@ def test_apply_renders_declared_values():
 
 
 def test_apply_ignores_unknown_option_names():
+    import warnings
+
     h = FakeHandle()
-    apply_options(h, (OPT,), {"not_a_real_option": 1})
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        apply_options(h, (OPT,), {"not_a_real_option": 1})
     assert h.calls == []  # nothing rendered for unknown names
+    assert any("not_a_real_option" in str(w.message) for w in caught)
 
 
 def test_snapshot_skips_options_without_read_sql():

@@ -59,6 +59,10 @@ def raw_fetch_scalar(
         if callable(fetchone):
             row = fetchone()
             return row[0] if row else None
+        # A handle with a callable .execute has already run the SQL once;
+        # falling through to the cursor path would re-execute it. If the
+        # result has no fetchone, there is nothing more to try.
+        return None
     cur = handle.cursor()
     try:
         cur.execute(sql)

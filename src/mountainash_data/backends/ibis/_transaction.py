@@ -66,6 +66,14 @@ def run_transaction(
         state = _ACTIVE.get(key)
         is_outer = state is None
 
+    # NOTE: the outer-entry check above and the _ACTIVE[key] insert below are
+    # deliberately two separate critical sections, not one — the BEGIN must run
+    # between them (register-after-BEGIN, so a failed BEGIN leaves no stale
+    # entry). This is safe because a single raw driver connection is not safe
+    # for concurrent use across threads at the DBAPI level, so two threads
+    # racing to open the outer transaction on ONE handle is already
+    # unsupported; the registry's job is reentrancy for sequential/nested
+    # reuse of one connection, not cross-thread arbitration.
     if is_outer:
         # Entry precondition (finding 1): ibis interleaves commits on autocommit-off
         # connections, so a transaction() that cannot guarantee atomicity refuses.

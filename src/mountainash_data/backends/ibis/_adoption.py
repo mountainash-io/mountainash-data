@@ -7,6 +7,7 @@ import warnings
 
 from mountainash_data.backends.ibis._raw import raw_execute, raw_fetch_scalar
 from mountainash_data.backends.ibis.dialects._registry import SessionOption
+from mountainash_data.core._warn import warn_once
 
 
 def snapshot_options(
@@ -54,9 +55,16 @@ def apply_options(
     options: tuple[SessionOption, ...],
     values: dict[str, t.Any],
 ) -> None:
-    """Apply caller-declared end-state values. Unknown names are ignored."""
+    """Apply caller-declared end-state values. Unknown names are ignored, with a
+    warning (each name warns once — see warn_once)."""
     by_name = {o.name: o for o in options}
     for name, value in values.items():
         opt = by_name.get(name)
         if opt is not None:
             raw_execute(raw_handle, opt.render_set(value))
+        else:
+            warn_once(
+                f"apply_options:{name}",
+                f"session option {name!r} is not a declared adoption mutation "
+                f"for this backend; ignored",
+            )

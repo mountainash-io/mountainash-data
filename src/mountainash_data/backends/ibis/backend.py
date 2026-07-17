@@ -554,10 +554,11 @@ class IbisBackend:
         return self._spec.transaction_support is not TransactionSupport.NONE
 
     def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
-        raw = self.raw_driver_connection()
+        support = self._spec.transaction_support
+        raw = self.raw_driver_connection() if support is not TransactionSupport.NONE else None
         return run_transaction(
             raw,
-            support=self._spec.transaction_support,
+            support=support,
             begin_statement=self._spec.begin_statement,
             dialect=self.dialect,
             required=required,

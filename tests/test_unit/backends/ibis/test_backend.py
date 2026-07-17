@@ -217,6 +217,16 @@ def test_get_connection_accessor():
         assert isinstance(conn, IbisConnection)
 
 
+def test_transaction_none_dialect_required_false_noops_without_connection():
+    # required=False must no-op even when the NONE backend is never connected
+    import warnings
+    be = IbisBackend(dialect="clickhouse")  # NONE support, not connected
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with be.transaction(required=False):
+            pass  # must not raise RuntimeError("not connected")
+
+
 def test_raw_driver_connection_duckdb_returns_native_handle():
     with IbisBackend(dialect="duckdb", database=":memory:") as be:
         raw = be.raw_driver_connection()
