@@ -12,6 +12,9 @@ import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
 from mountainash_data.backends.ibis._transaction import run_transaction
+from mountainash_data.backends.ibis._adoption import (
+    snapshot_options, restore_options,
+)
 from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table, _generic_upsert
 from mountainash_data.backends.ibis._index import (
     _generic_create_index,
@@ -276,6 +279,54 @@ class IbisBackend:
         but leaves the underlying connection open for the caller.
         """
         backend = cls(dialect=dialect)
+        backend._conn = IbisConnection(
+            ibis_conn, backend._spec, owns_connection=owns_connection
+        )
+        return backend
+
+    @classmethod
+    def from_raw_connection(
+        cls,
+        raw_conn: t.Any,
+        *,
+        dialect: str,
+        owns_connection: bool = False,
+        preserve_session: bool = False,
+    ) -> IbisBackend:
+        """Adopt a *raw driver* connection (not an ibis backend).
+
+        This constructor owns the raw->ibis adoption step, so when
+        preserve_session=True it snapshots the session options ibis mutates on
+        adoption BEFORE calling ibis's from_connection, then restores them —
+        leaving the caller's session uncorrupted. preserve_session=False (the
+        default) reproduces plain ibis adoption behaviour.
+        """
+        import importlib
+
+        backend = cls(dialect=dialect)
+        # Gate (fable finding 4): only verified dialects have a known-good raw
+        # adoption path; others must use from_ibis_connection.
+        if not backend._spec.raw_adoption_verified:
+            raise NotImplementedError(
+                f"raw adoption not yet verified for {dialect!r}; construct the ibis "
+                f"connection yourself and use IbisBackend.from_ibis_connection(...)."
+            )
+        options = backend._spec.adoption_mutations
+        snapshot = snapshot_options(raw_conn, options) if preserve_session else {}
+
+        # ibis's from_connection runs _post_connect, which mutates the session
+        # BEFORE returning. If adoption raises after that, the caller's session is
+        # already stomped — restore in the finally so a failed adoption does not
+        # leave the session corrupted (Codex review).
+        ibis_backend_module = importlib.import_module(
+            f"ibis.backends.{backend._spec.ibis_backend_name}"
+        )
+        try:
+            ibis_conn = ibis_backend_module.Backend.from_connection(raw_conn)
+        finally:
+            if preserve_session and snapshot:
+                restore_options(raw_conn, options, snapshot)
+
         backend._conn = IbisConnection(
             ibis_conn, backend._spec, owns_connection=owns_connection
         )
