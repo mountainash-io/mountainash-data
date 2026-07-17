@@ -132,3 +132,16 @@ def run_transaction(
     finally:
         with _LOCK:
             state.depth -= 1
+
+
+def is_active(raw_handle: t.Any) -> bool:
+    """True if a unit of work is registered on this raw handle (any depth).
+
+    Read-only companion to run_transaction(): reads the ambient registry under
+    the same lock the register/unregister critical sections take, so the read
+    observes a fully-committed registry mutation. Never mutates _ACTIVE. Keyed
+    on id(raw_handle), matching run_transaction's reentrancy key, so distinct
+    IbisBackend wrappers of one raw connection agree.
+    """
+    with _LOCK:
+        return id(raw_handle) in _ACTIVE
