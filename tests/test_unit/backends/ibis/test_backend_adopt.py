@@ -145,3 +145,24 @@ def test_from_raw_connection_gated_on_unverified_dialect():
     # postgres has raw_adoption_verified=False -> clear error, not a cryptic ibis failure
     with pytest.raises(NotImplementedError, match="raw adoption not yet verified"):
         IbisBackend.from_raw_connection(object(), dialect="postgres")
+
+
+def test_apply_session_options_reenables_replacements():
+    raw = duckdb.connect()
+    adopted = ibis.duckdb.from_connection(raw)  # ibis stomps replacements to False
+    assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is False
+    be = IbisBackend.from_ibis_connection(
+        adopted, dialect="duckdb",
+        apply_session_options={"python_enable_replacements": True},
+    )
+    assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is True
+    be.close()
+
+
+def test_from_ibis_connection_default_unchanged():
+    raw = duckdb.connect()
+    adopted = ibis.duckdb.from_connection(raw)
+    be = IbisBackend.from_ibis_connection(adopted, dialect="duckdb")
+    # no apply -> ibis default stands
+    assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is False
+    be.close()

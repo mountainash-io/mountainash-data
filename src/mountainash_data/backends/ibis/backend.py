@@ -13,7 +13,7 @@ import typing as t
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
 from mountainash_data.backends.ibis._transaction import run_transaction
 from mountainash_data.backends.ibis._adoption import (
-    snapshot_options, restore_options,
+    apply_options, snapshot_options, restore_options,
 )
 from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table, _generic_upsert
 from mountainash_data.backends.ibis._index import (
@@ -268,6 +268,7 @@ class IbisBackend:
         *,
         dialect: str,
         owns_connection: bool = False,
+        apply_session_options: t.Optional[dict[str, t.Any]] = None,
     ) -> IbisBackend:
         """Adopt an existing live ibis connection.
 
@@ -277,11 +278,22 @@ class IbisBackend:
         the raw connection bracket this backend's writes too. By default the
         backend does NOT own the connection: ``close()`` releases the wrapper
         but leaves the underlying connection open for the caller.
+
+        apply_session_options re-applies a caller-declared end-state for the
+        session options ibis mutates on adoption (the ibis backend is already
+        built, so the pre-adoption value cannot be snapshotted here — use
+        from_raw_connection(preserve_session=True) for faithful restore).
         """
         backend = cls(dialect=dialect)
         backend._conn = IbisConnection(
             ibis_conn, backend._spec, owns_connection=owns_connection
         )
+        if apply_session_options:
+            apply_options(
+                backend.raw_driver_connection(),
+                backend._spec.adoption_mutations,
+                apply_session_options,
+            )
         return backend
 
     @classmethod
