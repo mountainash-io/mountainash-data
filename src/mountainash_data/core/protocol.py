@@ -49,7 +49,9 @@ class Backend(t.Protocol):
         (duckdb.DuckDBPyConnection, psycopg.Connection, sqlite3.Connection,
         ...) suitable for transactions, DDL, information_schema, and
         driver-specific idioms. The handle *kind* varies by backend (DBAPI
-        connection / client object / session object). Raises if not connected
-        or the backend exposes no driver handle.
+        connection / client object / session object) and is NOT guaranteed to
+        be DBAPI-conformant — callers must not assume DBAPI semantics without
+        first checking the concrete backend. Raises (never returns ``None`` as
+        a sentinel) if not connected or the backend exposes no driver handle.
         """
         ...
