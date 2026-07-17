@@ -103,3 +103,9 @@ class IcebergBackend:
             )
         warn_once("iceberg", "iceberg has no transaction support; transaction() is a no-op.")
         yield
+
+    def in_transaction(self) -> bool:
+        """Iceberg has no connection-level unit of work (supports_transactions
+        is False); nothing can be active. pyiceberg table-scoped transactions
+        are a separate future capability."""
+        return False
