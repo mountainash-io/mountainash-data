@@ -10,6 +10,7 @@ test environment. All tests in this module are skipped when it is absent.
 """
 
 import pytest
+from unittest.mock import MagicMock
 
 pyiceberg = pytest.importorskip("pyiceberg", reason="pyiceberg not installed")
 
@@ -31,3 +32,18 @@ def test_unknown_catalog_raises():
 def test_iceberg_backend_carries_config():
     backend = IcebergBackend(catalog="rest", uri="http://localhost:8181", token="abc")
     assert backend._config == {"uri": "http://localhost:8181", "token": "abc"}
+
+
+def test_raw_driver_connection_returns_catalog(monkeypatch):
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    fake_conn = MagicMock()
+    fake_catalog = object()
+    fake_conn.catalog_backend = fake_catalog
+    be._conn = fake_conn  # simulate connected
+    assert be.raw_driver_connection() is fake_catalog
+
+
+def test_raw_driver_connection_requires_connected():
+    be = IcebergBackend(catalog="rest", uri="http://localhost:8181")
+    with pytest.raises(RuntimeError, match="not connected"):
+        be.raw_driver_connection()

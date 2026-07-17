@@ -77,3 +77,7 @@ class IcebergBackend:
 
     def inspect_catalog(self, catalog: str | None = None) -> t.Any:
         return self._require_connected().inspect_catalog(catalog=catalog)
+
+    def raw_driver_connection(self) -> t.Any:
+        """Return the underlying pyiceberg Catalog (native handle)."""
+        return self._require_connected().catalog_backend
