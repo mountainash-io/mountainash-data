@@ -468,6 +468,23 @@ class IbisBackend:
         """Return the internal IbisConnection wrapper."""
         return self._require_connected()
 
+    def raw_driver_connection(self) -> t.Any:
+        """Return the underlying native driver handle (see Backend protocol).
+
+        Reads the per-dialect ``raw_handle_attr`` off the ibis backend. Works
+        for connections this backend opened AND adopted ones. Raises if not
+        connected or the handle is absent.
+        """
+        conn = self._require_connected()
+        attr = self._spec.raw_handle_attr
+        handle = getattr(conn._ibis_conn, attr, None)
+        if handle is None:
+            raise RuntimeError(
+                f"No native driver handle on the {self.dialect!r} ibis backend "
+                f"(expected attribute {attr!r}); the connection may be closed."
+            )
+        return handle
+
     # --- Inspection (terminal — delegates to IbisConnection) ---
 
     def list_tables(self, namespace: NamespaceLike = None) -> list[str]:

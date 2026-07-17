@@ -1,5 +1,7 @@
 """Tests for IbisBackend factory."""
 
+import duckdb
+import sqlite3
 import pytest
 import polars as pl
 
@@ -213,6 +215,26 @@ def test_get_connection_accessor():
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
         conn = backend.get_connection()
         assert isinstance(conn, IbisConnection)
+
+
+def test_raw_driver_connection_duckdb_returns_native_handle():
+    with IbisBackend(dialect="duckdb", database=":memory:") as be:
+        raw = be.raw_driver_connection()
+        assert isinstance(raw, duckdb.DuckDBPyConnection)
+        # usable as a real handle
+        assert raw.execute("SELECT 1").fetchone()[0] == 1
+
+
+def test_raw_driver_connection_sqlite_returns_native_handle():
+    with IbisBackend(dialect="sqlite", database=":memory:") as be:
+        raw = be.raw_driver_connection()
+        assert isinstance(raw, sqlite3.Connection)
+
+
+def test_raw_driver_connection_requires_connected():
+    be = IbisBackend(dialect="duckdb", database=":memory:")
+    with pytest.raises(RuntimeError, match="not connected"):
+        be.raw_driver_connection()
 
 
 # ---------------------------------------------------------------------------
