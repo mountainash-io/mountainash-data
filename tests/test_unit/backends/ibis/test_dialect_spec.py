@@ -4,6 +4,7 @@ for the per-backend connection class explosion."""
 from mountainash_data.backends.ibis.dialects._registry import (
     DialectSpec,
     DIALECTS,
+    TransactionSupport,
 )
 
 
@@ -64,3 +65,23 @@ def test_every_dialect_has_raw_handle_attr():
     for name, spec in DIALECTS.items():
         assert isinstance(spec.raw_handle_attr, str) and spec.raw_handle_attr, \
             f"{name} missing or empty raw_handle_attr"
+
+
+def test_transaction_support_assignments():
+    assert DIALECTS["duckdb"].transaction_support is TransactionSupport.FULL
+    assert DIALECTS["mssql"].transaction_support is TransactionSupport.FULL
+    assert DIALECTS["clickhouse"].transaction_support is TransactionSupport.NONE
+    assert DIALECTS["trino"].transaction_support is TransactionSupport.LIMITED
+
+
+def test_begin_statement_assignments():
+    assert DIALECTS["duckdb"].begin_statement == "BEGIN"
+    assert DIALECTS["mssql"].begin_statement == "BEGIN TRANSACTION"
+    assert DIALECTS["oracle"].begin_statement is None
+    assert DIALECTS["exasol"].begin_statement is None
+
+
+def test_none_support_implies_no_begin_statement():
+    for name, spec in DIALECTS.items():
+        if spec.transaction_support is TransactionSupport.NONE:
+            assert spec.begin_statement is None, name

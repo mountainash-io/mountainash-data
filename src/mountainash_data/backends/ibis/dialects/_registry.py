@@ -28,6 +28,12 @@ class UpsertStyle(str, enum.Enum):
     ON_DUPLICATE_KEY = "on_duplicate_key"
 
 
+class TransactionSupport(str, enum.Enum):
+    FULL = "full"
+    LIMITED = "limited"
+    NONE = "none"
+
+
 class DropScope(str, enum.Enum):
     SCHEMA_GLOBAL = "schema_global"   # DROP INDEX name
     TABLE_SCOPED = "table_scoped"     # DROP INDEX name ON tbl
@@ -80,6 +86,15 @@ class DialectSpec:
     add_columns_hook: t.Optional[AddColumnsHook] = None
     raw_handle_attr: str = "con"
     # attribute on the ibis backend holding the native driver handle (Gap 2).
+    raw_adoption_verified: bool = False
+    # True once Gap 1's from_ibis_connection() adoption path has been live-verified
+    # for this dialect (assigned by the Gap 1 plan; declared here to avoid a
+    # second addition to this dataclass if Gap 1 lands after Gap 3).
+    transaction_support: "TransactionSupport" = TransactionSupport.NONE
+    begin_statement: t.Optional[str] = "BEGIN"
+    autocommit_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
+    in_transaction_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
+    raw_execute_hook: t.Optional[t.Callable[[t.Any, str], None]] = None
     extras: t.Mapping[str, t.Any] = field(default_factory=dict)
 
 
@@ -681,6 +696,16 @@ from mountainash_data.backends.ibis.operations import (  # noqa: E402
 )
 
 
+def _postgres_autocommit_probe(con: t.Any) -> t.Optional[bool]:
+    """psycopg Connection.autocommit — True when ibis's connect default is in force."""
+    return bool(con.autocommit)
+
+
+def _postgres_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
+    """False when no server-side transaction is open (psycopg transaction_status IDLE == 0)."""
+    return con.info.transaction_status != 0
+
+
 DIALECTS: dict[str, DialectSpec] = {
     "sqlite": DialectSpec(
         ibis_backend_name="sqlite",
@@ -695,6 +720,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=True, native_if_exists=True,
             index_types=frozenset(),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "duckdb": DialectSpec(
         ibis_backend_name="duckdb",
@@ -709,6 +736,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=True, native_if_exists=True,
             index_types=frozenset(),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "motherduck": DialectSpec(
         ibis_backend_name="duckdb",
@@ -723,6 +752,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=True, native_if_exists=True,
             index_types=frozenset(),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "postgres": DialectSpec(
         ibis_backend_name="postgres",
@@ -736,6 +767,10 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=True, native_if_exists=True,
             index_types=frozenset({"btree", "hash", "gist", "gin", "brin", "spgist"}),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
+        autocommit_probe=_postgres_autocommit_probe,
+        in_transaction_probe=_postgres_in_transaction_probe,
     ),
     "mysql": DialectSpec(
         ibis_backend_name="mysql",
@@ -749,6 +784,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=False, native_if_exists=False,
             index_types=frozenset({"btree"}),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "mssql": DialectSpec(
         ibis_backend_name="mssql",
@@ -762,6 +799,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=False, native_if_exists=True,
             index_types=frozenset(),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN TRANSACTION",
     ),
     "oracle": DialectSpec(
         ibis_backend_name="oracle",
@@ -775,6 +814,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=False, native_if_exists=False,
             index_types=frozenset(),
         ),
+        transaction_support=TransactionSupport.FULL,
+        begin_statement=None,
     ),
     "snowflake": DialectSpec(
         ibis_backend_name="snowflake",
@@ -782,6 +823,8 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="snowflake://",
         connection_builder=_build_snowflake_connection,
         upsert_style=UpsertStyle.MERGE,
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "bigquery": DialectSpec(
         ibis_backend_name="bigquery",
@@ -790,6 +833,8 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_builder=_build_bigquery_connection,
         upsert_style=UpsertStyle.MERGE,
         raw_handle_attr="client",
+        transaction_support=TransactionSupport.NONE,
+        begin_statement=None,
     ),
     "redshift": DialectSpec(
         ibis_backend_name="postgres",  # Redshift uses postgres protocol
@@ -797,6 +842,8 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="postgres://",  # confirmed: redshift uses postgres://
         connection_builder=_build_redshift_connection,
         upsert_style=UpsertStyle.MERGE,
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "trino": DialectSpec(
         ibis_backend_name="trino",
@@ -804,12 +851,16 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="trino://",
         connection_builder=_build_trino_connection,
         upsert_style=UpsertStyle.MERGE,
+        transaction_support=TransactionSupport.LIMITED,
+        begin_statement="START TRANSACTION",
     ),
     "clickhouse": DialectSpec(
         ibis_backend_name="clickhouse",
         connection_mode=_KWARGS,
         connection_string_scheme="clickhouse://",
         connection_builder=_build_clickhouse_connection,
+        transaction_support=TransactionSupport.NONE,
+        begin_statement=None,
     ),
     "databricks": DialectSpec(
         ibis_backend_name="databricks",
@@ -817,6 +868,8 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="",
         connection_builder=_build_databricks_connection,
         upsert_style=UpsertStyle.MERGE,
+        transaction_support=TransactionSupport.NONE,
+        begin_statement=None,
     ),
     "singlestoredb": DialectSpec(
         ibis_backend_name="singlestoredb",
@@ -830,6 +883,8 @@ DIALECTS: dict[str, DialectSpec] = {
             native_if_not_exists=False, native_if_exists=False,
             index_types=frozenset({"btree", "hash"}),
         ),
+        transaction_support=TransactionSupport.LIMITED,
+        begin_statement="BEGIN",
     ),
     "exasol": DialectSpec(
         ibis_backend_name="exasol",
@@ -837,18 +892,24 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="exasol://",
         connection_builder=_build_exasol_connection,
         upsert_style=UpsertStyle.MERGE,
+        transaction_support=TransactionSupport.FULL,
+        begin_statement=None,
     ),
     "impala": DialectSpec(
         ibis_backend_name="impala",
         connection_mode=_KWARGS,
         connection_string_scheme="impala://",
         connection_builder=_build_impala_connection,
+        transaction_support=TransactionSupport.NONE,
+        begin_statement=None,
     ),
     "materialize": DialectSpec(
         ibis_backend_name="materialize",
         connection_mode=_KWARGS,
         connection_string_scheme="materialize://",
         connection_builder=_build_materialize_connection,
+        transaction_support=TransactionSupport.FULL,
+        begin_statement="BEGIN",
     ),
     "risingwave": DialectSpec(
         ibis_backend_name="risingwave",
@@ -856,12 +917,16 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="risingwave://",
         connection_builder=_build_risingwave_connection,
         upsert_style=UpsertStyle.ON_CONFLICT,
+        transaction_support=TransactionSupport.LIMITED,
+        begin_statement="BEGIN",
     ),
     "druid": DialectSpec(
         ibis_backend_name="druid",
         connection_mode=_KWARGS,
         connection_string_scheme="druid://",
         connection_builder=_build_druid_connection,
+        transaction_support=TransactionSupport.NONE,
+        begin_statement=None,
     ),
     "pyspark": DialectSpec(
         ibis_backend_name="pyspark",
@@ -869,5 +934,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="pyspark://",
         connection_builder=_build_pyspark_connection,
         raw_handle_attr="_session",
+        transaction_support=TransactionSupport.NONE,
+        begin_statement=None,
     ),
 }
