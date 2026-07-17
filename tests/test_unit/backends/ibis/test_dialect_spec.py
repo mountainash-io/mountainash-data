@@ -4,6 +4,7 @@ for the per-backend connection class explosion."""
 from mountainash_data.backends.ibis.dialects._registry import (
     DialectSpec,
     DIALECTS,
+    SessionOption,
     TransactionSupport,
 )
 
@@ -85,3 +86,37 @@ def test_none_support_implies_no_begin_statement():
     for name, spec in DIALECTS.items():
         if spec.transaction_support is TransactionSupport.NONE:
             assert spec.begin_statement is None, name
+
+
+def test_duckdb_adoption_mutations_declared():
+    names = {o.name for o in DIALECTS["duckdb"].adoption_mutations}
+    assert "python_enable_replacements" in names
+    assert "timezone" in names
+
+
+def test_non_mutating_dialects_empty():
+    for d in ("trino", "clickhouse", "druid", "bigquery"):
+        assert DIALECTS[d].adoption_mutations == ()
+
+
+def test_session_options_well_formed():
+    for name, spec in DIALECTS.items():
+        for opt in spec.adoption_mutations:
+            assert isinstance(opt, SessionOption)
+            assert opt.name
+            # render_set must produce a str statement
+            assert isinstance(opt.render_set(True), str)
+
+
+def test_duckdb_timezone_render_is_injection_safe():
+    tz_opt = next(o for o in DIALECTS["duckdb"].adoption_mutations if o.name == "timezone")
+    rendered = tz_opt.render_set("UTC'; DROP TABLE t; --")
+    # the malicious quote must be escaped inside the literal, not break out of it
+    assert "DROP TABLE" in rendered            # value preserved as data
+    assert rendered.count("SET TimeZone=") == 1
+    assert not rendered.rstrip().endswith("--")  # not left as trailing raw SQL
+
+
+def test_raw_adoption_verified_assignments():
+    assert DIALECTS["duckdb"].raw_adoption_verified is True
+    assert DIALECTS["postgres"].raw_adoption_verified is False

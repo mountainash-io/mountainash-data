@@ -66,6 +66,19 @@ AddColumnsHook = t.Callable[..., None]
 
 
 @dataclass(frozen=True)
+class SessionOption:
+    """A session option ibis mutates on adoption (Gap 1).
+
+    read_sql returns the current scalar value (None if unreadable); render_set
+    maps a value to the SQL statement that sets it.
+    """
+
+    name: str
+    read_sql: t.Optional[str]
+    render_set: t.Callable[[t.Any], str]
+
+
+@dataclass(frozen=True)
 class DialectSpec:
     """Per-dialect configuration and capability hooks."""
 
@@ -95,6 +108,8 @@ class DialectSpec:
     autocommit_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
     in_transaction_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
     raw_execute_hook: t.Optional[t.Callable[[t.Any, str], None]] = None
+    adoption_mutations: tuple["SessionOption", ...] = ()
+    # session options ibis stomps on adoption; () = none (Gap 1).
     extras: t.Mapping[str, t.Any] = field(default_factory=dict)
 
 
@@ -706,6 +721,35 @@ def _postgres_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
     return con.info.transaction_status != 0
 
 
+def _sql_str_literal(v: t.Any) -> str:
+    """Escape a value as a single-quoted SQL string literal (injection-safe).
+
+    Uses sqlglot so embedded quotes/backslashes are escaped, not raw-interpolated
+    (Codex review — apply_session_options values are caller-supplied).
+    """
+    import sqlglot.expressions as exp
+    return exp.Literal.string(str(v)).sql()
+
+
+def _duckdb_render_replacements(v: t.Any) -> str:
+    # boolean -> fixed token, never interpolated
+    return f"SET python_enable_replacements={'true' if v else 'false'}"
+
+
+def _duckdb_render_timezone(v: t.Any) -> str:
+    return f"SET TimeZone={_sql_str_literal(v)}"
+
+
+_DUCKDB_ADOPTION = (
+    SessionOption("python_enable_replacements",
+                  "SELECT current_setting('python_enable_replacements')",
+                  _duckdb_render_replacements),
+    SessionOption("timezone",
+                  "SELECT current_setting('TimeZone')",
+                  _duckdb_render_timezone),
+)
+
+
 DIALECTS: dict[str, DialectSpec] = {
     "sqlite": DialectSpec(
         ibis_backend_name="sqlite",
@@ -738,6 +782,8 @@ DIALECTS: dict[str, DialectSpec] = {
         ),
         transaction_support=TransactionSupport.FULL,
         begin_statement="BEGIN",
+        adoption_mutations=_DUCKDB_ADOPTION,
+        raw_adoption_verified=True,
     ),
     "motherduck": DialectSpec(
         ibis_backend_name="duckdb",
@@ -754,6 +800,8 @@ DIALECTS: dict[str, DialectSpec] = {
         ),
         transaction_support=TransactionSupport.FULL,
         begin_statement="BEGIN",
+        adoption_mutations=_DUCKDB_ADOPTION,
+        raw_adoption_verified=True,
     ),
     "postgres": DialectSpec(
         ibis_backend_name="postgres",
