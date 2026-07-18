@@ -6,7 +6,7 @@ from mountainash_auth_client import (
 )
 from mountainash_data.core.settings.adapters import (
     sql as _sql, snowflake as _snow, mssql as _mssql,
-    redshift as _rs, databricks as _dbx, pyiceberg_rest as _ice,
+    redshift as _rs, databricks as _dbx,
 )
 
 
@@ -60,10 +60,6 @@ def test_redshift_iam():
 
 def test_databricks_token():
     assert _dbx.token(TokenAuthProfile(TOKEN="tok"), {}) == {"access_token": "tok"}
-
-
-def test_pyiceberg_token():
-    assert _ice.token(TokenAuthProfile(TOKEN="tok"), {"uri": "u"}) == {"uri": "u", "token": "tok"}
 
 
 def test_trino_password_builds_basic_auth():

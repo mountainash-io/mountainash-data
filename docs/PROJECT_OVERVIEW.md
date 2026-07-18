@@ -5,7 +5,7 @@ Provides unified database connections and dataframe abstractions for multiple ba
 
 ## Architecture
 The package is built on a layered architecture with three main components:
-1. **Database Connections Layer** - Abstracts database connections using Ibis framework and PyIceberg
+1. **Database Connections Layer** - Abstracts database connections using the Ibis framework
 2. **DataFrame Abstraction Layer** - Provides unified dataframe interface across multiple backends
 3. **Utilities Layer** - Supporting utilities for data transformation, mapping, and conversion
 
@@ -17,31 +17,25 @@ src/mountainash_data/
 ├── databases/                     # Database connection layer
 │   ├── __init__.py
 │   ├── base_db_connection.py     # Abstract base connection
-│   ├── ibis/                     # Ibis-based connections
-│   │   ├── __init__.py
-│   │   ├── base_ibis_connection.py
-│   │   ├── constants.py
-│   │   ├── ibis_connection_factory.py
-│   │   └── connections/          # Specific backend implementations
-│   │       ├── __init__.py
-│   │       ├── bigquery_ibis_connection.py
-│   │       ├── duckdb_ibis_connection.py
-│   │       ├── motherduck_ibis_connection.py
-│   │       ├── mssql_ibis_connection.py
-│   │       ├── mysql_ibis_connection.py
-│   │       ├── oracle_ibis_connection.py
-│   │       ├── postgres_ibis_connection.py
-│   │       ├── pyspark_ibis_connection.py
-│   │       ├── redshift_ibis_connection.py
-│   │       ├── snowflake_ibis_connection.py
-│   │       ├── sqlite_ibis_connection.py
-│   │       └── trino_ibis_connection.py
-│   └── pyiceberg/               # PyIceberg support
+│   └── ibis/                     # Ibis-based connections
 │       ├── __init__.py
-│       ├── base_pyiceberg_connection.py
-│       └── connections/
+│       ├── base_ibis_connection.py
+│       ├── constants.py
+│       ├── ibis_connection_factory.py
+│       └── connections/          # Specific backend implementations
 │           ├── __init__.py
-│           └── pyiceberg_rest_connection.py
+│           ├── bigquery_ibis_connection.py
+│           ├── duckdb_ibis_connection.py
+│           ├── motherduck_ibis_connection.py
+│           ├── mssql_ibis_connection.py
+│           ├── mysql_ibis_connection.py
+│           ├── oracle_ibis_connection.py
+│           ├── postgres_ibis_connection.py
+│           ├── pyspark_ibis_connection.py
+│           ├── redshift_ibis_connection.py
+│           ├── snowflake_ibis_connection.py
+│           ├── sqlite_ibis_connection.py
+│           └── trino_ibis_connection.py
 ├── dataframes/                   # DataFrame abstraction layer
 │   ├── __init__.py
 │   ├── base_dataframe.py        # Abstract dataframe interface
@@ -101,7 +95,6 @@ Core package providing unified data access layer with key classes:
 Database connection abstraction supporting multiple backends:
 - **Base Layer**: `BaseDBConnection` abstract interface
 - **Ibis Layer**: Connection implementations for 12+ database backends
-- **PyIceberg Layer**: Data lake connectivity via Apache Iceberg
 
 ### dataframes/
 DataFrame abstraction and utilities:

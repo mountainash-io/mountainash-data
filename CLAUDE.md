@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**mountainash-data** provides physical access to backend data services — relational databases via Ibis, and Iceberg table-format catalogs via PyIceberg. It collapses what was previously 13 per-dialect connection classes into a data-driven `DialectSpec` registry, exposes clean `Backend` / `Connection` protocols, and provides factories and a high-level facade (`DatabaseUtils`).
+**mountainash-data** provides physical access to backend data services — relational databases via Ibis behind a backend-agnostic `Backend` protocol ready for additional backends. It collapses what was previously 13 per-dialect connection classes into a data-driven `DialectSpec` registry, exposes clean `Backend` / `Connection` protocols, and provides factories and a high-level facade (`DatabaseUtils`).
 
 ## Planning, Specs & Principles (live in mountainash-central)
 
@@ -63,11 +63,6 @@ tests, and this `CLAUDE.md` live in this repo's tree.
    - `BaseIbisOperations` + per-dialect subclasses in `operations.py`
    - `DialectSpec` registry in `dialects/`
 
-7. **Iceberg backend** (`src/mountainash_data/backends/iceberg/`)
-   - `IcebergBackend` — catalog-type registry (currently: `"rest"`)
-   - Connection, operations, and inspection classes
-   - Requires optional `pyiceberg` dependency
-
 ### Package Structure
 
 ```
@@ -83,22 +78,15 @@ src/mountainash_data/
 │   ├── settings/                # Per-dialect auth settings (pydantic)
 │   └── factories/               # ConnectionFactory, OperationsFactory, SettingsFactory
 └── backends/
-    ├── ibis/
-    │   ├── backend.py           # IbisBackend + IbisConnection (new-style)
-    │   ├── connection.py        # BaseIbisConnection + dialect subclasses
-    │   ├── operations.py        # BaseIbisOperations + dialect subclasses
-    │   ├── inspect.py           # Ibis-specific inspection helpers
-    │   └── dialects/            # DialectSpec registry (data-driven)
-    └── iceberg/
-        ├── backend.py           # IcebergBackend + catalog registry
-        ├── connection.py        # IcebergConnectionBase
-        ├── operations.py        # IcebergOperationsBase
-        ├── inspect.py           # Iceberg inspection helpers
-        └── catalogs/            # Per-catalog implementations
+    └── ibis/
+        ├── backend.py           # IbisBackend + IbisConnection (new-style)
+        ├── connection.py        # BaseIbisConnection + dialect subclasses
+        ├── operations.py        # BaseIbisOperations + dialect subclasses
+        ├── inspect.py           # Ibis-specific inspection helpers
+        └── dialects/            # DialectSpec registry (data-driven)
 ```
 
 ### Optional Dependencies (extras)
-- **pyiceberg**: Required for `IcebergBackend`
 - **postgres**: PostgreSQL support (psycopg2-binary, ibis-framework[postgres])
 - **mssql**: SQL Server support (pyodbc, ibis-framework[mssql])
 - **snowflake**: Snowflake support (snowflake-connector-python, ibis-framework[snowflake])
@@ -196,7 +184,6 @@ tests/
 ├── test_unit/
 │   ├── core/                      # Protocol, inspection tests
 │   ├── backends/ibis/             # IbisBackend tests
-│   ├── backends/iceberg/          # IcebergBackend tests
 │   ├── factories/                 # Factory tests
 │   ├── databases/                 # Legacy-path tests (updated to new paths)
 │   ├── test_database_utils.py     # DatabaseUtils tests
@@ -219,7 +206,7 @@ tests/
 ## Usage Patterns
 
 ```python
-from mountainash_data import IbisBackend, IcebergBackend
+from mountainash_data import IbisBackend
 from mountainash_data.core.settings import (
     SQLiteAuthSettings,
     NoAuth,
@@ -250,14 +237,6 @@ try:
     #   rel = ma.relation(ibis_table)  # compiles against Ibis automatically
 finally:
     conn.close()
-
-# Iceberg backend (requires pyiceberg)
-ice = IcebergBackend(catalog="rest", uri="http://localhost:8181")
-ice_conn = ice.connect()
-try:
-    namespaces = ice_conn.list_namespaces()
-finally:
-    ice_conn.close()
 ```
 
 ## Development Environments

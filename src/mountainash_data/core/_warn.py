@@ -1,8 +1,8 @@
 """Process-wide "warn at most once per key" helper (Gap 3, fable finding 6).
 
-Shared by the ibis transaction machinery and the iceberg backend so a no-op
-transaction() on an unsupported backend warns once per dialect, not per call.
-Lives in core/ so neither backend imports the other.
+Shared by the ibis transaction machinery so a no-op transaction() on an
+unsupported backend warns once per dialect, not per call. Lives in core/ so
+backends don't need to import each other.
 """
 from __future__ import annotations
 

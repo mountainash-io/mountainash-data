@@ -3,7 +3,6 @@
 Public API:
     Backend — protocol (core.protocol)
     IbisBackend — ibis-style relational backends (backends.ibis.backend)
-    IcebergBackend — iceberg-style table-format catalogs (backends.iceberg.backend)
     CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo — inspection model
 """
 
@@ -18,11 +17,6 @@ from mountainash_data.core.inspection import (
 from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_data.backends.ibis.backend import IbisBackend
 
-try:
-    from mountainash_data.backends.iceberg.backend import IcebergBackend
-except ImportError:
-    IcebergBackend = None  # type: ignore[assignment,misc]
-
 __all__ = [
     "__version__",
     "Backend",
@@ -33,5 +27,4 @@ __all__ = [
     "Namespace",
     "NamespaceLike",
     "IbisBackend",
-    "IcebergBackend",
 ]

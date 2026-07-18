@@ -9,7 +9,7 @@ from mountainash_auth_client import (
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
 from . import (sql as _sql, trino as _trino, snowflake as _snow, bigquery as _bq,
-               databricks as _dbx, mssql as _mssql, redshift as _rs, pyiceberg_rest as _ice,
+               databricks as _dbx, mssql as _mssql, redshift as _rs,
                motherduck as _md)
 
 _AUTH_ADAPTERS: dict[tuple[t.Any, type], t.Callable[[t.Any, dict], dict]] = {
@@ -29,7 +29,6 @@ _AUTH_ADAPTERS: dict[tuple[t.Any, type], t.Callable[[t.Any, dict], dict]] = {
     (P.MSSQL,          AzureADAuthProfile):        _mssql.azure_ad,
     (P.REDSHIFT,       PasswordAuthProfile):       _rs.password,
     (P.REDSHIFT,       IAMAuthProfile):            _rs.iam,
-    (P.PYICEBERG_REST, TokenAuthProfile):          _ice.token,
 }
 for _p in (P.POSTGRESQL, P.MYSQL, P.CLICKHOUSE, P.MATERIALIZE, P.RISINGWAVE,
            P.DRUID, P.SINGLESTOREDB, P.IMPALA, P.EXASOL):

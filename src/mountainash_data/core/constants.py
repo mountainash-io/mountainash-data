@@ -21,7 +21,6 @@ class CONST_DB_PROVIDER_TYPE(Enum):
     DUCKDB =auto()
     MOTHERDUCK = auto()
     TRINO = auto()
-    PYICEBERG_REST = auto()
     ORACLE = auto()
     CLICKHOUSE = auto()
     DATABRICKS = auto()
@@ -85,7 +84,6 @@ class CONST_DB_ABSTRACTION_LAYER(Enum):
         - FUGUE (str): Fugue database abstraction layer.
     """
     IBIS =     auto()
-    PYICEBERG = auto()
 
 class CONST_DB_BACKEND(StrEnum):
     """
@@ -124,7 +122,6 @@ class CONST_DB_BACKEND(StrEnum):
     MATERIALIZE =  "MATERIALIZE"
     RISINGWAVE =   "RISINGWAVE"
     DRUID =        "DRUID"
-    PYICEBERG =    "PYICEBERG"
     # POLARS =       "POLARS"
     # PANDAS =       "PANDAS"
 

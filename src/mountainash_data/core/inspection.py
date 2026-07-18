@@ -1,6 +1,6 @@
 """Shared physical-layer metadata model.
 
-Both ibis and iceberg backends populate these dataclasses from their
+Backends populate these dataclasses from their
 native introspection APIs, giving consumers a uniform shape regardless
 of which backend produced them.
 """
