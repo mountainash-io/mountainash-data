@@ -89,3 +89,68 @@ def test_ibis_backend_satisfies_protocol_including_in_transaction():
     be = IbisBackend(dialect="duckdb", database=":memory:")
     assert isinstance(be, Backend)  # runtime_checkable: presence of protocol methods
     assert callable(be.in_transaction)
+
+
+class _StubBackend:
+    """Minimal non-Ibis structural implementer of the Backend protocol.
+
+    Standing guard that the protocol stays satisfiable by a second backend and
+    does not silently collapse into 'whatever IbisBackend does'. Not shipped,
+    not registered — test-only.
+    """
+
+    name = "stub"
+
+    def connect(self):
+        return self
+
+    def close(self):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return None
+
+    def list_tables(self, namespace=None):
+        return []
+
+    def list_namespaces(self, catalog=None):
+        return []
+
+    def list_catalogs(self):
+        return []
+
+    def inspect_table(self, name, namespace=None):
+        return TableInfo(name=name, columns=[])
+
+    def inspect_namespace(self, name):
+        return NamespaceInfo(location=Namespace(), tables=[])
+
+    def inspect_catalog(self, catalog=None):
+        return CatalogInfo(name=catalog or "stub", namespaces=[])
+
+    def raw_driver_connection(self):
+        raise RuntimeError("stub has no driver handle")
+
+    @property
+    def supports_transactions(self):
+        return False
+
+    def transaction(self, *, required=True):
+        raise RuntimeError("stub does not support transactions")
+
+    def in_transaction(self):
+        return False
+
+
+def test_non_ibis_stub_satisfies_backend_protocol():
+    stub = _StubBackend()
+    assert isinstance(stub, Backend)
+    # catalog tier — the seam Iceberg originally motivated, kept generic
+    assert stub.list_catalogs() == []
+    assert stub.inspect_catalog().name == "stub"
+    assert stub.list_namespaces(catalog="anything") == []
+    assert stub.in_transaction() is False
+    assert stub.supports_transactions is False
