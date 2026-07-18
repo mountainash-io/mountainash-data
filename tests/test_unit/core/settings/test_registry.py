@@ -13,12 +13,12 @@ from mountainash_data.core.settings.registry import (
 @pytest.mark.unit
 class TestDatabasesRegistry:
     def test_registry_is_populated_after_import(self):
-        """All 12 backends register themselves at import time."""
+        """Every relational backend registers itself at import time."""
         import mountainash_data.core.settings  # noqa: F401
 
         for name in ["sqlite", "duckdb", "postgresql", "mysql", "mssql",
                      "snowflake", "bigquery", "redshift", "pyspark",
-                     "trino", "motherduck", "pyiceberg_rest"]:
+                     "trino", "motherduck"]:
             assert name in DATABASES_REGISTRY, f"{name} missing from registry"
 
     def test_get_descriptor_returns_correct_type(self):

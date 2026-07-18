@@ -8,8 +8,6 @@ connection_builder functions do all driver imports lazily inside the callable,
 not at module import time — so no pytest.importorskip guard is needed here;
 _RecordingConn stands in for the ibis connection object entirely.
 Regression: the database= keyword is gone from the public surface.
-
-Iceberg deep-namespace round-trip is deferred to DEBT-11 (see spec §10 note).
 """
 
 from __future__ import annotations

@@ -41,7 +41,6 @@ from .impala import ImpalaBackendProfile
 from .materialize import MaterializeBackendProfile
 from .risingwave import RisingWaveBackendProfile
 from .druid import DruidBackendProfile
-from .pyiceberg_rest import PyIcebergRestBackendProfile
 
 import warnings as _warnings
 
@@ -83,5 +82,4 @@ __all__ = [
     "PySparkBackendProfile", "TrinoBackendProfile",
     "ExasolBackendProfile", "ImpalaBackendProfile", "MaterializeBackendProfile",
     "RisingWaveBackendProfile", "DruidBackendProfile",
-    "PyIcebergRestBackendProfile",
 ]

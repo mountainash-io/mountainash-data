@@ -68,13 +68,6 @@ def test_protocol_declares_raw_driver_connection():
     assert hasattr(Backend, "raw_driver_connection")
 
 
-def test_iceberg_backend_satisfies_widened_protocol():
-    import pytest
-    pytest.importorskip("pyiceberg")
-    from mountainash_data.backends.iceberg.backend import IcebergBackend
-    assert hasattr(IcebergBackend, "raw_driver_connection")
-
-
 def test_protocol_declares_transaction():
     from mountainash_data.core.protocol import Backend
     assert hasattr(Backend, "transaction")
@@ -148,7 +141,7 @@ class _StubBackend:
 def test_non_ibis_stub_satisfies_backend_protocol():
     stub = _StubBackend()
     assert isinstance(stub, Backend)
-    # catalog tier — the seam Iceberg originally motivated, kept generic
+    # catalog tier — kept generic for any multi-catalog backend
     assert stub.list_catalogs() == []
     assert stub.inspect_catalog().name == "stub"
     assert stub.list_namespaces(catalog="anything") == []

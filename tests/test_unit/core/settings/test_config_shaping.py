@@ -1,7 +1,6 @@
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
 from mountainash_data.core.settings import (
     MySQLBackendProfile, MSSQLBackendProfile, SnowflakeBackendProfile,
-    PyIcebergRestBackendProfile,
 )
 
 
@@ -25,11 +24,3 @@ def test_snowflake_session_parameters_added_only():
     assert out["session_parameters"] == {"QUERY_TAG": "etl", "TIMEZONE": "UTC"}
     assert "query_tag" not in out and "timezone" not in out
 
-
-def test_pyiceberg_headers_expand_s3_flat():
-    out = PyIcebergRestBackendProfile(
-        CATALOG_NAME="c", CATALOG_URI="http://x", S3_REGION="us-east-1",
-        HEADERS={"X-A": "1", "X-B": "2"},
-    ).emit(P.PYICEBERG_REST)
-    assert out["name"] == "c" and out["uri"] == "http://x" and out["s3.region"] == "us-east-1"
-    assert out["header.X-A"] == "1" and out["header.X-B"] == "2" and "headers" not in out
