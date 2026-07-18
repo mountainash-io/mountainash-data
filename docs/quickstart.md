@@ -15,7 +15,6 @@ pip install mountainash-data[snowflake]    # Snowflake
 pip install mountainash-data[bigquery]     # BigQuery
 pip install mountainash-data[pyspark]      # Apache Spark
 pip install mountainash-data[trino]        # Trino
-pip install mountainash-data[pyiceberg]    # Iceberg catalogs
 ```
 
 SQLite and DuckDB work out of the box — no extra needed.
@@ -214,17 +213,3 @@ with IbisBackend(dialect="duckdb") as backend:
 | `druid` | `druid://` | |
 | `pyspark` | `pyspark://` | Requires `[pyspark]` extra |
 
----
-
-## Iceberg catalogs (optional)
-
-Requires `pip install mountainash-data[pyiceberg]`.
-
-```python
-from mountainash_data import IcebergBackend
-
-with IcebergBackend(catalog="rest", uri="http://localhost:8181") as backend:
-    namespaces = backend.list_namespaces()
-    tables = backend.list_tables(namespace="analytics")
-    info = backend.inspect_table("events", namespace="analytics")
-```

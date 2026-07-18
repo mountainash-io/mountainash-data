@@ -9,7 +9,6 @@
 1. **Database Connections Layer** (`src/mountainash_data/databases/`)
    - Base database connection abstraction (`BaseDBConnection`)
    - Ibis-based connections supporting multiple backends (SQLite, DuckDB, PostgreSQL, SQL Server, etc.)
-   - PyIceberg support for data lake operations
    - Connection factory pattern for backend instantiation
 
 2. **DataFrame Abstraction Layer** (`src/mountainash_data/dataframes/`)
@@ -43,7 +42,6 @@ src/mountainash_data/
 │   │   │   ├── postgres_ibis_connection.py
 │   │   │   └── [other backends...]
 │   │   └── ibis_connection_factory.py
-│   └── pyiceberg/               # PyIceberg support
 ├── dataframes/                   # DataFrame abstraction layer
 │   ├── base_dataframe.py        # Abstract dataframe interface
 │   ├── ibis_dataframe.py        # Ibis dataframe implementation
