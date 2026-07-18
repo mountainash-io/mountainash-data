@@ -6,7 +6,7 @@
 Mountain Ash - Data
 
 Physical access to backend data services — relational databases via Ibis,
-and Iceberg table-format catalogs via PyIceberg.
+behind a backend-agnostic `Backend` protocol ready for additional backends.
 
 
 
@@ -83,18 +83,12 @@ src/mountainash_data/
 │   ├── settings/                # Per-dialect auth settings (pydantic)
 │   └── factories/               # ConnectionFactory, OperationsFactory, SettingsFactory
 └── backends/
-    ├── ibis/                    # IbisBackend — 12-dialect registry
-    │   ├── backend.py           # IbisBackend + IbisConnection
-    │   ├── connection.py        # BaseIbisConnection + per-dialect subclasses
-    │   ├── operations.py        # BaseIbisOperations + per-dialect subclasses
-    │   ├── inspect.py           # Ibis-specific inspection helpers
-    │   └── dialects/            # DialectSpec registry (data-driven)
-    └── iceberg/                 # IcebergBackend — PyIceberg catalogs
-        ├── backend.py           # IcebergBackend + catalog registry
-        ├── connection.py        # IcebergConnectionBase
-        ├── operations.py        # IcebergOperationsBase
-        ├── inspect.py           # Iceberg inspection helpers
-        └── catalogs/            # Per-catalog implementations (rest, …)
+    └── ibis/                    # IbisBackend — 12-dialect registry
+        ├── backend.py           # IbisBackend + IbisConnection
+        ├── connection.py        # BaseIbisConnection + per-dialect subclasses
+        ├── operations.py        # BaseIbisOperations + per-dialect subclasses
+        ├── inspect.py           # Ibis-specific inspection helpers
+        └── dialects/            # DialectSpec registry (data-driven)
 ```
 
 ### Public API
@@ -104,7 +98,6 @@ from mountainash_data import (
     Backend,            # Protocol: what every backend must implement
     Connection,         # Protocol: what every connection must implement
     IbisBackend,        # Ibis-style relational backends (sqlite, duckdb, postgres, …)
-    IcebergBackend,     # Iceberg-style table-format catalogs (pyiceberg required)
     CatalogInfo,        # Physical catalog metadata
     NamespaceInfo,      # Physical namespace/schema metadata
     TableInfo,          # Physical table metadata
@@ -118,7 +111,6 @@ from mountainash_data import (
 
 ### Optional Dependencies
 
-- **pyiceberg**: Required for `IcebergBackend`. Not installed by default.
 - **postgres**: `psycopg2-binary` + `ibis-framework[postgres]`
 - **mssql**: `pyodbc` + `ibis-framework[mssql]`
 - **snowflake**: `snowflake-connector-python` + `ibis-framework[snowflake]`
