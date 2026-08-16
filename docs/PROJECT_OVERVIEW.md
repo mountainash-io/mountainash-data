@@ -93,7 +93,6 @@ Core package providing unified data access layer with key classes:
 
 ### databases/
 Database connection abstraction supporting multiple backends:
-- **Base Layer**: `BaseDBConnection` abstract interface
 - **Ibis Layer**: Connection implementations for 12+ database backends
 
 ### dataframes/

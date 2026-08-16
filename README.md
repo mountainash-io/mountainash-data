@@ -77,7 +77,6 @@ src/mountainash_data/
 ├── core/                        # Protocol, inspection, settings, factories
 │   ├── protocol.py              # Backend / Connection protocols
 │   ├── inspection.py            # CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo
-│   ├── connection.py            # BaseDBConnection abstract class
 │   ├── utils.py                 # DatabaseUtils high-level facade
 │   ├── constants.py             # CONST_DB_PROVIDER_TYPE and friends
 │   ├── settings/                # Per-dialect auth settings (pydantic)

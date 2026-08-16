@@ -7,7 +7,6 @@
 ### Core Components
 
 1. **Database Connections Layer** (`src/mountainash_data/databases/`)
-   - Base database connection abstraction (`BaseDBConnection`)
    - Ibis-based connections supporting multiple backends (SQLite, DuckDB, PostgreSQL, SQL Server, etc.)
    - Connection factory pattern for backend instantiation
 

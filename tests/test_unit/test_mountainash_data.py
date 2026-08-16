@@ -18,10 +18,6 @@ class TestPackageImports:
         assert version_parts[0].isdigit()
         assert version_parts[1].isdigit()
 
-    def test_core_imports_available(self):
-        from mountainash_data.core.connection import BaseDBConnection
-        assert BaseDBConnection is not None
-
 
 class TestPackageStructure:
     """Test package structure and organization."""

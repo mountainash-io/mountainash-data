@@ -72,7 +72,6 @@ src/mountainash_data/
 ├── core/
 │   ├── protocol.py              # Backend / Connection protocols
 │   ├── inspection.py            # Shared physical metadata model
-│   ├── connection.py            # BaseDBConnection abstract class
 │   ├── utils.py                 # DatabaseUtils high-level facade
 │   ├── constants.py             # CONST_DB_PROVIDER_TYPE and friends
 │   ├── settings/                # Per-dialect auth settings (pydantic)

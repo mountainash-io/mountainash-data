@@ -75,16 +75,6 @@ class CONST_DB_POOL_MODE(StrEnum):
     NONE = "none"
 
 
-class CONST_DB_ABSTRACTION_LAYER(Enum):
-    """
-    Enumeration for different database abstraction layers.
-
-    Attributes:
-        - IBIS (str): Ibis database abstraction layer.
-        - FUGUE (str): Fugue database abstraction layer.
-    """
-    IBIS =     auto()
-
 class CONST_DB_BACKEND(StrEnum):
     """
     Enumeration for different database backends.
