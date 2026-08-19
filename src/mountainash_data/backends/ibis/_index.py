@@ -40,6 +40,7 @@ def build_create_index_sql(
     index_type: t.Optional[str],
     guard: str,
     where_sql: t.Optional[str],
+    index_ref: t.Optional[str] = None,
 ) -> str:
     """Render a CREATE INDEX statement from pre-validated parts.
 
@@ -55,7 +56,7 @@ def build_create_index_sql(
     """
     unique_sql = "UNIQUE " if unique else ""
     cols_sql = ", ".join(quote_identifier(c, dialect) for c in cols)
-    name_sql = quote_identifier(index_name, dialect)
+    name_sql = index_ref or quote_identifier(index_name, dialect)
     where = f" WHERE {where_sql}" if where_sql else ""
     name_part = f"{guard}{name_sql}"
     # dialect may be a sqlglot Dialect class (live path) or a plain string (tests/golden).
@@ -91,10 +92,10 @@ def build_drop_index_sql(
     index_name: str,
     target: t.Optional[str],
     guard: str,
+    index_ref: t.Optional[str] = None,
 ) -> str:
-    """Render a DROP INDEX statement. `target` is required (already quoted) when
-    `drop_scope` is TABLE_SCOPED."""
-    name_sql = quote_identifier(index_name, dialect)
+    """Render a DROP INDEX statement with an optional qualified index ref."""
+    name_sql = index_ref or quote_identifier(index_name, dialect)
     if drop_scope is DropScope.TABLE_SCOPED:
         return f"DROP INDEX {guard}{name_sql} ON {target}"
     return f"DROP INDEX {guard}{name_sql}"
@@ -132,11 +133,29 @@ def _generic_index_exists(
     first_col = result.to_pyarrow().column(0).to_pylist()
     return first_col[0] > 0
 
-
 def _target_ref(ibis_conn: t.Any, table_name: str, namespace: t.Optional[str]) -> str:
     dialect = dialect_of(ibis_conn)
+    dialect_name = (
+        dialect.__name__.lower()
+        if isinstance(dialect, type)
+        else str(dialect).lower()
+    )
+    if dialect_name == "sqlite":
+        return quote_identifier(table_name, dialect)
     parts = [namespace, table_name] if namespace else [table_name]
     return qualified_name(parts, dialect)
+
+
+def _index_ref(ibis_conn: t.Any, index_name: str, namespace: t.Optional[str]) -> str:
+    dialect = dialect_of(ibis_conn)
+    dialect_name = (
+        dialect.__name__.lower()
+        if isinstance(dialect, type)
+        else str(dialect).lower()
+    )
+    if dialect_name == "sqlite" and namespace:
+        return qualified_name([namespace, index_name], dialect)
+    return quote_identifier(index_name, dialect)
 
 
 def _generic_create_index(
@@ -197,8 +216,13 @@ def _generic_create_index(
     sql = build_create_index_sql(
         dialect=dialect_of(ibis_conn),
         target=_target_ref(ibis_conn, table_name, namespace),
-        index_name=index_name, cols=cols, unique=unique,
-        index_type=index_type, guard=guard, where_sql=where_sql,
+        index_name=index_name,
+        cols=cols,
+        unique=unique,
+        index_type=index_type,
+        guard=guard,
+        where_sql=where_sql,
+        index_ref=_index_ref(ibis_conn, index_name, namespace),
     )
     ibis_conn.raw_sql(sql)
 
@@ -241,7 +265,11 @@ def _generic_drop_index(
 
     target = _target_ref(ibis_conn, table_name, namespace) if table_name else None
     sql = build_drop_index_sql(
-        dialect=dialect_of(ibis_conn), drop_scope=caps.drop_scope,
-        index_name=index_name, target=target, guard=guard,
+        dialect=dialect_of(ibis_conn),
+        drop_scope=caps.drop_scope,
+        index_name=index_name,
+        target=target,
+        guard=guard,
+        index_ref=_index_ref(ibis_conn, index_name, namespace),
     )
     ibis_conn.raw_sql(sql)

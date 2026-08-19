@@ -103,9 +103,8 @@ class TestDuckDBOperationsWorkflow:
 
             backend.create_index("t", ["name"], index_name="idx_name")
             assert backend.index_exists("idx_name") is True
-
             indexes = backend.list_indexes("t")
-            assert any(idx.get("name") == "idx_name" for idx in indexes)
+            assert any(idx.name == "idx_name" for idx in indexes)
 
             backend.drop_index("idx_name")
             assert backend.index_exists("idx_name") is False

@@ -15,6 +15,7 @@ import ibis
 from sqlglot import exp
 from mountainash_data.backends.ibis._render import (
     ConditionAliases,
+    _sql_literal,
     compile_condition,
     compiled_source,
     dialect_of,
@@ -153,11 +154,6 @@ def _validate_simple_identifier(value: str, *, kind: str) -> None:
         )
 
 
-def _sql_literal(value: str) -> str:
-    """Render `value` as an escaped SQL string literal (defense-in-depth for the
-    catalog-introspection queries; identifiers are also allowlist-validated by
-    the generic dispatcher before reaching here)."""
-    return exp.Literal.string(value).sql()
 
 
 def build_rename_sql(old_name: str, new_name: str, *, dialect: t.Any) -> str:
@@ -239,41 +235,20 @@ def duckdb_get_index_exists_sql(
     table_name: str | None,
     namespace: str | None
 ) -> str:
-    """DuckDB uses duckdb_indexes() system function. `namespace` is a single-
-    level qualifier, which DuckDB's ibis backend (and this package's own
-    `database=` convention) treats as the SCHEMA, not the catalog — so it is
-    matched against duckdb_indexes()'s `schema_name` column, not
-    `database_name` (which holds the catalog, e.g. "memory")."""
-    where_clauses = [f"index_name = {_sql_literal(index_name)}"]
+    """DuckDB index existence scoped to schema and current catalog."""
+    where_clauses = [
+        f"index_name = {_sql_literal(index_name)}",
+        f"schema_name = {_sql_literal(namespace) if namespace else 'current_schema()'}",
+        "database_name = current_catalog()",
+    ]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if namespace:
-        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
+    return (
+        "SELECT COUNT(*) AS count FROM duckdb_indexes() "
+        f"WHERE {' AND '.join(where_clauses)}"
+    )
 
-    where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
 
-
-def duckdb_get_list_indexes_sql(
-    table_name: str,
-    namespace: str | None
-) -> str:
-    """DuckDB uses duckdb_indexes() system function. See `namespace` note on
-    `duckdb_get_index_exists_sql` — matched against `schema_name`, not
-    `database_name`."""
-    where_clauses = [f"table_name = '{table_name}'"]
-    if namespace:
-        where_clauses.append(f"schema_name = '{namespace}'")
-
-    where_sql = " AND ".join(where_clauses)
-    return f"""
-        SELECT
-            index_name as name,
-            sql as definition,
-            is_unique as unique
-        FROM duckdb_indexes()
-        WHERE {where_sql}
-    """
 
 
 # --- SQLite ---
@@ -283,31 +258,16 @@ def sqlite_get_index_exists_sql(
     table_name: str | None,
     namespace: str | None
 ) -> str:
-    """SQLite uses the sqlite_master system table. `namespace` is unused (no
-    cross-database queries)."""
+    """SQLite's ``namespace`` selects the attached database schema."""
     where_clauses = ["type = 'index'", f"name = {_sql_literal(index_name)}"]
     if table_name:
         where_clauses.append(f"tbl_name = {_sql_literal(table_name)}")
     where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) AS count FROM sqlite_master WHERE {where_sql}"
+    scope = namespace or "main"
+    master = f"{quote_identifier(scope, 'sqlite')}.sqlite_master"
+    return f"SELECT COUNT(*) AS count FROM {master} WHERE {where_sql}"
 
 
-def sqlite_get_list_indexes_sql(
-    table_name: str,
-    namespace: str | None
-) -> str:
-    """SQLite uses sqlite_master system table.
-    Note: namespace parameter is not used as SQLite doesn't support cross-database queries.
-    """
-    return f"""
-        SELECT
-            name,
-            sql as definition,
-            CASE WHEN sql LIKE '%UNIQUE%' THEN 1 ELSE 0 END as "unique"
-        FROM sqlite_master
-        WHERE type = 'index'
-        AND tbl_name = '{table_name}'
-    """
 
 
 # --- MotherDuck ---
@@ -317,39 +277,20 @@ def motherduck_get_index_exists_sql(
     table_name: str | None,
     namespace: str | None
 ) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
-    `namespace` note on `duckdb_get_index_exists_sql` — matched against
-    `schema_name`, not `database_name`."""
-    where_clauses = [f"index_name = {_sql_literal(index_name)}"]
+    """MotherDuck index existence scoped to schema and current catalog."""
+    where_clauses = [
+        f"index_name = {_sql_literal(index_name)}",
+        f"schema_name = {_sql_literal(namespace) if namespace else 'current_schema()'}",
+        "database_name = current_catalog()",
+    ]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if namespace:
-        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
+    return (
+        "SELECT COUNT(*) AS count FROM duckdb_indexes() "
+        f"WHERE {' AND '.join(where_clauses)}"
+    )
 
-    where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
 
-
-def motherduck_get_list_indexes_sql(
-    table_name: str,
-    namespace: str | None
-) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
-    `namespace` note on `duckdb_get_index_exists_sql` — matched against
-    `schema_name`, not `database_name`."""
-    where_clauses = [f"table_name = '{table_name}'"]
-    if namespace:
-        where_clauses.append(f"schema_name = '{namespace}'")
-
-    where_sql = " AND ".join(where_clauses)
-    return f"""
-        SELECT
-            index_name as name,
-            sql as definition,
-            is_unique as unique
-        FROM duckdb_indexes()
-        WHERE {where_sql}
-    """
 
 
 # --- PostgreSQL ---

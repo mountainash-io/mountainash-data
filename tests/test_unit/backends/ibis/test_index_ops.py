@@ -9,6 +9,124 @@ from mountainash_data.backends.ibis._index import (
     _generic_drop_index,
     _generic_index_exists,
 )
+from mountainash_data.backends.ibis._index_inspection import _generic_list_indexes
+from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+from mountainash_data import IndexInfo
+
+
+class _FakeArrow:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def to_pylist(self):
+        return self._rows
+
+
+class _FakeSqlResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def to_pyarrow(self):
+        return _FakeArrow(self._rows)
+
+
+class _FakeConnection:
+    def __init__(self, rows):
+        self.rows = rows
+        self.sql_text = None
+
+    def sql(self, sql):
+        self.sql_text = sql
+        return _FakeSqlResult(self.rows)
+
+
+def _valid_index_rows():
+    metadata = ("ix", True, False, None, "BTREE", "CREATE INDEX ix")
+    return [
+        [*metadata, "covered", None, True, 3],
+        [*metadata, None, None, False, 2],
+        [*metadata, "a", None, False, 1],
+    ]
+
+
+def test_generic_list_indexes_groups_positional_arrow_rows():
+    con = _FakeConnection(list(reversed(_valid_index_rows())))
+
+    result = _generic_list_indexes(con, "t", None, lambda table, namespace: "SQL")
+
+    assert result == [
+        IndexInfo(
+            name="ix",
+            unique=True,
+            is_primary=False,
+            columns=("a", "<expression>"),
+            included_columns=("covered",),
+            index_type="btree",
+            is_valid=None,
+            definition="CREATE INDEX ix",
+        )
+    ]
+    assert con.sql_text == "SQL"
+
+
+def test_generic_list_indexes_accepts_arrow_mapping_rows():
+    rows = [dict(enumerate(row)) for row in _valid_index_rows()]
+
+    result = _generic_list_indexes(
+        _FakeConnection(rows), "t", None, lambda table, namespace: "SQL"
+    )
+
+    assert result[0].name == "ix"
+    assert result[0].columns == ("a", "<expression>")
+    assert result[0].included_columns == ("covered",)
+
+
+@pytest.mark.parametrize(
+    ("mutator", "message"),
+    [
+        (lambda rows: rows[0].__setitem__(1, "1"), "flag"),
+        (lambda rows: rows[0].__setitem__(8, None), "flag"),
+        (lambda rows: rows[0].__setitem__(9, True), "position"),
+        (lambda rows: rows[0].__setitem__(9, 0), "position"),
+        (lambda rows: rows.append(rows[0]), "position"),
+        (lambda rows: rows[0].__setitem__(0, ""), "index_name"),
+        (lambda rows: rows[0].__setitem__(6, ""), "col_name"),
+        (lambda rows: rows[0].__setitem__(7, "expr"), "non-key"),
+    ],
+)
+def test_generic_list_indexes_rejects_malformed_rows(mutator, message):
+    rows = _valid_index_rows()
+    mutator(rows)
+
+    with pytest.raises(RuntimeError, match=message):
+        _generic_list_indexes(_FakeConnection(rows), "t", None, lambda *_: "SQL")
+
+
+def test_generic_list_indexes_rejects_missing_key_and_conflicting_metadata():
+    rows = _valid_index_rows()
+    rows = [row for row in rows if row[8]]
+    with pytest.raises(RuntimeError, match="key"):
+        _generic_list_indexes(_FakeConnection(rows), "t", None, lambda *_: "SQL")
+
+    rows = _valid_index_rows()
+    conflicting = list(rows[1])
+    conflicting[1] = False
+    rows.append(tuple(conflicting))
+    with pytest.raises(RuntimeError, match="metadata"):
+        _generic_list_indexes(_FakeConnection(rows), "t", None, lambda *_: "SQL")
+
+
+def test_generic_list_indexes_accepts_nonunique_primary_index():
+    rows = _valid_index_rows()
+    rows = [tuple(False if i == 1 else True if i == 2 else value for i, value in enumerate(row))
+            for row in rows]
+
+    result = _generic_list_indexes(
+        _FakeConnection(rows), "t", None, lambda *_: "SQL"
+    )
+
+    assert result[0].unique is False
+    assert result[0].is_primary is True
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS
 
 _SQLITE = DIALECTS["sqlite"].index_caps
@@ -212,3 +330,80 @@ def test_create_index_rejects_catalog_qualified_namespace():
         backend.create_table("t", {"id": [1]})
         with pytest.raises(ValueError, match="does not support catalog-qualified"):
             backend.create_index("t", ["id"], namespace=Namespace(catalog="wh", path=("s",)))
+
+
+from mountainash_data.backends.ibis._index_inspection import (  # noqa: E402
+    _extract_duckdb_index_definition,
+    duckdb_get_constraints_sql,
+    duckdb_get_indexes_sql,
+    duckdb_list_indexes_hook,
+)
+
+
+@pytest.mark.parametrize(
+    ("definition", "columns", "index_type"),
+    [
+        ("CREATE INDEX ix ON t (a, b)", ("a", "b"), "art"),
+        ("CREATE INDEX ix ON t ((coalesce(a, b)))", ("(COALESCE(a, b))",), "art"),
+        ('CREATE INDEX ix ON t ("a, b")', ("a, b",), "art"),
+        ("CREATE INDEX ix ON t USING HNSW (a)", ("a",), "hnsw"),
+    ],
+)
+def test_duckdb_index_definition_extracts_structured_keys(
+    definition, columns, index_type
+):
+    result = _extract_duckdb_index_definition(definition)
+    assert result == (columns, index_type)
+
+
+def test_duckdb_index_definition_rejects_non_create_ast():
+    with pytest.raises(RuntimeError, match="CREATE INDEX"):
+        _extract_duckdb_index_definition("CREATE TABLE t (id INTEGER)")
+
+
+def test_duckdb_source_queries_are_schema_and_catalog_scoped():
+    indexes_sql = duckdb_get_indexes_sql("t", "s")
+    constraints_sql = duckdb_get_constraints_sql("t", None)
+    assert "schema_name = 's'" in indexes_sql
+    assert "schema_name = current_schema()" in constraints_sql
+    assert "database_name = current_catalog()" in indexes_sql
+    assert "database_name = current_catalog()" in constraints_sql
+    assert "expressions" not in indexes_sql
+    assert "constraint_name" not in constraints_sql
+
+
+class _DuckDbHookConnection:
+    def __init__(self, index_rows, constraint_rows):
+        self._results = [_FakeSqlResult(index_rows), _FakeSqlResult(constraint_rows)]
+        self.sql_texts = []
+
+    def sql(self, sql):
+        self.sql_texts.append(sql)
+        return self._results.pop(0)
+
+
+def test_duckdb_hook_keeps_constraints_and_explicit_indexes_distinct():
+    con = _DuckDbHookConnection(
+        [
+            (7, "constraint_unique_t_2", True, False, "CREATE INDEX constraint_unique_t_2 ON t (a)"),
+            (8, "ix", True, False, "CREATE INDEX ix ON t (a, b)"),
+        ],
+        [
+            (2, "UNIQUE", "UNIQUE (a)", ["a"]),
+            (3, "PRIMARY KEY", "PRIMARY KEY (id)", ["id"]),
+            (4, "FOREIGN KEY", "FOREIGN KEY (parent_id)", ["parent_id"]),
+        ],
+    )
+
+    result = duckdb_list_indexes_hook(con, "t", "s")
+
+    assert [(item.name, item.metadata["source_kind"]) for item in result] == [
+        ("constraint_foreign_key_t_4", "constraint"),
+        ("constraint_primary_key_t_3", "constraint"),
+        ("constraint_unique_t_2", "constraint"),
+        ("constraint_unique_t_2", "index"),
+        ("ix", "index"),
+    ]
+    assert result[0].unique is False
+    assert result[1].unique is True and result[1].is_primary is True
+    assert result[2].metadata["constraint_type"] == "unique"

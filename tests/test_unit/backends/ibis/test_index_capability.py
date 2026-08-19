@@ -4,6 +4,8 @@ import dataclasses
 
 import pytest
 
+from mountainash_data import IndexInfo
+from mountainash_data.backends.ibis._render import _sql_literal
 from mountainash_data.backends.ibis.dialects._registry import (
     DialectSpec,
     DropScope,
@@ -84,10 +86,39 @@ def test_invariant_caps_implies_exists_sql(name):
 
 
 def test_no_dialect_violates_invariant():
-    """Stronger guard: NO dialect may have index_caps without exists_sql — true at
-    every commit, including this one (the other 5 caps are not assigned yet)."""
+    """Every supported index dialect has exactly one list-index route."""
     for name, spec in DIALECTS.items():
         if spec.index_caps is not None:
-            assert spec.get_index_exists_sql is not None, (
-                f"{name}: index_caps set but get_index_exists_sql missing"
-            )
+            assert (spec.get_list_indexes_sql is None) != (
+                spec.list_indexes_hook is None
+            ), f"{name}: index_caps must have one list-index route"
+
+
+def test_list_index_route_matrix():
+    generic = {"sqlite", "postgres", "mysql", "mssql", "oracle", "singlestoredb"}
+    hook = {"duckdb", "motherduck"}
+    for name in generic:
+        assert DIALECTS[name].get_list_indexes_sql is not None
+        assert DIALECTS[name].list_indexes_hook is None
+    for name in hook:
+        assert DIALECTS[name].get_list_indexes_sql is None
+        assert DIALECTS[name].list_indexes_hook is not None
+
+
+
+def test_indexinfo_is_frozen_and_preserves_ordered_columns():
+    info = IndexInfo(
+        name="ix",
+        unique=False,
+        is_primary=True,
+        columns=("id",),
+        included_columns=("partition_id",),
+        metadata={"source_kind": "index"},
+    )
+    assert info.columns == ("id",)
+    assert info.included_columns == ("partition_id",)
+    assert info.unique is False and info.is_primary is True
+
+
+def test_sql_literal_is_neutral_shared_helper():
+    assert _sql_literal("x'y") == "'x''y'"

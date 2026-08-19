@@ -16,14 +16,21 @@ from mountainash_data.backends.ibis._sqlite_compat import ensure_sqlite_nat_adap
 from mountainash_data.backends.ibis._adoption import (
     apply_options, snapshot_options, restore_options,
 )
-from mountainash_data.backends.ibis.operations import _generic_add_columns, _generic_rename_table, _generic_upsert
+from mountainash_data.backends.ibis.operations import (
+    _generic_add_columns,
+    _generic_rename_table,
+    _generic_upsert,
+    _validate_simple_identifier,
+)
 from mountainash_data.backends.ibis._index import (
     _generic_create_index,
     _generic_drop_index,
     _generic_index_exists,
 )
+from mountainash_data.backends.ibis._index_inspection import _generic_list_indexes
 from mountainash_data.core.inspection import (
     CatalogInfo,
+    IndexInfo,
     NamespaceInfo,
     TableInfo,
 )
@@ -923,15 +930,25 @@ class IbisBackend:
         table_name: str,
         *,
         namespace: NamespaceLike = None,
-    ) -> list[dict]:
-        if self._spec.get_list_indexes_sql is None:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support list_indexes"
-            )
+    ) -> list[IndexInfo]:
         conn = self._require_connected()
-        rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="list_indexes")
-        list_sql = self._spec.get_list_indexes_sql(table_name, rendered)
-        result = conn._ibis_conn.sql(list_sql)
-        if result is None:
-            return []
-        return result.to_pyarrow().to_pylist()
+        rendered = _render_ibis_namespace_single(
+            Namespace.coerce(namespace), op="list_indexes"
+        )
+        _validate_simple_identifier(table_name, kind="table_name")
+        if rendered is not None:
+            _validate_simple_identifier(rendered, kind="namespace")
+        if self._spec.list_indexes_hook is not None:
+            return self._spec.list_indexes_hook(
+                conn._ibis_conn, table_name, rendered
+            )
+        if self._spec.index_caps is not None:
+            list_sql = self._spec.get_list_indexes_sql
+            if list_sql is None:
+                raise RuntimeError("index capability lacks a list-index implementation")
+            return _generic_list_indexes(
+                conn._ibis_conn, table_name, rendered, list_sql
+            )
+        raise NotImplementedError(
+            f"Dialect {self.dialect!r} does not support list_indexes"
+        )
