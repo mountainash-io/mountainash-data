@@ -168,11 +168,24 @@ backend.create_unique_index("orders", ["id"])
 # Check existence
 exists = backend.index_exists("idx_orders_customer_id")
 
+# List typed index metadata
+indexes = backend.list_indexes("orders")
+for index in indexes:
+    print(index.name, index.columns, index.unique, index.is_primary)
+
 # Drop
 backend.drop_index("idx_orders_customer_id", table_name="orders")
 ```
 
-**Dialects with full upsert + index support:** SQLite, DuckDB, MotherDuck.
+`list_indexes()` returns frozen `IndexInfo` objects. Each object includes the
+index name, key columns, uniqueness, primary-key status, index type, included
+columns, validity, definition, and dialect metadata.
+
+Index listing is available for SQLite, DuckDB, MotherDuck, PostgreSQL, MySQL,
+MSSQL, Oracle, and SingleStoreDB.
+
+Pass `namespace="sales"` to `list_indexes()` when the table is not in the
+default schema.
 
 ---
 
