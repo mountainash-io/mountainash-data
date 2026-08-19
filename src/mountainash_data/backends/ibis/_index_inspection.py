@@ -29,6 +29,13 @@ def _normalize_text(value: t.Any, field: str, *, allow_none: bool = True) -> str
     return value
 
 
+
+
+def _positional_values(row: t.Any) -> tuple[t.Any, ...]:
+    """Read Arrow rows by schema order, never by catalog alias."""
+    if isinstance(row, dict):
+        return tuple(row.values())
+    return tuple(row)
 def _normalize_position(value: t.Any) -> int:
     if type(value) is not int or value <= 0:
         raise RuntimeError(f"invalid position: {value!r}")
@@ -47,7 +54,10 @@ def _generic_list_indexes(
         return []
 
     groups: dict[str, dict[str, t.Any]] = {}
-    for row_number, row in enumerate(result.to_pyarrow().to_pylist(), start=1):
+    for row_number, raw_row in enumerate(
+        result.to_pyarrow().to_pylist(), start=1
+    ):
+        row = _positional_values(raw_row)
         if len(row) != 10:
             raise RuntimeError(
                 f"index catalog row {row_number} has {len(row)} columns; expected 10"
@@ -247,6 +257,7 @@ WHERE i.object_id = OBJECT_ID({_sql_literal(target)})
 def oracle_get_list_indexes_sql(
     table_name: str, namespace: str | None
 ) -> str:
+    owner = _sql_literal(namespace) if namespace else "USER"
     return f"""
 SELECT
     idx.index_name AS index_name,
@@ -275,15 +286,20 @@ SELECT
     exprs.column_expression AS col_expr,
     0 AS is_included,
     cols.column_position AS position
-FROM user_indexes idx
-JOIN user_ind_columns cols ON cols.index_name = idx.index_name
-LEFT JOIN user_ind_expressions exprs
-       ON exprs.index_name = idx.index_name
+FROM all_indexes idx
+JOIN all_ind_columns cols
+  ON cols.index_owner = idx.owner
+ AND cols.index_name = idx.index_name
+LEFT JOIN all_ind_expressions exprs
+       ON exprs.index_owner = idx.owner
+      AND exprs.index_name = idx.index_name
       AND exprs.column_position = cols.column_position
-LEFT JOIN user_constraints con
-       ON con.index_name = idx.index_name
+LEFT JOIN all_constraints con
+       ON con.index_owner = idx.owner
+      AND con.index_name = idx.index_name
       AND con.constraint_type = 'P'
-WHERE idx.table_name = {_sql_literal(table_name)}
+WHERE idx.owner = {owner}
+  AND idx.table_name = {_sql_literal(table_name)}
 """
 
 
@@ -352,7 +368,8 @@ def duckdb_list_indexes_hook(
     entries: list[tuple[str, str, int, IndexInfo]] = []
 
     if explicit_result is not None:
-        for row in explicit_result.to_pyarrow().to_pylist():
+        for raw_row in explicit_result.to_pyarrow().to_pylist():
+            row = _positional_values(raw_row)
             if len(row) != 5:
                 raise RuntimeError("DuckDB index catalog row must have five columns")
             index_oid, name, raw_unique, raw_primary, definition = row
@@ -381,9 +398,9 @@ def duckdb_list_indexes_hook(
                     ),
                 )
             )
-
     if constraint_result is not None:
-        for row in constraint_result.to_pyarrow().to_pylist():
+        for raw_row in constraint_result.to_pyarrow().to_pylist():
+            row = _positional_values(raw_row)
             if len(row) != 4:
                 raise RuntimeError(
                     "DuckDB constraint catalog row must have four columns"

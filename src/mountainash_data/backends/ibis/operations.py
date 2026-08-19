@@ -249,26 +249,6 @@ def duckdb_get_index_exists_sql(
     )
 
 
-def duckdb_get_list_indexes_sql(
-    table_name: str,
-    namespace: str | None
-) -> str:
-    """DuckDB uses duckdb_indexes() system function. See `namespace` note on
-    `duckdb_get_index_exists_sql` — matched against `schema_name`, not
-    `database_name`."""
-    where_clauses = [f"table_name = '{table_name}'"]
-    if namespace:
-        where_clauses.append(f"schema_name = '{namespace}'")
-
-    where_sql = " AND ".join(where_clauses)
-    return f"""
-        SELECT
-            index_name as name,
-            sql as definition,
-            is_unique as unique
-        FROM duckdb_indexes()
-        WHERE {where_sql}
-    """
 
 
 # --- SQLite ---
@@ -288,22 +268,6 @@ def sqlite_get_index_exists_sql(
     return f"SELECT COUNT(*) AS count FROM {master} WHERE {where_sql}"
 
 
-def sqlite_get_list_indexes_sql(
-    table_name: str,
-    namespace: str | None
-) -> str:
-    """SQLite uses sqlite_master system table.
-    Note: namespace parameter is not used as SQLite doesn't support cross-database queries.
-    """
-    return f"""
-        SELECT
-            name,
-            sql as definition,
-            CASE WHEN sql LIKE '%UNIQUE%' THEN 1 ELSE 0 END as "unique"
-        FROM sqlite_master
-        WHERE type = 'index'
-        AND tbl_name = '{table_name}'
-    """
 
 
 # --- MotherDuck ---
@@ -327,26 +291,6 @@ def motherduck_get_index_exists_sql(
     )
 
 
-def motherduck_get_list_indexes_sql(
-    table_name: str,
-    namespace: str | None
-) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
-    `namespace` note on `duckdb_get_index_exists_sql` — matched against
-    `schema_name`, not `database_name`."""
-    where_clauses = [f"table_name = '{table_name}'"]
-    if namespace:
-        where_clauses.append(f"schema_name = '{namespace}'")
-
-    where_sql = " AND ".join(where_clauses)
-    return f"""
-        SELECT
-            index_name as name,
-            sql as definition,
-            is_unique as unique
-        FROM duckdb_indexes()
-        WHERE {where_sql}
-    """
 
 
 # --- PostgreSQL ---

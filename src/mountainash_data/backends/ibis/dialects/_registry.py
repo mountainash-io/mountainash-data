@@ -21,6 +21,7 @@ import enum
 from dataclasses import dataclass, field
 import typing as t
 
+from mountainash_data.core.inspection import IndexInfo
 
 class UpsertStyle(str, enum.Enum):
     ON_CONFLICT = "on_conflict"
@@ -54,9 +55,9 @@ class IndexCapability:
     index_types: frozenset[str]       # valid USING <type> values; empty = no USING clause
 
 
-# Capability hook signatures
 GetIndexExistsSql = t.Callable[[str, str, t.Optional[str]], str]  # (index_name, table_name, database) -> SQL
 GetListIndexesSql = t.Callable[[str, t.Optional[str]], str]  # (table_name, database) -> SQL
+ListIndexesHook = t.Callable[[t.Any, str, t.Optional[str]], list[IndexInfo]]
 ConnectionBuilder = t.Callable[..., t.Any]  # (**config) -> ibis backend connection
 UpsertHook = t.Callable[..., None]
 CreateIndexHook = t.Callable[..., None]
@@ -88,6 +89,7 @@ class DialectSpec:
     connection_builder: t.Optional[ConnectionBuilder] = None
     get_index_exists_sql: t.Optional[GetIndexExistsSql] = None
     get_list_indexes_sql: t.Optional[GetListIndexesSql] = None
+    list_indexes_hook: t.Optional[ListIndexesHook] = None
     upsert_hook: t.Optional[UpsertHook] = None
     # None = upsert not supported (no hook + no style -> NotImplementedError).
     upsert_style: t.Optional[UpsertStyle] = None
@@ -695,14 +697,19 @@ _HYBRID = "hybrid"
 
 # Import capability hook functions from operations module.
 # These are the per-dialect index SQL functions. No circular imports since
-# operations.py does not import from _registry.py.
-from mountainash_data.backends.ibis.operations import (  # noqa: E402
-    duckdb_get_index_exists_sql,
-    duckdb_get_list_indexes_sql,
-    sqlite_get_index_exists_sql,
+from mountainash_data.backends.ibis._index_inspection import (
+    duckdb_list_indexes_hook,
+    mssql_get_list_indexes_sql,
+    mysql_get_list_indexes_sql,
+    oracle_get_list_indexes_sql,
+    postgres_get_list_indexes_sql,
+    singlestore_get_list_indexes_sql,
     sqlite_get_list_indexes_sql,
+)
+from mountainash_data.backends.ibis.operations import (
+    duckdb_get_index_exists_sql,
+    sqlite_get_index_exists_sql,
     motherduck_get_index_exists_sql,
-    motherduck_get_list_indexes_sql,
     postgres_get_index_exists_sql,
     mysql_get_index_exists_sql,
     mssql_get_index_exists_sql,
@@ -773,7 +780,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="duckdb://",
         connection_builder=_build_duckdb_connection,
         get_index_exists_sql=duckdb_get_index_exists_sql,
-        get_list_indexes_sql=duckdb_get_list_indexes_sql,
+        list_indexes_hook=duckdb_list_indexes_hook,
         upsert_style=UpsertStyle.ON_CONFLICT,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
@@ -791,7 +798,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="duckdb://md:",
         connection_builder=_build_motherduck_connection,
         get_index_exists_sql=motherduck_get_index_exists_sql,
-        get_list_indexes_sql=motherduck_get_list_indexes_sql,
+        list_indexes_hook=duckdb_list_indexes_hook,
         upsert_style=UpsertStyle.ON_CONFLICT,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
@@ -809,6 +816,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="postgres://",
         connection_builder=_build_postgres_connection,
         upsert_style=UpsertStyle.ON_CONFLICT,
+        get_list_indexes_sql=postgres_get_list_indexes_sql,
         get_index_exists_sql=postgres_get_index_exists_sql,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=True,
@@ -826,6 +834,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="mysql://",
         connection_builder=_build_mysql_connection,
         upsert_style=UpsertStyle.ON_DUPLICATE_KEY,
+        get_list_indexes_sql=mysql_get_list_indexes_sql,
         get_index_exists_sql=mysql_get_index_exists_sql,
         index_caps=IndexCapability(
             drop_scope=DropScope.TABLE_SCOPED, partial=False,
@@ -841,6 +850,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="mssql://",
         connection_builder=_build_mssql_connection,
         upsert_style=UpsertStyle.MERGE,
+        get_list_indexes_sql=mssql_get_list_indexes_sql,
         get_index_exists_sql=mssql_get_index_exists_sql,
         index_caps=IndexCapability(
             drop_scope=DropScope.TABLE_SCOPED, partial=True,
@@ -856,6 +866,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="oracle://",
         connection_builder=_build_oracle_connection,
         upsert_style=UpsertStyle.MERGE,
+        get_list_indexes_sql=oracle_get_list_indexes_sql,
         get_index_exists_sql=oracle_get_index_exists_sql,
         index_caps=IndexCapability(
             drop_scope=DropScope.SCHEMA_GLOBAL, partial=False,
@@ -925,6 +936,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_string_scheme="singlestoredb://",
         connection_builder=_build_singlestoredb_connection,
         upsert_style=UpsertStyle.ON_DUPLICATE_KEY,
+        get_list_indexes_sql=singlestore_get_list_indexes_sql,
         get_index_exists_sql=singlestore_get_index_exists_sql,
         index_caps=IndexCapability(
             drop_scope=DropScope.TABLE_SCOPED, partial=False,

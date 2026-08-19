@@ -253,6 +253,15 @@ def test_generic_list_index_builder_vendor_shapes():
     assert "COALESCE" not in oracle_sql
 
 
+def test_oracle_list_index_builder_scopes_owner():
+    sql = oracle_get_list_indexes_sql("t", "OTHER_OWNER")
+
+    assert "FROM all_indexes idx" in sql
+    assert "idx.owner = 'OTHER_OWNER'" in sql
+    assert "cols.index_owner = idx.owner" in sql
+    assert "con.index_owner = idx.owner" in sql
+
+
 def test_sqlite_attachment_index_ddl_qualifies_index_not_table():
     import ibis
 

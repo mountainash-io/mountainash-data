@@ -442,10 +442,10 @@ def test_index_exists():
         assert backend.index_exists("no_such_idx") is False
 
 
-def test_list_indexes():
-    """list_indexes() must return one row-dict per index with name/definition/
-    unique keys, correctly typed (guards the DEBT-1 refactor away from
-    ma.relation().to_dicts() onto native ibis .to_pyarrow().to_pylist())."""
+def test_list_indexes_returns_typed_index_info():
+    """list_indexes() returns typed physical index metadata."""
+    from mountainash_data import IndexInfo
+
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
         backend.create_table("t", {"id": [1], "name": ["a"]})
         backend.create_index("t", ["id"], index_name="idx_id", unique=True)
@@ -453,12 +453,42 @@ def test_list_indexes():
         assert isinstance(indexes, list)
         assert len(indexes) == 1
         row = indexes[0]
-        assert set(row.keys()) == {"name", "definition", "unique"}
-        assert row["name"] == "idx_id"
-        assert "idx_id" in row["definition"]
-        assert row["unique"] == 1
+        assert isinstance(row, IndexInfo)
+        assert row.name == "idx_id"
+        assert row.columns == ("id",)
+        assert row.definition is not None and "idx_id" in row.definition
+        assert row.unique is True
 
 
+def test_list_indexes_validates_before_custom_hook():
+    from dataclasses import replace
+
+    from mountainash_data import IndexInfo
+    from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+
+    calls = []
+
+    def hook(conn, table_name, namespace):
+        calls.append((table_name, namespace))
+        return [IndexInfo("ix", False, False, ("id",))]
+
+    backend = IbisBackend(dialect="sqlite", database=":memory:")
+    backend._spec = replace(
+        DIALECTS["sqlite"],
+        get_list_indexes_sql=None,
+        list_indexes_hook=hook,
+    )
+    backend.connect()
+    try:
+        with pytest.raises(ValueError, match="simple identifier"):
+            backend.list_indexes("bad; name")
+        assert calls == []
+        assert backend.list_indexes("t") == [
+            IndexInfo("ix", False, False, ("id",))
+        ]
+        assert calls == [("t", None)]
+    finally:
+        backend.close()
 def test_upsert_duckdb():
     """upsert() must work on DuckDB via hook."""
     with IbisBackend(dialect="duckdb", database=":memory:") as backend:

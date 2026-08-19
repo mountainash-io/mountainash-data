@@ -69,6 +69,18 @@ def test_generic_list_indexes_groups_positional_arrow_rows():
     assert con.sql_text == "SQL"
 
 
+def test_generic_list_indexes_accepts_arrow_mapping_rows():
+    rows = [dict(enumerate(row)) for row in _valid_index_rows()]
+
+    result = _generic_list_indexes(
+        _FakeConnection(rows), "t", None, lambda table, namespace: "SQL"
+    )
+
+    assert result[0].name == "ix"
+    assert result[0].columns == ("a", "<expression>")
+    assert result[0].included_columns == ("covered",)
+
+
 @pytest.mark.parametrize(
     ("mutator", "message"),
     [
