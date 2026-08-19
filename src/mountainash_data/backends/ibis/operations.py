@@ -15,6 +15,7 @@ import ibis
 from sqlglot import exp
 from mountainash_data.backends.ibis._render import (
     ConditionAliases,
+    _sql_literal,
     compile_condition,
     compiled_source,
     dialect_of,
@@ -153,11 +154,6 @@ def _validate_simple_identifier(value: str, *, kind: str) -> None:
         )
 
 
-def _sql_literal(value: str) -> str:
-    """Render `value` as an escaped SQL string literal (defense-in-depth for the
-    catalog-introspection queries; identifiers are also allowlist-validated by
-    the generic dispatcher before reaching here)."""
-    return exp.Literal.string(value).sql()
 
 
 def build_rename_sql(old_name: str, new_name: str, *, dialect: t.Any) -> str:

@@ -11,6 +11,7 @@ from mountainash_data.core.protocol import Backend
 from mountainash_data.core.inspection import (
     CatalogInfo,
     ColumnInfo,
+    IndexInfo,
     NamespaceInfo,
     TableInfo,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "Backend",
     "CatalogInfo",
     "ColumnInfo",
+    "IndexInfo",
     "NamespaceInfo",
     "TableInfo",
     "Namespace",

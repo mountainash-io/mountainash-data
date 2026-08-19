@@ -64,3 +64,18 @@ class CatalogInfo:
     name: str
     namespaces: t.Sequence[NamespaceInfo]
     metadata: t.Mapping[str, t.Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class IndexInfo:
+    """Physical metadata for a single index."""
+
+    name: str
+    unique: bool
+    is_primary: bool
+    columns: t.Sequence[str]
+    index_type: t.Optional[str] = None
+    included_columns: t.Sequence[str] = ()
+    is_valid: t.Optional[bool] = None
+    definition: t.Optional[str] = None
+    metadata: t.Mapping[str, t.Any] = field(default_factory=dict)

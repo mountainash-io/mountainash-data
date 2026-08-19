@@ -4,6 +4,8 @@ import dataclasses
 
 import pytest
 
+from mountainash_data import IndexInfo
+from mountainash_data.backends.ibis._render import _sql_literal
 from mountainash_data.backends.ibis.dialects._registry import (
     DialectSpec,
     DropScope,
@@ -91,3 +93,22 @@ def test_no_dialect_violates_invariant():
             assert spec.get_index_exists_sql is not None, (
                 f"{name}: index_caps set but get_index_exists_sql missing"
             )
+
+
+
+def test_indexinfo_is_frozen_and_preserves_ordered_columns():
+    info = IndexInfo(
+        name="ix",
+        unique=False,
+        is_primary=True,
+        columns=("id",),
+        included_columns=("partition_id",),
+        metadata={"source_kind": "index"},
+    )
+    assert info.columns == ("id",)
+    assert info.included_columns == ("partition_id",)
+    assert info.unique is False and info.is_primary is True
+
+
+def test_sql_literal_is_neutral_shared_helper():
+    assert _sql_literal("x'y") == "'x''y'"

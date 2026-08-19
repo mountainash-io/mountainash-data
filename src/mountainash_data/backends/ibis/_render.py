@@ -26,6 +26,11 @@ def quote_identifier(name: str, dialect: t.Any) -> str:
     return exp.to_identifier(name, quoted=True).sql(dialect=dialect)
 
 
+def _sql_literal(value: str) -> str:
+    """Render ``value`` as an escaped SQL string literal."""
+    return exp.Literal.string(value).sql()
+
+
 def qualified_name(parts: list[str], dialect: t.Any) -> str:
     """Quote each part and join with '.' (e.g. database.table)."""
     return ".".join(quote_identifier(p, dialect) for p in parts)
