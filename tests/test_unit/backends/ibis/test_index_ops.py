@@ -318,3 +318,80 @@ def test_create_index_rejects_catalog_qualified_namespace():
         backend.create_table("t", {"id": [1]})
         with pytest.raises(ValueError, match="does not support catalog-qualified"):
             backend.create_index("t", ["id"], namespace=Namespace(catalog="wh", path=("s",)))
+
+
+from mountainash_data.backends.ibis._index_inspection import (  # noqa: E402
+    _extract_duckdb_index_definition,
+    duckdb_get_constraints_sql,
+    duckdb_get_indexes_sql,
+    duckdb_list_indexes_hook,
+)
+
+
+@pytest.mark.parametrize(
+    ("definition", "columns", "index_type"),
+    [
+        ("CREATE INDEX ix ON t (a, b)", ("a", "b"), "art"),
+        ("CREATE INDEX ix ON t ((coalesce(a, b)))", ("(COALESCE(a, b))",), "art"),
+        ('CREATE INDEX ix ON t ("a, b")', ("a, b",), "art"),
+        ("CREATE INDEX ix ON t USING HNSW (a)", ("a",), "hnsw"),
+    ],
+)
+def test_duckdb_index_definition_extracts_structured_keys(
+    definition, columns, index_type
+):
+    result = _extract_duckdb_index_definition(definition)
+    assert result == (columns, index_type)
+
+
+def test_duckdb_index_definition_rejects_non_create_ast():
+    with pytest.raises(RuntimeError, match="CREATE INDEX"):
+        _extract_duckdb_index_definition("CREATE TABLE t (id INTEGER)")
+
+
+def test_duckdb_source_queries_are_schema_and_catalog_scoped():
+    indexes_sql = duckdb_get_indexes_sql("t", "s")
+    constraints_sql = duckdb_get_constraints_sql("t", None)
+    assert "schema_name = 's'" in indexes_sql
+    assert "schema_name = current_schema()" in constraints_sql
+    assert "database_name = current_catalog()" in indexes_sql
+    assert "database_name = current_catalog()" in constraints_sql
+    assert "expressions" not in indexes_sql
+    assert "constraint_name" not in constraints_sql
+
+
+class _DuckDbHookConnection:
+    def __init__(self, index_rows, constraint_rows):
+        self._results = [_FakeSqlResult(index_rows), _FakeSqlResult(constraint_rows)]
+        self.sql_texts = []
+
+    def sql(self, sql):
+        self.sql_texts.append(sql)
+        return self._results.pop(0)
+
+
+def test_duckdb_hook_keeps_constraints_and_explicit_indexes_distinct():
+    con = _DuckDbHookConnection(
+        [
+            (7, "constraint_unique_t_2", True, False, "CREATE INDEX constraint_unique_t_2 ON t (a)"),
+            (8, "ix", True, False, "CREATE INDEX ix ON t (a, b)"),
+        ],
+        [
+            (2, "UNIQUE", "UNIQUE (a)", ["a"]),
+            (3, "PRIMARY KEY", "PRIMARY KEY (id)", ["id"]),
+            (4, "FOREIGN KEY", "FOREIGN KEY (parent_id)", ["parent_id"]),
+        ],
+    )
+
+    result = duckdb_list_indexes_hook(con, "t", "s")
+
+    assert [(item.name, item.metadata["source_kind"]) for item in result] == [
+        ("constraint_foreign_key_t_4", "constraint"),
+        ("constraint_primary_key_t_3", "constraint"),
+        ("constraint_unique_t_2", "constraint"),
+        ("constraint_unique_t_2", "index"),
+        ("ix", "index"),
+    ]
+    assert result[0].unique is False
+    assert result[1].unique is True and result[1].is_primary is True
+    assert result[2].metadata["constraint_type"] == "unique"

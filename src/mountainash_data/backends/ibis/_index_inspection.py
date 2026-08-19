@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import typing as t
+
+from sqlglot import exp, parse_one
 
 from mountainash_data.backends.ibis._render import _sql_literal, quote_identifier
 from mountainash_data.core.inspection import IndexInfo
@@ -282,3 +285,158 @@ LEFT JOIN user_constraints con
       AND con.constraint_type = 'P'
 WHERE idx.table_name = {_sql_literal(table_name)}
 """
+
+
+def _extract_duckdb_index_definition(definition: str) -> tuple[tuple[str, ...], str]:
+    """Extract ordered DuckDB index keys without parsing a display string."""
+    try:
+        statement = parse_one(definition, read="duckdb")
+    except Exception as exc:
+        raise RuntimeError("invalid DuckDB CREATE INDEX definition") from exc
+    if not (
+        isinstance(statement, exp.Create)
+        and statement.args.get("kind") == "INDEX"
+        and isinstance(statement.this, exp.Index)
+    ):
+        raise RuntimeError("DuckDB definition is not CREATE INDEX")
+
+    params = statement.this.args.get("params")
+    columns = params.args.get("columns") if params is not None else None
+    if not columns:
+        raise RuntimeError("DuckDB CREATE INDEX has no key columns")
+
+    keys: list[str] = []
+    for ordered in columns:
+        expression = ordered.this if isinstance(ordered, exp.Ordered) else ordered
+        if isinstance(expression, exp.Column):
+            keys.append(expression.name)
+        else:
+            keys.append(expression.sql(dialect="duckdb"))
+
+    using = params.args.get("using") if params is not None else None
+    index_type = using.name.lower() if isinstance(using, exp.Var) else "art"
+    return tuple(keys), index_type
+
+
+def duckdb_get_indexes_sql(table_name: str, namespace: str | None) -> str:
+    schema = _sql_literal(namespace) if namespace else "current_schema()"
+    return f"""
+SELECT index_oid, index_name, is_unique, is_primary, sql
+FROM duckdb_indexes()
+WHERE table_name = {_sql_literal(table_name)}
+  AND schema_name = {schema}
+  AND database_name = current_catalog()
+"""
+
+
+def duckdb_get_constraints_sql(table_name: str, namespace: str | None) -> str:
+    schema = _sql_literal(namespace) if namespace else "current_schema()"
+    return f"""
+SELECT constraint_index, constraint_type, constraint_text, constraint_column_names
+FROM duckdb_constraints()
+WHERE table_name = {_sql_literal(table_name)}
+  AND schema_name = {schema}
+  AND database_name = current_catalog()
+  AND constraint_type IN ('PRIMARY KEY', 'UNIQUE', 'FOREIGN KEY')
+"""
+
+
+def duckdb_list_indexes_hook(
+    ibis_conn: t.Any, table_name: str, namespace: str | None
+) -> list[IndexInfo]:
+    """List DuckDB explicit indexes and index-backed constraints."""
+    explicit_result = ibis_conn.sql(duckdb_get_indexes_sql(table_name, namespace))
+    constraint_result = ibis_conn.sql(
+        duckdb_get_constraints_sql(table_name, namespace)
+    )
+    entries: list[tuple[str, str, int, IndexInfo]] = []
+
+    if explicit_result is not None:
+        for row in explicit_result.to_pyarrow().to_pylist():
+            if len(row) != 5:
+                raise RuntimeError("DuckDB index catalog row must have five columns")
+            index_oid, name, raw_unique, raw_primary, definition = row
+            if not isinstance(index_oid, int) or isinstance(index_oid, bool):
+                raise RuntimeError(f"invalid DuckDB index_oid: {index_oid!r}")
+            name = _normalize_text(name, "index_name", allow_none=False)
+            definition = _normalize_text(
+                definition, "definition", allow_none=False
+            )
+            unique = _normalize_flag(raw_unique, "is_unique")
+            is_primary = _normalize_flag(raw_primary, "is_primary")
+            columns, index_type = _extract_duckdb_index_definition(definition)
+            entries.append(
+                (
+                    name,
+                    "index",
+                    index_oid,
+                    IndexInfo(
+                        name=name,
+                        unique=unique,
+                        is_primary=is_primary,
+                        columns=columns,
+                        index_type=index_type,
+                        definition=definition,
+                        metadata={"source_kind": "index", "index_oid": index_oid},
+                    ),
+                )
+            )
+
+    if constraint_result is not None:
+        for row in constraint_result.to_pyarrow().to_pylist():
+            if len(row) != 4:
+                raise RuntimeError(
+                    "DuckDB constraint catalog row must have four columns"
+                )
+            constraint_index, raw_type, definition, raw_columns = row
+            if not isinstance(constraint_index, int) or isinstance(
+                constraint_index, bool
+            ):
+                raise RuntimeError(
+                    f"invalid DuckDB constraint_index: {constraint_index!r}"
+                )
+            constraint_type = _normalize_text(
+                raw_type, "constraint_type", allow_none=False
+            )
+            definition = _normalize_text(
+                definition, "definition", allow_none=False
+            )
+            normalized_type = re.sub(r"\s+", "_", constraint_type.lower())
+            if normalized_type not in {"primary_key", "unique", "foreign_key"}:
+                raise RuntimeError(f"unsupported DuckDB constraint type: {raw_type!r}")
+            if not isinstance(raw_columns, (list, tuple)) or not raw_columns:
+                raise RuntimeError("invalid DuckDB constraint columns")
+            columns = tuple(
+                _normalize_text(column, "constraint column", allow_none=False)
+                for column in raw_columns
+            )
+            is_primary = normalized_type == "primary_key"
+            unique = normalized_type in {"primary_key", "unique"}
+            name = f"constraint_{normalized_type}_{table_name}_{constraint_index}"
+            entries.append(
+                (
+                    name,
+                    "constraint",
+                    constraint_index,
+                    IndexInfo(
+                        name=name,
+                        unique=unique,
+                        is_primary=is_primary,
+                        columns=columns,
+                        index_type="art",
+                        definition=definition,
+                        metadata={
+                            "source_kind": "constraint",
+                            "constraint_type": normalized_type,
+                            "constraint_index": constraint_index,
+                        },
+                    ),
+                )
+            )
+
+    return [
+        info
+        for _, _, _, info in sorted(
+            entries, key=lambda entry: (entry[0], entry[1], entry[2])
+        )
+    ]

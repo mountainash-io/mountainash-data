@@ -235,19 +235,18 @@ def duckdb_get_index_exists_sql(
     table_name: str | None,
     namespace: str | None
 ) -> str:
-    """DuckDB uses duckdb_indexes() system function. `namespace` is a single-
-    level qualifier, which DuckDB's ibis backend (and this package's own
-    `database=` convention) treats as the SCHEMA, not the catalog — so it is
-    matched against duckdb_indexes()'s `schema_name` column, not
-    `database_name` (which holds the catalog, e.g. "memory")."""
-    where_clauses = [f"index_name = {_sql_literal(index_name)}"]
+    """DuckDB index existence scoped to schema and current catalog."""
+    where_clauses = [
+        f"index_name = {_sql_literal(index_name)}",
+        f"schema_name = {_sql_literal(namespace) if namespace else 'current_schema()'}",
+        "database_name = current_catalog()",
+    ]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if namespace:
-        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
-
-    where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
+    return (
+        "SELECT COUNT(*) AS count FROM duckdb_indexes() "
+        f"WHERE {' AND '.join(where_clauses)}"
+    )
 
 
 def duckdb_get_list_indexes_sql(
@@ -314,17 +313,18 @@ def motherduck_get_index_exists_sql(
     table_name: str | None,
     namespace: str | None
 ) -> str:
-    """MotherDuck uses DuckDB's duckdb_indexes() system function. See
-    `namespace` note on `duckdb_get_index_exists_sql` — matched against
-    `schema_name`, not `database_name`."""
-    where_clauses = [f"index_name = {_sql_literal(index_name)}"]
+    """MotherDuck index existence scoped to schema and current catalog."""
+    where_clauses = [
+        f"index_name = {_sql_literal(index_name)}",
+        f"schema_name = {_sql_literal(namespace) if namespace else 'current_schema()'}",
+        "database_name = current_catalog()",
+    ]
     if table_name:
         where_clauses.append(f"table_name = {_sql_literal(table_name)}")
-    if namespace:
-        where_clauses.append(f"schema_name = {_sql_literal(namespace)}")
-
-    where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) as count FROM duckdb_indexes() WHERE {where_sql}"
+    return (
+        "SELECT COUNT(*) AS count FROM duckdb_indexes() "
+        f"WHERE {' AND '.join(where_clauses)}"
+    )
 
 
 def motherduck_get_list_indexes_sql(
