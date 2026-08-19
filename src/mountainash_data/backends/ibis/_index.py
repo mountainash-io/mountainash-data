@@ -156,7 +156,6 @@ def _index_ref(ibis_conn: t.Any, index_name: str, namespace: t.Optional[str]) ->
     if dialect_name == "sqlite" and namespace:
         return qualified_name([namespace, index_name], dialect)
     return quote_identifier(index_name, dialect)
-    return qualified_name(parts, dialect)
 
 
 def _generic_create_index(

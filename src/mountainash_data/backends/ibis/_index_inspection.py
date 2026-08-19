@@ -14,9 +14,9 @@ from mountainash_data.core.inspection import IndexInfo
 def _normalize_flag(value: t.Any, field: str, *, allow_none: bool = False) -> bool | None:
     if value is None and allow_none:
         return None
-    if type(value) is bool:
+    if isinstance(value, bool):
         return value
-    if type(value) is int and value in (0, 1):
+    if isinstance(value, int) and not isinstance(value, bool) and value in (0, 1):
         return bool(value)
     raise RuntimeError(f"invalid {field} flag: {value!r}")
 
@@ -28,16 +28,15 @@ def _normalize_text(value: t.Any, field: str, *, allow_none: bool = True) -> str
         raise RuntimeError(f"invalid {field} text: {value!r}")
     return value
 
-
-
-
 def _positional_values(row: t.Any) -> tuple[t.Any, ...]:
     """Read Arrow rows by schema order, never by catalog alias."""
     if isinstance(row, dict):
         return tuple(row.values())
     return tuple(row)
+
+
 def _normalize_position(value: t.Any) -> int:
-    if type(value) is not int or value <= 0:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
         raise RuntimeError(f"invalid position: {value!r}")
     return value
 

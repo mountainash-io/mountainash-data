@@ -697,7 +697,7 @@ _HYBRID = "hybrid"
 
 # Import capability hook functions from operations module.
 # These are the per-dialect index SQL functions. No circular imports since
-from mountainash_data.backends.ibis._index_inspection import (
+from mountainash_data.backends.ibis._index_inspection import (  # noqa: E402
     duckdb_list_indexes_hook,
     mssql_get_list_indexes_sql,
     mysql_get_list_indexes_sql,
@@ -706,7 +706,7 @@ from mountainash_data.backends.ibis._index_inspection import (
     singlestore_get_list_indexes_sql,
     sqlite_get_list_indexes_sql,
 )
-from mountainash_data.backends.ibis.operations import (
+from mountainash_data.backends.ibis.operations import (  # noqa: E402
     duckdb_get_index_exists_sql,
     sqlite_get_index_exists_sql,
     motherduck_get_index_exists_sql,
