@@ -443,13 +443,20 @@ def test_index_exists():
 
 
 def test_list_indexes():
-    """list_indexes() must return index info."""
+    """list_indexes() must return one row-dict per index with name/definition/
+    unique keys, correctly typed (guards the DEBT-1 refactor away from
+    ma.relation().to_dicts() onto native ibis .to_pyarrow().to_pylist())."""
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
         backend.create_table("t", {"id": [1], "name": ["a"]})
-        backend.create_index("t", ["id"], index_name="idx_id")
+        backend.create_index("t", ["id"], index_name="idx_id", unique=True)
         indexes = backend.list_indexes("t")
         assert isinstance(indexes, list)
-        assert len(indexes) >= 1
+        assert len(indexes) == 1
+        row = indexes[0]
+        assert set(row.keys()) == {"name", "definition", "unique"}
+        assert row["name"] == "idx_id"
+        assert "idx_id" in row["definition"]
+        assert row["unique"] == 1
 
 
 def test_upsert_duckdb():

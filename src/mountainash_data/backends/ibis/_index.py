@@ -124,14 +124,12 @@ def _generic_index_exists(
     result = ibis_conn.sql(exists_sql_fn(index_name, table_name, namespace))
     if result is None:
         return False
-    import mountainash as ma
 
     # Read the single returned column BY POSITION, not by the alias name:
     # Oracle upper-cases the unquoted `count` alias ("count" -> "COUNT"), so
     # keying by "count" would KeyError. Every introspection query returns
     # exactly one column.
-    data = ma.relation(result).to_dict()
-    first_col = next(iter(data.values()))
+    first_col = result.to_pyarrow().column(0).to_pylist()
     return first_col[0] > 0
 
 

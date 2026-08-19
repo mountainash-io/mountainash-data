@@ -934,5 +934,4 @@ class IbisBackend:
         result = conn._ibis_conn.sql(list_sql)
         if result is None:
             return []
-        import mountainash as ma
-        return ma.relation(result).to_dicts()
+        return result.to_pyarrow().to_pylist()

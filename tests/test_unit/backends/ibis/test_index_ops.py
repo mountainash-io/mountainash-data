@@ -101,6 +101,39 @@ class TestValidationErrors:
                             caps=_SQLITE, exists_sql_fn=_SQLITE_FN)  # no raise
 
 
+class TestIndexExistsReadsColumnByPosition:
+    """Guards DEBT-1: _generic_index_exists must read the COUNT column BY
+    POSITION, not by its alias name. Oracle upper-cases the unquoted `count`
+    alias to `COUNT`, so keying by the literal string "count" would KeyError
+    on that dialect. Simulate a dialect whose introspection SQL uses an
+    unrelated, differently-cased alias to prove the dispatcher never keys
+    off the alias."""
+
+    @staticmethod
+    def _odd_alias_fn(index_name, table_name, namespace):
+        tbl_clause = f" AND tbl_name = '{table_name}'" if table_name else ""
+        return (
+            "SELECT COUNT(*) AS \"TOTAL_MATCHES\" FROM sqlite_master "
+            f"WHERE type = 'index' AND name = '{index_name}'{tbl_clause}"
+        )
+
+    def test_true_when_index_present_under_odd_alias(self):
+        con = _seed_sqlite()
+        _generic_create_index(con, "t", ["id"], index_name="idx_t_id",
+                              caps=_SQLITE, exists_sql_fn=_SQLITE_FN)
+        assert _generic_index_exists(
+            con, "idx_t_id", table_name="t",
+            exists_sql_fn=self._odd_alias_fn,
+        ) is True
+
+    def test_false_when_index_absent_under_odd_alias(self):
+        con = _seed_sqlite()
+        assert _generic_index_exists(
+            con, "no_such_idx", table_name="t",
+            exists_sql_fn=self._odd_alias_fn,
+        ) is False
+
+
 from mountainash_data import IbisBackend  # noqa: E402
 
 
