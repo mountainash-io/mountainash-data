@@ -279,13 +279,14 @@ def sqlite_get_index_exists_sql(
     table_name: str | None,
     namespace: str | None
 ) -> str:
-    """SQLite uses the sqlite_master system table. `namespace` is unused (no
-    cross-database queries)."""
+    """SQLite's ``namespace`` selects the attached database schema."""
     where_clauses = ["type = 'index'", f"name = {_sql_literal(index_name)}"]
     if table_name:
         where_clauses.append(f"tbl_name = {_sql_literal(table_name)}")
     where_sql = " AND ".join(where_clauses)
-    return f"SELECT COUNT(*) AS count FROM sqlite_master WHERE {where_sql}"
+    scope = namespace or "main"
+    master = f"{quote_identifier(scope, 'sqlite')}.sqlite_master"
+    return f"SELECT COUNT(*) AS count FROM {master} WHERE {where_sql}"
 
 
 def sqlite_get_list_indexes_sql(

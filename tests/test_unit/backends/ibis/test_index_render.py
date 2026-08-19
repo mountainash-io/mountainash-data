@@ -192,3 +192,84 @@ class TestIntrospectionSql:
         # escaped literal (doubled quote), not interpolated raw.
         sql = fn("x'; DROP TABLE t; --", "t", None)
         assert "''" in sql
+
+
+from mountainash_data.backends.ibis._index_inspection import (  # noqa: E402
+    mssql_get_list_indexes_sql,
+    mysql_get_list_indexes_sql,
+    oracle_get_list_indexes_sql,
+    postgres_get_list_indexes_sql,
+    singlestore_get_list_indexes_sql,
+    sqlite_get_list_indexes_sql,
+)
+
+
+@pytest.mark.parametrize(
+    "builder",
+    [
+        sqlite_get_list_indexes_sql,
+        postgres_get_list_indexes_sql,
+        mysql_get_list_indexes_sql,
+        mssql_get_list_indexes_sql,
+        oracle_get_list_indexes_sql,
+        singlestore_get_list_indexes_sql,
+    ],
+)
+def test_generic_list_index_builders_expose_ten_column_contract(builder):
+    sql = builder("x'y", "aux")
+    aliases = [
+        "index_name",
+        "is_unique",
+        "is_primary",
+        "is_valid",
+        "index_type",
+        "definition",
+        "col_name",
+        "col_expr",
+        "is_included",
+        "position",
+    ]
+    assert all(alias in sql for alias in aliases)
+    assert "x''y" in sql
+
+
+def test_generic_list_index_builder_vendor_shapes():
+    sqlite_sql = sqlite_get_list_indexes_sql("t", "aux")
+    postgres_sql = postgres_get_list_indexes_sql("t", "public")
+    mysql_sql = mysql_get_list_indexes_sql("t", "db")
+    mssql_sql = mssql_get_list_indexes_sql("t", "dbo")
+    oracle_sql = oracle_get_list_indexes_sql("t", None)
+
+    assert "pragma_index_list('t', 'aux')" in sqlite_sql
+    assert "pragma_index_xinfo(l.name, 'aux')" in sqlite_sql
+    assert '"aux".sqlite_master' in sqlite_sql
+    assert "keypos.ord::integer" in postgres_sql
+    assert "unnest(i.indkey::smallint[]) WITH ORDINALITY" in postgres_sql
+    assert "INDEX_TYPE" in mysql_sql and "EXPRESSION" not in mysql_sql
+    assert "i.type IN (1, 2)" in mssql_sql
+    assert "ic.column_id > 0" in mssql_sql
+    assert "ic.partition_ordinal > 0" in mssql_sql
+    assert "exprs.column_expression" in oracle_sql
+    assert "COALESCE" not in oracle_sql
+
+
+def test_sqlite_attachment_index_ddl_qualifies_index_not_table():
+    import ibis
+
+    from mountainash_data.backends.ibis._index import _generic_create_index
+    from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+
+    con = ibis.sqlite.connect()
+    con.raw_sql("ATTACH ':memory:' AS aux")
+    con.raw_sql("CREATE TABLE aux.t (id INTEGER)")
+    caps = DIALECTS["sqlite"].index_caps
+    _generic_create_index(
+        con,
+        "t",
+        ["id"],
+        index_name="ix",
+        namespace="aux",
+        caps=caps,
+        exists_sql_fn=DIALECTS["sqlite"].get_index_exists_sql,
+    )
+    assert con.raw_sql("SELECT name FROM aux.sqlite_master WHERE type = 'index'").fetchall() == [("ix",)]
