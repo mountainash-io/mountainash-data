@@ -9,6 +9,112 @@ from mountainash_data.backends.ibis._index import (
     _generic_drop_index,
     _generic_index_exists,
 )
+from mountainash_data.backends.ibis._index_inspection import _generic_list_indexes
+from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+from mountainash_data import IndexInfo
+
+
+class _FakeArrow:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def to_pylist(self):
+        return self._rows
+
+
+class _FakeSqlResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def to_pyarrow(self):
+        return _FakeArrow(self._rows)
+
+
+class _FakeConnection:
+    def __init__(self, rows):
+        self.rows = rows
+        self.sql_text = None
+
+    def sql(self, sql):
+        self.sql_text = sql
+        return _FakeSqlResult(self.rows)
+
+
+def _valid_index_rows():
+    metadata = ("ix", True, False, None, "BTREE", "CREATE INDEX ix")
+    return [
+        [*metadata, "covered", None, True, 3],
+        [*metadata, None, None, False, 2],
+        [*metadata, "a", None, False, 1],
+    ]
+
+
+def test_generic_list_indexes_groups_positional_arrow_rows():
+    con = _FakeConnection(list(reversed(_valid_index_rows())))
+
+    result = _generic_list_indexes(con, "t", None, lambda table, namespace: "SQL")
+
+    assert result == [
+        IndexInfo(
+            name="ix",
+            unique=True,
+            is_primary=False,
+            columns=("a", "<expression>"),
+            included_columns=("covered",),
+            index_type="btree",
+            is_valid=None,
+            definition="CREATE INDEX ix",
+        )
+    ]
+    assert con.sql_text == "SQL"
+
+
+@pytest.mark.parametrize(
+    ("mutator", "message"),
+    [
+        (lambda rows: rows[0].__setitem__(1, "1"), "flag"),
+        (lambda rows: rows[0].__setitem__(8, None), "flag"),
+        (lambda rows: rows[0].__setitem__(9, True), "position"),
+        (lambda rows: rows[0].__setitem__(9, 0), "position"),
+        (lambda rows: rows.append(rows[0]), "position"),
+        (lambda rows: rows[0].__setitem__(0, ""), "index_name"),
+        (lambda rows: rows[0].__setitem__(6, ""), "col_name"),
+        (lambda rows: rows[0].__setitem__(7, "expr"), "non-key"),
+    ],
+)
+def test_generic_list_indexes_rejects_malformed_rows(mutator, message):
+    rows = _valid_index_rows()
+    mutator(rows)
+
+    with pytest.raises(RuntimeError, match=message):
+        _generic_list_indexes(_FakeConnection(rows), "t", None, lambda *_: "SQL")
+
+
+def test_generic_list_indexes_rejects_missing_key_and_conflicting_metadata():
+    rows = _valid_index_rows()
+    rows = [row for row in rows if row[8]]
+    with pytest.raises(RuntimeError, match="key"):
+        _generic_list_indexes(_FakeConnection(rows), "t", None, lambda *_: "SQL")
+
+    rows = _valid_index_rows()
+    conflicting = list(rows[1])
+    conflicting[1] = False
+    rows.append(tuple(conflicting))
+    with pytest.raises(RuntimeError, match="metadata"):
+        _generic_list_indexes(_FakeConnection(rows), "t", None, lambda *_: "SQL")
+
+
+def test_generic_list_indexes_accepts_nonunique_primary_index():
+    rows = _valid_index_rows()
+    rows = [tuple(False if i == 1 else True if i == 2 else value for i, value in enumerate(row))
+            for row in rows]
+
+    result = _generic_list_indexes(
+        _FakeConnection(rows), "t", None, lambda *_: "SQL"
+    )
+
+    assert result[0].unique is False
+    assert result[0].is_primary is True
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS
 
 _SQLITE = DIALECTS["sqlite"].index_caps
