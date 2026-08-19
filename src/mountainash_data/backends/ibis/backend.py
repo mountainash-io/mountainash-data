@@ -12,6 +12,7 @@ import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
 from mountainash_data.backends.ibis._transaction import run_transaction, is_active
+from mountainash_data.backends.ibis._sqlite_compat import ensure_sqlite_nat_adapter
 from mountainash_data.backends.ibis._adoption import (
     apply_options, snapshot_options, restore_options,
 )
@@ -625,6 +626,7 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
+        ensure_sqlite_nat_adapter()
         conn._ibis_conn.create_table(
             name, obj=obj, schema=schema, database=rendered,
             temp=temp, overwrite=overwrite,
@@ -678,6 +680,7 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
+        ensure_sqlite_nat_adapter()
         conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 

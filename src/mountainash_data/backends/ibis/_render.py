@@ -13,6 +13,7 @@ import ibis
 import ibis.expr.operations as ops
 import ibis.expr.types as ir
 from sqlglot import exp
+from mountainash_data.backends.ibis._sqlite_compat import ensure_sqlite_nat_adapter
 
 
 def dialect_of(ibis_conn: t.Any) -> t.Any:
@@ -143,6 +144,7 @@ def compiled_source(
         raise ValueError(f"source columns absent from target: {sorted(extra)}")
     cols = [c for c in target_schema.names if c in src_cols]
     projected = src.select([src[c].cast(target_schema[c]).name(c) for c in cols])
+    ensure_sqlite_nat_adapter()
     ibis_conn._register_in_memory_tables(projected)  # REQUIRED: stage memtables
     return ibis_conn.compile(projected), cols
 
