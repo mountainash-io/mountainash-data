@@ -243,8 +243,9 @@ def test_generic_list_index_builder_vendor_shapes():
     assert "pragma_index_list('t', 'aux')" in sqlite_sql
     assert "pragma_index_xinfo(l.name, 'aux')" in sqlite_sql
     assert '"aux".sqlite_master' in sqlite_sql
-    assert "keypos.ord::integer" in postgres_sql
+    assert "keypos.ordinality::integer" in postgres_sql
     assert "unnest(i.indkey::smallint[]) WITH ORDINALITY" in postgres_sql
+    assert "AS keypos(attnum)" in postgres_sql
     assert "INDEX_TYPE" in mysql_sql and "EXPRESSION" not in mysql_sql
     assert "i.type IN (1, 2)" in mssql_sql
     assert "ic.column_id > 0" in mssql_sql
@@ -260,6 +261,25 @@ def test_oracle_list_index_builder_scopes_owner():
     assert "idx.owner = 'OTHER_OWNER'" in sql
     assert "cols.index_owner = idx.owner" in sql
     assert "con.index_owner = idx.owner" in sql
+
+
+def test_postgres_list_index_sql_survives_sqlglot_roundtrip():
+    """DEBT-15 regression: SQLGlot's postgres dialect silently drops the
+    second column of a `WITH ORDINALITY AS alias(col1, col2)` alias list on
+    re-emit (confirmed against sqlglot 30.17.0) — `IbisBackend.list_indexes()`
+    routes this SQL through `conn.sql()`, which parses and re-emits it via
+    SQLGlot before execution, so any reintroduced two-column ordinality alias
+    ships broken without a live database catching it. Assert the round-tripped
+    SQL keeps every `keypos.*` reference the original resolves — a byte-exact
+    round-trip isn't required, only that no column reference is orphaned."""
+    import sqlglot
+
+    sql = postgres_get_list_indexes_sql("t", "public")
+    roundtripped = sqlglot.parse_one(sql, read="postgres").sql(dialect="postgres")
+
+    assert "keypos(attnum, ord)" not in roundtripped  # the historical broken shape
+    for ref in ("keypos.attnum", "keypos.ordinality"):
+        assert ref in roundtripped
 
 
 def test_sqlite_attachment_index_ddl_qualifies_index_not_table():
