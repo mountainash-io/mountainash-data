@@ -172,18 +172,18 @@ SELECT
     pg_get_indexdef(i.indexrelid) AS definition,
     CASE WHEN keypos.attnum = 0 THEN NULL ELSE attr.attname END AS col_name,
     CASE WHEN keypos.attnum = 0
-         THEN pg_get_indexdef(i.indexrelid, keypos.ord::integer, false)
+         THEN pg_get_indexdef(i.indexrelid, keypos.ordinality::integer, false)
          ELSE NULL
     END AS col_expr,
-    (keypos.ord > i.indnkeyatts) AS is_included,
-    keypos.ord AS position
+    (keypos.ordinality > i.indnkeyatts) AS is_included,
+    keypos.ordinality AS position
 FROM pg_index i
 JOIN pg_class ic ON ic.oid = i.indexrelid
 JOIN pg_class tc ON tc.oid = i.indrelid
 JOIN pg_namespace n ON n.oid = tc.relnamespace
 JOIN pg_am am ON am.oid = ic.relam
 CROSS JOIN LATERAL unnest(i.indkey::smallint[]) WITH ORDINALITY
-                   AS keypos(attnum, ord)
+                   AS keypos(attnum)
 LEFT JOIN pg_attribute attr
        ON attr.attrelid = i.indrelid AND attr.attnum = keypos.attnum
 WHERE tc.relname = {_sql_literal(table_name)}

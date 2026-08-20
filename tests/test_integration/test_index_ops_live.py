@@ -35,6 +35,42 @@ class TestPostgresLive:
         be.create_index("ix_gin", ["id"], index_name="ix_gin_btree", index_type="btree")
         assert be.index_exists("ix_gin_btree", table_name="ix_gin") is True
 
+    def test_list_indexes_reports_multi_key_and_included_columns(self, postgres_backend):
+        """DEBT-15 regression: list_indexes() runs its catalog query through
+        conn.sql(), which round-trips the SQL through SQLGlot before
+        executing against real PostgreSQL. A prior version of the SQL relied
+        on a two-column `WITH ORDINALITY AS alias(col1, col2)` clause that
+        SQLGlot silently truncated to one column on re-emit, breaking every
+        call with `UndefinedColumn: column keypos.ord does not exist`."""
+        be = postgres_backend
+        _fresh_table(be, "ix_list_live")
+        raw = be.raw_driver_connection()
+        cur = raw.cursor()
+        cur.execute("ALTER TABLE ix_list_live ADD COLUMN ver INT")
+        cur.execute(
+            "CREATE UNIQUE INDEX ix_list_multi ON ix_list_live (id, active)"
+        )
+        cur.execute(
+            "CREATE UNIQUE INDEX ix_list_include ON ix_list_live (id) INCLUDE (ver)"
+        )
+        cur.execute("CREATE INDEX ix_list_expr ON ix_list_live ((id + 1))")
+        raw.commit()
+
+        indexes = {index.name: index for index in be.list_indexes("ix_list_live")}
+
+        multi = indexes["ix_list_multi"]
+        assert multi.unique is True
+        assert multi.columns == ("id", "active")
+
+        included = indexes["ix_list_include"]
+        assert included.unique is True
+        assert included.columns == ("id",)
+        assert included.included_columns == ("ver",)
+
+        expr = indexes["ix_list_expr"]
+        assert expr.columns == ("((id + 1))",)
+
+
 
 class TestMariaDBLive:
     def test_table_scoped_drop_requires_table(self, mysql_backend):
