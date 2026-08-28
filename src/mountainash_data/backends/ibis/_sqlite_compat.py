@@ -44,7 +44,7 @@ def ensure_sqlite_nat_adapter() -> None:
     a no-op for every other dialect's connection) at the top of every
     ``IbisBackend`` write path that can reach
     ``ibis.Backend._register_in_memory_table``: ``create_table``, ``insert``,
-    and ``compiled_source`` (the shared staging step behind every
+    and ``compile_projected_source`` (the shared staging step behind every
     ``upsert`` renderer).
 
     Silently returns if pandas is not importable: Ibis's own SQLite roundtrip

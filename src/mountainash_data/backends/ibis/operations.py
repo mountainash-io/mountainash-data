@@ -17,10 +17,11 @@ from mountainash_data.backends.ibis._render import (
     ConditionAliases,
     _sql_literal,
     compile_condition,
-    compiled_source,
+    compile_projected_source,
     dialect_of,
     qualified_name,
     quote_identifier,
+    resolve_source,
     validate_condition,
 )
 from mountainash_data.backends.ibis.dialects._registry import UpsertStyle
@@ -71,6 +72,18 @@ def _normalize_columns(
         return [columns]
     if not columns:
         raise ValueError("At least one column must be specified")
+    return list(columns)
+
+
+def _normalize_optional_columns(columns: list[str] | str) -> list[str]:
+    """Like `_normalize_columns`, but permits an empty result.
+
+    Used only for `update_columns`, where an explicit empty set is
+    meaningful input ("nothing to update") -- unlike `conflict_columns`,
+    which must never be empty (see `_normalize_columns`).
+    """
+    if isinstance(columns, str):
+        return [columns]
     return list(columns)
 
 
@@ -426,7 +439,7 @@ def build_on_conflict_sql(
         conflict: Conflict-key column names (unquoted).
         update: Columns to update on conflict (unquoted; ignored for NOTHING).
         conflict_action: ``"UPDATE"`` or ``"NOTHING"``.
-        source_sql: Compiled SELECT subquery SQL string (from ``compiled_source``).
+        source_sql: Compiled SELECT subquery SQL string (from ``compile_projected_source``).
         condition_sql: Optional rendered WHERE condition for the DO UPDATE clause.
 
     Returns:
@@ -458,8 +471,9 @@ def build_on_conflict_sql(
 def _render_on_conflict(
     ibis_conn: t.Any,
     name: str,
-    obj: t.Any,
     *,
+    src: t.Any,
+    cols: list[str],
     target_schema: t.Any,
     conflict: list[str],
     update: list[str],
@@ -469,20 +483,16 @@ def _render_on_conflict(
     schema: str | None,
 ) -> str:
     """Thin wrapper: derive dialect/source_sql/condition_sql from the live
-    connection and delegate to ``build_on_conflict_sql``."""
+    connection and delegate to ``build_on_conflict_sql``. `src`/`cols` are
+    resolved once by `_generic_upsert` (via `resolve_source`) before the
+    update-column set is computed (DEBT-12 spec §3.2/§3.3)."""
     dialect = dialect_of(ibis_conn)
-    source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
+    source_sql = compile_projected_source(ibis_conn, src, cols, target_schema)
     parts = [p for p in (namespace, schema, name) if p]
     target = qualified_name(parts, dialect)
 
-    # update_condition only shapes the DO UPDATE arm; ON CONFLICT … DO NOTHING
-    # has no WHERE, so the condition is intentionally not compiled here. The
-    # caller-facing validate/warn for a condition under NOTHING lives in
-    # _generic_upsert (the entry point); this branch just skips rendering it.
     condition_sql: str | None = None
     if update_condition is not None and conflict_action == "UPDATE":
-        # EXCLUDED is the unquoted pseudo-relation for the incoming row; tgt is
-        # the target alias used in INSERT INTO … AS tgt.
         aliases = ConditionAliases(
             incoming="EXCLUDED", existing="tgt", incoming_quoted=False
         )
@@ -525,7 +535,7 @@ def build_merge_sql(
         conflict: Conflict-key column names (unquoted).
         update: Columns to update on match (unquoted; ignored for NOTHING).
         conflict_action: ``"UPDATE"`` or ``"NOTHING"``.
-        source_sql: Compiled SELECT subquery SQL string (from ``compiled_source``).
+        source_sql: Compiled SELECT subquery SQL string (from ``compile_projected_source``).
         condition_sql: Optional rendered condition for the WHEN MATCHED clause.
 
     Returns:
@@ -552,8 +562,9 @@ def build_merge_sql(
 def _render_merge(
     ibis_conn: t.Any,
     name: str,
-    obj: t.Any,
     *,
+    src: t.Any,
+    cols: list[str],
     target_schema: t.Any,
     conflict: list[str],
     update: list[str],
@@ -563,9 +574,10 @@ def _render_merge(
     schema: str | None,
 ) -> str:
     """Thin wrapper: derive dialect/source_sql/condition_sql from the live
-    connection and delegate to ``build_merge_sql``."""
+    connection and delegate to ``build_merge_sql``. `src`/`cols` are resolved
+    once by `_generic_upsert` (DEBT-12 spec §3.2/§3.3)."""
     dialect = dialect_of(ibis_conn)
-    source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
+    source_sql = compile_projected_source(ibis_conn, src, cols, target_schema)
     parts = [p for p in (namespace, schema, name) if p]
     target = qualified_name(parts, dialect)
 
@@ -694,7 +706,7 @@ def build_on_duplicate_key_sql(
             NOTHING self-assign no-op (first conflict column).
         update: Columns to update on duplicate (unquoted; ignored for NOTHING).
         conflict_action: ``"UPDATE"`` or ``"NOTHING"``.
-        source_sql: Compiled SELECT subquery SQL string (from ``compiled_source``).
+        source_sql: Compiled SELECT subquery SQL string (from ``compile_projected_source``).
 
     Returns:
         A complete ``INSERT INTO … ON DUPLICATE KEY UPDATE …`` SQL string.
@@ -704,17 +716,28 @@ def build_on_duplicate_key_sql(
         deprecates ``VALUES()`` in favour of a row alias; that switch is
         out-of-scope for the MariaDB-tested target here.
 
-        For ``conflict_action="NOTHING"`` the self-assign ``k0 = k0`` is used
-        as a documented no-op (it is not a true no-op on MySQL — the row is
-        still "touched" — but it suppresses the update semantics with minimal
-        side-effects, per spec §6.2).
+        For ``conflict_action="NOTHING"`` the self-assign ``k0 = VALUES(k0)``
+        is used as a documented no-op (it is not a true no-op on MySQL — the
+        row is still "touched" — but it suppresses the update semantics with
+        minimal side-effects, per spec §6.2). A bare self-assign ``k0 = k0``
+        would be ambiguous against the INSERT source's own projection of the
+        conflict column (real MySQL/MariaDB: ``Column 'id' in UPDATE is
+        ambiguous``), so ``VALUES(k0)`` — the documented MySQL idiom for an
+        unambiguous self-reference — is used instead (DEBT-12).
     """
     q = lambda c: quote_identifier(c, dialect)  # noqa: E731
     col_list = ", ".join(q(c) for c in cols)
 
     if conflict_action == "NOTHING":
         k0 = q(conflict[0])
-        set_sql = f"{k0} = {k0}"  # self-assign; see §6.2 (not a true no-op)
+        # VALUES(col), not a bare self-assign col = col: the INSERT source
+        # is `SELECT ... FROM (subquery) AS __src`, and __src always
+        # projects the conflict column too, so a bare `id = id` is
+        # ambiguous between the target table and __src on real MySQL/
+        # MariaDB (verified live: MySQLdb.OperationalError 1052, "Column
+        # 'id' in UPDATE is ambiguous"). VALUES(col) is unambiguous and is
+        # the documented MySQL idiom for this exact self-reference case.
+        set_sql = f"{k0} = VALUES({k0})"
     else:
         set_sql = ", ".join(f"{q(c)} = VALUES({q(c)})" for c in update)
 
@@ -727,8 +750,9 @@ def build_on_duplicate_key_sql(
 def _render_on_duplicate_key(
     ibis_conn: t.Any,
     name: str,
-    obj: t.Any,
     *,
+    src: t.Any,
+    cols: list[str],
     target_schema: t.Any,
     conflict: list[str],
     update: list[str],
@@ -738,13 +762,12 @@ def _render_on_duplicate_key(
     schema: str | None,
 ) -> str:
     """Thin wrapper: run the MySQL prove-safe preflight, then render the SQL.
-
-    Delegates SQL construction to ``build_on_duplicate_key_sql`` so the pure
-    builder is testable without a live MySQL connection.
+    `src`/`cols` are resolved once by `_generic_upsert` (DEBT-12 spec
+    §3.2/§3.3). Delegates SQL construction to ``build_on_duplicate_key_sql``.
     """
     _mysql_validate_conflict_key(ibis_conn, name, conflict, namespace)
     dialect = dialect_of(ibis_conn)
-    source_sql, cols = compiled_source(ibis_conn, obj, target_schema)
+    source_sql = compile_projected_source(ibis_conn, src, cols, target_schema)
     parts = [p for p in (namespace, schema, name) if p]
     target = qualified_name(parts, dialect)
 
@@ -774,96 +797,127 @@ def _generic_upsert(
 ) -> None:
     """Dialect-agnostic upsert dispatcher.
 
-    Validation precedence (spec §10):
-      1. style (unknown → NotImplementedError)
+    Validation precedence (DEBT-12 spec §3.3):
+      1. style (unknown -> NotImplementedError)
       2. target existence
-      3. identifier validation (name, namespace)
+      3. identifier validation (name, namespace, schema)
       4. conflict_action validity
-      5. update_condition — validated UNCONDITIONALLY even under NOTHING
-         (malformed predicate must error regardless of action path)
-      6. updatable columns check
+      5. target schema + conflict-column existence
+      6. resolve source columns (`resolve_source`) -- must happen before the
+         update-column set is computed, so the set can be source-aware
+      7. update-column set: source-aware default (target-non-key columns
+         present in the source) AND source-aware explicit validation (an
+         explicitly requested update column must exist in both the target
+         and the source)
+      8. effective_conflict_action -- pure computation (no warning yet): a
+         request to UPDATE with an empty update set degrades to NOTHING
+      9. update_condition -- structural validation UNCONDITIONALLY (even
+         under a to-be-degraded action); the "ignored" warning is deferred
+         to step 11
+      10. dispatch -- builds `stmt`; MySQL's live unique-index preflight
+          runs here for ON_DUPLICATE_KEY
+      11. warnings -- emitted only after every validation step AND the
+          dispatch's own preflight have succeeded, never before a raise
+      12. execute
 
     Covers all three SQL families: ON_CONFLICT (DuckDB/SQLite/Postgres/RisingWave),
     MERGE (MSSQL/Oracle/Snowflake/BigQuery/Redshift/Trino/Databricks/Exasol),
     ON_DUPLICATE_KEY (MySQL/SingleStoreDB). Public ``be.upsert()`` dispatches here
     when no dialect hook is registered.
     """
-    # §10.1 — style check first
+    # 1 — style check first
     if style is None:
         raise NotImplementedError(
             f"Dialect (connection {type(ibis_conn).__name__}) does not support upsert"
         )
 
-    # §10.2 — target existence
+    # 2 — target existence
     _tables = ibis_conn.list_tables(database=namespace) if namespace is not None else ibis_conn.list_tables()
     if name not in _tables:
         raise ValueError(f"target table {name!r} does not exist")
 
-    # §10.3 — identifier validation (every part that reaches qualified_name)
+    # 3 — identifier validation (every part that reaches qualified_name)
     _validate_simple_identifier(name, kind="name")
     if namespace is not None:
         _validate_simple_identifier(namespace, kind="namespace")
     if schema is not None:
         _validate_simple_identifier(schema, kind="schema")
 
-    # §10.4 — conflict_action validity
+    # 4 — conflict_action validity
     if conflict_action not in ("UPDATE", "NOTHING"):
         raise ValueError(
             f"conflict_action must be UPDATE or NOTHING, got {conflict_action!r}"
         )
 
+    # 5 — target schema + conflict columns
     target_schema = ibis_conn.table(name, database=namespace).schema()
     conflict = _normalize_columns(conflict_columns)
-
-    # conflict column existence
     missing = [c for c in conflict if c not in target_schema.names]
     if missing:
         raise ValueError(f"conflict_columns absent from target: {missing}")
 
+    # 6 — resolve source columns before computing `update` (DEBT-12)
+    src, cols = resolve_source(obj, target_schema)
+
+    # 7 — update-column set: source-aware default AND source-aware explicit
+    # validation (DEBT-12 -- fixes the silent-NULL data-loss defect)
     if update_columns is None:
-        update = [c for c in target_schema.names if c not in conflict]
+        update = [c for c in cols if c not in conflict]
     else:
-        update = _normalize_columns(update_columns)
+        update = _normalize_optional_columns(update_columns)
         missing_u = [c for c in update if c not in target_schema.names]
         if missing_u:
             raise ValueError(f"update_columns absent from target: {missing_u}")
+        not_sourced = [c for c in update if c not in cols]
+        if not_sourced:
+            raise ValueError(
+                f"update_columns not present in source frame: {not_sourced}"
+            )
 
-    # §10.5 — update_condition validated UNCONDITIONALLY (even under NOTHING)
+    # 8 — effective action: pure computation, no side effect yet (DEBT-12)
+    downgraded = conflict_action == "UPDATE" and not update
+    effective_conflict_action = "NOTHING" if downgraded else conflict_action
+
+    # 9 — update_condition validated UNCONDITIONALLY (even under NOTHING /
+    # a to-be-degraded action); the "ignored" warning is deferred to step 11
     if update_condition is not None:
         if style is UpsertStyle.ON_DUPLICATE_KEY:
             raise ValueError(
                 "update_condition is not supported for the MySQL ON DUPLICATE KEY family"
             )
         validate_condition(target_schema, name, update_condition)
-        if conflict_action == "NOTHING":
-            warnings.warn("update_condition is ignored when conflict_action='NOTHING'")
 
-    # §10.6 — updatable columns check
-    if conflict_action == "UPDATE" and not update:
-        raise ValueError(
-            "no columns to update; provide update_columns or non-key columns"
-        )
-
-    # Dispatch
+    # 10 — dispatch
     if style is UpsertStyle.ON_CONFLICT:
         stmt = _render_on_conflict(
-            ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
-            update=update, conflict_action=conflict_action,
+            ibis_conn, name, src=src, cols=cols, target_schema=target_schema,
+            conflict=conflict, update=update, conflict_action=effective_conflict_action,
             update_condition=update_condition, namespace=namespace, schema=schema,
         )
     elif style is UpsertStyle.MERGE:
         stmt = _render_merge(
-            ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
-            update=update, conflict_action=conflict_action,
+            ibis_conn, name, src=src, cols=cols, target_schema=target_schema,
+            conflict=conflict, update=update, conflict_action=effective_conflict_action,
             update_condition=update_condition, namespace=namespace, schema=schema,
         )
     elif style is UpsertStyle.ON_DUPLICATE_KEY:
         stmt = _render_on_duplicate_key(
-            ibis_conn, name, obj, target_schema=target_schema, conflict=conflict,
-            update=update, conflict_action=conflict_action,
+            ibis_conn, name, src=src, cols=cols, target_schema=target_schema,
+            conflict=conflict, update=update, conflict_action=effective_conflict_action,
             update_condition=update_condition, namespace=namespace, schema=schema,
         )
     else:
         raise NotImplementedError(f"unknown upsert_style: {style!r}")
 
+    # 11 — warnings only after every validation step AND dispatch's own
+    # preflight (MySQL) have succeeded (DEBT-12 — fixes rev.1's warn-before-raise bug)
+    if downgraded:
+        warnings.warn(
+            f"upsert({name!r}): no columns to update — degrading to an "
+            "insert-or-ignore (conflict_action='NOTHING' equivalent)"
+        )
+    if update_condition is not None and effective_conflict_action == "NOTHING":
+        warnings.warn("update_condition is ignored when conflict_action='NOTHING'")
+
+    # 12 — execute
     ibis_conn.raw_sql(stmt)

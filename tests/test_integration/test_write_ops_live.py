@@ -1,5 +1,6 @@
 """Live round-trip tests for generic write ops (postgres + mysql)."""
 
+import pandas as pd
 import polars as pl
 import pytest
 
@@ -87,3 +88,47 @@ def test_upsert_via_dispatch_mysql(mysql_backend):
     rows = dict(con.table("up_my").order_by("id").execute()[["id", "v"]].itertuples(index=False))
     assert rows == {1: "A", 2: "b"}
     con.raw_sql("DROP TABLE up_my")
+
+
+@pytest.mark.integration
+def test_upsert_key_only_source_preserves_value_postgres(postgres_backend):
+    """DEBT-12 defect 2, live: a key-only source frame must not null an
+    existing row's non-key column via the ON_CONFLICT family."""
+    be = postgres_backend
+    be.create_table(
+        "up_pg_keyonly", pl.DataFrame({"id": [1, 2], "value": ["keep-me", "also-keep"]}),
+        overwrite=True,
+    )
+    be._require_connected()._ibis_conn.raw_sql("ALTER TABLE up_pg_keyonly ADD PRIMARY KEY (id)")
+    with pytest.warns(UserWarning, match="no columns to update"):
+        be.upsert("up_pg_keyonly", pl.DataFrame({"id": [1, 3]}), conflict_columns=["id"])
+    rows = dict(
+        be.table("up_pg_keyonly").order_by("id").execute()[["id", "value"]]
+        .itertuples(index=False)
+    )
+    assert rows[1] == "keep-me" and rows[2] == "also-keep"
+    assert pd.isna(rows[3])  # postgres NULL surfaces as pandas NaN via itertuples (verified)
+    be.drop_table("up_pg_keyonly", force=True)
+
+
+@pytest.mark.integration
+def test_upsert_key_only_source_preserves_value_mysql(mysql_backend):
+    """DEBT-12 defect 2, live: same regression via ON_DUPLICATE_KEY —
+    proves effective_conflict_action reaches _render_on_duplicate_key
+    (the no-live unit tests cannot exercise this; see plan Task 2 / spec §4)."""
+    be = mysql_backend
+    con = be._require_connected()._ibis_conn
+    con.raw_sql("DROP TABLE IF EXISTS up_my_keyonly")
+    con.raw_sql(
+        "CREATE TABLE up_my_keyonly (id INT PRIMARY KEY, value VARCHAR(32))"
+    )
+    con.raw_sql("INSERT INTO up_my_keyonly VALUES (1, 'keep-me'), (2, 'also-keep')")
+    with pytest.warns(UserWarning, match="no columns to update"):
+        be.upsert("up_my_keyonly", pl.DataFrame({"id": [1, 3]}), conflict_columns=["id"])
+    rows = dict(
+        con.table("up_my_keyonly").order_by("id").execute()[["id", "value"]]
+        .itertuples(index=False)
+    )
+    assert rows[1] == "keep-me" and rows[2] == "also-keep"
+    assert pd.isna(rows[3])
+    con.raw_sql("DROP TABLE up_my_keyonly")

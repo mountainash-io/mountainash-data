@@ -126,21 +126,14 @@ def validate_condition(
     validate_predicate(predicate(incoming, existing))
 
 
-def compiled_source(
-    ibis_conn: t.Any, obj: t.Any, target_schema: t.Any
-) -> tuple[str, list[str]]:
-    """Compile `obj` to a SELECT subquery, casting each column to the target
-    type and projecting in target-column order. Returns (sql, columns).
+def resolve_source(obj: t.Any, target_schema: t.Any) -> tuple[ir.Table, list[str]]:
+    """Coerce `obj` to an ibis Table (memtable if a frame) and resolve its
+    columns against `target_schema`.
 
-    Columns present in the target but absent from the source are omitted;
-    columns present in the source but absent from the target raise ValueError.
-
-    ``_register_in_memory_tables`` is called before ``compile`` so that
-    memtable-backed expressions (the common case when `obj` is a DataFrame)
-    are staged in the backend catalog.  Without this step, ``compile`` emits
-    SQL referencing ``ibis_polars_memtable_<hash>`` which is not registered,
-    causing a CatalogException at ``raw_sql`` time.  This matches ibis's own
-    memtable-staging mechanism (``SQLBackend._register_in_memory_tables``).
+    Returns (src, cols): `cols` is `obj`'s columns intersected with
+    `target_schema.names`, in target-column order. Raises ValueError if `obj`
+    has any column absent from `target_schema` (unchanged from
+    `compiled_source`'s prior check).
     """
     src = obj if isinstance(obj, ir.Table) else ibis.memtable(obj)
     src_cols = set(src.columns)
@@ -148,10 +141,20 @@ def compiled_source(
     if extra:
         raise ValueError(f"source columns absent from target: {sorted(extra)}")
     cols = [c for c in target_schema.names if c in src_cols]
+    return src, cols
+
+
+def compile_projected_source(
+    ibis_conn: t.Any, src: t.Any, cols: list[str], target_schema: t.Any
+) -> str:
+    """Cast+project `src`'s `cols` to `target_schema`'s types, stage as a
+    memtable if needed, and compile to a SELECT subquery SQL string.
+    Identical SQL to what `compiled_source` produced for the same inputs.
+    """
     projected = src.select([src[c].cast(target_schema[c]).name(c) for c in cols])
     ensure_sqlite_nat_adapter()
     ibis_conn._register_in_memory_tables(projected)  # REQUIRED: stage memtables
-    return ibis_conn.compile(projected), cols
+    return ibis_conn.compile(projected)
 
 
 def compile_condition(
