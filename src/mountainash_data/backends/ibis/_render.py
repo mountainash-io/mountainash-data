@@ -157,20 +157,6 @@ def compile_projected_source(
     return ibis_conn.compile(projected)
 
 
-def compiled_source(
-    ibis_conn: t.Any, obj: t.Any, target_schema: t.Any
-) -> tuple[str, list[str]]:
-    """Compile `obj` to a SELECT subquery, casting each column to the target
-    type and projecting in target-column order. Returns (sql, columns).
-
-    Deprecated composition of `resolve_source` + `compile_projected_source`,
-    kept only until Task 2 (DEBT-12) removes its last caller in
-    `operations.py` and inlines the split at each call site.
-    """
-    src, cols = resolve_source(obj, target_schema)
-    return compile_projected_source(ibis_conn, src, cols, target_schema), cols
-
-
 def compile_condition(
     ibis_conn: t.Any,
     target_schema: t.Any,
