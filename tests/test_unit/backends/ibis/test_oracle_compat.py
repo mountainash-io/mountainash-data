@@ -11,8 +11,7 @@ without requiring a live Oracle connection for every contributor.
 from __future__ import annotations
 
 import pytest
-import oracledb
-import oracledb.errors as ora_errors
+
 
 from mountainash_data.backends.ibis._oracle_compat import (
     _patch_alter_table_rename,
@@ -23,8 +22,11 @@ from mountainash_data.backends.ibis._oracle_compat import (
 
 
 def _fake_ora_error(code: int) -> oracledb.DatabaseError:
+    oracledb = pytest.importorskip("oracledb")
+    ora_errors = pytest.importorskip("oracledb.errors")
     err = ora_errors._Error(f"ORA-{code:05d}: fake", code=code)
     return oracledb.DatabaseError(err)
+
 
 
 class _FakeDropTableCon:
@@ -49,12 +51,15 @@ class TestPatchDropTableIfExists:
         assert con.calls == [("t", {"database": None, "force": False})]
 
     def test_force_true_other_error_still_raises(self):
+        oracledb = pytest.importorskip("oracledb")
         con = _FakeDropTableCon(raises=_fake_ora_error(1))
         _patch_drop_table_if_exists(con)
         with pytest.raises(oracledb.DatabaseError):
             con.drop_table("t", force=True)
 
+
     def test_force_false_ora_00942_still_raises(self):
+        oracledb = pytest.importorskip("oracledb")
         con = _FakeDropTableCon(raises=_fake_ora_error(942))
         _patch_drop_table_if_exists(con)
         with pytest.raises(oracledb.DatabaseError):
