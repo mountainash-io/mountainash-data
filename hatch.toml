@@ -71,21 +71,44 @@ dependencies = []
 # Env: test_github
 #================
 [[envs.test_github.matrix]]
-python = ["3.12"] #,"3.11", "3.10", # "3.8", "3.9","3.9",
+python = ["3.12"]
 
 [envs.test_github]
 installer = "uv"
-
 dependencies = [
-    # "coverage[toml]>=6.5",
     "pytest==8.3.5",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
 
-    # Live-db extras (system libmariadb-dev installed in CI before this env)
+    "mountainash_settings @     {root:uri}/temp/mountainash-settings",
+    "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_transport @  {root:uri}/temp/mountainash-transport",
+    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
+]
+[envs.test_github.scripts]
+test = "pytest {args}"
+test-cov = "pytest --cov --junitxml=junit.xml -o junit_family=legacy  --cov-report=xml"
+
+#================
+# Env: test_github_live
+#================
+[[envs.test_github_live.matrix]]
+python = ["3.12"]
+
+[envs.test_github_live]
+installer = "uv"
+dependencies = [
+    "pytest==8.3.5",
+    "pytest-check==2.5.3",
+    "pytest-cov==6.1.1",
+
+    # Live-db driver extras — installed only here, never in the bare
+    # test_github env the PR-triggered workflow uses. One entry per backend
+    # registered in the on-demand workflow (python-verify-live-db.yml).
     "psycopg-binary>=3.1.0",
     "ibis-framework[postgres]>=12.0.0",
-    "ibis-framework[mysql]>=12.0.0",
+    "ibis-framework[mysql]>=12.0.0",       # needs system libmariadb-dev, installed in CI before this env
     "ibis-framework[oracle]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
@@ -93,12 +116,9 @@ dependencies = [
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
     "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
-
-
 ]
-[envs.test_github.scripts]
-test = "pytest"
-test-cov = "pytest --cov --junitxml=junit.xml -o junit_family=legacy  --cov-report=xml"
+[envs.test_github_live.scripts]
+test = "pytest {args}"
 
 
 #================
