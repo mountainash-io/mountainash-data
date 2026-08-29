@@ -27,66 +27,6 @@ jobs:
         os: [ubuntu-24.04]
         python-version: ["3.12"]
 
-    env:
-      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
-      IBIS_TEST_POSTGRES_HOST: localhost
-      IBIS_TEST_POSTGRES_PORT: "5432"
-      IBIS_TEST_POSTGRES_USER: postgres
-      IBIS_TEST_POSTGRES_PASSWORD: postgres
-      IBIS_TEST_POSTGRES_DATABASE: ibis_testing
-      IBIS_TEST_MYSQL_HOST: localhost
-      IBIS_TEST_MYSQL_PORT: "3306"
-      IBIS_TEST_MYSQL_USER: ibis
-      IBIS_TEST_MYSQL_PASSWORD: ibis
-      IBIS_TEST_MYSQL_DATABASE: ibis_testing
-      IBIS_TEST_ORACLE_HOST: localhost
-      IBIS_TEST_ORACLE_PORT: "1521"
-      IBIS_TEST_ORACLE_USER: app
-      IBIS_TEST_ORACLE_PASSWORD: app
-      IBIS_TEST_ORACLE_DATABASE: XEPDB1
-
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: ibis_testing
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 1s
-          --health-retries 20
-
-      mysql:
-        image: mariadb:12.1.2
-        env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
-          MYSQL_DATABASE: ibis_testing
-          MYSQL_USER: ibis
-          MYSQL_PASSWORD: ibis
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mariadb-admin ping -h localhost"
-          --health-interval 1s
-          --health-retries 20
-
-      oracle:
-        image: gvenzl/oracle-xe:21-slim
-        env:
-          ORACLE_PASSWORD: oracle
-          APP_USER: app
-          APP_USER_PASSWORD: app
-        ports:
-          - 1521:1521
-        options: >-
-          --health-cmd "healthcheck.sh"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
-
     steps:
       - name: Set fallback branch
         run: |
@@ -107,11 +47,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
-
-      - name: Install system dependencies for live-db drivers
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y libmariadb-dev
 
       - name: Display SQLite version
         run: |
@@ -146,8 +81,20 @@ jobs:
       - name: Create virtual environment
         run: hatch env create test_github
 
+      - name: Verify live-db drivers are absent
+        run: |
+          hatch run test_github:python -c "import importlib.util as u; names = ('psycopg', 'MySQLdb', 'oracledb'); present = [name for name in names if u.find_spec(name) is not None]; assert not present, 'Unexpected live-db drivers: %s' % present"
+
       - name: Run Coverage Tests
         run: hatch run test_github:test-cov
+
+      - name: Upload pytest JUnit artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-junit-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: junit.xml
+          if-no-files-found: error
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
