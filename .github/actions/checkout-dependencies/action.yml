@@ -77,6 +77,11 @@ runs:
               echo "Error: Failed to clone $org_name/$repo"
               continue
             }
+
+          # Scrub the embedded token from the clone's origin remote now that the
+          # fetch is done; nothing downstream needs to fetch/push again (DEBT-16).
+          git -C "temp/$repo" remote set-url origin \
+            "https://github.com/$org_name/$repo.git"
           
           echo "Successfully checked out $org_name/$repo on branch $selected_branch"
         done
