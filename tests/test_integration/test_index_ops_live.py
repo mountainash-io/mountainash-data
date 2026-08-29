@@ -72,7 +72,7 @@ class TestPostgresLive:
 
 
 
-class TestMariaDBLive:
+class TestMySQLLive:
     def test_table_scoped_drop_requires_table(self, mysql_backend):
         be = mysql_backend
         _fresh_table(be, "ix_my")
