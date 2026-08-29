@@ -39,6 +39,11 @@ jobs:
       IBIS_TEST_MYSQL_USER: ibis
       IBIS_TEST_MYSQL_PASSWORD: ibis
       IBIS_TEST_MYSQL_DATABASE: ibis_testing
+      IBIS_TEST_ORACLE_HOST: localhost
+      IBIS_TEST_ORACLE_PORT: "1521"
+      IBIS_TEST_ORACLE_USER: app
+      IBIS_TEST_ORACLE_PASSWORD: app
+      IBIS_TEST_ORACLE_DATABASE: XEPDB1
 
     services:
       postgres:
@@ -66,6 +71,20 @@ jobs:
         options: >-
           --health-cmd "mariadb-admin ping -h localhost"
           --health-interval 1s
+          --health-retries 20
+
+      oracle:
+        image: gvenzl/oracle-xe:21-slim
+        env:
+          ORACLE_PASSWORD: oracle
+          APP_USER: app
+          APP_USER_PASSWORD: app
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd "healthcheck.sh"
+          --health-interval 10s
+          --health-timeout 5s
           --health-retries 20
 
     steps:

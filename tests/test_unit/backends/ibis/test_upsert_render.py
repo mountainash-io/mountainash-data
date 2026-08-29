@@ -131,6 +131,27 @@ def test_merge_golden_per_dialect(name: str) -> None:
     )
 
 
+def test_merge_oracle_omits_as_and_parenthesizes_on() -> None:
+    """DEBT-3, live-verified against real Oracle 21c XE: Oracle's grammar
+    never accepts AS before a table/subquery alias (ORA-02012, missing
+    USING keyword) and requires the ON condition parenthesized
+    (ORA-00969, missing ON keyword) -- both unlike every other
+    MERGE-family dialect."""
+    sql = build_merge_sql(
+        dialect="oracle",
+        target='"up_ora"',
+        cols=["id", "v"],
+        conflict=["id"],
+        update=["v"],
+        conflict_action="UPDATE",
+        source_sql="SELECT 1 AS id, 'a' AS v",
+    )
+    assert "AS tgt" not in sql, f"oracle must not emit AS before the target alias: {sql}"
+    assert "AS src" not in sql, f"oracle must not emit AS before the source alias: {sql}"
+    assert re.search(r'ON \([^)]+\)', sql), f"oracle ON condition must be parenthesized: {sql}"
+    assert 'MERGE INTO "up_ora" tgt USING' in sql, f"unexpected target/alias shape: {sql}"
+
+
 @pytest.mark.parametrize(
     "name",
     [n for n, s in DIALECTS.items() if s.upsert_style is UpsertStyle.MERGE],

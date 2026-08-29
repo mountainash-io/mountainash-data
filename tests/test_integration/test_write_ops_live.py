@@ -1,4 +1,4 @@
-"""Live round-trip tests for generic write ops (postgres + mysql)."""
+"""Live round-trip tests for generic write ops (postgres + mysql + oracle)."""
 
 import pandas as pd
 import polars as pl
@@ -20,6 +20,15 @@ def test_rename_table_live_postgres(postgres_backend):
 @pytest.mark.integration
 def test_rename_table_live_mysql(mysql_backend):
     be = mysql_backend
+    be.create_table("ren_old", pl.DataFrame({"id": [1]}), overwrite=True)
+    be.rename_table("ren_old", "ren_new")
+    assert "ren_new" in be.list_tables()
+    be.drop_table("ren_new", force=True)
+
+
+@pytest.mark.integration
+def test_rename_table_live_oracle(oracle_backend):
+    be = oracle_backend
     be.create_table("ren_old", pl.DataFrame({"id": [1]}), overwrite=True)
     be.rename_table("ren_old", "ren_new")
     assert "ren_new" in be.list_tables()
@@ -88,6 +97,17 @@ def test_upsert_via_dispatch_mysql(mysql_backend):
     rows = dict(con.table("up_my").order_by("id").execute()[["id", "v"]].itertuples(index=False))
     assert rows == {1: "A", 2: "b"}
     con.raw_sql("DROP TABLE up_my")
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_oracle(oracle_backend):
+    """be.upsert() public dispatch — MERGE via generic path (oracle)."""
+    be = oracle_backend
+    be.create_table("up_ora", pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}), overwrite=True)
+    be.upsert("up_ora", pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}), conflict_columns=["id"])
+    rows = dict(be.table("up_ora").order_by("id").execute()[["id", "v"]].itertuples(index=False))
+    assert rows == {1: "a", 2: "B", 3: "c"}
+    be.drop_table("up_ora", force=True)
 
 
 @pytest.mark.integration

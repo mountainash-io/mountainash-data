@@ -31,7 +31,7 @@ _AUTH_ADAPTERS: dict[tuple[t.Any, type], t.Callable[[t.Any, dict], dict]] = {
     (P.REDSHIFT,       IAMAuthProfile):            _rs.iam,
 }
 for _p in (P.POSTGRESQL, P.MYSQL, P.CLICKHOUSE, P.MATERIALIZE, P.RISINGWAVE,
-           P.DRUID, P.SINGLESTOREDB, P.IMPALA, P.EXASOL):
+           P.DRUID, P.SINGLESTOREDB, P.IMPALA, P.EXASOL, P.ORACLE):
     _AUTH_ADAPTERS[(_p, PasswordAuthProfile)] = _sql.userpass
 
 

@@ -18,7 +18,7 @@ class TestDatabasesRegistry:
 
         for name in ["sqlite", "duckdb", "postgresql", "mysql", "mssql",
                      "snowflake", "bigquery", "redshift", "pyspark",
-                     "trino", "motherduck"]:
+                     "trino", "motherduck", "oracle"]:
             assert name in DATABASES_REGISTRY, f"{name} missing from registry"
 
     def test_get_descriptor_returns_correct_type(self):

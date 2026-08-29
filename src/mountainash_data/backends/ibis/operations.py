@@ -540,8 +540,33 @@ def build_merge_sql(
 
     Returns:
         A complete ``MERGE INTO … USING … ON … WHEN …`` SQL string.
+
+    Note:
+        Oracle's grammar has never accepted the ``AS`` keyword before a
+        table or subquery alias (only column aliases may optionally use
+        it) -- ``MERGE INTO t AS tgt USING (...) AS src`` raises
+        ``ORA-02012: missing USING keyword`` (verified live against a real
+        Oracle 21c XE instance, DEBT-3). Every other registered MERGE-family
+        dialect (Snowflake, MSSQL, DuckDB) accepts ``AS`` here, so the
+        keyword is kept as the default and only dropped for Oracle.
+
+        Oracle also requires the ``ON`` condition to be parenthesized --
+        a bare ``ON tgt.id = src.id`` raises ``ORA-00969: missing ON
+        keyword``. Parenthesizing a boolean predicate is valid ANSI SQL
+        everywhere, so the condition is always wrapped rather than adding
+        a second Oracle-only branch.
     """
     q = lambda c: quote_identifier(c, dialect)  # noqa: E731
+    # dialect may be a sqlglot Dialect class (live path) or a plain string
+    # (tests/golden). Normalise to the lowercase name for the membership
+    # check below (matches the established pattern in _index.py).
+    if isinstance(dialect, type):
+        d = dialect.__name__.lower()
+    elif isinstance(dialect, str):
+        d = dialect.lower()
+    else:
+        d = str(dialect).lower()
+    as_kw = "" if d == "oracle" else "AS "
     on = " AND ".join(f"tgt.{q(c)} = src.{q(c)}" for c in conflict)
     not_matched = (
         f"WHEN NOT MATCHED THEN INSERT ({', '.join(q(c) for c in cols)}) "
@@ -554,8 +579,8 @@ def build_merge_sql(
         clauses.append(f"WHEN MATCHED{cond} THEN UPDATE SET {set_sql}")
     clauses.append(not_matched)
     return (
-        f"MERGE INTO {target} AS tgt USING ({source_sql}) AS src "
-        f"ON {on} " + " ".join(clauses)
+        f"MERGE INTO {target} {as_kw}tgt USING ({source_sql}) {as_kw}src "
+        f"ON ({on}) " + " ".join(clauses)
     )
 
 
