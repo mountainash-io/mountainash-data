@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:18-alpine
+    profiles: ["postgres"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -13,6 +14,7 @@ services:
       - "5432:5432"
   mysql:
     image: mariadb:12.1.2
+    profiles: ["mysql"]
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "true"
       MYSQL_DATABASE: ibis_testing
@@ -26,6 +28,7 @@ services:
       - "3306:3306"
   oracle:
     image: gvenzl/oracle-xe:21-slim
+    profiles: ["oracle"]
     environment:
       ORACLE_PASSWORD: oracle
       APP_USER: app
