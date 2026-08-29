@@ -74,6 +74,7 @@ materialize = ["psycopg>=3.2.0", "ibis-framework[materialize]>=12.0.0"]
 risingwave = ["psycopg2>=2.8.4", "ibis-framework[risingwave]>=12.0.0"]
 druid = ["pydruid>=0.6.7", "ibis-framework[druid]>=12.0.0"]
 trino = ["ibis-framework[trino]>=12.0.0"]
+oracle = ["ibis-framework[oracle]>=12.0.0"]
 
 
 [project.urls]

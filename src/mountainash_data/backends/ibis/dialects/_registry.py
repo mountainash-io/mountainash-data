@@ -291,10 +291,11 @@ def _build_oracle_connection(**config: t.Any) -> t.Any:
     Connection scheme was 'oracle://' — uses ibis.connect with a connection string.
     """
     import ibis
+    from .._oracle_compat import patch_oracle_connection
 
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
-        return ibis.connect(connection_string)
+        return patch_oracle_connection(ibis.connect(connection_string))
 
     host = config.get("host", "localhost")
     port = config.get("port", 1521)
@@ -313,7 +314,7 @@ def _build_oracle_connection(**config: t.Any) -> t.Any:
 
     extra = {k: v for k, v in config.items()
              if k not in ("host", "port", "user", "username", "password", "database", "connection_string")}
-    return ibis.connect(conn_str, **extra)
+    return patch_oracle_connection(ibis.connect(conn_str, **extra))
 
 
 def _build_snowflake_connection(**config: t.Any) -> t.Any:

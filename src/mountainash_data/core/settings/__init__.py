@@ -30,6 +30,7 @@ from .clickhouse import ClickHouseBackendProfile
 from .databricks import DatabricksBackendProfile
 from .mysql import MySQLBackendProfile
 from .singlestoredb import SingleStoreDBBackendProfile
+from .oracle import OracleBackendProfile
 from .mssql import MSSQLBackendProfile
 from .snowflake import SnowflakeBackendProfile
 from .bigquery import BigQueryBackendProfile
@@ -77,7 +78,7 @@ __all__ = [
     "SQLiteBackendProfile", "DuckDBBackendProfile", "MotherDuckBackendProfile",
     "PostgreSQLBackendProfile", "ClickHouseBackendProfile",
     "DatabricksBackendProfile", "MySQLBackendProfile", "SingleStoreDBBackendProfile",
-    "MSSQLBackendProfile",
+    "MSSQLBackendProfile", "OracleBackendProfile",
     "SnowflakeBackendProfile", "BigQueryBackendProfile", "RedshiftBackendProfile",
     "PySparkBackendProfile", "TrinoBackendProfile",
     "ExasolBackendProfile", "ImpalaBackendProfile", "MaterializeBackendProfile",

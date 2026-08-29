@@ -24,6 +24,13 @@ _MY = dict(
     password=os.environ.get("IBIS_TEST_MYSQL_PASSWORD", "ibis"),
     database=os.environ.get("IBIS_TEST_MYSQL_DATABASE", "ibis_testing"),
 )
+_ORA = dict(
+    host=os.environ.get("IBIS_TEST_ORACLE_HOST", "localhost"),
+    port=int(os.environ.get("IBIS_TEST_ORACLE_PORT", "1521")),
+    user=os.environ.get("IBIS_TEST_ORACLE_USER", "app"),
+    password=os.environ.get("IBIS_TEST_ORACLE_PASSWORD", "app"),
+    database=os.environ.get("IBIS_TEST_ORACLE_DATABASE", "XEPDB1"),
+)
 
 
 def _live_or_skip(dialect: str, params: dict):
@@ -51,6 +58,15 @@ def postgres_backend():
 @pytest.fixture
 def mysql_backend():
     be = _live_or_skip("mysql", _MY)
+    try:
+        yield be
+    finally:
+        be.close()
+
+
+@pytest.fixture
+def oracle_backend():
+    be = _live_or_skip("oracle", _ORA)
     try:
         yield be
     finally:

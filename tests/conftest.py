@@ -10,6 +10,7 @@ from pathlib import Path
 # Import all fixtures from consolidated fixture modules
 from fixtures.database_fixtures import (
     mysql_backend,
+    oracle_backend,
     postgres_backend,
     temp_sqlite_db,
     temp_duckdb_db,
