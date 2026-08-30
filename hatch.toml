@@ -22,6 +22,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/../mountainash-transport",
     "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/../mountainash-resource-provider",
 
 ]
 
@@ -38,6 +39,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
     "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/temp/mountainash-resource-provider",
 
 ]
 [envs.build_github.scripts]
@@ -85,6 +87,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
     "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/temp/mountainash-resource-provider",
 ]
 [envs.test_github.scripts]
 test = "pytest {args}"
@@ -116,6 +119,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/temp/mountainash-transport",
     "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/temp/mountainash-resource-provider",
 ]
 [envs.test_github_live.scripts]
 test = "pytest {args}"
@@ -163,6 +167,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/../mountainash-transport",
     "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/../mountainash-resource-provider",
 
 
 ]
@@ -364,6 +369,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/../mountainash-transport",
     "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/../mountainash-resource-provider",
 ]
 [envs.mypy.scripts]
 check = "mypy --install-types --non-interactive {args:src/mountainash_data tests}"

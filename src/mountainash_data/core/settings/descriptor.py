@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from enum import StrEnum
 
 from mountainash_settings.profiles import (
     MISSING,
@@ -17,7 +18,29 @@ from mountainash_settings.profiles import (
     ProfileSpec,
 )
 
-__all__ = ["MISSING", "Missing", "ParameterSpec", "BackendSpec"]
+__all__ = [
+    "MISSING",
+    "Missing",
+    "ParameterSpec",
+    "BackendSpec",
+    "DatabaseResourceReadDisposition",
+    "LocatorProjectionPhase",
+]
+
+
+class DatabaseResourceReadDisposition(StrEnum):
+    """Credential-safe connection mode for a database resource read."""
+
+    SETTINGS_URL = "settings_url"
+    CONNECTED_IDENTITY = "connected_identity"
+    OVERRIDE_ONLY = "override_only"
+
+
+class LocatorProjectionPhase(StrEnum):
+    """When a resource locator can be compared with a connected identity."""
+
+    BEFORE_CONNECT = "before_connect"
+    AFTER_CONNECT = "after_connect"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -39,10 +62,45 @@ class BackendSpec(ProfileSpec):
     ibis_dialect: str | None = None
     rides_on: str | None = None
     supported_auth: tuple[type, ...] = ()
+    resource_read_disposition: DatabaseResourceReadDisposition | None = None
+    resource_read_locator_prefixes: tuple[str, ...] = ()
+    resource_read_projection_phase: LocatorProjectionPhase | None = None
+    resource_read_override_reason: str | None = None
+    resource_read_override_date: str | None = None
 
     def __post_init__(self) -> None:
         if not self.supported_auth:
             raise ValueError(f"{self.name}: supported_auth must be non-empty")
+        if self.resource_read_disposition is None:
+            if self.name == "pyspark":
+                disposition = DatabaseResourceReadDisposition.CONNECTED_IDENTITY
+                prefixes = ("pyspark:///",)
+                phase = LocatorProjectionPhase.AFTER_CONNECT
+                reason = None
+                date = None
+            elif self.name == "databricks":
+                disposition = DatabaseResourceReadDisposition.OVERRIDE_ONLY
+                prefixes = ()
+                phase = None
+                reason = "no approved credential-free locator identity"
+                date = "2026-08-29"
+            elif self.connection_string_scheme is not None:
+                disposition = DatabaseResourceReadDisposition.SETTINGS_URL
+                prefixes = (self.connection_string_scheme,)
+                phase = LocatorProjectionPhase.BEFORE_CONNECT
+                reason = None
+                date = None
+            else:
+                disposition = DatabaseResourceReadDisposition.OVERRIDE_ONLY
+                prefixes = ()
+                phase = None
+                reason = "backend has no approved resource locator"
+                date = "2026-08-29"
+            object.__setattr__(self, "resource_read_disposition", disposition)
+            object.__setattr__(self, "resource_read_locator_prefixes", prefixes)
+            object.__setattr__(self, "resource_read_projection_phase", phase)
+            object.__setattr__(self, "resource_read_override_reason", reason)
+            object.__setattr__(self, "resource_read_override_date", date)
 
 
 _DEPRECATED = {
