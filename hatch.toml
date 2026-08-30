@@ -123,6 +123,7 @@ dependencies = [
 ]
 [envs.test_github_live.scripts]
 test = "pytest {args}"
+live-db = "python -m scripts.live_db {args}"
 
 
 #================
@@ -224,31 +225,16 @@ test-unit = "pytest -m unit"
 test-integration = "pytest -m integration"
 test-performance = "pytest -m performance"
 # ===========================================
-# LIVE-DB TESTING — one backend at a time
+# LIVE-DB TESTING — use the target runner
 # ===========================================
 #
-# Docker path: start exactly one backend's container, run its tests, tear it
-# down when done. The container stays up across repeated `test-live` calls —
-# only `test-live-down` stops it — so iterating against a slow-starting
-# backend doesn't pay the startup cost every run.
+# Select a target and backend explicitly. The runner loads connection
+# settings from the selected target and manages the backend test lifecycle.
 #
-#   hatch run test:test-live-up oracle
-#   hatch run test:test-live oracle          # repeat as needed
-#   hatch run test:test-live-down oracle
+#   hatch run test:live-db test --target docker postgres
+#   hatch run test:live-db test --target tunnel oracle
 #
-# Tunnel path: point env vars at an already-reachable instance (e.g. a local
-# port-forward to shared infrastructure) instead of a local container — same
-# `test-live` script, no `test-live-up`/`test-live-down` step. Requires
-# MOUNTAINASH_REQUIRE_LIVE_DB=1 (turns a silent skip into a hard failure) and
-# that backend's IBIS_TEST_<BACKEND>_HOST/PORT/USER/PASSWORD/DATABASE vars:
-#
-#   export MOUNTAINASH_REQUIRE_LIVE_DB=1
-#   export IBIS_TEST_ORACLE_HOST=127.0.0.1 IBIS_TEST_ORACLE_PORT=1521 ...
-#   hatch run test:test-live oracle
-#
-test-live-up   = "docker compose --profile {args} up -d --wait"
-test-live-down = "docker compose --profile {args} down"
-test-live      = "pytest -k {args} -m integration"
+live-db = "python -m scripts.live_db {args}"
 
 # ===========================================
 # CI/REPORTING - For automated environments
