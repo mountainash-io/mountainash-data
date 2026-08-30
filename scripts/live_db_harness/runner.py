@@ -406,13 +406,14 @@ class LiveDbRunner:
         compose_inspector: Any | None = None,
     ) -> None:
         self._require_destructive_opt_in(selection)
-        self._check_transport(
-            selection,
-            startup=not test_mode,
-            command_runner=command_runner,
-            compose_inspector=compose_inspector,
-            redactor=redactor,
-        )
+        if not (test_mode and selection.target.transport == "compose"):
+            self._check_transport(
+                selection,
+                startup=not test_mode,
+                command_runner=command_runner,
+                compose_inspector=compose_inspector,
+                redactor=redactor,
+            )
         self._connection_check(selection, redactor=redactor)
 
     def _lock(self, selection: BackendSelection, wait_lock: float) -> Any:

@@ -49,6 +49,102 @@ def _compose_selection() -> SimpleNamespace:
     )
 
 
+def test_test_one_uses_connection_check_for_preprovisioned_compose_service() -> None:
+    selection = _compose_selection()
+    selection.settings_parameters = SimpleNamespace()
+    selection.auth_profile = SimpleNamespace()
+    selection.secret_values = ()
+    events: list[str] = []
+
+    class NotTrackedComposeInspector:
+        calls = 0
+
+        def service_state(self, profile: str, service: str, **kwargs: str) -> object:
+            self.calls += 1
+            raise HarnessError(
+                "docker",
+                "postgres",
+                Phase.TRANSPORT,
+                "Compose service 'postgres' is not running.",
+                "Start the selected service before running test.",
+            )
+
+    inspector = NotTrackedComposeInspector()
+
+    class Backend:
+        def connect(self, *, auth_profile: object) -> None:
+            events.append("connect")
+
+        def close(self) -> None:
+            events.append("close")
+
+    class Lock:
+        def __enter__(self) -> Lock:
+            return self
+
+        def __exit__(self, *args: object) -> bool:
+            return False
+
+    runner = LiveDbRunner(
+        (),
+        lock_factory=lambda *args, **kwargs: Lock(),
+        backend_factory=lambda parameters: Backend(),
+        compose_inspector=inspector,
+    )
+    runner._selection = lambda target, backend: selection
+    runner._run_pytest = lambda selection, timeout=None, **kwargs: events.append("pytest")
+
+    runner.test_one("docker", "postgres")
+
+    assert events == ["connect", "close", "pytest"]
+    assert inspector.calls == 0
+
+
+def test_check_one_still_runs_transport_check_before_connection() -> None:
+    selection = _compose_selection()
+    selection.settings_parameters = SimpleNamespace()
+    selection.auth_profile = SimpleNamespace()
+    selection.secret_values = ()
+    events: list[str] = []
+
+    class NotTrackedComposeInspector:
+        calls = 0
+
+        def service_state(self, profile: str, service: str, **kwargs: str) -> object:
+            self.calls += 1
+            raise AssertionError("check_one must not use the test-only service-state path")
+
+    inspector = NotTrackedComposeInspector()
+
+    class Backend:
+        def connect(self, *, auth_profile: object) -> None:
+            events.append("connect")
+
+        def close(self) -> None:
+            events.append("close")
+
+    class Lock:
+        def __enter__(self) -> Lock:
+            return self
+
+        def __exit__(self, *args: object) -> bool:
+            return False
+
+    runner = LiveDbRunner(
+        (),
+        lock_factory=lambda *args, **kwargs: Lock(),
+        backend_factory=lambda parameters: Backend(),
+        transport_checker=lambda **kwargs: events.append("transport"),
+        compose_inspector=inspector,
+    )
+    runner._selection = lambda target, backend: selection
+
+    runner.check_one("docker", "postgres")
+
+    assert events == ["transport", "connect", "close"]
+    assert inspector.calls == 0
+
+
 def test_credential_free_pytest_context(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     seen: dict[str, object] = {}
     runner = LiveDbRunner(config_files=(tmp_path / "one.toml",), command_runner=SimpleNamespace())
