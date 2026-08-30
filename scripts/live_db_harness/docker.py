@@ -95,13 +95,23 @@ class DockerServiceLease:
             if cleanup_error is not None:
                 raise cleanup_error from startup_error
             raise startup_error
-        if after is None or not after.exists:
-            raise _error(
+        if after is None or not after.running:
+            post_start_error = _error(
                 self.target,
                 self.backend,
                 f"Compose service {self.service!r} was not running after startup.",
                 "Check the Compose service health and retry.",
             )
+            if not before.exists:
+                # A successful `up` owns a previously absent service even when
+                # the follow-up observation cannot confirm its final state.
+                self._started_by_runner = True
+                cleanup_error = self._close_internal()
+                if cleanup_error is not None:
+                    raise cleanup_error from post_start_error
+            raise post_start_error
+        # Ownership requires that the container did not exist before startup;
+        # starting a pre-existing stopped container does not transfer it.
         self._started_by_runner = before.exists is False
         self._started = self._started_by_runner
         return self

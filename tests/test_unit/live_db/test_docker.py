@@ -64,7 +64,11 @@ def test_unrelated_listener_stops_startup() -> None:
     with pytest.raises(HarnessError):
         lease.start()
 
-    assert runner.commands == [("docker", "compose", "--profile", "postgres", "up", "-d", "--wait", "postgres")]
+    assert runner.commands == [
+        ("docker", "compose", "--profile", "postgres", "up", "-d", "--wait", "postgres"),
+        ("docker", "compose", "stop", "postgres"),
+        ("docker", "compose", "rm", "-f", "postgres"),
+    ]
 
 
 def test_passing_run_removes_owned_service() -> None:
@@ -168,6 +172,32 @@ def test_preexisting_service_remains_running() -> None:
 
     assert runner.commands == [
         ("docker", "compose", "--profile", "postgres", "up", "-d", "--wait", "postgres"),
+    ]
+
+
+def test_stopped_preexisting_service_is_not_removed() -> None:
+    runner = FakeRunner()
+    lease = _lease(runner, [ServiceState(True, False), ServiceState(True, True)])
+
+    with lease:
+        pass
+
+    assert runner.commands == [
+        ("docker", "compose", "--profile", "postgres", "up", "-d", "--wait", "postgres"),
+    ]
+
+
+def test_ambiguous_post_start_state_removes_possible_owned_service() -> None:
+    runner = FakeRunner()
+    lease = _lease(runner, [ServiceState(False, False), ServiceState(True, False)])
+
+    with pytest.raises(HarnessError, match="was not running after startup"):
+        lease.start()
+
+    assert runner.commands == [
+        ("docker", "compose", "--profile", "postgres", "up", "-d", "--wait", "postgres"),
+        ("docker", "compose", "stop", "postgres"),
+        ("docker", "compose", "rm", "-f", "postgres"),
     ]
 
 

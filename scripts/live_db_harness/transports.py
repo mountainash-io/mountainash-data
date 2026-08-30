@@ -100,17 +100,19 @@ class ComposeInspector:
         target: str = "<compose>",
         backend: str = "<compose>",
     ) -> ServiceState:
-        result = self._run(
+        exists_result = self._run(
+            ["docker", "compose", "ps", "--all", "--services", service],
+            target=target,
+            backend=backend,
+        )
+        existing_services = {line.strip() for line in exists_result.splitlines() if line.strip()}
+        running_result = self._run(
             ["docker", "compose", "ps", "--status", "running", "--services", service],
             target=target,
             backend=backend,
         )
-        services = {line.strip() for line in result.splitlines() if line.strip()}
-        running = service in services
-        # The status-scoped query intentionally treats a running service as the
-        # ownership boundary. Compose's `up --wait` leaves a failed health check
-        # in this same observable state when its container remains alive.
-        return ServiceState(exists=running, running=running)
+        running_services = {line.strip() for line in running_result.splitlines() if line.strip()}
+        return ServiceState(exists=service in existing_services, running=service in running_services)
 
     def preflight(
         self,
@@ -402,6 +404,7 @@ def _check_ssh_identity(
         )
 
     ancestry = tuple(identity.process_ancestry)
+    ancestry_text = " -> ".join(ancestry)
     if ancestry != ("launchd", "autossh", "ssh"):
         raise _error(
             target,
@@ -426,7 +429,7 @@ def _check_ssh_identity(
             raise _error(
                 target,
                 backend,
-                f"The listener process ancestry does not match the expected {" -> ".join(ancestry)} chain.",
+                f"The listener process ancestry does not match the expected {ancestry_text} chain.",
                 "Stop the unrelated listener and start the configured tunnel.",
             )
         details_by_name[expected_name] = (pid, details)
