@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
 import pytest
 
+from scripts.live_db_harness import process as process_module
 from scripts.live_db_harness.models import HarnessError, Phase
-from scripts.live_db_harness.process import CommandRunner, Redactor
+from scripts.live_db_harness.process import (
+    CommandRunner,
+    ListenerInspector,
+    ProcessDetails,
+    ProcessInspector,
+    Redactor,
+)
+
 
 
 def test_redactor_replaces_secret_scalar() -> None:
@@ -24,6 +34,35 @@ def test_redactor_replaces_url_encoded_secret() -> None:
 def test_redactor_replaces_credential_url_authority() -> None:
     redactor = Redactor(["password"])
     assert redactor.redact("postgresql://alice:password@db.example:5432/schema") == "postgresql://[REDACTED]@db.example:5432/schema"
+
+
+def test_redactor_replaces_untracked_credential_url_authority() -> None:
+    redactor = Redactor()
+    assert redactor.redact("postgresql://alice:untracked-password@db.example:5432/schema") == (
+        "postgresql://[REDACTED]@db.example:5432/schema"
+    )
+
+
+def test_redactor_replaces_lowercase_percent_encoded_secret() -> None:
+    redactor = Redactor(["pa:ss word"])
+    assert redactor.redact("credential=pa%3ass%20word") == "credential=[REDACTED]"
+
+
+def test_inspector_protocols_support_fake_listener_and_process_tree() -> None:
+    class FakeListener:
+        def pid_for_port(self, port: int) -> int | None:
+            return 123 if port == 5432 else None
+
+    class FakeProcess:
+        def inspect(self, pid: int) -> ProcessDetails:
+            return ProcessDetails(("ssh", "-L", "5432:127.0.0.1:5432"), 456)
+
+    listener: ListenerInspector = FakeListener()
+    process: ProcessInspector = FakeProcess()
+
+    assert listener.pid_for_port(5432) == 123
+    assert listener.pid_for_port(3306) is None
+    assert process.inspect(123) == ProcessDetails(("ssh", "-L", "5432:127.0.0.1:5432"), 456)
 
 
 def test_command_error_redacts_stdout_stderr_and_command_preview() -> None:
@@ -58,6 +97,55 @@ def test_command_preview_never_contains_environment() -> None:
     assert secret not in rendered
     assert "{'LIVE_DB_SECRET': 'environment-secret'}" not in rendered
     assert "env=" not in rendered
+
+
+
+def test_process_group_registered_atomically_with_spawn(monkeypatch: pytest.MonkeyPatch) -> None:
+    spawned = threading.Event()
+    release_spawn = threading.Event()
+    real_popen = subprocess.Popen
+
+    def blocking_popen(*args: object, **kwargs: object) -> subprocess.Popen[str]:
+        process = real_popen(*args, **kwargs)
+        spawned.set()
+        assert release_spawn.wait(5)
+        return process
+
+    monkeypatch.setattr(process_module.subprocess, "Popen", blocking_popen)
+    runner = CommandRunner(Redactor(), grace_period=0.05)
+    errors: list[HarnessError] = []
+
+    def run_command() -> None:
+        try:
+            runner.run(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                timeout=0.2,
+                phase=Phase.PYTEST,
+                target="prod",
+                backend="postgres",
+            )
+        except HarnessError as exc:
+            errors.append(exc)
+
+    worker = threading.Thread(target=run_command)
+    worker.start()
+    assert spawned.wait(5)
+    terminator = threading.Thread(target=CommandRunner.terminate_active)
+    terminator.start()
+    try:
+        deadline = time.monotonic() + 5
+        while not terminator.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert terminator.is_alive()
+    finally:
+        release_spawn.set()
+        worker.join(5)
+        terminator.join(5)
+        CommandRunner.terminate_active()
+
+    assert not worker.is_alive()
+    assert not terminator.is_alive()
+    assert errors
 
 
 def test_timeout_returns_a_typed_phase_error() -> None:

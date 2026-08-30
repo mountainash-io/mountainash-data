@@ -4,13 +4,14 @@ import os
 import re
 import shlex
 import signal
-import socket
 import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Mapping, Protocol, Sequence
 from urllib.parse import quote, quote_plus
+
+import psutil
 
 from .models import HarnessError, Phase
 
@@ -34,21 +35,22 @@ class Redactor:
         self._values = tuple(sorted(encoded | set(self.secrets), key=len, reverse=True))
 
     def redact(self, value: str) -> str:
-        if not isinstance(value, str) or not value or not self._values:
+        if not isinstance(value, str) or not value:
             return value
 
         def redact_authority(match: re.Match[str]) -> str:
             authority = match.group("authority")
             if "@" not in authority:
                 return match.group(0)
-            userinfo, host = authority.rsplit("@", 1)
-            if any(secret in userinfo for secret in self._values):
-                authority = f"{_REDACTED}@{host}"
-            return f"{match.group('prefix')}{authority}{match.group('suffix') or ''}"
+            _, host = authority.rsplit("@", 1)
+            return f"{match.group('prefix')}{_REDACTED}@{host}{match.group('suffix') or ''}"
 
         value = _URL_AUTHORITY.sub(redact_authority, value)
         for secret in self._values:
-            value = value.replace(secret, _REDACTED)
+            if re.search(r"%[0-9A-Fa-f]{2}", secret):
+                value = re.sub(re.escape(secret), _REDACTED, value, flags=re.IGNORECASE)
+            else:
+                value = value.replace(secret, _REDACTED)
         return value
 
     __call__ = redact
@@ -95,16 +97,16 @@ class CommandRunner:
         stdout = ""
         stderr = ""
         try:
-            process = subprocess.Popen(
-                command,
-                shell=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                env=dict(env) if env is not None else None,
-                start_new_session=True,
-            )
             with self._active_lock:
+                process = subprocess.Popen(
+                    command,
+                    shell=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=dict(env) if env is not None else None,
+                    start_new_session=True,
+                )
                 self._active[process.pid] = process
             stdout, stderr = self._wait(process, timeout)
         except subprocess.TimeoutExpired as exc:
@@ -222,34 +224,53 @@ class CommandRunner:
 
 
 @dataclass(frozen=True)
-class ListenerInspector:
-    """Inspect whether a TCP listener accepts connections."""
+class ProcessDetails:
+    """The process data needed to validate a transport identity."""
 
-    timeout: float = 0.2
-
-    def is_listening(self, host: str, port: int) -> bool:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(self.timeout)
-            return sock.connect_ex((host, port)) == 0
-
-    def check(self, host: str, port: int) -> bool:
-        return self.is_listening(host, port)
+    cmdline: tuple[str, ...]
+    parent_pid: int | None
 
 
-@dataclass(frozen=True)
-class ProcessInspector:
-    """Inspect process existence without exposing process arguments or environments."""
+class ListenerInspector(Protocol):
+    """Resolve the PID listening on a local TCP port."""
 
-    def exists(self, pid: int) -> bool:
+    def pid_for_port(self, port: int) -> int | None:
+        """Return the listener PID for ``port``, or ``None`` if absent."""
+
+
+class PsutilListenerInspector:
+    """Resolve local TCP listeners with psutil."""
+
+    def pid_for_port(self, port: int) -> int | None:
+        for connection in psutil.net_connections(kind="tcp"):
+            if connection.status != psutil.CONN_LISTEN:
+                continue
+            address = connection.laddr
+            if not address:
+                continue
+            local_port = address.port if hasattr(address, "port") else address[1]
+            if local_port == port and isinstance(connection.pid, int) and connection.pid > 0:
+                return connection.pid
+        return None
+
+
+class ProcessInspector(Protocol):
+    """Read the command line and parent PID for a process."""
+
+    def inspect(self, pid: int) -> ProcessDetails | None:
+        """Return process details, or ``None`` if the process is unavailable."""
+
+
+class PsutilProcessInspector:
+    """Read process identity data with psutil."""
+
+    def inspect(self, pid: int) -> ProcessDetails | None:
         if pid <= 0:
-            return False
+            return None
         try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            return True
-        return True
-
-    def is_running(self, pid: int) -> bool:
-        return self.exists(pid)
+            process = psutil.Process(pid)
+            parent = process.parent()
+            parent_pid = parent.pid if parent is not None else None
+            return ProcessDetails(tuple(process.cmdline()), parent_pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return None
