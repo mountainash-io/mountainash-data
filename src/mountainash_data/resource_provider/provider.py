@@ -37,6 +37,30 @@ class DatabaseResourceProvider:
         self._parameters = parameters
 
     @classmethod
+    def default(cls) -> "DatabaseResourceProvider":
+        return cls.from_parameters("duckdb")
+
+    @classmethod
+    def from_parameters(cls, backend: str) -> "DatabaseResourceProvider":
+        return cls(
+            DatabaseConnectionParameters(
+                backend=backend.casefold(),
+                mode=DatabaseConnectionMode.SETTINGS,
+            )
+        )
+
+    @classmethod
+    def from_config(
+        cls,
+        backend: str,
+        *,
+        config_files: list[str] | None = None,
+    ) -> "DatabaseResourceProvider":
+        del config_files
+        return cls.from_parameters(backend)
+
+
+    @classmethod
     def from_resource_url(cls, url: str) -> "DatabaseResourceProvider":
         backend = url.split(":", 1)[0].casefold()
         return cls(

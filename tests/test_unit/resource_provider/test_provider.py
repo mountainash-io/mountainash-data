@@ -19,3 +19,10 @@ def test_resource_url_provider_plans_without_exposing_credentials() -> None:
     plan = provider.plan(request)
     assert "secret" not in repr(plan)
     assert plan.provider_key == "database"
+
+
+def test_settings_constructors_do_not_need_connection_at_planning_time() -> None:
+    provider = DatabaseResourceProvider.from_parameters("duckdb")
+    default = DatabaseResourceProvider.default()
+    assert provider._parameters.mode.value == "settings"
+    assert default._parameters.backend == "duckdb"
