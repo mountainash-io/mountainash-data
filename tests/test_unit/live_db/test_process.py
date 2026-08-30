@@ -48,6 +48,13 @@ def test_redactor_replaces_lowercase_percent_encoded_secret() -> None:
     assert redactor.redact("credential=pa%3ass%20word") == "credential=[REDACTED]"
 
 
+def test_redactor_matches_percent_escape_hex_case_without_lowercasing_secret() -> None:
+    redactor = Redactor(["Secret:Key"])
+
+    assert redactor.redact("credential=Secret%3aKey") == "credential=[REDACTED]"
+    assert redactor.redact("credential=secret%3akey") == "credential=secret%3akey"
+
+
 def test_inspector_protocols_support_fake_listener_and_process_tree() -> None:
     class FakeListener:
         def pid_for_port(self, port: int) -> int | None:

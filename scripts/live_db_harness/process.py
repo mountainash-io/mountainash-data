@@ -22,17 +22,44 @@ _URL_AUTHORITY = re.compile(
 )
 
 
+def _encoded_secret_pattern(value: str) -> str:
+    pattern: list[str] = []
+    index = 0
+    while index < len(value):
+        if (
+            value[index] == "%"
+            and index + 2 < len(value)
+            and all(character in "0123456789ABCDEFabcdef" for character in value[index + 1 : index + 3])
+        ):
+            pattern.append("%")
+            for character in value[index + 1 : index + 3]:
+                if character.upper() in "ABCDEF":
+                    pattern.append(f"[{character.lower()}{character.upper()}]")
+                else:
+                    pattern.append(character)
+            index += 3
+        else:
+            pattern.append(re.escape(value[index]))
+            index += 1
+    return "".join(pattern)
+
+
 class Redactor:
     """Redact configured secrets from text and URL credentials."""
 
     def __init__(self, secrets: Iterable[str] = ()) -> None:
         values = {secret for secret in secrets if isinstance(secret, str) and secret}
         self.secrets = tuple(sorted(values, key=len, reverse=True))
-        encoded: set[str] = set()
+        entries: set[tuple[str, bool]] = {(secret, False) for secret in self.secrets}
         for secret in self.secrets:
-            encoded.add(quote(secret, safe=""))
-            encoded.add(quote_plus(secret, safe=""))
-        self._values = tuple(sorted(encoded | set(self.secrets), key=len, reverse=True))
+            entries.add((quote(secret, safe=""), True))
+            entries.add((quote_plus(secret, safe=""), True))
+        ordered_entries = sorted(entries, key=lambda entry: len(entry[0]), reverse=True)
+        self._values = tuple(value for value, _ in ordered_entries)
+        self._patterns = tuple(
+            _encoded_secret_pattern(value) if encoded else re.escape(value)
+            for value, encoded in ordered_entries
+        )
 
     def redact(self, value: str) -> str:
         if not isinstance(value, str) or not value:
@@ -46,12 +73,10 @@ class Redactor:
             return f"{match.group('prefix')}{_REDACTED}@{host}{match.group('suffix') or ''}"
 
         value = _URL_AUTHORITY.sub(redact_authority, value)
-        for secret in self._values:
-            if re.search(r"%[0-9A-Fa-f]{2}", secret):
-                value = re.sub(re.escape(secret), _REDACTED, value, flags=re.IGNORECASE)
-            else:
-                value = value.replace(secret, _REDACTED)
+        for pattern in self._patterns:
+            value = re.sub(pattern, _REDACTED, value)
         return value
+
 
     __call__ = redact
 
