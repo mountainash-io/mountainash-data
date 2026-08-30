@@ -17,6 +17,7 @@ from mountainash_data.core.inspection import (
 )
 from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_data.backends.ibis.backend import IbisBackend
+from mountainash_data.resource_provider.provider import DatabaseResourceProvider
 
 __all__ = [
     "__version__",
@@ -29,4 +30,5 @@ __all__ = [
     "Namespace",
     "NamespaceLike",
     "IbisBackend",
+    "DatabaseResourceProvider",
 ]

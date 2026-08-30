@@ -141,3 +141,7 @@ class DatabaseResourceProvider:
 
     def native_request(self, plan: DatabaseProviderReadPlan, backend: ReaderBackend) -> NativeReadRequest | None:
         return None
+
+def create_provider() -> DatabaseResourceProvider:
+    """Entry-point factory for the database resource provider."""
+    return DatabaseResourceProvider.default()
