@@ -11,10 +11,12 @@ from mountainash_resource_provider import (
     ProviderCompatibilityError,
     ProviderReadError,
     ProviderReadResult,
+    ProviderFormatDescriptor,
     ReaderBackend,
     ResourceRequest,
 )
 
+from mountainash_data.core.settings.registry import DATABASES_REGISTRY
 from mountainash_data.resource_provider.types import (
     DatabaseConnectionMode,
     DatabaseConnectionParameters,
@@ -35,6 +37,25 @@ class DatabaseResourceProvider:
 
     def __init__(self, parameters: DatabaseConnectionParameters) -> None:
         self._parameters = parameters
+    @property
+    def formats(self) -> tuple[ProviderFormatDescriptor, ...]:
+        return tuple(
+            ProviderFormatDescriptor(
+                canonical_format=descriptor.name,
+                aliases=frozenset({"postgres"}) if descriptor.name == "postgresql" else frozenset(),
+                suffixes=frozenset(),
+                mediatypes=frozenset(),
+                locator_prefixes=frozenset(descriptor.resource_read_locator_prefixes),
+                dialect_family=None,
+                provider_format_key=descriptor.name,
+            )
+            for descriptor in DATABASES_REGISTRY.descriptors.values()
+        )
+
+    @property
+    def parser_keys(self) -> frozenset[str]:
+        return frozenset(descriptor.provider_format_key for descriptor in self.formats)
+
 
     @classmethod
     def default(cls) -> "DatabaseResourceProvider":
