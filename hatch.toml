@@ -22,6 +22,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/../mountainash-transport",
     "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/../mountainash-resource-provider",
 
 ]
 
@@ -163,6 +164,7 @@ dependencies = [
     "mountainash_transport @  {root:uri}/../mountainash-transport",
     "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/../mountainash-resource-provider",
 
 
 ]
