@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
 from dataclasses import dataclass
 
 from mountainash_resource_provider import (
@@ -103,12 +104,40 @@ class DatabaseResourceProvider:
                     "backend": self._parameters.backend,
                     "mode": self._parameters.mode,
                     "resource_url": self._parameters.resource_url,
+                    "dialect": request.dialect,
                 }
             ),
         )
 
     def read_arrow(self, plan: DatabaseProviderReadPlan) -> ProviderReadResult:
-        raise ProviderReadError("database Arrow snapshots are not implemented")
+        backend = plan.payload["backend"]
+        mode = plan.payload["mode"]
+        dialect = plan.payload["dialect"]
+        table = dialect.get("table") if isinstance(dialect, FrozenMap) else None
+        if backend != "duckdb" or mode is not DatabaseConnectionMode.RESOURCE_URL:
+            raise ProviderReadError("database Arrow snapshots are unavailable for this connection mode")
+        if not isinstance(table, str):
+            raise ProviderReadError("database resource dialect requires a table string")
+        resource_url = plan.payload["resource_url"]
+        if not isinstance(resource_url, SensitiveDatabaseUrl):
+            raise ProviderReadError("database resource URL is unavailable")
+        database = urlsplit(resource_url.reveal()).path
+        try:
+            import duckdb
+
+            connection = duckdb.connect(database)
+            try:
+                safe_table = table.replace('"', '""')
+                arrow_table = connection.execute(f'SELECT * FROM "{safe_table}"').fetch_arrow_table()
+            finally:
+                connection.close()
+        except Exception as exc:
+            raise ProviderReadError("could not snapshot database resource") from exc
+        return ProviderReadResult(
+            table=arrow_table,
+            resolved_context={},
+            dialect_fields=plan.dialect_fields,
+        )
 
     def native_request(self, plan: DatabaseProviderReadPlan, backend: ReaderBackend) -> NativeReadRequest | None:
         return None
