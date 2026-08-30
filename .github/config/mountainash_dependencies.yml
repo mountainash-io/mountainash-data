@@ -8,6 +8,8 @@ dependencies:
   #   org-name: mountainash-io
   - name: mountainash-settings
     org-name: mountainash-io
+  - name: mountainash-resource-provider
+    org-name: mountainash-io
   # - name: mountainash-utils-dataclasses
   #   org-name: mountainash-io
   # - name: mountainash-utils-factoryclasses
