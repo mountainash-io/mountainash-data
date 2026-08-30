@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -44,6 +45,7 @@ def run_many(
     jobs: int | None = None,
     target_limit: int = 1,
     fail_fast: bool = False,
+    partial_results: dict[str, BackendResult] | None = None,
 ) -> list[BackendResult]:
     """Run named backend operations with bounded, completion-driven scheduling."""
     names = tuple(backends)
@@ -57,6 +59,25 @@ def run_many(
     in_flight: dict[Future[BackendResult], str] = {}
     stopped = False
     executor = ThreadPoolExecutor(max_workers=limit)
+
+    def record(name: str, result: BackendResult) -> None:
+        results[name] = result
+        if partial_results is not None:
+            partial_results[name] = result
+
+    def record_done_futures() -> None:
+        for future, name in tuple(in_flight.items()):
+            if not future.done():
+                continue
+            in_flight.pop(future)
+            try:
+                result = future.result()
+            except KeyboardInterrupt:
+                continue
+            except BaseException as exc:
+                result = BackendResult(backend=name, status=ResultStatus.FAIL, detail=str(exc))
+            record(name, result)
+
     try:
         while pending_index < len(names) and len(in_flight) < limit:
             name = names[pending_index]
@@ -68,6 +89,7 @@ def run_many(
                 completed, _ = wait(tuple(in_flight), return_when=FIRST_COMPLETED)
             except KeyboardInterrupt:
                 CommandRunner.terminate_active()
+                record_done_futures()
                 for future in tuple(in_flight):
                     try:
                         future.result()
@@ -80,6 +102,7 @@ def run_many(
                     result = future.result()
                 except KeyboardInterrupt:
                     CommandRunner.terminate_active()
+                    record_done_futures()
                     for running in tuple(in_flight):
                         try:
                             running.result()
@@ -88,7 +111,7 @@ def run_many(
                     raise
                 except BaseException as exc:
                     result = BackendResult(backend=name, status=ResultStatus.FAIL, detail=str(exc))
-                results[name] = result
+                record(name, result)
                 if fail_fast and result.status is ResultStatus.FAIL:
                     stopped = True
             while not stopped and pending_index < len(names) and len(in_flight) < limit:
@@ -123,19 +146,33 @@ class LiveDbRunner:
         self.transport_checker = transport_checker
         self.lease_factory = lease_factory
         self.compose_inspector = compose_inspector or ComposeInspector(self.command_runner)
+    def _scoped_command_runner(self, selection: BackendSelection) -> Any:
+        redactor = Redactor(getattr(selection, "secret_values", ()))
+        if isinstance(self.command_runner, CommandRunner):
+            return CommandRunner(redactor, grace_period=self.command_runner._grace_period)
+        runner = copy.copy(self.command_runner)
+        if hasattr(runner, "redactor"):
+            runner.redactor = redactor
+        return runner
 
+    def _scoped_compose_inspector(self, command_runner: Any) -> Any:
+        if isinstance(self.compose_inspector, ComposeInspector):
+            return ComposeInspector(
+                command_runner,
+                listener_inspector=self.compose_inspector.listener_inspector,
+            )
+        inspector = copy.copy(self.compose_inspector)
+        if hasattr(inspector, "runner"):
+            inspector.runner = command_runner
+        return inspector
     def _load(self, target: str, backend: str | None) -> Any:
-        loaded = load_unresolved_harness(
+        return load_unresolved_harness(
             self.config_files, selected_target=target, selected_backend=backend
         )
-        return loaded
+
 
     def _selection(self, target: str, backend: str) -> BackendSelection:
-        selection = build_backend_selection(self._load(target, backend))
-        self.redactor = Redactor(selection.secret_values)
-        if hasattr(self.command_runner, "redactor"):
-            self.command_runner.redactor = self.redactor
-        return selection
+        return build_backend_selection(self._load(target, backend))
 
     def status(self, target: str) -> int:
         loaded = self._load(target, None)
@@ -257,24 +294,81 @@ class LiveDbRunner:
             raise _error(selection.target_name, selection.backend_name, Phase.CONFIGURATION, "The selected backend has no Compose service.", "Configure Compose profile and service metadata.")
         return service
 
-    def _check_compose_service_available(self, selection: BackendSelection) -> None:
+    def _check_compose_service_available(
+        self,
+        selection: BackendSelection,
+        *,
+        compose_inspector: Any | None = None,
+        redactor: Redactor | None = None,
+    ) -> None:
         service = self._compose_service(selection)
+        inspector = compose_inspector or self.compose_inspector
         try:
-            state = self.compose_inspector.service_state(service.profile, service.service, target=selection.target_name, backend=selection.backend_name)
-        except HarnessError:
-            raise
+            state = inspector.service_state(
+                service.profile,
+                service.service,
+                target=selection.target_name,
+                backend=selection.backend_name,
+            )
+        except HarnessError as exc:
+            if redactor is None:
+                raise
+            raise _error(
+                exc.target,
+                exc.backend,
+                exc.phase,
+                redactor(exc.detail),
+                exc.corrective_action,
+            ) from None
         except Exception as exc:
-            raise _error(selection.target_name, selection.backend_name, Phase.TRANSPORT, f"Could not inspect Compose service: {exc}", "Check Docker Compose state and retry.") from None
+            detail = redactor(str(exc)) if redactor is not None else str(exc)
+            raise _error(
+                selection.target_name,
+                selection.backend_name,
+                Phase.TRANSPORT,
+                f"Could not inspect Compose service: {detail}",
+                "Check Docker Compose state and retry.",
+            ) from None
         if not getattr(state, "running", False):
-            raise _error(selection.target_name, selection.backend_name, Phase.TRANSPORT, f"Compose service {service.service!r} is not running.", "Start the selected service before running test.")
+            raise _error(
+                selection.target_name,
+                selection.backend_name,
+                Phase.TRANSPORT,
+                f"Compose service {service.service!r} is not running.",
+                "Start the selected service before running test.",
+            )
 
-    def _check_transport(self, selection: BackendSelection, *, startup: bool = False) -> None:
+    def _check_transport(
+        self,
+        selection: BackendSelection,
+        *,
+        startup: bool = False,
+        command_runner: Any | None = None,
+        compose_inspector: Any | None = None,
+        redactor: Redactor | None = None,
+    ) -> None:
+        runner = command_runner or self.command_runner
+        inspector = compose_inspector or self._scoped_compose_inspector(runner)
         if selection.target.transport == "compose" and not startup:
-            self._check_compose_service_available(selection)
+            self._check_compose_service_available(
+                selection,
+                compose_inspector=inspector,
+                redactor=redactor,
+            )
             return
-        self.transport_checker(selection=selection, compose_inspector=self.compose_inspector, command_runner=self.command_runner)
+        self.transport_checker(
+            selection=selection,
+            compose_inspector=inspector,
+            command_runner=runner,
+        )
 
-    def _connection_check(self, selection: BackendSelection) -> None:
+    def _connection_check(
+        self,
+        selection: BackendSelection,
+        *,
+        redactor: Redactor | None = None,
+    ) -> None:
+        selection_redactor = redactor or Redactor(selection.secret_values)
         backend = None
         try:
             backend = self.backend_factory(selection.settings_parameters)
@@ -282,25 +376,60 @@ class LiveDbRunner:
         except HarnessError:
             raise
         except Exception as exc:
-            raise _error(selection.target_name, selection.backend_name, Phase.AUTHENTICATION, f"Could not connect to the backend: {self.redactor(str(exc))}", "Check the target endpoint and authentication settings.") from None
+            raise _error(
+                selection.target_name,
+                selection.backend_name,
+                Phase.AUTHENTICATION,
+                f"Could not connect to the backend: {selection_redactor(str(exc))}",
+                "Check the target endpoint and authentication settings.",
+            ) from None
         finally:
             if backend is not None:
                 try:
                     backend.close()
                 except Exception as exc:
-                    raise _error(selection.target_name, selection.backend_name, Phase.CLEANUP, f"Could not close the backend connection: {self.redactor(str(exc))}", "Check the backend driver and retry.") from None
+                    raise _error(
+                        selection.target_name,
+                        selection.backend_name,
+                        Phase.CLEANUP,
+                        f"Could not close the backend connection: {selection_redactor(str(exc))}",
+                        "Check the backend driver and retry.",
+                    ) from None
 
-    def _check_unlocked(self, selection: BackendSelection, *, test_mode: bool = False) -> None:
+    def _check_unlocked(
+        self,
+        selection: BackendSelection,
+        *,
+        test_mode: bool = False,
+        redactor: Redactor | None = None,
+        command_runner: Any | None = None,
+        compose_inspector: Any | None = None,
+    ) -> None:
         self._require_destructive_opt_in(selection)
-        self._check_transport(selection, startup=not test_mode)
-        self._connection_check(selection)
+        self._check_transport(
+            selection,
+            startup=not test_mode,
+            command_runner=command_runner,
+            compose_inspector=compose_inspector,
+            redactor=redactor,
+        )
+        self._connection_check(selection, redactor=redactor)
+
     def _lock(self, selection: BackendSelection, wait_lock: float) -> Any:
         return self.lock_factory(selection.target_name, selection.backend_name, wait_timeout=wait_lock)
 
     def check_one(self, target: str, backend: str, *, wait_lock: float = 0.0) -> BackendResult:
         selection = self._selection(target, backend)
+        command_runner = self._scoped_command_runner(selection)
+        redactor = command_runner.redactor if hasattr(command_runner, "redactor") else Redactor(selection.secret_values)
+        compose_inspector = self._scoped_compose_inspector(command_runner)
         with self._lock(selection, wait_lock):
-            self._check_unlocked(selection)
+            self._check_unlocked(
+                selection,
+                redactor=redactor,
+                command_runner=command_runner,
+                compose_inspector=compose_inspector,
+            )
         return BackendResult(backend=backend, status=ResultStatus.PASS)
 
     def _pytest_env(self, selection: BackendSelection) -> dict[str, str]:
@@ -316,9 +445,15 @@ class LiveDbRunner:
         })
         return env
 
-    def _run_pytest(self, selection: BackendSelection, *, timeout: float | None = None) -> None:
+    def _run_pytest(
+        self,
+        selection: BackendSelection,
+        *,
+        timeout: float | None = None,
+        command_runner: Any | None = None,
+    ) -> None:
         timeout_seconds = selection.target.test_timeout_seconds if timeout is None else timeout
-        self.command_runner.run(
+        (command_runner or self.command_runner).run(
             [sys.executable, "-m", "pytest", "-k", selection.suite.selector, "-m", "integration"],
             env=self._pytest_env(selection),
             timeout=timeout_seconds,
@@ -329,43 +464,61 @@ class LiveDbRunner:
 
     def test_one(self, target: str, backend: str, *, timeout: float | None = None, wait_lock: float = 0.0) -> BackendResult:
         selection = self._selection(target, backend)
+        command_runner = self._scoped_command_runner(selection)
+        redactor = command_runner.redactor if hasattr(command_runner, "redactor") else Redactor(selection.secret_values)
+        compose_inspector = self._scoped_compose_inspector(command_runner)
         with self._lock(selection, wait_lock):
-            self._check_unlocked(selection, test_mode=True)
-            self._run_pytest(selection, timeout=timeout)
+            self._check_unlocked(
+                selection,
+                test_mode=True,
+                redactor=redactor,
+                command_runner=command_runner,
+                compose_inspector=compose_inspector,
+            )
+            self._run_pytest(selection, timeout=timeout, command_runner=command_runner)
         return BackendResult(backend=backend, status=ResultStatus.PASS)
+
     def up_one(self, target: str, backend: str, *, wait_lock: float = 0.0) -> BackendResult:
-        _, _, suite = self._compose_parts(target, backend)
-        with self.lock_factory(target, backend, wait_timeout=wait_lock):
+        selection = self._selection(target, backend)
+        if selection.target.transport != "compose":
+            raise _error(target, backend, Phase.CONFIGURATION, "This command requires a Compose target.", "Select a Compose target.")
+        command_runner = self._scoped_command_runner(selection)
+        compose_inspector = self._scoped_compose_inspector(command_runner)
+        redactor = command_runner.redactor if hasattr(command_runner, "redactor") else Redactor(selection.secret_values)
+        with self._lock(selection, wait_lock):
             lease = self.lease_factory(
-                compose=suite.compose,
-                runner=self.command_runner,
-                compose_inspector=self.compose_inspector,
+                compose=self._compose_service(selection),
+                runner=command_runner,
+                compose_inspector=compose_inspector,
                 target=target,
                 backend=backend,
-                redactor=self.redactor,
+                redactor=redactor,
             )
             lease.start()
         return BackendResult(backend=backend, status=ResultStatus.PASS)
 
     def down_one(self, target: str, backend: str, *, wait_lock: float = 0.0) -> BackendResult:
-        _, _, suite = self._compose_parts(target, backend)
-        service = suite.compose
-        assert service is not None
-        with self.lock_factory(target, backend, wait_timeout=wait_lock):
+        selection = self._selection(target, backend)
+        if selection.target.transport != "compose":
+            raise _error(target, backend, Phase.CONFIGURATION, "This command requires a Compose target.", "Select a Compose target.")
+        service = self._compose_service(selection)
+        command_runner = self._scoped_command_runner(selection)
+        redactor = command_runner.redactor if hasattr(command_runner, "redactor") else Redactor(selection.secret_values)
+        with self._lock(selection, wait_lock):
             errors: list[str] = []
             for argv, action in (
                 (["docker", "compose", "stop", service.service], "stop"),
                 (["docker", "compose", "rm", "-f", service.service], "rm"),
             ):
                 try:
-                    self.command_runner.run(
+                    command_runner.run(
                         argv,
                         phase=Phase.CLEANUP,
                         target=target,
                         backend=backend,
                     )
                 except BaseException as exc:
-                    errors.append(f"{action} failed: {self.redactor(str(exc))}")
+                    errors.append(f"{action} failed: {redactor(str(exc))}")
             if errors:
                 raise _error(
                     target,
@@ -393,20 +546,28 @@ class LiveDbRunner:
                 "The run command requires a Compose target.",
                 "Select a Compose target.",
             )
+        command_runner = self._scoped_command_runner(selection)
+        compose_inspector = self._scoped_compose_inspector(command_runner)
+        redactor = command_runner.redactor if hasattr(command_runner, "redactor") else Redactor(selection.secret_values)
         with self._lock(selection, wait_lock):
             lease = self.lease_factory(
                 compose=self._compose_service(selection),
-                runner=self.command_runner,
-                compose_inspector=self.compose_inspector,
+                runner=command_runner,
+                compose_inspector=compose_inspector,
                 target=target,
                 backend=backend,
-                redactor=self.redactor,
+                redactor=redactor,
             )
             primary: BaseException | None = None
             try:
                 lease.start()
-                self._check_unlocked(selection)
-                self._run_pytest(selection, timeout=timeout)
+                self._check_unlocked(
+                    selection,
+                    redactor=redactor,
+                    command_runner=command_runner,
+                    compose_inspector=compose_inspector,
+                )
+                self._run_pytest(selection, timeout=timeout, command_runner=command_runner)
             except BaseException as exc:
                 primary = exc
             cleanup: BaseException | None = None
@@ -415,9 +576,9 @@ class LiveDbRunner:
             except BaseException as exc:
                 cleanup = exc
             if primary is not None:
-                detail = str(primary)
+                detail = redactor(str(primary))
                 if cleanup is not None:
-                    detail = f"{detail} Cleanup failed: {self.redactor(str(cleanup))}"
+                    detail = f"{detail} Cleanup failed: {redactor(str(cleanup))}"
                 raise _error(
                     target,
                     backend,
@@ -452,12 +613,22 @@ class LiveDbRunner:
             except KeyboardInterrupt:
                 raise
             except HarnessError as exc:
-                return BackendResult(backend=name, status=ResultStatus.FAIL, detail=self.redactor(str(exc)))
+                return BackendResult(backend=name, status=ResultStatus.FAIL, detail=Redactor()(str(exc)))
             except BaseException as exc:
-                return BackendResult(backend=name, status=ResultStatus.FAIL, detail=self.redactor(str(exc)))
+                return BackendResult(backend=name, status=ResultStatus.FAIL, detail=Redactor()(str(exc)))
 
         try:
-            results.update({result.backend: result for result in run_many(runnable, operation, jobs=jobs, target_limit=target_def.max_parallel, fail_fast=fail_fast)})
+            results.update({
+                result.backend: result
+                for result in run_many(
+                    runnable,
+                    operation,
+                    jobs=jobs,
+                    target_limit=target_def.max_parallel,
+                    fail_fast=fail_fast,
+                    partial_results=results,
+                )
+            })
         except KeyboardInterrupt:
             interrupted: list[BackendResult] = []
             for name in configured:

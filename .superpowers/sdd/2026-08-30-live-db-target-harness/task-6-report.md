@@ -123,8 +123,31 @@ Evidence:
  
 ```text
 hatch run test:test-target-quick tests/test_unit/live_db/test_runner.py tests/test_unit/live_db/test_cli.py -q
+
 ........................                                                 [100%]
 24 passed in 0.19s
+
+hatch run ruff:check
+All checks passed!
+```
+
+## Fix Round 1
+
+### Changes
+
+- Removed shared redactor mutation from `_selection()`.
+- Created selection-scoped command runners, redactors, and Compose inspectors for each backend operation, including connection, transport, pytest, lease, and cleanup paths.
+- Added optional `partial_results` propagation to `run_many()` so aggregate interruption preserves completed backend outcomes.
+- Added concurrency coverage for backend-specific secret redaction and aggregate interrupt coverage that preserves a completed `PASS`.
+
+### Verification
+
+```text
+hatch run test:test-target-quick tests/test_unit/live_db/test_runner.py tests/test_unit/live_db/test_cli.py -q
+26 passed in 0.11s
+
+hatch run test:test-target-quick tests/test_unit/live_db -q
+94 passed in 1.58s
 
 hatch run ruff:check
 All checks passed!

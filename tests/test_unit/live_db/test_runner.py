@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 import threading
-
 import pytest
 
 from scripts.live_db_harness.models import BackendResult, HarnessError, Phase, ResultStatus
+from scripts.live_db_harness import runner as runner_module
 from scripts.live_db_harness.runner import LiveDbRunner, run_many
 
  
@@ -197,8 +198,8 @@ def test_cleanup_failure_preserves_prior_test_failure_detail() -> None:
 
     runner.lease_factory = lambda **kwargs: Lease()
     prior = HarnessError("docker", "postgres", Phase.PYTEST, "pytest failed", "inspect pytest output")
-    runner._check_unlocked = lambda selection: (_ for _ in ()).throw(prior)
-    runner._run_pytest = lambda selection, timeout=None: None
+    runner._check_unlocked = lambda selection, **kwargs: (_ for _ in ()).throw(prior)
+    runner._run_pytest = lambda selection, timeout=None, **kwargs: None
     with pytest.raises(HarnessError) as caught:
         runner.run_one("docker", "postgres")
     assert "pytest failed" in str(caught.value)
@@ -223,8 +224,8 @@ def test_cleanup_failure_overrides_test_pass() -> None:
     runner = LiveDbRunner(())
     runner._load = lambda target, backend: loaded
     runner._selection = lambda target, backend: _compose_selection()
-    runner._check_unlocked = lambda selection: None
-    runner._run_pytest = lambda selection, timeout=None: None
+    runner._check_unlocked = lambda selection, **kwargs: None
+    runner._run_pytest = lambda selection, timeout=None, **kwargs: None
 
     class Lease:
         def start(self) -> None:
@@ -299,3 +300,100 @@ def test_failed_attempt_returns_nonzero() -> None:
     results, code = runner.aggregate("docker", "check")
     assert results[0].status is ResultStatus.FAIL
     assert code == 1
+def test_concurrent_backend_errors_use_their_own_secret_redactor() -> None:
+    selections = {
+        "one": SimpleNamespace(
+            target_name="docker",
+            backend_name="one",
+            target=SimpleNamespace(transport="direct", allow_destructive_tests=True),
+            suite=SimpleNamespace(),
+            settings_parameters=SimpleNamespace(secret="one-secret"),
+            auth_profile=SimpleNamespace(),
+            secret_values=frozenset({"one-secret"}),
+        ),
+        "two": SimpleNamespace(
+            target_name="docker",
+            backend_name="two",
+            target=SimpleNamespace(transport="direct", allow_destructive_tests=True),
+            suite=SimpleNamespace(),
+            settings_parameters=SimpleNamespace(secret="two-secret"),
+            auth_profile=SimpleNamespace(),
+            secret_values=frozenset({"two-secret"}),
+        ),
+    }
+    barrier = threading.Barrier(2)
+    runner = LiveDbRunner(())
+    runner._selection = lambda target, backend: selections[backend]
+    runner.transport_checker = lambda **kwargs: None
+    runner.lock_factory = lambda *args, **kwargs: _NoopLock()
+
+    def connect(parameters: SimpleNamespace) -> None:
+        barrier.wait(timeout=2)
+        raise RuntimeError(parameters.secret)
+    runner.lock_factory = lambda *args, **kwargs: nullcontext()
+    runner.backend_factory = connect
+    errors: dict[str, str] = {}
+
+    def invoke(backend: str) -> None:
+        with pytest.raises(HarnessError) as caught:
+            runner.check_one("docker", backend)
+        errors[backend] = str(caught.value)
+
+    threads = [threading.Thread(target=invoke, args=(backend,)) for backend in selections]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=2)
+        assert not thread.is_alive()
+
+    assert "[REDACTED]" in errors["one"]
+    assert "one-secret" not in errors["one"]
+    assert "[REDACTED]" in errors["two"]
+    assert "two-secret" not in errors["two"]
+
+
+def test_aggregate_interrupt_preserves_completed_backend_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loaded = _loaded({"one": True, "two": True}, max_parallel=2)
+    runner = LiveDbRunner(())
+    runner._load = lambda target, backend: loaded
+    second_started = threading.Event()
+    release_interrupt = threading.Event()
+
+    def operation(target: str, backend: str, *, wait_lock: float = 0.0) -> BackendResult:
+        if backend == "one":
+            return BackendResult(backend=backend, status=ResultStatus.PASS)
+        second_started.set()
+        release_interrupt.wait(timeout=2)
+        raise KeyboardInterrupt
+
+    runner.check_one = operation
+    results_holder: dict[str, object] = {}
+    original_wait = runner_module.wait
+    wait_calls = 0
+
+    def controlled_wait(futures, *, return_when):
+        nonlocal wait_calls
+        wait_calls += 1
+        if wait_calls == 2:
+            release_interrupt.set()
+            raise KeyboardInterrupt
+        return original_wait(futures, return_when=return_when)
+
+    monkeypatch.setattr(runner_module, "wait", controlled_wait)
+
+    def invoke() -> None:
+        results_holder["value"] = runner.aggregate("docker", "check", jobs=2)
+
+    thread = threading.Thread(target=invoke)
+    thread.start()
+    assert second_started.wait(timeout=2)
+    thread.join(timeout=3)
+    assert not thread.is_alive()
+
+    results, code = results_holder["value"]
+    assert results[0].status is ResultStatus.PASS
+    assert results[1].status is ResultStatus.FAIL
+    assert results[1].detail == "interrupted"
+    assert code == 130
