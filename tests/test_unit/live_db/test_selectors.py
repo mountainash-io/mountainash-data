@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
-import sys
 
-sys.path.insert(0, str(Path(__file__).parents[3]))
+import pytest
+
 
 from scripts.live_db_harness.models import HarnessSettings
 
@@ -16,20 +15,26 @@ MYSQL_LIVE_NODE_IDS = {
 }
 
 
-def test_mysql_selector_collects_all_test_mysql_live_node_ids():
-    source = Path("tests/test_integration/test_index_ops_live.py").read_text()
-    tree = ast.parse(source)
-    test_class = next(
-        node for node in tree.body
-        if isinstance(node, ast.ClassDef) and node.name == "TestMySQLLive"
-    )
-    node_ids = {
-        "tests/test_integration/test_index_ops_live.py::TestMySQLLive::" + node.name
-        for node in test_class.body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.name.startswith("test_")
-    }
-    assert MYSQL_LIVE_NODE_IDS <= node_ids
-
+def test_mysql_selector_collects_all_test_mysql_live_node_ids(
+    capsys: pytest.CaptureFixture[str],
+):
     settings = HarnessSettings(config_files=[Path("tests/config/live-db.toml")])
-    assert settings.backends["mysql"].selector == "mysql"
+    selector = settings.backends["mysql"].selector
+    result = pytest.main(
+        [
+            "--collect-only",
+            "-q",
+            "-k",
+            selector,
+            "tests/test_integration/test_index_ops_live.py",
+        ]
+    )
+
+    assert result == pytest.ExitCode.OK
+    output = capsys.readouterr().out
+    collected_node_ids = {
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith("tests/test_integration/test_index_ops_live.py::")
+    }
+    assert collected_node_ids == MYSQL_LIVE_NODE_IDS
