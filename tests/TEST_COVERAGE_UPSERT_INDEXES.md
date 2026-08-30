@@ -85,7 +85,9 @@ hatch run test:test-quick
 Run live database tests when the required services are available:
 
 ```bash
-hatch run test:test-live tests/test_integration/test_index_ops_live.py
+hatch run test:test-live-up postgres
+hatch run test:test-live postgres          # repeat as needed
+hatch run test:test-live-down postgres
 ```
 
 ## Expected API
