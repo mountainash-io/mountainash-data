@@ -11,8 +11,6 @@ without requiring a live Oracle connection for every contributor.
 from __future__ import annotations
 
 import pytest
-import oracledb
-import oracledb.errors as ora_errors
 
 from mountainash_data.backends.ibis._oracle_compat import (
     _patch_alter_table_rename,
@@ -23,6 +21,8 @@ from mountainash_data.backends.ibis._oracle_compat import (
 
 
 def _fake_ora_error(code: int) -> oracledb.DatabaseError:
+    oracledb = pytest.importorskip("oracledb")
+    ora_errors = pytest.importorskip("oracledb.errors")
     err = ora_errors._Error(f"ORA-{code:05d}: fake", code=code)
     return oracledb.DatabaseError(err)
 
@@ -43,18 +43,21 @@ class _FakeDropTableCon:
 
 class TestPatchDropTableIfExists:
     def test_force_true_swallows_ora_00942(self):
+        oracledb = pytest.importorskip("oracledb")
         con = _FakeDropTableCon(raises=_fake_ora_error(942))
         _patch_drop_table_if_exists(con)
         con.drop_table("t", force=True)  # must not raise
         assert con.calls == [("t", {"database": None, "force": False})]
 
     def test_force_true_other_error_still_raises(self):
+        oracledb = pytest.importorskip("oracledb")
         con = _FakeDropTableCon(raises=_fake_ora_error(1))
         _patch_drop_table_if_exists(con)
         with pytest.raises(oracledb.DatabaseError):
             con.drop_table("t", force=True)
 
     def test_force_false_ora_00942_still_raises(self):
+        oracledb = pytest.importorskip("oracledb")
         con = _FakeDropTableCon(raises=_fake_ora_error(942))
         _patch_drop_table_if_exists(con)
         with pytest.raises(oracledb.DatabaseError):
@@ -63,6 +66,7 @@ class TestPatchDropTableIfExists:
     def test_underlying_call_never_requests_if_exists(self):
         """Regardless of the caller's `force`, the wrapped call always
         passes force=False -- IF EXISTS must never reach Oracle."""
+        pytest.importorskip("oracledb")
         con = _FakeDropTableCon()
         _patch_drop_table_if_exists(con)
         con.drop_table("t", force=True)
@@ -169,6 +173,7 @@ class TestPatchGetSchema:
         """The bare `nullable = 'Y' AS nullable` form Ibis hardcodes is
         invalid pre-23ai Oracle SQL (ORA-00923); get_schema must always
         emit the CASE-WHEN form instead."""
+        pytest.importorskip("oracledb")
         con = _FakeSafeRawSqlCon(rows=[("ID", "NUMBER", None, 0, 1)])
         _patch_get_schema(con)
         con.get_schema("up_ora")
@@ -179,6 +184,7 @@ class TestPatchGetSchema:
         """oracledb returns the NUMBER(1) result as decimal.Decimal, not
         int/bool -- Ibis's dt.Int64(nullable=...) rejects anything but an
         actual bool. get_schema must coerce before constructing fields."""
+        pytest.importorskip("oracledb")
         import decimal
 
         con = _FakeSafeRawSqlCon(rows=[("ID", "NUMBER", None, 0, decimal.Decimal("1"))])
@@ -187,6 +193,7 @@ class TestPatchGetSchema:
         assert schema["ID"].nullable is True
 
     def test_raises_table_not_found_when_no_rows(self):
+        pytest.importorskip("oracledb")
         import ibis.common.exceptions as exc
 
         con = _FakeSafeRawSqlCon(rows=[])
@@ -204,6 +211,7 @@ class _FakePatchTargetCon:
 
 class TestPatchOracleConnection:
     def test_idempotent_second_call_is_a_noop(self, monkeypatch):
+        pytest.importorskip("oracledb")
         con = _FakePatchTargetCon()
         calls = []
         monkeypatch.setattr(
@@ -215,6 +223,7 @@ class TestPatchOracleConnection:
         assert len(calls) == 1
 
     def test_marks_connection_as_patched(self):
+        pytest.importorskip("oracledb")
         con = _FakePatchTargetCon()
         patch_oracle_connection(con)
         assert con._mountainash_oracle_patched is True

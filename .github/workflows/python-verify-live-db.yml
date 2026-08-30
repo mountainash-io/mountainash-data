@@ -1,0 +1,239 @@
+name: Verify Live DB
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: "Backend to live-verify"
+        required: true
+        type: choice
+        options:
+          - postgres
+          - mysql
+          - oracle
+          # DEBT-17..21 append their own option + job below, following the
+          # same template, once their live tests exist.
+      fallback_branch:
+        description: "Fallback branch for sibling dependency checkout"
+        required: true
+        default: "develop"
+        type: choice
+        options:
+          - develop
+          - main
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    if: ${{ inputs.backend == 'postgres' }}
+    runs-on: ubuntu-24.04
+    env:
+      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
+      IBIS_TEST_POSTGRES_HOST: localhost
+      IBIS_TEST_POSTGRES_PORT: "5432"
+      IBIS_TEST_POSTGRES_USER: postgres
+      IBIS_TEST_POSTGRES_PASSWORD: postgres
+      IBIS_TEST_POSTGRES_DATABASE: ibis_testing
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ibis_testing
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 1s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:test -k postgres -m integration
+
+  mysql:
+    if: ${{ inputs.backend == 'mysql' }}
+    runs-on: ubuntu-24.04
+    env:
+      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
+      IBIS_TEST_MYSQL_HOST: localhost
+      IBIS_TEST_MYSQL_PORT: "3306"
+      IBIS_TEST_MYSQL_USER: ibis
+      IBIS_TEST_MYSQL_PASSWORD: ibis
+      IBIS_TEST_MYSQL_DATABASE: ibis_testing
+    services:
+      mysql:
+        image: mariadb:12.1.2
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+          MYSQL_DATABASE: ibis_testing
+          MYSQL_USER: ibis
+          MYSQL_PASSWORD: ibis
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mariadb-admin ping -h localhost"
+          --health-interval 1s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:test -k mysql -m integration
+
+  oracle:
+    if: ${{ inputs.backend == 'oracle' }}
+    runs-on: ubuntu-24.04
+    env:
+      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
+      IBIS_TEST_ORACLE_HOST: localhost
+      IBIS_TEST_ORACLE_PORT: "1521"
+      IBIS_TEST_ORACLE_USER: app
+      IBIS_TEST_ORACLE_PASSWORD: app
+      IBIS_TEST_ORACLE_DATABASE: XEPDB1
+    services:
+      oracle:
+        image: gvenzl/oracle-xe:21-slim
+        env:
+          ORACLE_PASSWORD: oracle
+          APP_USER: app
+          APP_USER_PASSWORD: app
+        ports: ["1521:1521"]
+        options: >-
+          --health-cmd "healthcheck.sh"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:test -k oracle -m integration
