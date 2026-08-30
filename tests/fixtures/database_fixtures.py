@@ -1,6 +1,5 @@
 """Database-related fixtures for testing."""
 
-import os
 import pytest
 import tempfile
 import sqlite3
@@ -8,69 +7,8 @@ from pathlib import Path
 from typing import Generator
 import ibis
 
-from mountainash_data import IbisBackend
+from .live_db_fixtures import mysql_backend, oracle_backend, postgres_backend
 
-_PG = dict(
-    host=os.environ.get("IBIS_TEST_POSTGRES_HOST", os.environ.get("PGHOST", "localhost")),
-    port=int(os.environ.get("IBIS_TEST_POSTGRES_PORT", os.environ.get("PGPORT", "5432"))),
-    user=os.environ.get("IBIS_TEST_POSTGRES_USER", os.environ.get("PGUSER", "postgres")),
-    password=os.environ.get("IBIS_TEST_POSTGRES_PASSWORD", os.environ.get("PGPASSWORD", "postgres")),
-    database=os.environ.get("IBIS_TEST_POSTGRES_DATABASE", os.environ.get("PGDATABASE", "ibis_testing")),
-)
-_MY = dict(
-    host=os.environ.get("IBIS_TEST_MYSQL_HOST", "localhost"),
-    port=int(os.environ.get("IBIS_TEST_MYSQL_PORT", "3306")),
-    user=os.environ.get("IBIS_TEST_MYSQL_USER", "ibis"),
-    password=os.environ.get("IBIS_TEST_MYSQL_PASSWORD", "ibis"),
-    database=os.environ.get("IBIS_TEST_MYSQL_DATABASE", "ibis_testing"),
-)
-_ORA = dict(
-    host=os.environ.get("IBIS_TEST_ORACLE_HOST", "localhost"),
-    port=int(os.environ.get("IBIS_TEST_ORACLE_PORT", "1521")),
-    user=os.environ.get("IBIS_TEST_ORACLE_USER", "app"),
-    password=os.environ.get("IBIS_TEST_ORACLE_PASSWORD", "app"),
-    database=os.environ.get("IBIS_TEST_ORACLE_DATABASE", "XEPDB1"),
-)
-
-
-def _live_or_skip(dialect: str, params: dict):
-    require = os.environ.get("MOUNTAINASH_REQUIRE_LIVE_DB") == "1"
-    try:
-        be = IbisBackend(dialect=dialect, **params)
-        be.connect()
-        return be
-    except Exception as exc:  # noqa: BLE001 - service availability gate
-        msg = f"{dialect} service unreachable: {exc}"
-        if require:
-            pytest.fail(msg)
-        pytest.skip(msg)
-
-
-@pytest.fixture
-def postgres_backend():
-    be = _live_or_skip("postgres", _PG)
-    try:
-        yield be
-    finally:
-        be.close()
-
-
-@pytest.fixture
-def mysql_backend():
-    be = _live_or_skip("mysql", _MY)
-    try:
-        yield be
-    finally:
-        be.close()
-
-
-@pytest.fixture
-def oracle_backend():
-    be = _live_or_skip("oracle", _ORA)
-    try:
-        yield be
-    finally:
-        be.close()
 
 
 @pytest.fixture(scope="session")
