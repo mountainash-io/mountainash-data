@@ -74,7 +74,7 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:live-db test --target docker postgres
+        run: hatch run test_github_live:live-db run --target docker postgres
 
   mysql:
     if: ${{ inputs.backend == 'mysql' }}
@@ -125,7 +125,7 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:live-db test --target docker mysql
+        run: hatch run test_github_live:live-db run --target docker mysql
 
   oracle:
     if: ${{ inputs.backend == 'oracle' }}
@@ -176,7 +176,7 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:live-db test --target docker oracle
+        run: hatch run test_github_live:live-db run --target docker oracle
 
   singlestoredb:
     if: ${{ inputs.backend == 'singlestoredb' }}
@@ -227,4 +227,4 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:live-db test --target docker singlestoredb
+        run: hatch run test_github_live:live-db run --target docker singlestoredb

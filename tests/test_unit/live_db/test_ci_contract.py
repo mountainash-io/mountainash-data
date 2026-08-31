@@ -74,11 +74,11 @@ def test_live_workflow_has_exact_backend_options_and_runner_owned_jobs() -> None
 
     jobs = workflow["jobs"]
     expected = {
-        "postgres": "hatch run test_github_live:live-db test --target docker postgres",
-        "mysql": "hatch run test_github_live:live-db test --target docker mysql",
-        "oracle": "hatch run test_github_live:live-db test --target docker oracle",
+        "postgres": "hatch run test_github_live:live-db run --target docker postgres",
+        "mysql": "hatch run test_github_live:live-db run --target docker mysql",
+        "oracle": "hatch run test_github_live:live-db run --target docker oracle",
         "singlestoredb": (
-            "hatch run test_github_live:live-db test --target docker singlestoredb"
+            "hatch run test_github_live:live-db run --target docker singlestoredb"
         ),
     }
     assert set(jobs) == set(expected)
@@ -103,11 +103,11 @@ def test_singlestore_compose_service_is_apple_silicon_compatible_and_authenticat
     assert healthcheck["test"][0] == "CMD-SHELL"
     healthcheck_command = " ".join(healthcheck["test"])
     assert "singlestore" in healthcheck_command
-    assert "root" in healthcheck_command
-    assert "ROOT_PASSWORD" in healthcheck_command
+    assert "-u ibis" in healthcheck_command
+    assert "-pibis" in healthcheck_command
+    assert "-D ibis_testing" in healthcheck_command
     assert "SELECT 1" in healthcheck_command
-
-
+    assert "root" not in healthcheck_command.lower()
 def test_singlestore_init_sql_creates_authenticated_ibis_testing_database() -> None:
     init_sql = SINGLESTORE_INIT_PATH.read_text()
 

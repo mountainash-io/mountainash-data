@@ -50,7 +50,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "singlestore -h 127.0.0.1 -P 3306 -u root -p\"$${ROOT_PASSWORD}\" -e \"SELECT 1\"",
+          "singlestore -h 127.0.0.1 -P 3306 -u ibis -pibis -D ibis_testing -e \"SELECT 1\"",
         ]
       interval: 5s
       timeout: 5s
