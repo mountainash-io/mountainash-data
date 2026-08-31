@@ -136,6 +136,49 @@ def test_fixture_rejects_backend_other_than_selected_backend(pytester, monkeypat
     result.stdout.fnmatch_lines(["*postgres_backend*mysql*"])
 
 
+def test_singlestore_fixture_without_target_skips_with_exact_message(
+    pytester, monkeypatch
+) -> None:
+    for key in (
+        "MOUNTAINASH_LIVE_DB_CONFIG",
+        "MOUNTAINASH_LIVE_DB_TARGET",
+        "MOUNTAINASH_LIVE_DB_BACKEND",
+        "MOUNTAINASH_REQUIRE_LIVE_DB",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    _enable_fixtures(pytester)
+    pytester.makepyfile(
+        test_probe="def test_probe(singlestore_backend):\n    pass\n"
+    )
+
+    result = pytester.runpytest("-q", "-rs")
+
+    result.assert_outcomes(skipped=1)
+    result.stdout.fnmatch_lines(["*no live backend target selected*"])
+
+
+def test_singlestore_fixture_rejects_backend_other_than_selected_backend(
+    pytester, monkeypatch
+) -> None:
+    monkeypatch.setenv("MOUNTAINASH_LIVE_DB_TARGET", "local")
+    monkeypatch.setenv("MOUNTAINASH_LIVE_DB_BACKEND", "mysql")
+    _enable_fixtures(pytester)
+    pytester.makepyfile(
+        test_probe="def test_probe(singlestore_backend):\n    pass\n"
+    )
+
+    result = pytester.runpytest("-q", "-rs")
+
+    result.assert_outcomes(skipped=1)
+    result.stdout.fnmatch_lines(["*singlestore_backend*mysql*"])
+
+    monkeypatch.setenv("MOUNTAINASH_REQUIRE_LIVE_DB", "1")
+    result = pytester.runpytest("-q", "-rs")
+
+    result.assert_outcomes(errors=1)
+    result.stdout.fnmatch_lines(["*singlestore_backend*mysql*"])
+
+
 def test_child_process_reloads_provider_and_auth_profile(pytester, tmp_path: Path) -> None:
     tracked = tmp_path / "tracked.toml"
     user = tmp_path / "user.toml"

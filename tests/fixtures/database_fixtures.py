@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import Generator
 import ibis
 
-from .live_db_fixtures import mysql_backend, oracle_backend, postgres_backend
+from .live_db_fixtures import (
+    mysql_backend,
+    oracle_backend,
+    postgres_backend,
+    singlestore_backend,
+)
 
 
 

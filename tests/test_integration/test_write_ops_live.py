@@ -1,4 +1,4 @@
-"""Live round-trip tests for generic write ops (postgres + mysql + oracle)."""
+"""Live round-trip tests for generic write ops (postgres + mysql + oracle + singlestoredb)."""
 
 import pandas as pd
 import polars as pl
@@ -33,6 +33,23 @@ def test_rename_table_live_oracle(oracle_backend):
     be.rename_table("ren_old", "ren_new")
     assert "ren_new" in be.list_tables()
     be.drop_table("ren_new", force=True)
+
+
+@pytest.mark.integration
+def test_rename_table_live_singlestoredb(singlestore_backend):
+    be = singlestore_backend
+    old_name = "ren_ss_old"
+    new_name = "ren_ss_new"
+    try:
+        be.create_table(old_name, pl.DataFrame({"id": [1]}), overwrite=True)
+        be.rename_table(old_name, new_name)
+        assert new_name in be.list_tables()
+    finally:
+        for table_name in (new_name, old_name):
+            try:
+                be.drop_table(table_name, force=True)
+            except Exception:  # noqa: BLE001
+                pass
 
 
 @pytest.mark.integration
@@ -97,6 +114,38 @@ def test_upsert_via_dispatch_mysql(mysql_backend):
     rows = dict(con.table("up_my").order_by("id").execute()[["id", "v"]].itertuples(index=False))
     assert rows == {1: "A", 2: "b"}
     con.raw_sql("DROP TABLE up_my")
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_singlestoredb(singlestore_backend):
+    """be.upsert() public dispatch — ON_DUPLICATE_KEY for SingleStoreDB."""
+    be = singlestore_backend
+    table_name = "up_ss"
+    con = be._require_connected()._ibis_conn
+    try:
+        con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")
+        con.raw_sql(
+            f"CREATE TABLE {table_name} "
+            "(id BIGINT PRIMARY KEY, v VARCHAR(16) NOT NULL)"
+        )
+        con.raw_sql(f"INSERT INTO {table_name} VALUES (1, 'a')")
+        be.upsert(
+            table_name,
+            pl.DataFrame({"id": [1, 2], "v": ["A", "b"]}),
+            conflict_columns=["id"],
+        )
+        rows = dict(
+            con.table(table_name)
+            .order_by("id")
+            .execute()[["id", "v"]]
+            .itertuples(index=False)
+        )
+        assert rows == {1: "A", 2: "b"}
+    finally:
+        try:
+            con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")
+        except Exception:  # noqa: BLE001
+            pass
 
 
 @pytest.mark.integration
