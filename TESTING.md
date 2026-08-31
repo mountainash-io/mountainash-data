@@ -113,10 +113,12 @@ hatch run test:live-db status --target mpnas
 hatch run test:live-db test --target mpnas --all
 ```
 
-`status` and `check` never resolve or print a credential. An unavailable
-backend is reported with its backlog item and does not change the aggregate
-exit status. See `~/Library/LaunchAgents/TUNNELS.md` for tunnel setup and the
-`mpnas` target's local configuration file.
+`status` never resolves or prints a credential. `check` resolves the
+selected backend's credential to perform a real authenticated connection
+check, but never prints it. An unavailable backend is reported with its
+backlog item and does not change the aggregate exit status. See
+`~/Library/LaunchAgents/TUNNELS.md` for tunnel setup and the `mpnas`
+target's local configuration file.
 
 ## Coverage Reports
 
