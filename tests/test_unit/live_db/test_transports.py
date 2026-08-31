@@ -30,8 +30,10 @@ class FakeListener:
 class FakeProcess:
     def __init__(self, processes: dict[int, ProcessDetails]) -> None:
         self.processes = processes
+        self.inspected_pids: list[int] = []
 
     def inspect(self, pid: int) -> ProcessDetails | None:
+        self.inspected_pids.append(pid)
         return self.processes.get(pid)
 
 
@@ -69,8 +71,7 @@ def _tree(*, destination: str = "mpnas", forwarding: str = "25432:127.0.0.1:5432
     return FakeProcess(
         {
             300: ProcessDetails(("/usr/bin/ssh", "-L", forwarding, destination), 200),
-            200: ProcessDetails(("/usr/local/bin/autossh", "-M", "0"), 100),
-            100: ProcessDetails(("/sbin/launchd",), None),
+            200: ProcessDetails(("/usr/local/bin/autossh", "-M", "0"), 1),
         }
     )
 
@@ -96,11 +97,15 @@ def _check_ssh(
     return runner
 
 
+
+
 def test_ssh_identity_accepts_exact_label_destination_tuple_and_ancestry() -> None:
     target, backend = _ssh_target()
+    process = _tree()
 
-    runner = _check_ssh(target, backend)
+    runner = _check_ssh(target, backend, process=process)
 
+    assert process.inspected_pids == [300, 200]
     assert runner.commands == [
         ("launchctl", "print", f"gui/{os.getuid()}/com.example.postgres")
     ]
@@ -139,10 +144,12 @@ def test_ssh_identity_rejects_wrong_remote_tuple() -> None:
 def test_ssh_identity_rejects_wrong_ancestry() -> None:
     target, backend = _ssh_target()
     process = _tree()
-    process.processes[200] = ProcessDetails(("/usr/bin/python",), 100)
+    process.processes[200] = ProcessDetails(("/usr/local/bin/autossh", "-M", "0"), 42)
 
     with pytest.raises(HarnessError):
         _check_ssh(target, backend, process=process)
+
+    assert process.inspected_pids == [300, 200]
 
 
 def test_other_ssh_listener_on_same_port_is_rejected() -> None:

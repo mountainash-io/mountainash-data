@@ -416,6 +416,16 @@ def _check_ssh_identity(
     details_by_name: dict[str, tuple[int, ProcessDetails]] = {}
     pid = listener_pid
     for expected_name in reversed(ancestry):
+        if expected_name == "launchd":
+            if pid != 1:
+                raise _error(
+                    target,
+                    backend,
+                    f"The listener process ancestry does not match the expected {ancestry_text} chain.",
+                    "Stop the unrelated listener and start the configured tunnel.",
+                )
+            pid = -1
+            continue
         details = process_inspector.inspect(pid)
         if details is None or not details.cmdline:
             raise _error(
@@ -437,7 +447,6 @@ def _check_ssh_identity(
             pid = -1
         else:
             pid = details.parent_pid
-
     if pid != -1:
         raise _error(
             target,
