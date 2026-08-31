@@ -267,15 +267,20 @@ class PsutilListenerInspector:
     """Resolve local TCP listeners with psutil."""
 
     def pid_for_port(self, port: int) -> int | None:
-        for connection in psutil.net_connections(kind="tcp"):
-            if connection.status != psutil.CONN_LISTEN:
+        for process in psutil.process_iter(["pid"]):
+            try:
+                connections = process.net_connections(kind="tcp")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-            address = connection.laddr
-            if not address:
-                continue
-            local_port = address.port if hasattr(address, "port") else address[1]
-            if local_port == port and isinstance(connection.pid, int) and connection.pid > 0:
-                return connection.pid
+            for connection in connections:
+                if connection.status != psutil.CONN_LISTEN:
+                    continue
+                address = connection.laddr
+                if not address:
+                    continue
+                local_port = address.port if hasattr(address, "port") else address[1]
+                if local_port == port and isinstance(process.pid, int) and process.pid > 0:
+                    return process.pid
         return None
 
 

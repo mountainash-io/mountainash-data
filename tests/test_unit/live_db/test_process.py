@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -16,6 +17,7 @@ from scripts.live_db_harness.process import (
     ListenerInspector,
     ProcessDetails,
     ProcessInspector,
+    PsutilListenerInspector,
     Redactor,
 )
 
@@ -70,6 +72,35 @@ def test_inspector_protocols_support_fake_listener_and_process_tree() -> None:
     assert listener.pid_for_port(5432) == 123
     assert listener.pid_for_port(3306) is None
     assert process.inspect(123) == ProcessDetails(("ssh", "-L", "5432:127.0.0.1:5432"), 456)
+
+
+def test_psutil_listener_skips_inaccessible_process_and_finds_listener(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeProcess:
+        def __init__(self, pid: int, connections: object) -> None:
+            self.pid = pid
+            self._connections = connections
+
+        def net_connections(self, *, kind: str) -> object:
+            assert kind == "tcp"
+            if isinstance(self._connections, BaseException):
+                raise self._connections
+            return self._connections
+
+    inaccessible = FakeProcess(101, process_module.psutil.AccessDenied(pid=101))
+    listener = FakeProcess(
+        202,
+        [
+            SimpleNamespace(
+                status=process_module.psutil.CONN_LISTEN,
+                laddr=("127.0.0.1", 5432),
+            )
+        ],
+    )
+    monkeypatch.setattr(process_module.psutil, "process_iter", lambda attrs: [inaccessible, listener])
+
+    assert PsutilListenerInspector().pid_for_port(5432) == 202
 
 
 def test_command_error_redacts_stdout_stderr_and_command_preview() -> None:
