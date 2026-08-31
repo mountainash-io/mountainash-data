@@ -6,12 +6,19 @@ making them available to all tests.
 
 import pytest
 from pathlib import Path
+import sys
 
+REPO_ROOT = Path(__file__).parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 # Import all fixtures from consolidated fixture modules
-from fixtures.database_fixtures import (
+from fixtures.live_db_fixtures import (
+    live_backend_selection,
     mysql_backend,
     oracle_backend,
     postgres_backend,
+)
+from fixtures.database_fixtures import (
     temp_sqlite_db,
     temp_duckdb_db,
     ibis_sqlite_backend,

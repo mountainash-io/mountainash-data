@@ -91,6 +91,35 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```
   Generates JSON test reports, JUnit XML, and all coverage formats.
 
+## Live Database Testing
+
+Live database tests run against a real backend service (Docker Compose or an
+external tunnel-backed target) rather than an in-memory fixture. `python -m
+scripts.live_db` (the `live-db` Hatch script) is the explicit target runner.
+Every command requires `--target` — the runner never infers a target from
+ports, environment variables, or running processes.
+
+Docker target (starts and stops one Compose-managed service per backend):
+
+```bash
+hatch run test:live-db status --target docker
+hatch run test:live-db run --target docker postgres
+```
+
+External tunnel-backed target (checks tunnels; never starts or stops them):
+
+```bash
+hatch run test:live-db status --target mpnas
+hatch run test:live-db test --target mpnas --all
+```
+
+`status` never resolves or prints a credential. `check` resolves the
+selected backend's credential to perform a real authenticated connection
+check, but never prints it. An unavailable backend is reported with its
+backlog item and does not change the aggregate exit status. See
+`~/Library/LaunchAgents/TUNNELS.md` for tunnel setup and the `mpnas`
+target's local configuration file.
+
 ## Coverage Reports
 
 When you run tests with coverage, several output formats are generated:

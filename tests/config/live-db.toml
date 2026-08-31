@@ -1,0 +1,88 @@
+[backends.postgres]
+settings_profile = "postgresql"
+selector = "postgres"
+runnable = true
+compose = { profile = "postgres", service = "postgres" }
+
+[backends.mysql]
+settings_profile = "mysql"
+selector = "mysql"
+runnable = true
+compose = { profile = "mysql", service = "mysql" }
+
+[backends.oracle]
+settings_profile = "oracle"
+selector = "oracle"
+runnable = true
+compose = { profile = "oracle", service = "oracle" }
+
+[backends.mssql]
+settings_profile = "mssql"
+selector = "mssql"
+runnable = false
+backlog = "DEBT-17"
+
+[backends.singlestoredb]
+settings_profile = "singlestoredb"
+selector = "singlestoredb"
+runnable = false
+backlog = "DEBT-18"
+
+[backends.exasol]
+settings_profile = "exasol"
+selector = "exasol"
+runnable = false
+backlog = "DEBT-19"
+
+[backends.trino]
+settings_profile = "trino"
+selector = "trino"
+runnable = false
+backlog = "DEBT-20"
+
+[backends.pyspark]
+settings_profile = "pyspark"
+selector = "pyspark"
+runnable = false
+backlog = "DEBT-21"
+
+[targets.docker]
+transport = "compose"
+max_parallel = 1
+test_timeout_seconds = 900
+
+[targets.docker.backends.postgres.connection]
+HOST = "127.0.0.1"
+PORT = 5432
+DATABASE = "ibis_testing"
+
+[targets.docker.backends.postgres.auth]
+profile = "password"
+
+[targets.docker.backends.postgres.auth.values]
+USERNAME = "postgres"
+PASSWORD = "postgres"
+
+[targets.docker.backends.mysql.connection]
+HOST = "127.0.0.1"
+PORT = 3306
+DATABASE = "ibis_testing"
+
+[targets.docker.backends.mysql.auth]
+profile = "password"
+
+[targets.docker.backends.mysql.auth.values]
+USERNAME = "ibis"
+PASSWORD = "ibis"
+
+[targets.docker.backends.oracle.connection]
+HOST = "127.0.0.1"
+PORT = 1521
+DATABASE = "XEPDB1"
+
+[targets.docker.backends.oracle.auth]
+profile = "password"
+
+[targets.docker.backends.oracle.auth.values]
+USERNAME = "app"
+PASSWORD = "app"

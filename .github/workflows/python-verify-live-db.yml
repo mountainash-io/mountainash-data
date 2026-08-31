@@ -29,13 +29,6 @@ jobs:
   postgres:
     if: ${{ inputs.backend == 'postgres' }}
     runs-on: ubuntu-24.04
-    env:
-      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
-      IBIS_TEST_POSTGRES_HOST: localhost
-      IBIS_TEST_POSTGRES_PORT: "5432"
-      IBIS_TEST_POSTGRES_USER: postgres
-      IBIS_TEST_POSTGRES_PASSWORD: postgres
-      IBIS_TEST_POSTGRES_DATABASE: ibis_testing
     services:
       postgres:
         image: postgres:18-alpine
@@ -94,18 +87,11 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:test -k postgres -m integration
+        run: hatch run test_github_live:live-db test --target docker postgres
 
   mysql:
     if: ${{ inputs.backend == 'mysql' }}
     runs-on: ubuntu-24.04
-    env:
-      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
-      IBIS_TEST_MYSQL_HOST: localhost
-      IBIS_TEST_MYSQL_PORT: "3306"
-      IBIS_TEST_MYSQL_USER: ibis
-      IBIS_TEST_MYSQL_PASSWORD: ibis
-      IBIS_TEST_MYSQL_DATABASE: ibis_testing
     services:
       mysql:
         image: mariadb:12.1.2
@@ -116,7 +102,7 @@ jobs:
           MYSQL_PASSWORD: ibis
         ports: ["3306:3306"]
         options: >-
-          --health-cmd "mariadb-admin ping -h localhost"
+          --health-cmd "mariadb-admin ping -h 127.0.0.1 -P 3306 --protocol=TCP"
           --health-interval 1s
           --health-retries 20
     steps:
@@ -165,18 +151,11 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:test -k mysql -m integration
+        run: hatch run test_github_live:live-db test --target docker mysql
 
   oracle:
     if: ${{ inputs.backend == 'oracle' }}
     runs-on: ubuntu-24.04
-    env:
-      MOUNTAINASH_REQUIRE_LIVE_DB: "1"
-      IBIS_TEST_ORACLE_HOST: localhost
-      IBIS_TEST_ORACLE_PORT: "1521"
-      IBIS_TEST_ORACLE_USER: app
-      IBIS_TEST_ORACLE_PASSWORD: app
-      IBIS_TEST_ORACLE_DATABASE: XEPDB1
     services:
       oracle:
         image: gvenzl/oracle-xe:21-slim
@@ -186,7 +165,7 @@ jobs:
           APP_USER_PASSWORD: app
         ports: ["1521:1521"]
         options: >-
-          --health-cmd "healthcheck.sh"
+          --health-cmd "echo exit | sqlplus -L -s app/app@//localhost:1521/XEPDB1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 20
@@ -236,4 +215,4 @@ jobs:
         run: hatch env create test_github_live
 
       - name: Run live tests
-        run: hatch run test_github_live:test -k oracle -m integration
+        run: hatch run test_github_live:live-db test --target docker oracle

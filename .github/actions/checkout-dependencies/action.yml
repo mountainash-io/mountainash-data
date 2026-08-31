@@ -6,13 +6,10 @@ inputs:
   dependencies:
     required: true
     description: 'JSON string of dependencies to checkout'
-    type: string
   target-branch:
     required: true
-    type: string
   default-branch:
     required: false
-    type: string
     default: 'main'
   token:
     description: 'GitHub token for authentication'
