@@ -104,6 +104,9 @@ Docker target (starts and stops one Compose-managed service per backend):
 ```bash
 hatch run test:live-db status --target docker
 hatch run test:live-db run --target docker postgres
+hatch run test:live-db run --target docker mysql
+hatch run test:live-db run --target docker oracle
+hatch run test:live-db run --target docker singlestoredb
 ```
 
 External tunnel-backed target (checks tunnels; never starts or stops them):

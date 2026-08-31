@@ -25,8 +25,8 @@ backlog = "DEBT-17"
 [backends.singlestoredb]
 settings_profile = "singlestoredb"
 selector = "singlestoredb"
-runnable = false
-backlog = "DEBT-18"
+runnable = true
+compose = { profile = "singlestoredb", service = "singlestoredb" }
 
 [backends.exasol]
 settings_profile = "exasol"
@@ -86,3 +86,15 @@ profile = "password"
 [targets.docker.backends.oracle.auth.values]
 USERNAME = "app"
 PASSWORD = "app"
+
+[targets.docker.backends.singlestoredb.connection]
+HOST = "127.0.0.1"
+PORT = 3307
+DATABASE = "ibis_testing"
+
+[targets.docker.backends.singlestoredb.auth]
+profile = "password"
+
+[targets.docker.backends.singlestoredb.auth.values]
+USERNAME = "ibis"
+PASSWORD = "ibis"

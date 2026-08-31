@@ -8,8 +8,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 HATCH_PATH = ROOT / "hatch.toml"
+COMPOSE_PATH = ROOT / "compose.yaml"
 LIVE_WORKFLOW_PATH = ROOT / ".github/workflows/python-verify-live-db.yml"
 PULL_REQUEST_WORKFLOW_PATH = ROOT / ".github/workflows/python-run-pytest.yml"
+LIVE_DB_CONFIG_PATH = ROOT / "tests/config/live-db.toml"
+SINGLESTORE_INIT_PATH = ROOT / "tests/config/singlestore-init.sql"
 
 
 def _hatch_config() -> dict:
@@ -19,6 +22,11 @@ def _hatch_config() -> dict:
 
 def _workflow(path: Path) -> dict:
     with path.open() as stream:
+        return yaml.load(stream, Loader=yaml.BaseLoader)
+
+
+def _compose() -> dict:
+    with COMPOSE_PATH.open() as stream:
         return yaml.load(stream, Loader=yaml.BaseLoader)
 
 
@@ -54,30 +62,98 @@ def test_live_workflow_has_no_ibis_test_variables() -> None:
     assert not any("IBIS_TEST_" in value for value in _strings(workflow))
 
 
-def test_live_workflow_calls_test_github_live_runner() -> None:
-    jobs = _workflow(LIVE_WORKFLOW_PATH)["jobs"]
+def test_live_workflow_has_exact_backend_options_and_runner_owned_jobs() -> None:
+    workflow = _workflow(LIVE_WORKFLOW_PATH)
+    dispatch = workflow["on"]["workflow_dispatch"]
+    assert dispatch["inputs"]["backend"]["options"] == [
+        "postgres",
+        "mysql",
+        "oracle",
+        "singlestoredb",
+    ]
+
+    jobs = workflow["jobs"]
     expected = {
         "postgres": "hatch run test_github_live:live-db test --target docker postgres",
         "mysql": "hatch run test_github_live:live-db test --target docker mysql",
         "oracle": "hatch run test_github_live:live-db test --target docker oracle",
+        "singlestoredb": (
+            "hatch run test_github_live:live-db test --target docker singlestoredb"
+        ),
+    }
+    assert set(jobs) == set(expected)
+    for backend, command in expected.items():
+        assert jobs[backend]["if"] == f"${{{{ inputs.backend == '{backend}' }}}}"
+        run_commands = [step["run"] for step in jobs[backend]["steps"] if "run" in step]
+        assert command in run_commands
+        assert "services" not in jobs[backend]
+
+
+def test_singlestore_compose_service_is_apple_silicon_compatible_and_authenticated() -> None:
+    service = _compose()["services"]["singlestoredb"]
+
+    assert service["image"] == "ghcr.io/singlestore-labs/singlestoredb-dev:latest"
+    assert service["profiles"] == ["singlestoredb"]
+    assert service["platform"] == "linux/amd64"
+    assert service["ports"] == ["3307:3306"]
+    assert service["environment"]["ROOT_PASSWORD"] == "singlestore"
+    assert "./tests/config/singlestore-init.sql:/init.sql:ro" in service["volumes"]
+
+    healthcheck = service["healthcheck"]
+    assert healthcheck["test"][0] == "CMD-SHELL"
+    healthcheck_command = " ".join(healthcheck["test"])
+    assert "singlestore" in healthcheck_command
+    assert "root" in healthcheck_command
+    assert "ROOT_PASSWORD" in healthcheck_command
+    assert "SELECT 1" in healthcheck_command
+
+
+def test_singlestore_init_sql_creates_authenticated_ibis_testing_database() -> None:
+    init_sql = SINGLESTORE_INIT_PATH.read_text()
+
+    assert "CREATE DATABASE IF NOT EXISTS ibis_testing" in init_sql
+    assert "CREATE USER IF NOT EXISTS 'ibis'@'%'" in init_sql
+    assert "IDENTIFIED BY 'ibis'" in init_sql
+    assert "GRANT ALL PRIVILEGES ON ibis_testing.* TO 'ibis'@'%'" in init_sql
+
+
+def test_local_and_live_ci_environments_include_singlestore_driver() -> None:
+    config = _hatch_config()
+
+    for environment in ("test", "test_github_live"):
+        assert "ibis-framework[singlestoredb]>=12.0.0" in config["envs"][environment][
+            "dependencies"
+        ]
+
+
+def test_tracked_singlestore_backend_matches_compose_and_initialized_auth() -> None:
+    with LIVE_DB_CONFIG_PATH.open("rb") as stream:
+        config = tomllib.load(stream)
+
+    suite = config["backends"]["singlestoredb"]
+    assert suite == {
+        "settings_profile": "singlestoredb",
+        "selector": "singlestoredb",
+        "runnable": True,
+        "compose": {"profile": "singlestoredb", "service": "singlestoredb"},
     }
 
-    for backend, command in expected.items():
-        steps = jobs[backend]["steps"]
-        run_commands = [step["run"] for step in steps if "run" in step]
-        assert command in run_commands
-        assert list(jobs[backend]["services"]) == [backend]
+    target = config["targets"]["docker"]["backends"]["singlestoredb"]
+    assert target["connection"] == {
+        "HOST": "127.0.0.1",
+        "PORT": 3307,
+        "DATABASE": "ibis_testing",
+    }
+    assert target["auth"] == {
+        "profile": "password",
+        "values": {"USERNAME": "ibis", "PASSWORD": "ibis"},
+    }
 
 
-def test_live_workflow_uses_race_free_database_healthchecks() -> None:
-    jobs = _workflow(LIVE_WORKFLOW_PATH)["jobs"]
-    mysql_options = jobs["mysql"]["services"]["mysql"]["options"]
-    oracle_options = jobs["oracle"]["services"]["oracle"]["options"]
+def test_live_workflow_has_no_ibis_test_variables() -> None:
+    workflow = _workflow(LIVE_WORKFLOW_PATH)
 
-    assert '--health-cmd "mariadb-admin ping -h localhost"' not in mysql_options
-    assert '--health-cmd "mariadb-admin ping -h 127.0.0.1 -P 3306 --protocol=TCP"' in mysql_options
-    assert '--health-cmd "healthcheck.sh"' not in oracle_options
-    assert '--health-cmd "echo exit | sqlplus -L -s app/app@//localhost:1521/XEPDB1"' in oracle_options
+    assert not any("IBIS_TEST_" in value for value in _strings(workflow))
 
 def test_pull_request_workflow_stays_container_and_driver_free() -> None:
     config = _hatch_config()
