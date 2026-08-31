@@ -21,7 +21,7 @@ services:
       MYSQL_USER: ibis
       MYSQL_PASSWORD: ibis
     healthcheck:
-      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-P", "3306", "--protocol=TCP"]
       interval: 1s
       retries: 20
     ports:
@@ -34,9 +34,9 @@ services:
       APP_USER: app
       APP_USER_PASSWORD: app
     healthcheck:
-      test: ["CMD", "healthcheck.sh"]
+      test: ["CMD-SHELL", "echo exit | sqlplus -L -s app/app@//localhost:1521/XEPDB1"]
       interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 30
     ports:
       - "1521:1521"

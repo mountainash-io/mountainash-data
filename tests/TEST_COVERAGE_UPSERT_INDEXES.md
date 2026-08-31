@@ -82,12 +82,13 @@ Run the complete suite:
 hatch run test:test-quick
 ```
 
-Run live database tests when the required services are available:
+Run live database tests against an explicit target when the required services are available:
 
 ```bash
-hatch run test:test-live-up postgres
-hatch run test:test-live postgres          # repeat as needed
-hatch run test:test-live-down postgres
+hatch run test:live-db status --target docker
+hatch run test:live-db run --target docker postgres
+hatch run test:live-db status --target mpnas
+hatch run test:live-db test --target mpnas --all
 ```
 
 ## Expected API
