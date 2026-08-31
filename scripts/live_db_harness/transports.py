@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -224,8 +225,9 @@ def check_transport(
         return
 
     if target.transport == "direct":
-        # Direct targets deliberately stop at the socket boundary here. The
-        # authenticated connection is performed by the runner's later phase.
+        # Direct targets perform a pure socket-reachability preflight here.
+        # The authenticated connection is performed by the runner's later phase.
+        host = _connection_host(backend.connection, target=target_name, backend=backend_name)
         port = _connection_port(backend.connection, target=target_name, backend=backend_name)
         _reject_external_compose_collision(
             port,
@@ -234,7 +236,7 @@ def check_transport(
             target=target_name,
             backend=backend_name,
         )
-        _require_listener(listener, port, target_name, backend_name)
+        _require_reachable(host, port, target_name, backend_name)
         return
 
     identity = backend.tunnel
@@ -244,6 +246,19 @@ def check_transport(
             backend_name,
             "The SSH-tunnel backend has no tunnel identity.",
             "Configure the launchd label, destination, and forwarding tuple.",
+        )
+    connection_host = _connection_host(backend.connection, target=target_name, backend=backend_name)
+    connection_port = _connection_port(backend.connection, target=target_name, backend=backend_name)
+    if (connection_host, connection_port) != (identity.local_host, identity.local_port):
+        raise _error(
+            target_name,
+            backend_name,
+            (
+                f"The selected connection endpoint {connection_host}:{connection_port} "
+                f"does not match the SSH tunnel local endpoint "
+                f"{identity.local_host}:{identity.local_port}."
+            ),
+            "Configure connection HOST and PORT to match the tunnel local endpoint.",
         )
     _reject_external_compose_collision(
         identity.local_port,
@@ -309,6 +324,22 @@ def _selection_target_backend(selection: Any, backend_name: str | None) -> Any:
     return backends.get(backend_name)
 
 
+def _connection_host(
+    connection: Mapping[str, object], *, target: str | None = None, backend: str | None = None
+) -> str:
+    for key, value in connection.items():
+        if key.lower() in {"host", "local_host"}:
+            if isinstance(value, str) and value:
+                return value
+            break
+    raise _error(
+        target,
+        backend,
+        "The selected backend has no valid TCP host.",
+        "Configure a non-empty connection HOST.",
+    )
+
+
 def _connection_port(
     connection: Mapping[str, object], *, target: str | None = None, backend: str | None = None
 ) -> int:
@@ -337,6 +368,18 @@ def _require_listener(listener: ListenerInspector | Any, port: int, target: str,
             f"No process is listening on required port {port}.",
             "Start the selected database service or correct the target port.",
         )
+
+def _require_reachable(host: str, port: int, target: str, backend: str) -> None:
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return
+    except OSError as exc:
+        raise _error(
+            target,
+            backend,
+            f"Could not reach selected connection endpoint {host}:{port}: {_safe_text(exc)}",
+            "Check that the selected database endpoint is reachable and retry.",
+        ) from None
 
 
 def _reject_external_compose_collision(

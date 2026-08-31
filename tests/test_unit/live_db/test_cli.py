@@ -109,13 +109,16 @@ def test_up_and_down_reject_all() -> None:
         assert cli._validate_args(parser, args) == f"{command} does not support --all"
 
 
-def test_up_down_and_run_reject_non_compose_target(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_compose_only_commands_reject_external_target_without_secrets_provider(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     config = _config(tmp_path / "config.toml", CONFIG.replace('secrets_provider = "unreadable"\n', ""))
     for command in ("up", "down", "run"):
         backend_args = [command, "--target", "local", "postgres"]
         code = main(["--config", str(config), *backend_args])
         assert code == 2
-        assert "requires a Compose target" in capsys.readouterr().out
+        assert "no secrets provider" in capsys.readouterr().out
 
 
 def test_direct_unavailable_backend_is_usage_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

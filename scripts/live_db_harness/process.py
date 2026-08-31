@@ -152,14 +152,7 @@ class CommandRunner:
             if process is not None:
                 self._terminate(process)
                 stdout, stderr = self._communicate(process, "", "")
-            raise HarnessError(
-                target,
-                backend,
-                phase,
-                f"Command interrupted: {preview}. stdout: {self.redactor.redact(stdout)} "
-                f"stderr: {self.redactor.redact(stderr)}",
-                "Run the command again after checking the target state.",
-            ) from None
+            raise
         except OSError as exc:
             raise HarnessError(
                 target,

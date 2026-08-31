@@ -18,16 +18,18 @@ SUITE = """
 settings_profile = "postgresql"
 selector = "postgres"
 runnable = true
+compose = { profile = "postgres", service = "postgres" }
 
 [backends.sqlite]
 settings_profile = "sqlite"
 selector = "sqlite"
 runnable = true
+compose = { profile = "sqlite", service = "sqlite" }
 """
 
 TARGET = """
 [targets.local]
-transport = "direct"
+transport = "compose"
 
 [targets.local.backends.postgres.connection]
 HOST = "127.0.0.1"
@@ -154,4 +156,31 @@ def test_auth_rejects_inherited_settings_metadata_field(tmp_path: Path) -> None:
     loaded = load_unresolved_harness((path,), selected_target="local", selected_backend="postgres")
 
     with pytest.raises(HarnessError, match="Unknown authentication field: SETTINGS_CLASS"):
+        build_backend_selection(loaded)
+
+def test_external_target_requires_secrets_provider(tmp_path: Path) -> None:
+    path = _write_config(
+        tmp_path / "config.toml",
+        (SUITE + TARGET).replace('transport = "compose"', 'transport = "direct"'),
+    )
+    loaded = load_unresolved_harness((path,), selected_target="local", selected_backend="postgres")
+
+    with pytest.raises(HarnessError, match="no secrets provider"):
+        build_backend_selection(loaded)
+
+
+def test_external_target_rejects_plaintext_auth_value(tmp_path: Path) -> None:
+    secrets = tmp_path / "secrets"
+    secrets.mkdir()
+    path = _write_config(
+        tmp_path / "config.toml",
+        (SUITE + TARGET).replace(
+            'transport = "compose"',
+            'transport = "direct"\nsecrets_provider = "local"',
+        )
+        + f'\n[secret_providers.local]\ntype = "filesystem"\npath = "{secrets}"\n',
+    )
+    loaded = load_unresolved_harness((path,), selected_target="local", selected_backend="postgres")
+
+    with pytest.raises(HarnessError, match="secret:"):
         build_backend_selection(loaded)

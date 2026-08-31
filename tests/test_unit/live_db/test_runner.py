@@ -493,3 +493,41 @@ def test_aggregate_interrupt_preserves_completed_backend_result(
     assert results[1].status is ResultStatus.FAIL
     assert results[1].detail == "interrupted"
     assert code == 130
+
+def test_aggregate_interrupt_from_command_runner_stops_scheduling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loaded = _loaded({"one": True, "two": True, "three": True}, max_parallel=1)
+    runner = LiveDbRunner(())
+    runner._load = lambda target, backend: loaded
+    selection = _compose_selection()
+    selection.suite.selector = "this-test-is-interrupted"
+    selection.target.test_timeout_seconds = 30.0
+    selected: list[str] = []
+    runner._selection = lambda target, backend: (selected.append(backend) or selection)
+    events: list[str] = []
+
+    class Lease:
+        def start(self) -> None:
+            events.append("start")
+
+        def close(self) -> None:
+            events.append("close")
+
+    runner.lease_factory = lambda **kwargs: Lease()
+    runner._check_unlocked = lambda selection, **kwargs: None
+    interrupted_pids: list[int] = []
+
+    def interrupt(self: object, process: object, timeout: float | None) -> tuple[str, str]:
+        interrupted_pids.append(process.pid)  # type: ignore[attr-defined]
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(runner_module.CommandRunner, "_wait", interrupt)
+
+    results, code = runner.aggregate("docker", "run", jobs=1)
+
+    assert interrupted_pids
+    assert selected == ["one"]
+    assert events == ["start", "close"]
+    assert [result.detail for result in results] == ["interrupted"] * 3
+    assert code == 130

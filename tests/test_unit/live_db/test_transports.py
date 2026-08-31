@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 
 import pytest
 
@@ -159,23 +160,64 @@ def test_other_ssh_listener_on_same_port_is_rejected() -> None:
     with pytest.raises(HarnessError):
         _check_ssh(target, backend, process=process)
 
+@pytest.mark.parametrize(
+    "connection",
+    (
+        {"HOST": "127.0.0.1", "PORT": 25433},
+        {"HOST": "localhost", "PORT": 25432},
+    ),
+    ids=("wrong-port", "wrong-host"),
+)
+def test_ssh_identity_rejects_connection_endpoint_mismatch(connection: dict[str, object]) -> None:
+    target, backend = _ssh_target()
+    mismatched_backend = backend.model_copy(update={"connection": connection})
 
-def test_direct_target_does_not_require_process_identity() -> None:
+    with pytest.raises(HarnessError, match="does not match"):
+        _check_ssh(target, mismatched_backend)
+
+
+def test_direct_target_uses_socket_reachability_not_process_identity() -> None:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+        server.bind(("127.0.0.1", 0))
+        server.listen()
+        host, port = server.getsockname()
+        backend = TargetBackendDefinition(
+            connection={"HOST": host, "PORT": port},
+            auth=AuthDefinition(profile="password"),
+        )
+        target = TargetDefinition(transport="direct", backends={"postgres": backend})
+
+        check_transport(
+            "external",
+            target,
+            "postgres",
+            backend,
+            listener_inspector=FakeListener({}),
+            process_inspector=None,
+            command_runner=None,
+        )
+
+def test_direct_target_rejects_unreachable_socket() -> None:
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    probe.bind(("127.0.0.1", 0))
+    host, port = probe.getsockname()
+    probe.close()
     backend = TargetBackendDefinition(
-        connection={"HOST": "127.0.0.1", "PORT": 25432},
+        connection={"HOST": host, "PORT": port},
         auth=AuthDefinition(profile="password"),
     )
     target = TargetDefinition(transport="direct", backends={"postgres": backend})
 
-    check_transport(
-        "external",
-        target,
-        "postgres",
-        backend,
-        listener_inspector=FakeListener({25432: 999}),
-        process_inspector=None,
-        command_runner=None,
-    )
+    with pytest.raises(HarnessError, match="Could not reach"):
+        check_transport(
+            "external",
+            target,
+            "postgres",
+            backend,
+            listener_inspector=FakeListener({port: 999}),
+            process_inspector=None,
+            command_runner=None,
+        )
 
 
 def test_external_port_equal_to_compose_port_is_rejected() -> None:

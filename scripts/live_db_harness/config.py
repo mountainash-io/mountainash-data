@@ -231,6 +231,50 @@ def reject_unknown_keys(
             corrective_action=f"Use a registered {section} field.",
         )
 
+def _plaintext_auth_field(value: object, *, path: str = "") -> str | None:
+    if isinstance(value, SecretStr):
+        raw = value.get_secret_value()
+        return path if raw and not raw.startswith("secret:") else None
+    if isinstance(value, str):
+        return path if value and not value.startswith("secret:") else None
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            field = _plaintext_auth_field(item, path=f"{path}.{key}" if path else str(key))
+            if field is not None:
+                return field
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            field = _plaintext_auth_field(item, path=f"{path}[{index}]")
+            if field is not None:
+                return field
+    return None
+
+
+def _validate_external_auth_values(
+    target: TargetDefinition,
+    values: Mapping[str, object],
+    *,
+    target_name: str,
+    backend_name: str,
+) -> None:
+    if target.transport == "compose":
+        return
+    if target.secrets_provider is None:
+        raise _selection_error(
+            target=target_name,
+            backend=backend_name,
+            detail="The selected target has no secrets provider.",
+            corrective_action="Set secrets_provider to a registered filesystem provider.",
+        )
+    field = _plaintext_auth_field(values)
+    if field is not None:
+        raise _selection_error(
+            target=target_name,
+            backend=backend_name,
+            detail=f"External authentication field {field!r} must use a secret: reference.",
+            corrective_action="Replace the literal authentication value with a secret: reference.",
+        )
+
 
 class SelectedBackendSettings(MountainAshBaseSettings):
     model_config = SettingsConfigDict(extra="forbid")
@@ -340,6 +384,12 @@ def build_backend_selection(loaded: LoadedHarnessSettings) -> BackendSelection:
         target=target_name,
         backend=backend_name,
         section="authentication",
+    )
+    _validate_external_auth_values(
+        target,
+        target_backend.auth.values,
+        target_name=target_name,
+        backend_name=backend_name,
     )
 
     provider_name = target.secrets_provider

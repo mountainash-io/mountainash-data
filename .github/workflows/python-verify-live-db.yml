@@ -102,7 +102,7 @@ jobs:
           MYSQL_PASSWORD: ibis
         ports: ["3306:3306"]
         options: >-
-          --health-cmd "mariadb-admin ping -h localhost"
+          --health-cmd "mariadb-admin ping -h 127.0.0.1 -P 3306 --protocol=TCP"
           --health-interval 1s
           --health-retries 20
     steps:
@@ -165,7 +165,7 @@ jobs:
           APP_USER_PASSWORD: app
         ports: ["1521:1521"]
         options: >-
-          --health-cmd "healthcheck.sh"
+          --health-cmd "echo exit | sqlplus -L -s app/app@//localhost:1521/XEPDB1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 20

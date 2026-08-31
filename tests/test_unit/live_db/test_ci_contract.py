@@ -69,6 +69,16 @@ def test_live_workflow_calls_test_github_live_runner() -> None:
         assert list(jobs[backend]["services"]) == [backend]
 
 
+def test_live_workflow_uses_race_free_database_healthchecks() -> None:
+    jobs = _workflow(LIVE_WORKFLOW_PATH)["jobs"]
+    mysql_options = jobs["mysql"]["services"]["mysql"]["options"]
+    oracle_options = jobs["oracle"]["services"]["oracle"]["options"]
+
+    assert '--health-cmd "mariadb-admin ping -h localhost"' not in mysql_options
+    assert '--health-cmd "mariadb-admin ping -h 127.0.0.1 -P 3306 --protocol=TCP"' in mysql_options
+    assert '--health-cmd "healthcheck.sh"' not in oracle_options
+    assert '--health-cmd "echo exit | sqlplus -L -s app/app@//localhost:1521/XEPDB1"' in oracle_options
+
 def test_pull_request_workflow_stays_container_and_driver_free() -> None:
     config = _hatch_config()
     pull_request_workflow = _workflow(PULL_REQUEST_WORKFLOW_PATH)

@@ -258,12 +258,11 @@ def test_interrupt_terminates_child_process_group(tmp_path: Path, monkeypatch: p
         raise KeyboardInterrupt
 
     monkeypatch.setattr(runner, "_wait", interrupt_once)
-    with pytest.raises(HarnessError) as exc_info:
+    with pytest.raises(KeyboardInterrupt):
         runner.run(
             [sys.executable, "-c", _group_tree_script(parent_pid_file), str(child_pid_file)],
             phase=Phase.PYTEST,
             target="prod",
             backend="postgres",
         )
-    assert "interrupt" in str(exc_info.value).lower()
     _assert_pid_gone(_wait_for_pid(child_pid_file))

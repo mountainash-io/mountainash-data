@@ -577,6 +577,8 @@ class LiveDbRunner:
             except BaseException as exc:
                 cleanup = exc
             if primary is not None:
+                if isinstance(primary, KeyboardInterrupt):
+                    raise primary
                 detail = redactor(str(primary))
                 if cleanup is not None:
                     detail = f"{detail} Cleanup failed: {redactor(str(cleanup))}"
