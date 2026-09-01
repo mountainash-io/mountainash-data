@@ -17,6 +17,7 @@ from fixtures.live_db_fixtures import (
     mysql_backend,
     oracle_backend,
     postgres_backend,
+    singlestore_backend,
 )
 from fixtures.database_fixtures import (
     temp_sqlite_db,

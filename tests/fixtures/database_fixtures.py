@@ -1,13 +1,59 @@
 """Database-related fixtures for testing."""
 
-import pytest
-import tempfile
 import sqlite3
+import tempfile
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
-import ibis
 
-from .live_db_fixtures import mysql_backend, oracle_backend, postgres_backend
+import ibis
+import pytest
+
+from .live_db_fixtures import (
+    mysql_backend,
+    oracle_backend,
+    postgres_backend,
+    singlestore_backend,
+)
+
+
+@contextmanager
+def cleanup_test_objects(*cleanups: Callable[[], None]) -> Iterator[None]:
+    """Run all cleanups, preserving body and control-flow failures."""
+    body_error: BaseException | None = None
+    try:
+        yield
+    except BaseException as exc:
+        body_error = exc
+        raise
+    finally:
+        cleanup_errors: list[BaseException] = []
+        for cleanup in cleanups:
+            try:
+                cleanup()
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+
+        control_flow_index = next(
+            (
+                index
+                for index, error in enumerate(cleanup_errors)
+                if not isinstance(error, Exception)
+            ),
+            None,
+        )
+        if control_flow_index is not None:
+            control_flow_error = cleanup_errors[control_flow_index]
+            cause = body_error
+            if cause is None and control_flow_index:
+                cause = cleanup_errors[control_flow_index - 1]
+            if cause is None:
+                raise control_flow_error
+            raise control_flow_error from cause
+        if body_error is None and cleanup_errors:
+            raise cleanup_errors[0]
+
 
 
 

@@ -132,3 +132,8 @@ def mysql_backend() -> Iterator[IbisBackend]:
 @pytest.fixture
 def oracle_backend() -> Iterator[IbisBackend]:
     yield from _connected_backend("oracle_backend", "oracle")
+
+
+@pytest.fixture
+def singlestore_backend() -> Iterator[IbisBackend]:
+    yield from _connected_backend("singlestore_backend", "singlestoredb")

@@ -1,7 +1,8 @@
-"""Live index ops against postgres (native) and mariadb (table-scoped + emulated)."""
+"""Live index ops against postgres, mariadb, and SingleStoreDB."""
 
 import polars as pl
 import pytest
+from fixtures.database_fixtures import cleanup_test_objects
 
 pytestmark = pytest.mark.integration
 
@@ -96,3 +97,30 @@ class TestMySQLLive:
         be = mysql_backend
         _fresh_table(be, "ix_emu2")
         be.drop_index("nope", table_name="ix_emu2", if_exists=True)  # no raise
+
+
+def test_singlestoredb_table_scoped_index_roundtrip(singlestore_backend):
+    be = singlestore_backend
+    table_name = "ix_ss"
+    index_name = "ix_ss_hash"
+    con = be._require_connected()._ibis_conn
+    with cleanup_test_objects(
+        lambda: be.drop_index(index_name, table_name=table_name, if_exists=True),
+        lambda: be.drop_table(table_name, force=True),
+    ):
+        con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")
+        con.raw_sql(
+            f"CREATE TABLE {table_name} "
+            "(id BIGINT PRIMARY KEY, value VARCHAR(32) NOT NULL)"
+        )
+        be.create_index(
+            table_name,
+            ["value"],
+            index_name=index_name,
+            index_type="hash",
+        )
+        assert be.index_exists(index_name, table_name=table_name) is True
+        with pytest.raises(ValueError, match="table_name"):
+            be.drop_index(index_name)
+        be.drop_index(index_name, table_name=table_name)
+        assert be.index_exists(index_name, table_name=table_name) is False

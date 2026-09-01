@@ -1,4 +1,4 @@
-"""Live round-trip tests for generic write ops (postgres + mysql + oracle)."""
+"""Live round-trip tests for generic write ops (postgres + mysql + oracle + singlestoredb)."""
 
 import pandas as pd
 import polars as pl
@@ -6,6 +6,7 @@ import pytest
 
 from mountainash_data.backends.ibis.dialects._registry import UpsertStyle
 from mountainash_data.backends.ibis.operations import _generic_upsert
+from fixtures.database_fixtures import cleanup_test_objects
 
 
 @pytest.mark.integration
@@ -33,6 +34,20 @@ def test_rename_table_live_oracle(oracle_backend):
     be.rename_table("ren_old", "ren_new")
     assert "ren_new" in be.list_tables()
     be.drop_table("ren_new", force=True)
+
+
+@pytest.mark.integration
+def test_rename_table_live_singlestoredb(singlestore_backend):
+    be = singlestore_backend
+    old_name = "ren_ss_old"
+    new_name = "ren_ss_new"
+    with cleanup_test_objects(
+        lambda: be.drop_table(new_name, force=True),
+        lambda: be.drop_table(old_name, force=True),
+    ):
+        be.create_table(old_name, pl.DataFrame({"id": [1]}), overwrite=True)
+        be.rename_table(old_name, new_name)
+        assert new_name in be.list_tables()
 
 
 @pytest.mark.integration
@@ -97,6 +112,33 @@ def test_upsert_via_dispatch_mysql(mysql_backend):
     rows = dict(con.table("up_my").order_by("id").execute()[["id", "v"]].itertuples(index=False))
     assert rows == {1: "A", 2: "b"}
     con.raw_sql("DROP TABLE up_my")
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_singlestoredb(singlestore_backend):
+    """be.upsert() public dispatch — ON_DUPLICATE_KEY for SingleStoreDB."""
+    be = singlestore_backend
+    table_name = "up_ss"
+    con = be._require_connected()._ibis_conn
+    with cleanup_test_objects(lambda: con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")):
+        con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")
+        con.raw_sql(
+            f"CREATE TABLE {table_name} "
+            "(id BIGINT PRIMARY KEY, v VARCHAR(16) NOT NULL)"
+        )
+        con.raw_sql(f"INSERT INTO {table_name} VALUES (1, 'a')")
+        be.upsert(
+            table_name,
+            pl.DataFrame({"id": [1, 2], "v": ["A", "b"]}),
+            conflict_columns=["id"],
+        )
+        rows = dict(
+            con.table(table_name)
+            .order_by("id")
+            .execute()[["id", "v"]]
+            .itertuples(index=False)
+        )
+        assert rows == {1: "A", 2: "b"}
 
 
 @pytest.mark.integration

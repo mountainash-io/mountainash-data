@@ -113,6 +113,7 @@ dependencies = [
     "ibis-framework[postgres]>=12.0.0",
     "ibis-framework[mysql]>=12.0.0",       # needs system libmariadb-dev, installed in CI before this env
     "ibis-framework[oracle]>=12.0.0",
+    "ibis-framework[singlestoredb]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
@@ -162,6 +163,7 @@ dependencies = [
     "ibis-framework[postgres]>=12.0.0",
     "ibis-framework[mysql]>=12.0.0",
     "ibis-framework[oracle]>=12.0.0",
+    "ibis-framework[singlestoredb]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
