@@ -138,13 +138,7 @@ def test_mssql_table_scoped_partial_index_roundtrip(mssql_backend):
         ),
         lambda: be.drop_table(table_name, force=True),
     ):
-        be.create_table(
-            table_name,
-            pl.DataFrame(
-                {"id": [1, 2, 3], "active": [True, False, True]}
-            ),
-            overwrite=True,
-        )
+        _fresh_table(be, table_name)
         be.create_index(
             table_name,
             ["id"],
