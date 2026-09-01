@@ -20,23 +20,39 @@ from .live_db_fixtures import (
 
 @contextmanager
 def cleanup_test_objects(*cleanups: Callable[[], None]) -> Iterator[None]:
-    """Run all cleanups, surfacing errors without masking body failures."""
-    body_failed = False
+    """Run all cleanups, preserving body and control-flow failures."""
+    body_error: BaseException | None = None
     try:
         yield
-    except BaseException:
-        body_failed = True
+    except BaseException as exc:
+        body_error = exc
         raise
     finally:
-        cleanup_error: BaseException | None = None
+        cleanup_errors: list[BaseException] = []
         for cleanup in cleanups:
             try:
                 cleanup()
             except BaseException as exc:
-                if cleanup_error is None:
-                    cleanup_error = exc
-        if cleanup_error is not None and not body_failed:
-            raise cleanup_error
+                cleanup_errors.append(exc)
+
+        control_flow_index = next(
+            (
+                index
+                for index, error in enumerate(cleanup_errors)
+                if not isinstance(error, Exception)
+            ),
+            None,
+        )
+        if control_flow_index is not None:
+            control_flow_error = cleanup_errors[control_flow_index]
+            cause = body_error
+            if cause is None and control_flow_index:
+                cause = cleanup_errors[control_flow_index - 1]
+            if cause is None:
+                raise control_flow_error
+            raise control_flow_error from cause
+        if body_error is None and cleanup_errors:
+            raise cleanup_errors[0]
 
 
 

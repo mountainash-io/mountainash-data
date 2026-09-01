@@ -329,3 +329,73 @@ def test_cleanup_helper_preserves_body_failure() -> None:
         with cleanup_test_objects(cleanup):
             raise ValueError("body failed")
     assert cleanup_called is True
+
+
+def test_cleanup_helper_propagates_keyboardinterrupt_after_all_cleanups() -> None:
+    from fixtures.database_fixtures import cleanup_test_objects
+    called: list[str] = []
+
+    def interrupt() -> None:
+        called.append("interrupt")
+        raise KeyboardInterrupt("cleanup interrupted")
+
+    def follow_up() -> None:
+        called.append("follow-up")
+
+    with pytest.raises(KeyboardInterrupt, match="cleanup interrupted"):
+        with cleanup_test_objects(interrupt, follow_up):
+            pass
+    assert called == ["interrupt", "follow-up"]
+
+
+def test_cleanup_helper_chains_keyboardinterrupt_after_body_failure() -> None:
+    from fixtures.database_fixtures import cleanup_test_objects
+    called: list[str] = []
+
+    def interrupt() -> None:
+        called.append("interrupt")
+        raise KeyboardInterrupt("cleanup interrupted")
+
+    def follow_up() -> None:
+        called.append("follow-up")
+
+    with pytest.raises(KeyboardInterrupt, match="cleanup interrupted") as caught:
+        with cleanup_test_objects(interrupt, follow_up):
+            raise ValueError("body failed")
+    assert called == ["interrupt", "follow-up"]
+    assert isinstance(caught.value.__cause__, ValueError)
+
+
+def test_cleanup_helper_propagates_systemexit_after_all_cleanups() -> None:
+    from fixtures.database_fixtures import cleanup_test_objects
+    called: list[str] = []
+
+    def exit_cleanup() -> None:
+        called.append("exit")
+        raise SystemExit("cleanup exited")
+
+    def follow_up() -> None:
+        called.append("follow-up")
+
+    with pytest.raises(SystemExit, match="cleanup exited"):
+        with cleanup_test_objects(exit_cleanup, follow_up):
+            pass
+    assert called == ["exit", "follow-up"]
+
+
+def test_cleanup_helper_chains_systemexit_after_body_failure() -> None:
+    from fixtures.database_fixtures import cleanup_test_objects
+    called: list[str] = []
+
+    def exit_cleanup() -> None:
+        called.append("exit")
+        raise SystemExit("cleanup exited")
+
+    def follow_up() -> None:
+        called.append("follow-up")
+
+    with pytest.raises(SystemExit, match="cleanup exited") as caught:
+        with cleanup_test_objects(exit_cleanup, follow_up):
+            raise ValueError("body failed")
+    assert called == ["exit", "follow-up"]
+    assert isinstance(caught.value.__cause__, ValueError)
