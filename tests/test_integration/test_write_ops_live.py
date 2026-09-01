@@ -200,15 +200,16 @@ def test_upsert_via_dispatch_trino(trino_backend):
     be = trino_backend
     table_name = "up_trino"
     with cleanup_test_objects(lambda: be.drop_table(table_name, force=True)):
+        con = be._require_connected()._ibis_conn
+        con.raw_sql("SET SESSION postgres.non_transactional_merge = true")
         be.create_table(
             table_name,
             pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}),
             overwrite=True,
         )
-        con = be._require_connected()._ibis_conn
         con.raw_sql(
             "CALL system.execute("
-            "query => 'ALTER TABLE up_trino ADD PRIMARY KEY (id)'"
+            f"query => 'ALTER TABLE {table_name} ADD PRIMARY KEY (id)'"
             ")"
         )
         be.upsert(

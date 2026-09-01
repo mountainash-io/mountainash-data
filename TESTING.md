@@ -138,11 +138,12 @@ hatch run test:live-db test --target mpnas trino
 
 The target uses plain HTTP at `127.0.0.1:28080`, the writable
 `postgres.public` catalog/schema, and coordinator profile `none`; data-source
-credentials stay inside the remote Trino catalog configuration. Public upsert
-verification sets the Trino 470 catalog session property
-`postgres.non_transactional_merge=true`. This is required for the PostgreSQL
-connector's MERGE support and can partially apply if the operation fails, so
-the live suite confines it to unique test tables with unconditional cleanup.
+credentials stay inside the remote Trino catalog configuration. The committed
+upsert contract requires that catalog to be named `postgres` and sets the
+Trino 470 catalog session property `postgres.non_transactional_merge=true`
+itself. This enables the PostgreSQL connector's MERGE support and can partially
+apply if the operation fails, so the test confines it to a unique table with
+unconditional cleanup.
 
 `status` never resolves or prints a credential. `check` resolves the
 selected backend's credential to perform a real authenticated connection
