@@ -6,6 +6,7 @@ import pytest
 
 from mountainash_data.backends.ibis.dialects._registry import UpsertStyle
 from mountainash_data.backends.ibis.operations import _generic_upsert
+from fixtures.database_fixtures import cleanup_test_objects
 
 
 @pytest.mark.integration
@@ -40,16 +41,13 @@ def test_rename_table_live_singlestoredb(singlestore_backend):
     be = singlestore_backend
     old_name = "ren_ss_old"
     new_name = "ren_ss_new"
-    try:
+    with cleanup_test_objects(
+        lambda: be.drop_table(new_name, force=True),
+        lambda: be.drop_table(old_name, force=True),
+    ):
         be.create_table(old_name, pl.DataFrame({"id": [1]}), overwrite=True)
         be.rename_table(old_name, new_name)
         assert new_name in be.list_tables()
-    finally:
-        for table_name in (new_name, old_name):
-            try:
-                be.drop_table(table_name, force=True)
-            except Exception:  # noqa: BLE001
-                pass
 
 
 @pytest.mark.integration
@@ -122,7 +120,7 @@ def test_upsert_via_dispatch_singlestoredb(singlestore_backend):
     be = singlestore_backend
     table_name = "up_ss"
     con = be._require_connected()._ibis_conn
-    try:
+    with cleanup_test_objects(lambda: con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")):
         con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")
         con.raw_sql(
             f"CREATE TABLE {table_name} "
@@ -141,11 +139,6 @@ def test_upsert_via_dispatch_singlestoredb(singlestore_backend):
             .itertuples(index=False)
         )
         assert rows == {1: "A", 2: "b"}
-    finally:
-        try:
-            con.raw_sql(f"DROP TABLE IF EXISTS {table_name}")
-        except Exception:  # noqa: BLE001
-            pass
 
 
 @pytest.mark.integration

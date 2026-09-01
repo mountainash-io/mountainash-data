@@ -255,3 +255,77 @@ def test_child_selection():
     )
 
     assert completed.returncode == 0, "pytest subprocess failed"
+
+
+def test_singlestoredb_integration_selection_contract() -> None:
+    repo_root = Path(__file__).parents[3]
+    integration_files = [
+        "tests/test_integration/test_live_smoke.py",
+        "tests/test_integration/test_write_ops_live.py",
+        "tests/test_integration/test_index_ops_live.py",
+    ]
+    child_env = os.environ.copy()
+    for key in (
+        "MOUNTAINASH_LIVE_DB_CONFIG",
+        "MOUNTAINASH_LIVE_DB_TARGET",
+        "MOUNTAINASH_LIVE_DB_BACKEND",
+        "MOUNTAINASH_REQUIRE_LIVE_DB",
+    ):
+        child_env.pop(key, None)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-k",
+            "singlestoredb",
+            "-m",
+            "integration",
+            *integration_files,
+        ],
+        cwd=repo_root,
+        env=child_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    selected = {
+        line
+        for line in completed.stdout.splitlines()
+        if line.startswith("tests/test_integration/") and "::" in line
+    }
+    assert selected == {
+        "tests/test_integration/test_live_smoke.py::test_singlestoredb_smoke",
+        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_singlestoredb",
+        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_singlestoredb",
+        "tests/test_integration/test_index_ops_live.py::test_singlestoredb_table_scoped_index_roundtrip",
+    }
+
+
+def test_cleanup_helper_fails_when_body_succeeds_and_cleanup_fails() -> None:
+    from fixtures.database_fixtures import cleanup_test_objects
+
+    def cleanup() -> None:
+        raise RuntimeError("cleanup failed")
+
+    with pytest.raises(RuntimeError, match="cleanup failed"):
+        with cleanup_test_objects(cleanup):
+            pass
+
+
+def test_cleanup_helper_preserves_body_failure() -> None:
+    from fixtures.database_fixtures import cleanup_test_objects
+    cleanup_called = False
+
+    def cleanup() -> None:
+        nonlocal cleanup_called
+        cleanup_called = True
+        raise RuntimeError("cleanup failed")
+
+    with pytest.raises(ValueError, match="body failed"):
+        with cleanup_test_objects(cleanup):
+            raise ValueError("body failed")
+    assert cleanup_called is True

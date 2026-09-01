@@ -1,11 +1,14 @@
 """Database-related fixtures for testing."""
 
-import pytest
-import tempfile
 import sqlite3
+import tempfile
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator
+
 import ibis
+import pytest
 
 from .live_db_fixtures import (
     mysql_backend,
@@ -13,6 +16,28 @@ from .live_db_fixtures import (
     postgres_backend,
     singlestore_backend,
 )
+
+
+@contextmanager
+def cleanup_test_objects(*cleanups: Callable[[], None]) -> Iterator[None]:
+    """Run all cleanups, surfacing errors without masking body failures."""
+    body_failed = False
+    try:
+        yield
+    except BaseException:
+        body_failed = True
+        raise
+    finally:
+        cleanup_error: BaseException | None = None
+        for cleanup in cleanups:
+            try:
+                cleanup()
+            except BaseException as exc:
+                if cleanup_error is None:
+                    cleanup_error = exc
+        if cleanup_error is not None and not body_failed:
+            raise cleanup_error
+
 
 
 
