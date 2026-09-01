@@ -21,3 +21,8 @@ def test_oracle_smoke(oracle_backend):
 @pytest.mark.integration
 def test_singlestoredb_smoke(singlestore_backend):
     assert isinstance(singlestore_backend.list_tables(), list)
+
+
+@pytest.mark.integration
+def test_mssql_smoke(mssql_backend):
+    assert isinstance(mssql_backend.list_tables(), list)

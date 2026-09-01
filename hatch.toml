@@ -159,11 +159,14 @@ dependencies = [
     # libmariadb-dev system headers — installed via apt in CI and locally.
     # oracle (ibis-framework[oracle]) uses python-oracledb in thin mode — no
     # system Oracle Instant Client needed.
+    # mssql uses pyodbc and the host-installed Microsoft ODBC Driver 18; its
+    # live contract runs only through the local mpnas forward, not CI.
     "psycopg-binary>=3.1.0",
     "ibis-framework[postgres]>=12.0.0",
     "ibis-framework[mysql]>=12.0.0",
     "ibis-framework[oracle]>=12.0.0",
     "ibis-framework[singlestoredb]>=12.0.0",
+    "ibis-framework[mssql]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",

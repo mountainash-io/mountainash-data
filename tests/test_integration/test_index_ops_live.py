@@ -1,4 +1,4 @@
-"""Live index ops against postgres, mariadb, and SingleStoreDB."""
+"""Live index-operation contracts across supported backends."""
 
 import polars as pl
 import pytest
@@ -123,4 +123,48 @@ def test_singlestoredb_table_scoped_index_roundtrip(singlestore_backend):
         with pytest.raises(ValueError, match="table_name"):
             be.drop_index(index_name)
         be.drop_index(index_name, table_name=table_name)
+        assert be.index_exists(index_name, table_name=table_name) is False
+
+
+def test_mssql_table_scoped_partial_index_roundtrip(mssql_backend):
+    be = mssql_backend
+    table_name = "ix_mssql"
+    index_name = "ix_mssql_active"
+    with cleanup_test_objects(
+        lambda: be.drop_index(
+            index_name,
+            table_name=table_name,
+            if_exists=True,
+        ),
+        lambda: be.drop_table(table_name, force=True),
+    ):
+        be.create_table(
+            table_name,
+            pl.DataFrame(
+                {"id": [1, 2, 3], "active": [True, False, True]}
+            ),
+            overwrite=True,
+        )
+        be.create_index(
+            table_name,
+            ["id"],
+            index_name=index_name,
+            where=lambda row: row.active == True,  # noqa: E712
+            if_not_exists=True,
+        )
+        be.create_index(
+            table_name,
+            ["id"],
+            index_name=index_name,
+            where=lambda row: row.active == True,  # noqa: E712
+            if_not_exists=True,
+        )
+
+        assert be.index_exists(index_name, table_name=table_name) is True
+        indexes = {index.name: index for index in be.list_indexes(table_name)}
+        assert indexes[index_name].columns == ("id",)
+        assert "active" in (indexes[index_name].definition or "").lower()
+        with pytest.raises(ValueError, match="table_name"):
+            be.drop_index(index_name)
+        be.drop_index(index_name, table_name=table_name, if_exists=True)
         assert be.index_exists(index_name, table_name=table_name) is False

@@ -305,6 +305,54 @@ def test_singlestoredb_integration_selection_contract() -> None:
     }
 
 
+def test_mssql_integration_selection_contract() -> None:
+    repo_root = Path(__file__).parents[3]
+    integration_files = [
+        "tests/test_integration/test_live_smoke.py",
+        "tests/test_integration/test_write_ops_live.py",
+        "tests/test_integration/test_index_ops_live.py",
+    ]
+    child_env = os.environ.copy()
+    for key in (
+        "MOUNTAINASH_LIVE_DB_CONFIG",
+        "MOUNTAINASH_LIVE_DB_TARGET",
+        "MOUNTAINASH_LIVE_DB_BACKEND",
+        "MOUNTAINASH_REQUIRE_LIVE_DB",
+    ):
+        child_env.pop(key, None)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-k",
+            "mssql",
+            "-m",
+            "integration",
+            *integration_files,
+        ],
+        cwd=repo_root,
+        env=child_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    selected = {
+        line
+        for line in completed.stdout.splitlines()
+        if line.startswith("tests/test_integration/") and "::" in line
+    }
+    assert selected == {
+        "tests/test_integration/test_live_smoke.py::test_mssql_smoke",
+        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_mssql",
+        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_mssql",
+        "tests/test_integration/test_index_ops_live.py::test_mssql_table_scoped_partial_index_roundtrip",
+    }
+
+
 def test_cleanup_helper_fails_when_body_succeeds_and_cleanup_fails() -> None:
     from fixtures.database_fixtures import cleanup_test_objects
 

@@ -578,10 +578,11 @@ def build_merge_sql(
         cond = f" AND {condition_sql}" if condition_sql else ""
         clauses.append(f"WHEN MATCHED{cond} THEN UPDATE SET {set_sql}")
     clauses.append(not_matched)
-    return (
+    statement = (
         f"MERGE INTO {target} {as_kw}tgt USING ({source_sql}) {as_kw}src "
         f"ON ({on}) " + " ".join(clauses)
     )
+    return f"{statement};" if d in {"mssql", "tsql"} else statement
 
 
 def _render_merge(

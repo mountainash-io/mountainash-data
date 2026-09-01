@@ -19,8 +19,7 @@ compose = { profile = "oracle", service = "oracle" }
 [backends.mssql]
 settings_profile = "mssql"
 selector = "mssql"
-runnable = false
-backlog = "DEBT-17"
+runnable = true
 
 [backends.singlestoredb]
 settings_profile = "singlestoredb"

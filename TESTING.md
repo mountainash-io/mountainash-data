@@ -116,6 +116,19 @@ hatch run test:live-db status --target mpnas
 hatch run test:live-db test --target mpnas --all
 ```
 
+MSSQL is verified only through the `mpnas` forward; it has no Compose
+service or live-CI job:
+
+```bash
+brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18
+hatch run test:live-db test --target mpnas mssql
+```
+
+The target uses `127.0.0.1:21433`, SQL Server authentication from the
+local secret provider, ODBC Driver 18, encryption disabled, and server
+certificate trust enabled for the private forwarded instance.
+
 `status` never resolves or prints a credential. `check` resolves the
 selected backend's credential to perform a real authenticated connection
 check, but never prints it. An unavailable backend is reported with its

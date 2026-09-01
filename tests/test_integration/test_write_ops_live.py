@@ -1,4 +1,4 @@
-"""Live round-trip tests for generic write ops (postgres + mysql + oracle + singlestoredb)."""
+"""Live round-trip tests for generic write operations across supported backends."""
 
 import pandas as pd
 import polars as pl
@@ -41,6 +41,20 @@ def test_rename_table_live_singlestoredb(singlestore_backend):
     be = singlestore_backend
     old_name = "ren_ss_old"
     new_name = "ren_ss_new"
+    with cleanup_test_objects(
+        lambda: be.drop_table(new_name, force=True),
+        lambda: be.drop_table(old_name, force=True),
+    ):
+        be.create_table(old_name, pl.DataFrame({"id": [1]}), overwrite=True)
+        be.rename_table(old_name, new_name)
+        assert new_name in be.list_tables()
+
+
+@pytest.mark.integration
+def test_rename_table_live_mssql(mssql_backend):
+    be = mssql_backend
+    old_name = "ren_mssql_old"
+    new_name = "ren_mssql_new"
     with cleanup_test_objects(
         lambda: be.drop_table(new_name, force=True),
         lambda: be.drop_table(old_name, force=True),
@@ -139,6 +153,31 @@ def test_upsert_via_dispatch_singlestoredb(singlestore_backend):
             .itertuples(index=False)
         )
         assert rows == {1: "A", 2: "b"}
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_mssql(mssql_backend):
+    """be.upsert() public dispatch — MERGE via generic path for SQL Server."""
+    be = mssql_backend
+    table_name = "up_mssql"
+    with cleanup_test_objects(lambda: be.drop_table(table_name, force=True)):
+        be.create_table(
+            table_name,
+            pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}),
+            overwrite=True,
+        )
+        be.upsert(
+            table_name,
+            pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}),
+            conflict_columns=["id"],
+        )
+        rows = dict(
+            be.table(table_name)
+            .order_by("id")
+            .execute()[["id", "v"]]
+            .itertuples(index=False)
+        )
+        assert rows == {1: "a", 2: "B", 3: "c"}
 
 
 @pytest.mark.integration

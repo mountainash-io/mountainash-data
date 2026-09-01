@@ -11,6 +11,7 @@ import ibis
 import pytest
 
 from .live_db_fixtures import (
+    mssql_backend,
     mysql_backend,
     oracle_backend,
     postgres_backend,
