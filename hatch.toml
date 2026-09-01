@@ -164,6 +164,9 @@ dependencies = [
     "ibis-framework[mysql]>=12.0.0",
     "ibis-framework[oracle]>=12.0.0",
     "ibis-framework[singlestoredb]>=12.0.0",
+    # mssql uses pyodbc and the host-installed Microsoft ODBC Driver 18; its
+    # live contract runs only through the local mpnas forward, not CI.
+    "ibis-framework[mssql]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",

@@ -152,6 +152,21 @@ def test_merge_oracle_omits_as_and_parenthesizes_on() -> None:
     assert 'MERGE INTO "up_ora" tgt USING' in sql, f"unexpected target/alias shape: {sql}"
 
 
+def test_merge_mssql_terminates_statement() -> None:
+    """SQL Server raises error 10713 when MERGE lacks its required semicolon."""
+    sql = build_merge_sql(
+        dialect="tsql",
+        target='"up_mssql"',
+        cols=["id", "v"],
+        conflict=["id"],
+        update=["v"],
+        conflict_action="UPDATE",
+        source_sql="SELECT 1 AS id, 'a' AS v",
+    )
+
+    assert sql.endswith(";")
+
+
 @pytest.mark.parametrize(
     "name",
     [n for n, s in DIALECTS.items() if s.upsert_style is UpsertStyle.MERGE],

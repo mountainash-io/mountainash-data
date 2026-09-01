@@ -14,6 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 # Import all fixtures from consolidated fixture modules
 from fixtures.live_db_fixtures import (
     live_backend_selection,
+    mssql_backend,
     mysql_backend,
     oracle_backend,
     postgres_backend,
