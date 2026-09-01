@@ -229,11 +229,23 @@ def _assert_pid_gone(pid: int) -> None:
     raise AssertionError(f"process {pid} still exists")
 
 
-def test_timeout_terminates_child_process_group(tmp_path: Path) -> None:
+def test_timeout_terminates_child_process_group(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     parent_pid_file = tmp_path / "parent.pid"
     child_pid_file = tmp_path / "child.pid"
     runner = CommandRunner(Redactor())
 
+    def timeout_after_child_starts(
+        process: subprocess.Popen[str],
+        timeout: float | None,
+    ) -> tuple[str, str]:
+        _wait_for_pid(child_pid_file)
+        assert timeout is not None
+        raise subprocess.TimeoutExpired(process.args, timeout)
+
+    monkeypatch.setattr(runner, "_wait", timeout_after_child_starts)
     with pytest.raises(HarnessError):
         runner.run(
             [sys.executable, "-c", _group_tree_script(parent_pid_file), str(child_pid_file)],
