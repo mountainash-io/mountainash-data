@@ -142,3 +142,8 @@ def singlestore_backend() -> Iterator[IbisBackend]:
 @pytest.fixture
 def mssql_backend() -> Iterator[IbisBackend]:
     yield from _connected_backend("mssql_backend", "mssql")
+
+
+@pytest.fixture
+def trino_backend() -> Iterator[IbisBackend]:
+    yield from _connected_backend("trino_backend", "trino")

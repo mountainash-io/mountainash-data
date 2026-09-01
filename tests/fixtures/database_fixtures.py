@@ -16,6 +16,7 @@ from .live_db_fixtures import (
     oracle_backend,
     postgres_backend,
     singlestore_backend,
+    trino_backend,
 )
 
 

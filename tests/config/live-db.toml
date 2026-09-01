@@ -36,8 +36,7 @@ backlog = "DEBT-19"
 [backends.trino]
 settings_profile = "trino"
 selector = "trino"
-runnable = false
-backlog = "DEBT-20"
+runnable = true
 
 [backends.pyspark]
 settings_profile = "pyspark"
