@@ -21,6 +21,15 @@ def dialect_of(ibis_conn: t.Any) -> t.Any:
     return ibis_conn.compiler.dialect
 
 
+def dialect_name(dialect: t.Any) -> str:
+    """Return a stable lowercase name for a sqlglot dialect value."""
+    if isinstance(dialect, type):
+        return dialect.__name__.lower()
+    if isinstance(dialect, str):
+        return dialect.lower()
+    return str(dialect).lower()
+
+
 def quote_identifier(name: str, dialect: t.Any) -> str:
     """Quote a single identifier for `dialect` via sqlglot."""
     return exp.to_identifier(name, quoted=True).sql(dialect=dialect)

@@ -19,6 +19,7 @@ from mountainash_data.backends.ibis._render import (
     compile_condition,
     compile_projected_source,
     dialect_of,
+    dialect_name,
     qualified_name,
     quote_identifier,
     resolve_source,
@@ -179,12 +180,8 @@ def build_rename_sql(old_name: str, new_name: str, *, dialect: t.Any) -> str:
     dialect without a live connection. Identifiers are built directly via
     to_identifier(quoted=True) — never pre-quoted-then-reparsed (that double-quotes).
     """
-    dialect_name = (
-        dialect.__name__.lower()
-        if isinstance(dialect, type)
-        else str(dialect).lower()
-    )
-    if dialect_name == "exasol":
+    d = dialect_name(dialect)
+    if d == "exasol":
         old = quote_identifier(old_name, dialect)
         new = quote_identifier(new_name, dialect)
         return f"RENAME TABLE {old} TO {new}"
@@ -570,12 +567,7 @@ def build_merge_sql(
     # dialect may be a sqlglot Dialect class (live path) or a plain string
     # (tests/golden). Normalise to the lowercase name for the membership
     # check below (matches the established pattern in _index.py).
-    if isinstance(dialect, type):
-        d = dialect.__name__.lower()
-    elif isinstance(dialect, str):
-        d = dialect.lower()
-    else:
-        d = str(dialect).lower()
+    d = dialect_name(dialect)
     as_kw = "" if d == "oracle" else "AS "
     on = " AND ".join(f"tgt.{q(c)} = src.{q(c)}" for c in conflict)
     not_matched = (
