@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 import typing as t
 
 from mountainash_data.core.inspection import IndexInfo
+from mountainash_data.backends.ibis._exasol_compat import patch_exasol_connection
 
 class UpsertStyle(str, enum.Enum):
     ON_CONFLICT = "on_conflict"
@@ -59,6 +60,7 @@ GetIndexExistsSql = t.Callable[[str, str, t.Optional[str]], str]  # (index_name,
 GetListIndexesSql = t.Callable[[str, t.Optional[str]], str]  # (table_name, database) -> SQL
 ListIndexesHook = t.Callable[[t.Any, str, t.Optional[str]], list[IndexInfo]]
 ConnectionBuilder = t.Callable[..., t.Any]  # (**config) -> ibis backend connection
+IbisConnectionAdapter = t.Callable[[t.Any], t.Any]
 UpsertHook = t.Callable[..., None]
 CreateIndexHook = t.Callable[..., None]
 DropIndexHook = t.Callable[..., None]
@@ -87,6 +89,7 @@ class DialectSpec:
     connection_mode: str
     connection_string_scheme: str
     connection_builder: t.Optional[ConnectionBuilder] = None
+    ibis_connection_adapter: t.Optional[IbisConnectionAdapter] = None
     get_index_exists_sql: t.Optional[GetIndexExistsSql] = None
     get_list_indexes_sql: t.Optional[GetListIndexesSql] = None
     list_indexes_hook: t.Optional[ListIndexesHook] = None
@@ -541,7 +544,6 @@ def _build_singlestoredb_connection(**config: t.Any) -> t.Any:
 def _build_exasol_connection(**config: t.Any) -> t.Any:
     """Build an Exasol ibis connection."""
     import ibis
-    from .._exasol_compat import patch_exasol_connection
 
     user = config.get("user", config.get("username", None))
     password = config.get("password", None)
@@ -559,7 +561,7 @@ def _build_exasol_connection(**config: t.Any) -> t.Any:
     if password is not None:
         kwargs["password"] = password
     kwargs.update(extra)
-    return patch_exasol_connection(ibis.exasol.connect(**kwargs))
+    return ibis.exasol.connect(**kwargs)
 
 
 def _build_impala_connection(**config: t.Any) -> t.Any:
@@ -953,6 +955,7 @@ DIALECTS: dict[str, DialectSpec] = {
         connection_mode=_KWARGS,
         connection_string_scheme="exasol://",
         connection_builder=_build_exasol_connection,
+        ibis_connection_adapter=patch_exasol_connection,
         upsert_style=UpsertStyle.MERGE,
         transaction_support=TransactionSupport.FULL,
         begin_statement=None,
