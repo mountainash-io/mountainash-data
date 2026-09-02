@@ -7,6 +7,7 @@ import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+from urllib.parse import urlsplit
 
 from .models import (
     BackendDefinition,
@@ -227,8 +228,11 @@ def check_transport(
     if target.transport == "direct":
         # Direct targets perform a pure socket-reachability preflight here.
         # The authenticated connection is performed by the runner's later phase.
-        host = _connection_host(backend.connection, target=target_name, backend=backend_name)
-        port = _connection_port(backend.connection, target=target_name, backend=backend_name)
+        host, port = _connection_endpoint(
+            backend.connection,
+            target=target_name,
+            backend=backend_name,
+        )
         _reject_external_compose_collision(
             port,
             suite_backend=suite_backend,
@@ -247,8 +251,11 @@ def check_transport(
             "The SSH-tunnel backend has no tunnel identity.",
             "Configure the launchd label, destination, and forwarding tuple.",
         )
-    connection_host = _connection_host(backend.connection, target=target_name, backend=backend_name)
-    connection_port = _connection_port(backend.connection, target=target_name, backend=backend_name)
+    connection_host, connection_port = _connection_endpoint(
+        backend.connection,
+        target=target_name,
+        backend=backend_name,
+    )
     if (connection_host, connection_port) != (identity.local_host, identity.local_port):
         raise _error(
             target_name,
@@ -324,39 +331,45 @@ def _selection_target_backend(selection: Any, backend_name: str | None) -> Any:
     return backends.get(backend_name)
 
 
-def _connection_host(
-    connection: Mapping[str, object], *, target: str | None = None, backend: str | None = None
-) -> str:
+def _connection_endpoint(
+    connection: Mapping[str, object],
+    *,
+    target: str | None = None,
+    backend: str | None = None,
+) -> tuple[str, int]:
+    host: str | None = None
+    port: int | None = None
     for key, value in connection.items():
-        if key.lower() in {"host", "local_host"}:
+        normalized_key = key.lower()
+        if normalized_key in {"host", "local_host"}:
             if isinstance(value, str) and value:
-                return value
-            break
-    raise _error(
-        target,
-        backend,
-        "The selected backend has no valid TCP host.",
-        "Configure a non-empty connection HOST.",
-    )
-
-
-def _connection_port(
-    connection: Mapping[str, object], *, target: str | None = None, backend: str | None = None
-) -> int:
-    for key, value in connection.items():
-        if key.lower() in {"port", "local_port"}:
+                host = value
+        elif normalized_key in {"port", "local_port"}:
             try:
-                port = int(value)
+                candidate = int(value)
             except (TypeError, ValueError):
-                break
-            if 1 <= port <= 65535:
-                return port
-            break
+                continue
+            if 1 <= candidate <= 65535:
+                port = candidate
+    if host is not None and port is not None:
+        return host, port
+
+    for value in connection.values():
+        if not isinstance(value, str) or "://" not in value:
+            continue
+        try:
+            parsed = urlsplit(value)
+            parsed_port = parsed.port
+        except ValueError:
+            continue
+        if parsed.hostname and parsed_port is not None:
+            return parsed.hostname, parsed_port
+
     raise _error(
         target,
         backend,
-        "The selected backend has no valid TCP port.",
-        "Configure a connection PORT between 1 and 65535.",
+        "The selected backend has no valid TCP connection endpoint.",
+        "Configure HOST/PORT fields or a URL containing a host and port.",
     )
 
 

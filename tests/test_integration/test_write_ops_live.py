@@ -114,6 +114,15 @@ def test_rename_table_live_exasol(exasol_backend):
 
 
 @pytest.mark.integration
+def test_rename_table_live_pyspark(pyspark_backend):
+    _assert_rename_table_roundtrip(
+        pyspark_backend,
+        "ren_pyspark_old",
+        "ren_pyspark_new",
+    )
+
+
+@pytest.mark.integration
 def test_merge_insert_and_update_postgres(postgres_backend):
     """MERGE UPDATE: existing row updated, new row inserted."""
     be = postgres_backend

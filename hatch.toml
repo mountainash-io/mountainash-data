@@ -171,6 +171,9 @@ dependencies = [
     "ibis-framework[trino]>=12.0.0",
     # exasol uses the pure-Python client against the local mpnas forward only.
     "ibis-framework[exasol]>=12.0.0",
+    # pyspark matches the remote Spark 4.0.2 cluster and runs through mpnas only.
+    "ibis-framework[pyspark]>=12.0.0",
+    "pyspark[connect]==4.0.2",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",

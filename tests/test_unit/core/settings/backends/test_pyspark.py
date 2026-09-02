@@ -47,3 +47,25 @@ class TestPySparkBackendProfile:
         # Adapter emits dotted Spark keys:
         assert kwargs["spark.app.name"] == "myapp"
         assert kwargs["spark.master"] == "local[2]"
+
+    def test_emit_emits_remote_driver_network_settings(self):
+        kwargs = PySparkBackendProfile(
+            DRIVER_HOST="10.10.225.2",
+            DRIVER_BIND_ADDRESS="127.0.0.1",
+            DRIVER_PORT=27078,
+            BLOCK_MANAGER_PORT=27079,
+            EXECUTOR_PYTHON="python3",
+        ).emit()
+
+        assert kwargs["spark.driver.host"] == "10.10.225.2"
+        assert kwargs["spark.driver.bindAddress"] == "127.0.0.1"
+        assert kwargs["spark.driver.port"] == 27078
+        assert kwargs["spark.blockManager.port"] == 27079
+        assert kwargs["spark.pyspark.python"] == "python3"
+
+    def test_emit_emits_spark_connect_endpoint(self):
+        kwargs = PySparkBackendProfile(
+            SPARK_REMOTE="sc://127.0.0.1:25002",
+        ).emit()
+
+        assert kwargs["spark.remote"] == "sc://127.0.0.1:25002"

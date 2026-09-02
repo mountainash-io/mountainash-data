@@ -673,20 +673,45 @@ def _build_druid_connection(**config: t.Any) -> t.Any:
 
 
 def _build_pyspark_connection(**config: t.Any) -> t.Any:
-    """Build a PySpark ibis connection.
-
-    Salvaged from databases/connections/ibis/pyspark_ibis_connection.py.
-    Connection scheme was 'pyspark://' — uses ibis.connect.
-    """
+    """Build PySpark with static Spark options applied before session creation."""
     import ibis
 
-    connection_string = config.get("connection_string", None)
+    connection_string = config.get("connection_string")
     if connection_string is not None:
         return ibis.connect(connection_string)
 
-    # PySpark connect typically needs a running Spark session
-    extra = {k: v for k, v in config.items() if k != "connection_string"}
-    return ibis.connect("pyspark://", **extra)
+    session = config.get("session")
+    mode = config.get("mode", "batch")
+    spark_config = {
+        key: value
+        for key, value in config.items()
+        if key not in {"connection_string", "session", "mode"}
+    }
+    remote = spark_config.pop("spark.remote", None)
+    master = spark_config.get("spark.master")
+    if remote is not None and master is not None:
+        raise ValueError("spark.remote and spark.master are mutually exclusive")
+    if session is not None and remote is not None:
+        raise ValueError("spark.remote cannot be combined with an existing session")
+
+    if session is None:
+        from pyspark.sql import SparkSession
+
+        if remote is not None:
+            builder = SparkSession.builder.remote(str(remote))
+            for key, value in spark_config.items():
+                builder = builder.config(key, value)
+            session = builder.getOrCreate()
+        else:
+            from pyspark import SparkConf
+
+            spark_conf = SparkConf().setAll(
+                (key, str(value)) for key, value in spark_config.items()
+            )
+            session = SparkSession.builder.config(conf=spark_conf).getOrCreate()
+        spark_config = {}
+
+    return ibis.pyspark.connect(session=session, mode=mode, **spark_config)
 
 
 # ---------------------------------------------------------------------------

@@ -152,3 +152,8 @@ def trino_backend() -> Iterator[IbisBackend]:
 @pytest.fixture
 def exasol_backend() -> Iterator[IbisBackend]:
     yield from _connected_backend("exasol_backend", "exasol")
+
+
+@pytest.fixture
+def pyspark_backend() -> Iterator[IbisBackend]:
+    yield from _connected_backend("pyspark_backend", "pyspark")
