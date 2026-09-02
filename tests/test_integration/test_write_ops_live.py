@@ -79,6 +79,20 @@ def test_rename_table_live_trino(trino_backend):
 
 
 @pytest.mark.integration
+def test_rename_table_live_exasol(exasol_backend):
+    be = exasol_backend
+    old_name = "ren_exasol_old"
+    new_name = "ren_exasol_new"
+    with cleanup_test_objects(
+        lambda: be.drop_table(new_name, force=True),
+        lambda: be.drop_table(old_name, force=True),
+    ):
+        be.create_table(old_name, pl.DataFrame({"id": [1]}), overwrite=True)
+        be.rename_table(old_name, new_name)
+        assert new_name in be.list_tables()
+
+
+@pytest.mark.integration
 def test_merge_insert_and_update_postgres(postgres_backend):
     """MERGE UPDATE: existing row updated, new row inserted."""
     be = postgres_backend
@@ -211,6 +225,31 @@ def test_upsert_via_dispatch_trino(trino_backend):
             "CALL system.execute("
             f"query => 'ALTER TABLE {table_name} ADD PRIMARY KEY (id)'"
             ")"
+        )
+        be.upsert(
+            table_name,
+            pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}),
+            conflict_columns=["id"],
+        )
+        rows = dict(
+            be.table(table_name)
+            .order_by("id")
+            .execute()[["id", "v"]]
+            .itertuples(index=False)
+        )
+        assert rows == {1: "a", 2: "B", 3: "c"}
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_exasol(exasol_backend):
+    """be.upsert() public dispatch — MERGE via generic path for Exasol."""
+    be = exasol_backend
+    table_name = "up_exasol"
+    with cleanup_test_objects(lambda: be.drop_table(table_name, force=True)):
+        be.create_table(
+            table_name,
+            pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}),
+            overwrite=True,
         )
         be.upsert(
             table_name,

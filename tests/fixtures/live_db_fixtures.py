@@ -147,3 +147,8 @@ def mssql_backend() -> Iterator[IbisBackend]:
 @pytest.fixture
 def trino_backend() -> Iterator[IbisBackend]:
     yield from _connected_backend("trino_backend", "trino")
+
+
+@pytest.fixture
+def exasol_backend() -> Iterator[IbisBackend]:
+    yield from _connected_backend("exasol_backend", "exasol")

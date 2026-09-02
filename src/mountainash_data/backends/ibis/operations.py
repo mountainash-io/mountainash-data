@@ -174,10 +174,20 @@ def build_rename_sql(old_name: str, new_name: str, *, dialect: t.Any) -> str:
 
     sqlglot renders ALTER TABLE … RENAME TO … for most dialects, EXEC sp_rename
     for SQL Server (tsql), and ALTER TABLE … RENAME … for MySQL/SingleStore.
+    Exasol instead requires its top-level RENAME TABLE … TO … statement.
     Taking `dialect` explicitly lets the registry golden test render every
     dialect without a live connection. Identifiers are built directly via
     to_identifier(quoted=True) — never pre-quoted-then-reparsed (that double-quotes).
     """
+    dialect_name = (
+        dialect.__name__.lower()
+        if isinstance(dialect, type)
+        else str(dialect).lower()
+    )
+    if dialect_name == "exasol":
+        old = quote_identifier(old_name, dialect)
+        new = quote_identifier(new_name, dialect)
+        return f"RENAME TABLE {old} TO {new}"
     return exp.Alter(
         this=exp.Table(this=exp.to_identifier(old_name, quoted=True)),
         kind="TABLE",

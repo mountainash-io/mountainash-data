@@ -541,6 +541,7 @@ def _build_singlestoredb_connection(**config: t.Any) -> t.Any:
 def _build_exasol_connection(**config: t.Any) -> t.Any:
     """Build an Exasol ibis connection."""
     import ibis
+    from .._exasol_compat import patch_exasol_connection
 
     user = config.get("user", config.get("username", None))
     password = config.get("password", None)
@@ -558,7 +559,7 @@ def _build_exasol_connection(**config: t.Any) -> t.Any:
     if password is not None:
         kwargs["password"] = password
     kwargs.update(extra)
-    return ibis.exasol.connect(**kwargs)
+    return patch_exasol_connection(ibis.exasol.connect(**kwargs))
 
 
 def _build_impala_connection(**config: t.Any) -> t.Any:

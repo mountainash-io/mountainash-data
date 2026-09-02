@@ -31,3 +31,8 @@ def test_mssql_smoke(mssql_backend):
 @pytest.mark.integration
 def test_trino_smoke(trino_backend):
     assert isinstance(trino_backend.list_tables(), list)
+
+
+@pytest.mark.integration
+def test_exasol_smoke(exasol_backend):
+    assert isinstance(exasol_backend.list_tables(), list)

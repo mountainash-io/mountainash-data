@@ -61,3 +61,9 @@ class TestRenameGoldenPerDialect:
         sql = build_rename_sql("old", "new", dialect=d)
         # tsql renders sp_rename; everyone else an ALTER ... RENAME
         assert ("sp_rename" in sql.lower()) or ("rename" in sql.lower())
+
+    def test_exasol_uses_rename_table_statement(self):
+        assert (
+            build_rename_sql("old", "new", dialect="exasol")
+            == 'RENAME TABLE "old" TO "new"'
+        )

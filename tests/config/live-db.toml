@@ -30,8 +30,7 @@ compose = { profile = "singlestoredb", service = "singlestoredb" }
 [backends.exasol]
 settings_profile = "exasol"
 selector = "exasol"
-runnable = false
-backlog = "DEBT-19"
+runnable = true
 
 [backends.trino]
 settings_profile = "trino"
