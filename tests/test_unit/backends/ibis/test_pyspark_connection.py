@@ -108,3 +108,15 @@ def test_spark_remote_and_master_are_mutually_exclusive(
                 "spark.master": "spark://127.0.0.1:27077",
             }
         )
+
+
+def test_existing_session_rejects_static_spark_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_spark_fakes(monkeypatch)
+
+    with pytest.raises(ValueError, match="existing session"):
+        _build_pyspark_connection(
+            session=object(),
+            **{"spark.master": "spark://127.0.0.1:27077"},
+        )

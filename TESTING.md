@@ -169,7 +169,7 @@ hatch run test:live-db test --target mpnas pyspark
 The target uses `sc://127.0.0.1:25002` with PySpark Connect 4.0.2 and
 coordinator profile `none`. The existing remote `spark:4.0.2-java21-python3`
 master container starts its Connect endpoint on remote loopback port `15002`;
-the bundled Spark launch agent forwards that endpoint to local `25002`.
+the local Spark launch agent forwards that endpoint to local `25002`.
 Classic `spark://127.0.0.1:27077` remains available for master RPC, but a
 one-way master forward cannot carry the executor-to-driver callbacks required
 by classic client mode. Spark Connect avoids those callbacks.

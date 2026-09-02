@@ -1,8 +1,9 @@
 """PySpark backend settings.
 
 Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/pyspark.md``.
-Ibis: ``ibis.backends.pyspark.do_connect(session=None, mode='batch', **kwargs)``
-where kwargs flow to ``SparkSession.builder.config(**kwargs)``.
+Ibis 12 applies ``do_connect(..., **kwargs)`` through ``RuntimeConfig`` after
+session creation. The mountainash builder applies static options before
+creating a classic session or uses ``SparkSession.builder.remote`` for Connect.
 
 The docstring of the prior class read 'SQLite authentication settings' — a
 copy-paste from ``sqlite.py``. Corrected here.

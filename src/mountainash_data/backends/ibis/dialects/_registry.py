@@ -693,6 +693,11 @@ def _build_pyspark_connection(**config: t.Any) -> t.Any:
         raise ValueError("spark.remote and spark.master are mutually exclusive")
     if session is not None and remote is not None:
         raise ValueError("spark.remote cannot be combined with an existing session")
+    if session is not None and spark_config:
+        keys = ", ".join(sorted(spark_config))
+        raise ValueError(
+            f"existing session cannot be combined with Spark configuration: {keys}"
+        )
 
     if session is None:
         from pyspark.sql import SparkSession

@@ -337,39 +337,66 @@ def _connection_endpoint(
     target: str | None = None,
     backend: str | None = None,
 ) -> tuple[str, int]:
-    host: str | None = None
-    port: int | None = None
-    for key, value in connection.items():
-        normalized_key = key.lower()
-        if normalized_key in {"host", "local_host"}:
-            if isinstance(value, str) and value:
-                host = value
-        elif normalized_key in {"port", "local_port"}:
-            try:
-                candidate = int(value)
-            except (TypeError, ValueError):
-                continue
-            if 1 <= candidate <= 65535:
-                port = candidate
-    if host is not None and port is not None:
-        return host, port
-
-    for value in connection.values():
-        if not isinstance(value, str) or "://" not in value:
-            continue
+    host_values = [
+        value
+        for key, value in connection.items()
+        if key.lower() in {"host", "local_host"}
+    ]
+    port_values = [
+        value
+        for key, value in connection.items()
+        if key.lower() in {"port", "local_port"}
+    ]
+    if host_values or port_values:
+        if len(host_values) != 1 or not isinstance(host_values[0], str) or not host_values[0]:
+            raise _error(
+                target,
+                backend,
+                "The selected backend has no valid TCP host.",
+                "Configure one non-empty connection HOST.",
+            )
+        if len(port_values) != 1:
+            raise _error(
+                target,
+                backend,
+                "The selected backend has no valid TCP port.",
+                "Configure one connection PORT between 1 and 65535.",
+            )
         try:
-            parsed = urlsplit(value)
+            port = int(port_values[0])
+        except (TypeError, ValueError):
+            port = 0
+        if not 1 <= port <= 65535:
+            raise _error(
+                target,
+                backend,
+                "The selected backend has no valid TCP port.",
+                "Configure one connection PORT between 1 and 65535.",
+            )
+        return host_values[0], port
+
+    endpoint_urls = [
+        value
+        for key, value in connection.items()
+        if key.lower() in {"connection_string", "spark_master", "spark_remote", "url"}
+        and isinstance(value, str)
+        and "://" in value
+    ]
+    if len(endpoint_urls) == 1:
+        try:
+            parsed = urlsplit(endpoint_urls[0])
             parsed_port = parsed.port
         except ValueError:
-            continue
-        if parsed.hostname and parsed_port is not None:
+            parsed_port = None
+            parsed = None
+        if parsed is not None and parsed.hostname and parsed_port is not None:
             return parsed.hostname, parsed_port
 
     raise _error(
         target,
         backend,
         "The selected backend has no valid TCP connection endpoint.",
-        "Configure HOST/PORT fields or a URL containing a host and port.",
+        "Configure HOST/PORT fields or one supported URL containing a host and port.",
     )
 
 
