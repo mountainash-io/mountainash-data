@@ -101,7 +101,8 @@ class IbisConnection:
         *,
         owns_connection: bool = True,
     ) -> None:
-        self._ibis_conn = ibis_conn
+        adapter = dialect_spec.ibis_connection_adapter
+        self._ibis_conn = adapter(ibis_conn) if adapter is not None else ibis_conn
         self._dialect_spec = dialect_spec
         self._closed = False
         self._owns_connection = owns_connection
@@ -293,7 +294,6 @@ class IbisBackend:
         from_raw_connection(preserve_session=True) for faithful restore).
         """
         backend = cls(dialect=dialect)
-        ibis_conn = backend._adapt_ibis_connection(ibis_conn)
         backend._conn = IbisConnection(
             ibis_conn, backend._spec, owns_connection=owns_connection
         )
@@ -348,7 +348,6 @@ class IbisBackend:
             if preserve_session and snapshot:
                 restore_options(raw_conn, options, snapshot)
 
-        ibis_conn = backend._adapt_ibis_connection(ibis_conn)
         backend._conn = IbisConnection(
             ibis_conn, backend._spec, owns_connection=owns_connection
         )
@@ -476,13 +475,9 @@ class IbisBackend:
         else:                                               # direct-dialect path
             self._config = self._resolve_dialect_auth(auth_profile)
             ibis_conn = self._connect_via_builder()
-        ibis_conn = self._adapt_ibis_connection(ibis_conn)
         self._conn = IbisConnection(ibis_conn, self._spec)
         return self
 
-    def _adapt_ibis_connection(self, ibis_conn: t.Any) -> t.Any:
-        adapter = self._spec.ibis_connection_adapter
-        return adapter(ibis_conn) if adapter is not None else ibis_conn
 
     def _connect_via_builder(self) -> t.Any:
         # preserves the prior empty-list/tuple filtering before connection_builder
