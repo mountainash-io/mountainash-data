@@ -1,8 +1,9 @@
 """PySpark backend settings.
 
 Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/pyspark.md``.
-Ibis: ``ibis.backends.pyspark.do_connect(session=None, mode='batch', **kwargs)``
-where kwargs flow to ``SparkSession.builder.config(**kwargs)``.
+Ibis 12 applies ``do_connect(..., **kwargs)`` through ``RuntimeConfig`` after
+session creation. The mountainash builder applies static options before
+creating a classic session or uses ``SparkSession.builder.remote`` for Connect.
 
 The docstring of the prior class read 'SQLite authentication settings' — a
 copy-paste from ``sqlite.py``. Corrected here.
@@ -40,6 +41,21 @@ PYSPARK_SPEC = BackendSpec(
                       default=PySparkMode.BATCH, driver_key="mode"),
         ParameterSpec(name="SPARK_MASTER", type=t.Optional[str], tier="advanced",
                       default=None, driver_key="spark.master"),
+        ParameterSpec(name="SPARK_REMOTE", type=t.Optional[str], tier="advanced",
+                      default=None, driver_key="spark.remote"),
+        ParameterSpec(name="DRIVER_HOST", type=t.Optional[str], tier="advanced",
+                      default=None, driver_key="spark.driver.host"),
+        ParameterSpec(name="DRIVER_BIND_ADDRESS", type=t.Optional[str],
+                      tier="advanced", default=None,
+                      driver_key="spark.driver.bindAddress"),
+        ParameterSpec(name="DRIVER_PORT", type=t.Optional[int], tier="advanced",
+                      default=None, driver_key="spark.driver.port"),
+        ParameterSpec(name="BLOCK_MANAGER_PORT", type=t.Optional[int],
+                      tier="advanced", default=None,
+                      driver_key="spark.blockManager.port"),
+        ParameterSpec(name="EXECUTOR_PYTHON", type=t.Optional[str],
+                      tier="advanced", default=None,
+                      driver_key="spark.pyspark.python"),
         ParameterSpec(name="APPLICATION_NAME", type=t.Optional[str], tier="advanced",
                       default=None, driver_key="spark.app.name"),
         ParameterSpec(name="WAREHOUSE_DIR", type=t.Optional[str], tier="advanced",

@@ -112,6 +112,60 @@ def test_ssh_identity_accepts_exact_label_destination_tuple_and_ancestry() -> No
     ]
 
 
+def test_ssh_identity_accepts_url_shaped_connection_endpoint() -> None:
+    identity = TunnelIdentity(
+        launchd_label="com.example.postgres",
+        ssh_destination="mpnas",
+        local_host="127.0.0.1",
+        local_port=25002,
+        remote_host="127.0.0.1",
+        remote_port=15002,
+    )
+    target, backend = _ssh_target(identity=identity)
+    backend = backend.model_copy(
+        update={"connection": {"SPARK_REMOTE": "sc://127.0.0.1:25002"}}
+    )
+
+    _check_ssh(
+        target,
+        backend,
+        process=_tree(forwarding="25002:127.0.0.1:15002"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("connection", "message"),
+    (
+        (
+            {
+                "HOST": "",
+                "PORT": 25002,
+                "SPARK_REMOTE": "sc://127.0.0.1:25002",
+            },
+            "valid TCP host",
+        ),
+        (
+            {
+                "HOST": "127.0.0.1",
+                "PORT": 0,
+                "SPARK_REMOTE": "sc://127.0.0.1:25002",
+            },
+            "valid TCP port",
+        ),
+    ),
+    ids=("invalid-host", "invalid-port"),
+)
+def test_url_endpoint_does_not_mask_invalid_explicit_endpoint(
+    connection: dict[str, object],
+    message: str,
+) -> None:
+    target, backend = _ssh_target()
+    backend = backend.model_copy(update={"connection": connection})
+
+    with pytest.raises(HarnessError, match=message):
+        _check_ssh(target, backend)
+
+
 def test_ssh_identity_rejects_wrong_launchd_label() -> None:
     target, backend = _ssh_target(
         identity=TunnelIdentity(

@@ -7,6 +7,7 @@ import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+from urllib.parse import urlsplit
 
 from .models import (
     BackendDefinition,
@@ -227,8 +228,11 @@ def check_transport(
     if target.transport == "direct":
         # Direct targets perform a pure socket-reachability preflight here.
         # The authenticated connection is performed by the runner's later phase.
-        host = _connection_host(backend.connection, target=target_name, backend=backend_name)
-        port = _connection_port(backend.connection, target=target_name, backend=backend_name)
+        host, port = _connection_endpoint(
+            backend.connection,
+            target=target_name,
+            backend=backend_name,
+        )
         _reject_external_compose_collision(
             port,
             suite_backend=suite_backend,
@@ -247,8 +251,11 @@ def check_transport(
             "The SSH-tunnel backend has no tunnel identity.",
             "Configure the launchd label, destination, and forwarding tuple.",
         )
-    connection_host = _connection_host(backend.connection, target=target_name, backend=backend_name)
-    connection_port = _connection_port(backend.connection, target=target_name, backend=backend_name)
+    connection_host, connection_port = _connection_endpoint(
+        backend.connection,
+        target=target_name,
+        backend=backend_name,
+    )
     if (connection_host, connection_port) != (identity.local_host, identity.local_port):
         raise _error(
             target_name,
@@ -324,39 +331,72 @@ def _selection_target_backend(selection: Any, backend_name: str | None) -> Any:
     return backends.get(backend_name)
 
 
-def _connection_host(
-    connection: Mapping[str, object], *, target: str | None = None, backend: str | None = None
-) -> str:
-    for key, value in connection.items():
-        if key.lower() in {"host", "local_host"}:
-            if isinstance(value, str) and value:
-                return value
-            break
+def _connection_endpoint(
+    connection: Mapping[str, object],
+    *,
+    target: str | None = None,
+    backend: str | None = None,
+) -> tuple[str, int]:
+    host_values = [
+        value
+        for key, value in connection.items()
+        if key.lower() in {"host", "local_host"}
+    ]
+    port_values = [
+        value
+        for key, value in connection.items()
+        if key.lower() in {"port", "local_port"}
+    ]
+    if host_values or port_values:
+        if len(host_values) != 1 or not isinstance(host_values[0], str) or not host_values[0]:
+            raise _error(
+                target,
+                backend,
+                "The selected backend has no valid TCP host.",
+                "Configure one non-empty connection HOST.",
+            )
+        if len(port_values) != 1:
+            raise _error(
+                target,
+                backend,
+                "The selected backend has no valid TCP port.",
+                "Configure one connection PORT between 1 and 65535.",
+            )
+        try:
+            port = int(port_values[0])
+        except (TypeError, ValueError):
+            port = 0
+        if not 1 <= port <= 65535:
+            raise _error(
+                target,
+                backend,
+                "The selected backend has no valid TCP port.",
+                "Configure one connection PORT between 1 and 65535.",
+            )
+        return host_values[0], port
+
+    endpoint_urls = [
+        value
+        for key, value in connection.items()
+        if key.lower() in {"connection_string", "spark_master", "spark_remote", "url"}
+        and isinstance(value, str)
+        and "://" in value
+    ]
+    if len(endpoint_urls) == 1:
+        try:
+            parsed = urlsplit(endpoint_urls[0])
+            parsed_port = parsed.port
+        except ValueError:
+            parsed_port = None
+            parsed = None
+        if parsed is not None and parsed.hostname and parsed_port is not None:
+            return parsed.hostname, parsed_port
+
     raise _error(
         target,
         backend,
-        "The selected backend has no valid TCP host.",
-        "Configure a non-empty connection HOST.",
-    )
-
-
-def _connection_port(
-    connection: Mapping[str, object], *, target: str | None = None, backend: str | None = None
-) -> int:
-    for key, value in connection.items():
-        if key.lower() in {"port", "local_port"}:
-            try:
-                port = int(value)
-            except (TypeError, ValueError):
-                break
-            if 1 <= port <= 65535:
-                return port
-            break
-    raise _error(
-        target,
-        backend,
-        "The selected backend has no valid TCP port.",
-        "Configure a connection PORT between 1 and 65535.",
+        "The selected backend has no valid TCP connection endpoint.",
+        "Configure HOST/PORT fields or one supported URL containing a host and port.",
     )
 
 

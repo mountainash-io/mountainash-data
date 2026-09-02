@@ -40,8 +40,7 @@ runnable = true
 [backends.pyspark]
 settings_profile = "pyspark"
 selector = "pyspark"
-runnable = false
-backlog = "DEBT-21"
+runnable = true
 
 [targets.docker]
 transport = "compose"
