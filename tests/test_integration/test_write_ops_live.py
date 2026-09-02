@@ -65,6 +65,20 @@ def test_rename_table_live_mssql(mssql_backend):
 
 
 @pytest.mark.integration
+def test_rename_table_live_trino(trino_backend):
+    be = trino_backend
+    old_name = "ren_trino_old"
+    new_name = "ren_trino_new"
+    with cleanup_test_objects(
+        lambda: be.drop_table(new_name, force=True),
+        lambda: be.drop_table(old_name, force=True),
+    ):
+        be.create_table(old_name, pl.DataFrame({"id": [1]}), overwrite=True)
+        be.rename_table(old_name, new_name)
+        assert new_name in be.list_tables()
+
+
+@pytest.mark.integration
 def test_merge_insert_and_update_postgres(postgres_backend):
     """MERGE UPDATE: existing row updated, new row inserted."""
     be = postgres_backend
@@ -165,6 +179,38 @@ def test_upsert_via_dispatch_mssql(mssql_backend):
             table_name,
             pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}),
             overwrite=True,
+        )
+        be.upsert(
+            table_name,
+            pl.DataFrame({"id": [2, 3], "v": ["B", "c"]}),
+            conflict_columns=["id"],
+        )
+        rows = dict(
+            be.table(table_name)
+            .order_by("id")
+            .execute()[["id", "v"]]
+            .itertuples(index=False)
+        )
+        assert rows == {1: "a", 2: "B", 3: "c"}
+
+
+@pytest.mark.integration
+def test_upsert_via_dispatch_trino(trino_backend):
+    """be.upsert() public dispatch — MERGE through Trino's PostgreSQL catalog."""
+    be = trino_backend
+    table_name = "up_trino"
+    with cleanup_test_objects(lambda: be.drop_table(table_name, force=True)):
+        con = be._require_connected()._ibis_conn
+        con.raw_sql("SET SESSION postgres.non_transactional_merge = true")
+        be.create_table(
+            table_name,
+            pl.DataFrame({"id": [1, 2], "v": ["a", "b"]}),
+            overwrite=True,
+        )
+        con.raw_sql(
+            "CALL system.execute("
+            f"query => 'ALTER TABLE {table_name} ADD PRIMARY KEY (id)'"
+            ")"
         )
         be.upsert(
             table_name,

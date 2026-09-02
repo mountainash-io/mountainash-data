@@ -257,20 +257,23 @@ def test_child_selection():
     assert completed.returncode == 0, "pytest subprocess failed"
 
 
-def test_singlestoredb_integration_selection_contract() -> None:
+_INTEGRATION_FILES = [
+    "tests/test_integration/test_live_smoke.py",
+    "tests/test_integration/test_write_ops_live.py",
+    "tests/test_integration/test_index_ops_live.py",
+]
+_LIVE_ENVIRONMENT_KEYS = (
+    "MOUNTAINASH_LIVE_DB_CONFIG",
+    "MOUNTAINASH_LIVE_DB_TARGET",
+    "MOUNTAINASH_LIVE_DB_BACKEND",
+    "MOUNTAINASH_REQUIRE_LIVE_DB",
+)
+
+
+def _selected_integration_node_ids(selector: str) -> set[str]:
     repo_root = Path(__file__).parents[3]
-    integration_files = [
-        "tests/test_integration/test_live_smoke.py",
-        "tests/test_integration/test_write_ops_live.py",
-        "tests/test_integration/test_index_ops_live.py",
-    ]
     child_env = os.environ.copy()
-    for key in (
-        "MOUNTAINASH_LIVE_DB_CONFIG",
-        "MOUNTAINASH_LIVE_DB_TARGET",
-        "MOUNTAINASH_LIVE_DB_BACKEND",
-        "MOUNTAINASH_REQUIRE_LIVE_DB",
-    ):
+    for key in _LIVE_ENVIRONMENT_KEYS:
         child_env.pop(key, None)
     completed = subprocess.run(
         [
@@ -280,10 +283,10 @@ def test_singlestoredb_integration_selection_contract() -> None:
             "--collect-only",
             "-q",
             "-k",
-            "singlestoredb",
+            selector,
             "-m",
             "integration",
-            *integration_files,
+            *_INTEGRATION_FILES,
         ],
         cwd=repo_root,
         env=child_env,
@@ -292,12 +295,15 @@ def test_singlestoredb_integration_selection_contract() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr
-    selected = {
+    return {
         line
         for line in completed.stdout.splitlines()
         if line.startswith("tests/test_integration/") and "::" in line
     }
-    assert selected == {
+
+
+def test_singlestoredb_integration_selection_contract() -> None:
+    assert _selected_integration_node_ids("singlestoredb") == {
         "tests/test_integration/test_live_smoke.py::test_singlestoredb_smoke",
         "tests/test_integration/test_write_ops_live.py::test_rename_table_live_singlestoredb",
         "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_singlestoredb",
@@ -306,50 +312,19 @@ def test_singlestoredb_integration_selection_contract() -> None:
 
 
 def test_mssql_integration_selection_contract() -> None:
-    repo_root = Path(__file__).parents[3]
-    integration_files = [
-        "tests/test_integration/test_live_smoke.py",
-        "tests/test_integration/test_write_ops_live.py",
-        "tests/test_integration/test_index_ops_live.py",
-    ]
-    child_env = os.environ.copy()
-    for key in (
-        "MOUNTAINASH_LIVE_DB_CONFIG",
-        "MOUNTAINASH_LIVE_DB_TARGET",
-        "MOUNTAINASH_LIVE_DB_BACKEND",
-        "MOUNTAINASH_REQUIRE_LIVE_DB",
-    ):
-        child_env.pop(key, None)
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            "--collect-only",
-            "-q",
-            "-k",
-            "mssql",
-            "-m",
-            "integration",
-            *integration_files,
-        ],
-        cwd=repo_root,
-        env=child_env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert completed.returncode == 0, completed.stderr
-    selected = {
-        line
-        for line in completed.stdout.splitlines()
-        if line.startswith("tests/test_integration/") and "::" in line
-    }
-    assert selected == {
+    assert _selected_integration_node_ids("mssql") == {
         "tests/test_integration/test_live_smoke.py::test_mssql_smoke",
         "tests/test_integration/test_write_ops_live.py::test_rename_table_live_mssql",
         "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_mssql",
         "tests/test_integration/test_index_ops_live.py::test_mssql_table_scoped_partial_index_roundtrip",
+    }
+
+
+def test_trino_integration_selection_contract() -> None:
+    assert _selected_integration_node_ids("trino") == {
+        "tests/test_integration/test_live_smoke.py::test_trino_smoke",
+        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_trino",
+        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_trino",
     }
 
 

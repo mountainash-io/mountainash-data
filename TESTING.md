@@ -129,6 +129,22 @@ The target uses `127.0.0.1:21433`, SQL Server authentication from the
 local secret provider, ODBC Driver 18, encryption disabled, and server
 certificate trust enabled for the private forwarded instance.
 
+Trino is also verified only through `mpnas`, with no Compose service or
+live-CI job:
+
+```bash
+hatch run test:live-db test --target mpnas trino
+```
+
+The target uses plain HTTP at `127.0.0.1:28080`, the writable
+`postgres.public` catalog/schema, and coordinator profile `none`; data-source
+credentials stay inside the remote Trino catalog configuration. The committed
+upsert contract requires that catalog to be named `postgres` and sets the
+Trino 470 catalog session property `postgres.non_transactional_merge=true`
+itself. This enables the PostgreSQL connector's MERGE support and can partially
+apply if the operation fails, so the test confines it to a unique table with
+unconditional cleanup.
+
 `status` never resolves or prints a credential. `check` resolves the
 selected backend's credential to perform a real authenticated connection
 check, but never prints it. An unavailable backend is reported with its

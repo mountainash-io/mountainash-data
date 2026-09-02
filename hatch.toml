@@ -167,6 +167,8 @@ dependencies = [
     # mssql uses pyodbc and the host-installed Microsoft ODBC Driver 18; its
     # live contract runs only through the local mpnas forward, not CI.
     "ibis-framework[mssql]>=12.0.0",
+    # trino uses the pure-Python client against the local mpnas forward only.
+    "ibis-framework[trino]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
