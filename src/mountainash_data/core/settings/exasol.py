@@ -25,6 +25,8 @@ EXASOL_SPEC = BackendSpec(
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=8563,
                       driver_key="port"),
+        ParameterSpec(name="SCHEMA", type=str | None, tier="core",
+                      default=None, driver_key="schema"),
         ParameterSpec(name="TIMEZONE", type=str, tier="core",
                       default="UTC", driver_key="timezone"),
     ],

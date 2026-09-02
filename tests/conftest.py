@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 # Import all fixtures from consolidated fixture modules
 from fixtures.live_db_fixtures import (
+    exasol_backend,
     live_backend_selection,
     mssql_backend,
     mysql_backend,

@@ -27,5 +27,9 @@ class TestExasolBackendProfile:
         assert kwargs["port"] == 8563
         assert kwargs["timezone"] == "UTC"
 
+    def test_schema_is_emitted_for_initial_session(self):
+        kwargs = self._minimal(SCHEMA="APP").emit()
+        assert kwargs["schema"] == "APP"
+
     def test_ibis_dialect(self):
         assert self._minimal().backend == "exasol"

@@ -328,6 +328,14 @@ def test_trino_integration_selection_contract() -> None:
     }
 
 
+def test_exasol_integration_selection_contract() -> None:
+    assert _selected_integration_node_ids("exasol") == {
+        "tests/test_integration/test_live_smoke.py::test_exasol_smoke",
+        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_exasol",
+        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_exasol",
+    }
+
+
 def test_cleanup_helper_fails_when_body_succeeds_and_cleanup_fails() -> None:
     from fixtures.database_fixtures import cleanup_test_objects
 

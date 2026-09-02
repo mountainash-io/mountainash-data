@@ -101,7 +101,8 @@ class IbisConnection:
         *,
         owns_connection: bool = True,
     ) -> None:
-        self._ibis_conn = ibis_conn
+        adapter = dialect_spec.ibis_connection_adapter
+        self._ibis_conn = adapter(ibis_conn) if adapter is not None else ibis_conn
         self._dialect_spec = dialect_spec
         self._closed = False
         self._owns_connection = owns_connection
@@ -476,6 +477,7 @@ class IbisBackend:
             ibis_conn = self._connect_via_builder()
         self._conn = IbisConnection(ibis_conn, self._spec)
         return self
+
 
     def _connect_via_builder(self) -> t.Any:
         # preserves the prior empty-list/tuple filtering before connection_builder

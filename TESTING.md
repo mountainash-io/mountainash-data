@@ -145,6 +145,20 @@ itself. This enables the PostgreSQL connector's MERGE support and can partially
 apply if the operation fails, so the test confines it to a unique table with
 unconditional cleanup.
 
+Exasol is verified only through `mpnas`, with no privileged container,
+Compose service, or live-CI job:
+
+```bash
+hatch run test:live-db test --target mpnas exasol
+```
+
+The target uses TLS at `127.0.0.1:28563`, pins the deployment certificate
+fingerprint in the PyExasol DSN, opens the existing `APP` schema, and resolves
+SQL authentication from the local secret provider. Exasol manages indexes
+automatically and its exceptional `ENFORCE/DROP ... INDEX ON` controls are not
+the package's generic user-managed index contract, so `index_caps=None`
+remains intentional.
+
 `status` never resolves or prints a credential. `check` resolves the
 selected backend's credential to perform a real authenticated connection
 check, but never prints it. An unavailable backend is reported with its

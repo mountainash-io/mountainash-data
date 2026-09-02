@@ -11,6 +11,7 @@ import typing as t
 from mountainash_data.backends.ibis._render import (
     compile_index_predicate,
     dialect_of,
+    dialect_name,
     qualified_name,
     quote_identifier,
 )
@@ -61,12 +62,7 @@ def build_create_index_sql(
     name_part = f"{guard}{name_sql}"
     # dialect may be a sqlglot Dialect class (live path) or a plain string (tests/golden).
     # Normalise to the lowercase name so membership checks work in both cases.
-    if isinstance(dialect, type):
-        d = dialect.__name__.lower()
-    elif isinstance(dialect, str):
-        d = dialect.lower()
-    else:
-        d = str(dialect).lower()
+    d = dialect_name(dialect)
     using = f"USING {index_type}" if index_type else None
 
     if using and d in _USING_BEFORE_ON:
@@ -135,12 +131,8 @@ def _generic_index_exists(
 
 def _target_ref(ibis_conn: t.Any, table_name: str, namespace: t.Optional[str]) -> str:
     dialect = dialect_of(ibis_conn)
-    dialect_name = (
-        dialect.__name__.lower()
-        if isinstance(dialect, type)
-        else str(dialect).lower()
-    )
-    if dialect_name == "sqlite":
+    dialect_key = dialect_name(dialect)
+    if dialect_key == "sqlite":
         return quote_identifier(table_name, dialect)
     parts = [namespace, table_name] if namespace else [table_name]
     return qualified_name(parts, dialect)
@@ -148,12 +140,8 @@ def _target_ref(ibis_conn: t.Any, table_name: str, namespace: t.Optional[str]) -
 
 def _index_ref(ibis_conn: t.Any, index_name: str, namespace: t.Optional[str]) -> str:
     dialect = dialect_of(ibis_conn)
-    dialect_name = (
-        dialect.__name__.lower()
-        if isinstance(dialect, type)
-        else str(dialect).lower()
-    )
-    if dialect_name == "sqlite" and namespace:
+    dialect_key = dialect_name(dialect)
+    if dialect_key == "sqlite" and namespace:
         return qualified_name([namespace, index_name], dialect)
     return quote_identifier(index_name, dialect)
 
