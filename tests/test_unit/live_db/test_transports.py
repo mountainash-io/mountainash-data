@@ -112,7 +112,6 @@ def test_ssh_identity_accepts_exact_label_destination_tuple_and_ancestry() -> No
     ]
 
 
-
 def test_ssh_identity_accepts_url_shaped_connection_endpoint() -> None:
     identity = TunnelIdentity(
         launchd_label="com.example.postgres",
