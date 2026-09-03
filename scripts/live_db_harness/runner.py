@@ -455,7 +455,7 @@ class LiveDbRunner:
     ) -> None:
         timeout_seconds = selection.target.test_timeout_seconds if timeout is None else timeout
         (command_runner or self.command_runner).run(
-            [sys.executable, "-m", "pytest", "-k", selection.suite.selector, "-m", "integration"],
+            [sys.executable, "-m", "pytest", "tests/test_live_backends", "-k", selection.suite.selector, "-m", "integration"],
             env=self._pytest_env(selection),
             timeout=timeout_seconds,
             phase=Phase.PYTEST,

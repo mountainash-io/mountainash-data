@@ -26,7 +26,7 @@ SQLite and DuckDB workflows.
 - `tests/test_unit/backends/ibis/test_index_capability.py`
 - `tests/test_unit/backends/ibis/test_backend.py`
 - `tests/test_integration/test_end_to_end_workflows.py`
-- `tests/test_integration/test_index_ops_live.py`
+- `tests/test_live_backends/test_index_ops_live.py`
 
 These tests cover index creation, unique indexes, composite indexes, partial
 indexes, idempotent DDL, index deletion, existence checks, and index listing.

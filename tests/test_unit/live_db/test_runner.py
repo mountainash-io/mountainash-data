@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
+import sys
 import threading
 import pytest
 
@@ -159,6 +160,16 @@ def test_credential_free_pytest_context(monkeypatch: pytest.MonkeyPatch, tmp_pat
     runner.command_runner = FakeRunner()
     selection = SimpleNamespace(target_name="docker", backend_name="postgres", target=SimpleNamespace(test_timeout_seconds=12), suite=SimpleNamespace(selector="postgres"))
     runner._run_pytest(selection)
+    assert seen["argv"] == (
+        sys.executable,
+        "-m",
+        "pytest",
+        "tests/test_live_backends",
+        "-k",
+        "postgres",
+        "-m",
+        "integration",
+    )
     env = seen["env"]
     assert "IBIS_TEST_POSTGRES_PASSWORD" not in env
     assert env["MOUNTAINASH_LIVE_DB_TARGET"] == "docker"

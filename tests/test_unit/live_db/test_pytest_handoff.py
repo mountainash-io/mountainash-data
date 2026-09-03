@@ -257,10 +257,10 @@ def test_child_selection():
     assert completed.returncode == 0, "pytest subprocess failed"
 
 
-_INTEGRATION_FILES = [
-    "tests/test_integration/test_live_smoke.py",
-    "tests/test_integration/test_write_ops_live.py",
-    "tests/test_integration/test_index_ops_live.py",
+_LIVE_BACKEND_FILES = [
+    "tests/test_live_backends/test_live_smoke.py",
+    "tests/test_live_backends/test_write_ops_live.py",
+    "tests/test_live_backends/test_index_ops_live.py",
 ]
 _LIVE_ENVIRONMENT_KEYS = (
     "MOUNTAINASH_LIVE_DB_CONFIG",
@@ -286,7 +286,7 @@ def _selected_integration_node_ids(selector: str) -> set[str]:
             selector,
             "-m",
             "integration",
-            *_INTEGRATION_FILES,
+            *_LIVE_BACKEND_FILES,
         ],
         cwd=repo_root,
         env=child_env,
@@ -298,48 +298,48 @@ def _selected_integration_node_ids(selector: str) -> set[str]:
     return {
         line
         for line in completed.stdout.splitlines()
-        if line.startswith("tests/test_integration/") and "::" in line
+        if line.startswith("tests/test_live_backends/") and "::" in line
     }
 
 
 def test_singlestoredb_integration_selection_contract() -> None:
     assert _selected_integration_node_ids("singlestoredb") == {
-        "tests/test_integration/test_live_smoke.py::test_singlestoredb_smoke",
-        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_singlestoredb",
-        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_singlestoredb",
-        "tests/test_integration/test_index_ops_live.py::test_singlestoredb_table_scoped_index_roundtrip",
+        "tests/test_live_backends/test_live_smoke.py::test_singlestoredb_smoke",
+        "tests/test_live_backends/test_write_ops_live.py::test_rename_table_live_singlestoredb",
+        "tests/test_live_backends/test_write_ops_live.py::test_upsert_via_dispatch_singlestoredb",
+        "tests/test_live_backends/test_index_ops_live.py::test_singlestoredb_table_scoped_index_roundtrip",
     }
 
 
 def test_mssql_integration_selection_contract() -> None:
     assert _selected_integration_node_ids("mssql") == {
-        "tests/test_integration/test_live_smoke.py::test_mssql_smoke",
-        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_mssql",
-        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_mssql",
-        "tests/test_integration/test_index_ops_live.py::test_mssql_table_scoped_partial_index_roundtrip",
+        "tests/test_live_backends/test_live_smoke.py::test_mssql_smoke",
+        "tests/test_live_backends/test_write_ops_live.py::test_rename_table_live_mssql",
+        "tests/test_live_backends/test_write_ops_live.py::test_upsert_via_dispatch_mssql",
+        "tests/test_live_backends/test_index_ops_live.py::test_mssql_table_scoped_partial_index_roundtrip",
     }
 
 
 def test_trino_integration_selection_contract() -> None:
     assert _selected_integration_node_ids("trino") == {
-        "tests/test_integration/test_live_smoke.py::test_trino_smoke",
-        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_trino",
-        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_trino",
+        "tests/test_live_backends/test_live_smoke.py::test_trino_smoke",
+        "tests/test_live_backends/test_write_ops_live.py::test_rename_table_live_trino",
+        "tests/test_live_backends/test_write_ops_live.py::test_upsert_via_dispatch_trino",
     }
 
 
 def test_exasol_integration_selection_contract() -> None:
     assert _selected_integration_node_ids("exasol") == {
-        "tests/test_integration/test_live_smoke.py::test_exasol_smoke",
-        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_exasol",
-        "tests/test_integration/test_write_ops_live.py::test_upsert_via_dispatch_exasol",
+        "tests/test_live_backends/test_live_smoke.py::test_exasol_smoke",
+        "tests/test_live_backends/test_write_ops_live.py::test_rename_table_live_exasol",
+        "tests/test_live_backends/test_write_ops_live.py::test_upsert_via_dispatch_exasol",
     }
 
 
 def test_pyspark_integration_selection_contract() -> None:
     assert _selected_integration_node_ids("pyspark") == {
-        "tests/test_integration/test_live_smoke.py::test_pyspark_smoke",
-        "tests/test_integration/test_write_ops_live.py::test_rename_table_live_pyspark",
+        "tests/test_live_backends/test_live_smoke.py::test_pyspark_smoke",
+        "tests/test_live_backends/test_write_ops_live.py::test_rename_table_live_pyspark",
     }
 
 

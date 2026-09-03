@@ -9,9 +9,9 @@ from scripts.live_db_harness.models import HarnessSettings
 
 
 MYSQL_LIVE_NODE_IDS = {
-    "tests/test_integration/test_index_ops_live.py::TestMySQLLive::test_table_scoped_drop_requires_table",
-    "tests/test_integration/test_index_ops_live.py::TestMySQLLive::test_emulated_if_not_exists_is_idempotent",
-    "tests/test_integration/test_index_ops_live.py::TestMySQLLive::test_emulated_if_exists_drop_absent_is_noop",
+    "tests/test_live_backends/test_index_ops_live.py::TestMySQLLive::test_table_scoped_drop_requires_table",
+    "tests/test_live_backends/test_index_ops_live.py::TestMySQLLive::test_emulated_if_not_exists_is_idempotent",
+    "tests/test_live_backends/test_index_ops_live.py::TestMySQLLive::test_emulated_if_exists_drop_absent_is_noop",
 }
 
 
@@ -26,7 +26,7 @@ def test_mysql_selector_collects_all_test_mysql_live_node_ids(
             "-q",
             "-k",
             selector,
-            "tests/test_integration/test_index_ops_live.py",
+            "tests/test_live_backends/test_index_ops_live.py",
         ]
     )
 
@@ -35,6 +35,6 @@ def test_mysql_selector_collects_all_test_mysql_live_node_ids(
     collected_node_ids = {
         line.strip()
         for line in output.splitlines()
-        if line.strip().startswith("tests/test_integration/test_index_ops_live.py::")
+        if line.strip().startswith("tests/test_live_backends/test_index_ops_live.py::")
     }
     assert collected_node_ids == MYSQL_LIVE_NODE_IDS
