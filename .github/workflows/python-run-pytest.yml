@@ -184,7 +184,7 @@ jobs:
           org-name: mountainash-io
 
       - name: Install Hatch
-        run: pip install hatch
+        run: "pip install hatch==1.16.5 --only-binary :all:"
 
       - name: Create optional-backend environment
         run: hatch env create test_optional.${{ matrix.backend }}
@@ -206,7 +206,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
         with:
           files: coverage-optional-${{ matrix.backend }}.xml
           flags: optional-${{ matrix.backend }}

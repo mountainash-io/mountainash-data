@@ -307,7 +307,7 @@ def test_pull_request_workflow_has_isolated_optional_backend_matrix() -> None:
     upload = next(
         step
         for step in job["steps"]
-        if step.get("uses") == "codecov/codecov-action@v5"
+        if str(step.get("uses", "")).startswith("codecov/codecov-action@")
     )
     assert upload["with"]["files"] == (
         "coverage-optional-${{ matrix.backend }}.xml"
