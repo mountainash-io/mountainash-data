@@ -44,6 +44,8 @@ local_host = "127.0.0.1"
 local_port = 5432
 remote_host = "postgres.internal"
 remote_port = 5432
+client_host = "127.0.0.1/fingerprint"
+client_port = 5432
 process_ancestry = ["launchd"]
 '''
 
@@ -57,6 +59,9 @@ def test_tracked_and_user_files_add_targets(tmp_path: Path):
     settings = HarnessSettings(config_files=[tracked, user])
 
     assert set(settings.targets) == {"docker", "mpnas"}
+    tunnel = settings.targets["mpnas"].backends["postgres"].tunnel
+    assert tunnel.client_host == "127.0.0.1/fingerprint"
+    assert tunnel.client_port == 5432
 
 
 def test_user_scalar_and_list_values_replace_tracked_values(tmp_path: Path):

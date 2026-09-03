@@ -256,16 +256,18 @@ def check_transport(
         target=target_name,
         backend=backend_name,
     )
-    if (connection_host, connection_port) != (identity.local_host, identity.local_port):
+    client_host = identity.client_host if identity.client_host is not None else identity.local_host
+    client_port = identity.client_port if identity.client_port is not None else identity.local_port
+    if (connection_host, connection_port) != (client_host, client_port):
         raise _error(
             target_name,
             backend_name,
             (
                 f"The selected connection endpoint {connection_host}:{connection_port} "
-                f"does not match the SSH tunnel local endpoint "
-                f"{identity.local_host}:{identity.local_port}."
+                f"does not match the SSH tunnel client endpoint "
+                f"{client_host}:{client_port}."
             ),
-            "Configure connection HOST and PORT to match the tunnel local endpoint.",
+            "Configure connection HOST and PORT to match the SSH tunnel client endpoint.",
         )
     _reject_external_compose_collision(
         identity.local_port,

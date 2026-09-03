@@ -351,6 +351,56 @@ def test_ssh_identity_rejects_connection_endpoint_mismatch(connection: dict[str,
         _check_ssh(target, mismatched_backend)
 
 
+def test_ssh_identity_accepts_decorated_client_host() -> None:
+    fingerprinted_host = "127.0.0.1/75A0CEEAC2EF6AA0FDB1BF590F58343B5E6AE05420E180C742FE6630EECF96B1"
+    identity = TunnelIdentity(
+        launchd_label="com.example.postgres",
+        ssh_destination="mpnas",
+        local_host="127.0.0.1",
+        local_port=25432,
+        remote_host="127.0.0.1",
+        remote_port=5432,
+        client_host=fingerprinted_host,
+    )
+    target, backend = _ssh_target(identity=identity)
+    backend = backend.model_copy(update={"connection": {"HOST": fingerprinted_host, "PORT": 25432}})
+
+    _check_ssh(target, backend)
+
+
+def test_ssh_identity_defaults_client_endpoint_to_local_endpoint() -> None:
+    target, backend = _ssh_target()
+
+    assert backend.tunnel.client_host is None  # type: ignore[union-attr]
+    assert backend.tunnel.client_port is None  # type: ignore[union-attr]
+    _check_ssh(target, backend)
+
+
+def test_ssh_identity_rejects_client_endpoint_mismatch() -> None:
+    target, backend = _ssh_target()
+    mismatched_backend = backend.model_copy(
+        update={"connection": {"HOST": "127.0.0.1/fingerprint", "PORT": 25432}}
+    )
+
+    with pytest.raises(HarnessError, match="client endpoint"):
+        _check_ssh(target, mismatched_backend)
+
+
+def test_ssh_identity_accepts_independent_client_port_override() -> None:
+    identity = TunnelIdentity(
+        launchd_label="com.example.postgres",
+        ssh_destination="mpnas",
+        local_host="127.0.0.1",
+        local_port=25432,
+        remote_host="127.0.0.1",
+        remote_port=5432,
+        client_port=5432,
+    )
+    target, backend = _ssh_target(identity=identity)
+    backend = backend.model_copy(update={"connection": {"HOST": "127.0.0.1", "PORT": 5432}})
+
+    _check_ssh(target, backend)
+
 def test_direct_target_uses_socket_reachability_not_process_identity() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.bind(("127.0.0.1", 0))

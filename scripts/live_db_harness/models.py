@@ -67,6 +67,8 @@ class TunnelIdentity(BaseModel):
     local_port: int
     remote_host: str
     remote_port: int
+    client_host: str | None = None
+    client_port: int | None = None
     process_ancestry: tuple[str, ...] = ("launchd", "autossh", "ssh")
 
 
