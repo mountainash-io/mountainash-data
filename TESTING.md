@@ -4,11 +4,22 @@ This document outlines the testing procedures for the Mountain Ash Data project,
 
 ## Table of Contents
 
-1. [Local Testing](#local-testing)
-2. [Test Commands Reference](#test-commands-reference)
-3. [Coverage Reports](#coverage-reports)
-4. [GitHub Actions Testing](#github-actions-testing)
-5. [Testing Dependencies](#testing-dependencies)
+1. [Test Layout](#test-layout)
+2. [Local Testing](#local-testing)
+3. [Test Commands Reference](#test-commands-reference)
+4. [Coverage Reports](#coverage-reports)
+5. [GitHub Actions Testing](#github-actions-testing)
+6. [Testing Dependencies](#testing-dependencies)
+
+## Test Layout
+
+| Tier | Path | Dependencies | Service | Default pytest |
+|---|---|---|---|---|
+| Core | `tests/test_unit/`, `tests/test_integration/` | Core package | No | Yes |
+| Optional backend | `tests/test_optional_backends/<backend>/` | One backend extra | No | No |
+| Live backend | `tests/test_live_backends/` | Selected backend extra | Yes | No |
+
+Capability defines the tier. The `integration` marker does not define dependency or service requirements; it only tags an existing test as part of the integration suite.
 
 ## Local Testing
 
@@ -29,11 +40,17 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
 
 ### Core Testing Commands (Use these daily)
 
-- **Full test suite with coverage:**
+- **Core tests only:**
+  ```bash
+  hatch run test:test-core
+  ```
+  Runs only `tests/test_unit/` and `tests/test_integration/` — no optional-backend contracts.
+
+- **Full local suite with coverage:**
   ```bash
   hatch run test:test
   ```
-  Runs pytest with coverage, generates JSON/XML/HTML reports, and shows missing coverage.
+  Runs pytest with coverage across core plus every DB-free optional-backend contract, and generates JSON/XML/HTML reports.
 
 - **GitHub Actions test with coverage:**
   ```bash
@@ -45,7 +62,13 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```bash
   hatch run test:test-quick
   ```
-  Fast iteration testing without coverage collection.
+  Core plus every DB-free optional-backend contract, without coverage collection.
+
+- **One optional-backend contract, targeted:**
+  ```bash
+  hatch run test:test-target-quick tests/test_optional_backends/oracle
+  ```
+  Runs one optional-backend directory in the complete local environment (which already installs every backend extra).
 
 ### Targeted Testing (For debugging specific issues)
 
@@ -98,6 +121,11 @@ external tunnel-backed target) rather than an in-memory fixture. `python -m
 scripts.live_db` (the `live-db` Hatch script) is the explicit target runner.
 Every command requires `--target` — the runner never infers a target from
 ports, environment variables, or running processes.
+
+Running `pytest` directly against `tests/test_live_backends/` is not a
+supported development command. The runner is the only entry point: it starts
+the selected service, sets the live-db environment context, and passes the
+`tests/test_live_backends` path to pytest explicitly.
 
 Docker target (starts and stops one Compose-managed service per backend):
 
@@ -224,9 +252,11 @@ Our GitHub Actions workflow automatically runs tests on pull requests and pushes
 
 Key points:
 - Tests are run on Ubuntu 24.04 with Python 3.12
-- The workflow is triggered on pull requests that modify `src/mountainash_data/**` files
-- Uses the `test_github` environment defined in `hatch.toml`
-- Automatically uploads coverage to Codecov
+- The workflow is triggered on pull requests that modify `src/mountainash_data/**`, `scripts/**`, `tests/**`, `hatch.toml`, `pytest.ini`, `pyproject.toml`, `.github/actions/**`, `.github/config/mountainash_dependencies.yml`, or `.github/workflows/**`
+- The core `test` job uses the `test_github` environment, which declares no optional-backend dependency
+- The `optional-backend` job runs one isolated `test_optional.<backend>` environment per backend (`oracle`, `trino`, `bigquery`), with no service container
+- `test_github_live` runs one service-backed selection through `scripts.live_db`, outside this pull-request workflow
+- The core job uploads coverage to Codecov with no flag; each optional-backend job uploads under the `optional-<backend>` flag
 
 To manually trigger the tests in GitHub Actions:
 1. Go to the "Actions" tab in the GitHub repository

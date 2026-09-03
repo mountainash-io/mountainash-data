@@ -128,6 +128,41 @@ live-db = "python -m scripts.live_db {args}"
 
 
 #================
+# Env: test_optional
+#================
+[envs.test_optional]
+python = "3.12"
+installer = "uv"
+matrix-name-format = "{value}"
+dependencies = [
+    "pytest==8.3.5",
+    "pytest-check==2.5.3",
+    "pytest-cov==6.1.1",
+
+    "mountainash_settings @     {root:uri}/temp/mountainash-settings",
+    "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_transport @  {root:uri}/temp/mountainash-transport",
+    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
+    "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
+    "mountainash_resource_provider @ {root:uri}/temp/mountainash-resource-provider",
+]
+
+[[envs.test_optional.matrix]]
+backend = ["oracle", "trino", "bigquery"]
+
+[envs.test_optional.overrides]
+matrix.backend.features = [
+    { value = "oracle", if = ["oracle"] },
+    { value = "trino", if = ["trino"] },
+    { value = "bigquery", if = ["bigquery"] },
+]
+
+[envs.test_optional.scripts]
+test = "pytest tests/test_optional_backends/{matrix:backend} {args}"
+test-cov = "pytest --cov --junitxml=junit-optional-{matrix:backend}.xml --cov-report=xml:coverage-optional-{matrix:backend}.xml tests/test_optional_backends/{matrix:backend} {args}"
+
+
+#================
 # Env: test
 #================
 [[envs.test.matrix]]
@@ -174,6 +209,8 @@ dependencies = [
     # pyspark matches the remote Spark 4.0.2 cluster and runs through mpnas only.
     "ibis-framework[pyspark]>=12.0.0",
     "pyspark[connect]==4.0.2",
+    # bigquery uses the google-auth OAuth2 stack for the local optional-backend contract.
+    "ibis-framework[bigquery]>=12.0.0",
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
@@ -190,7 +227,7 @@ dependencies = [
 # ===========================================
 
 test = [
-    "pytest --cov --junitxml=junit.xml",
+    "pytest --cov --junitxml=junit.xml tests/test_unit tests/test_integration tests/test_optional_backends",
     "coverage json --pretty-print",
     "coverage xml",
     "coverage html",
@@ -198,7 +235,10 @@ test = [
 ]
 
 # Quick testing for iteration (no coverage overhead)
-test-quick = "pytest"
+test-quick = "pytest tests/test_unit tests/test_integration tests/test_optional_backends"
+
+# Core tests only, with explicit target arguments
+test-core = "pytest tests/test_unit tests/test_integration {args}"
 
 # ===========================================
 # TARGETED TESTING - For debugging specific issues
@@ -254,7 +294,7 @@ live-db = "python -m scripts.live_db {args}"
 
 # Full CI suite with all reports
 test-ci = [
-    "coverage run -m pytest --json-report --json-report-file=pytest_report.json --junitxml=junit.xml",
+    "coverage run -m pytest tests/test_unit tests/test_integration tests/test_optional_backends --json-report --json-report-file=pytest_report.json --junitxml=junit.xml",
     "coverage json --pretty-print",
     "coverage xml",
     "coverage html",

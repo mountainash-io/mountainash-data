@@ -4,6 +4,14 @@ on:
   pull_request:
     paths:
       - "src/mountainash_data/**"
+      - "scripts/**"
+      - "tests/**"
+      - "hatch.toml"
+      - "pytest.ini"
+      - "pyproject.toml"
+      - ".github/actions/**"
+      - ".github/config/mountainash_dependencies.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
     inputs:
       fallback_branch:
@@ -81,9 +89,21 @@ jobs:
       - name: Create virtual environment
         run: hatch env create test_github
 
-      - name: Verify live-db drivers are absent
+      - name: Verify optional backend modules are absent
         run: |
-          hatch run test_github:python -c "import importlib.util as u; names = ('psycopg', 'MySQLdb', 'oracledb'); present = [name for name in names if u.find_spec(name) is not None]; assert not present, 'Unexpected live-db drivers: %s' % present"
+          hatch run test_github:python - <<'PY'
+          import importlib.util
+
+          names = ("psycopg", "MySQLdb", "oracledb", "trino", "google.oauth2")
+          present = []
+          for name in names:
+              try:
+                  if importlib.util.find_spec(name) is not None:
+                      present.append(name)
+              except ModuleNotFoundError:
+                  pass
+          assert not present, f"Unexpected optional backend modules: {present}"
+          PY
 
       - name: Run Coverage Tests
         run: hatch run test_github:test-cov
@@ -104,3 +124,90 @@ jobs:
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
+
+  optional-backend:
+    name: Optional backend (${{ matrix.backend }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - backend: oracle
+            module: oracledb
+          - backend: trino
+            module: trino
+          - backend: bigquery
+            module: google.oauth2
+
+    steps:
+      - name: Set fallback branch
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "FALLBACK_BRANCH=${{ github.event.inputs.fallback_branch }}" >> $GITHUB_ENV
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "FALLBACK_BRANCH=${{ github.base_ref }}" >> $GITHUB_ENV
+          else
+            echo "FALLBACK_BRANCH=develop" >> $GITHUB_ENV
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.head_ref }}
+          default-branch: ${{ env.FALLBACK_BRANCH }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: "pip install hatch==1.16.5 --only-binary :all:"
+
+      - name: Create optional-backend environment
+        run: hatch env create test_optional.${{ matrix.backend }}
+
+      - name: Verify optional dependency
+        env:
+          OPTIONAL_MODULE: ${{ matrix.module }}
+        run: hatch run test_optional.${{ matrix.backend }}:python -c "import importlib; import os; importlib.import_module(os.environ['OPTIONAL_MODULE'])"
+
+      - name: Run optional-backend contracts
+        run: hatch run test_optional.${{ matrix.backend }}:test-cov
+
+      - name: Upload pytest JUnit artifact
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-optional-${{ matrix.backend }}
+          path: junit-optional-${{ matrix.backend }}.xml
+          if-no-files-found: error
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+        with:
+          files: coverage-optional-${{ matrix.backend }}.xml
+          flags: optional-${{ matrix.backend }}
+          verbose: true

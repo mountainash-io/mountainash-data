@@ -1,8 +1,7 @@
-import pytest
 from mountainash_auth_client import (
     PasswordAuthProfile, TokenAuthProfile, OAuth2AuthProfile,
     CertificateAuthProfile, WindowsAuthProfile, AzureADAuthProfile,
-    IAMAuthProfile, ServiceAccountAuthProfile,
+    IAMAuthProfile,
 )
 from mountainash_data.core.settings.adapters import (
     sql as _sql, snowflake as _snow, mssql as _mssql,
@@ -60,29 +59,3 @@ def test_redshift_iam():
 
 def test_databricks_token():
     assert _dbx.token(TokenAuthProfile(TOKEN="tok"), {}) == {"access_token": "tok"}
-
-
-def test_trino_password_builds_basic_auth():
-    pytest.importorskip("trino")
-    from trino.auth import BasicAuthentication
-    from mountainash_data.core.settings.adapters import trino as _trino
-    out = _trino.password(PasswordAuthProfile(USERNAME="u", PASSWORD="p"), {"host": "h"})
-    assert out["host"] == "h" and out["user"] == "u" and isinstance(out["auth"], BasicAuthentication)
-
-
-def test_bigquery_service_account(monkeypatch):
-    pytest.importorskip("google.oauth2")
-    from google.oauth2 import service_account as _sa
-    from mountainash_data.core.settings.adapters import bigquery as _bq
-    sentinel = object()
-    monkeypatch.setattr(_sa.Credentials, "from_service_account_info", classmethod(lambda cls, info: sentinel))
-    assert _bq.service_account(ServiceAccountAuthProfile(INFO={"k": "v"}), {}) == {"credentials": sentinel}
-
-
-def test_bigquery_service_account_file(monkeypatch):
-    pytest.importorskip("google.oauth2")
-    from google.oauth2 import service_account as _sa
-    from mountainash_data.core.settings.adapters import bigquery as _bq
-    sentinel = object()
-    monkeypatch.setattr(_sa.Credentials, "from_service_account_file", classmethod(lambda cls, path: sentinel))
-    assert _bq.service_account(ServiceAccountAuthProfile(FILE="/path/sa.json"), {}) == {"credentials": sentinel}
