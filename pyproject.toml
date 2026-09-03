@@ -23,6 +23,7 @@ dependencies = [
     "sqlalchemy",
 
     "duckdb>=0.10.3, <1.3.0",
+    "sqlglot<30.18.0",  # 30.18.0 drops the DROP-VIEW identifier for DuckDB memtable materialization; verified regression, no upstream fix yet
     "pandas>=2.2.0",
     "polars>=1.16.0",
     "psutil>=7.0.0",
