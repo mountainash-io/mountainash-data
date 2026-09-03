@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import configparser
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -13,6 +16,14 @@ LIVE_WORKFLOW_PATH = ROOT / ".github/workflows/python-verify-live-db.yml"
 PULL_REQUEST_WORKFLOW_PATH = ROOT / ".github/workflows/python-run-pytest.yml"
 LIVE_DB_CONFIG_PATH = ROOT / "tests/config/live-db.toml"
 SINGLESTORE_INIT_PATH = ROOT / "tests/config/singlestore-init.sql"
+PYTEST_PATH = ROOT / "pytest.ini"
+PYPROJECT_PATH = ROOT / "pyproject.toml"
+OPTIONAL_TEST_ROOT = ROOT / "tests/test_optional_backends"
+OPTIONAL_BACKENDS = {
+    "oracle": {"feature": "oracle", "module": "oracledb"},
+    "trino": {"feature": "trino", "module": "trino"},
+    "bigquery": {"feature": "bigquery", "module": "google.oauth2"},
+}
 
 
 def _hatch_config() -> dict:
@@ -167,3 +178,91 @@ def test_pull_request_workflow_stays_container_and_driver_free() -> None:
         for dependency in test_github["dependencies"]
     )
     assert "live-db" not in test_github["scripts"]
+
+
+def test_pytest_default_paths_are_core_only() -> None:
+    parser = configparser.ConfigParser()
+    parser.read(PYTEST_PATH)
+
+    assert parser["pytest"]["testpaths"].split() == [
+        "tests/test_unit",
+        "tests/test_integration",
+    ]
+
+
+def test_default_pytest_collection_is_core_only() -> None:
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    node_ids = [
+        line
+        for line in completed.stdout.splitlines()
+        if "::" in line
+    ]
+
+    assert completed.returncode == 0, completed.stderr
+    assert node_ids
+    assert all(
+        node_id.startswith(("tests/test_unit/", "tests/test_integration/"))
+        for node_id in node_ids
+    )
+
+
+def test_optional_backend_matrix_matches_test_directories() -> None:
+    full_config = _hatch_config()
+    config = full_config["envs"]["test_optional"]
+    directories = {
+        path.name
+        for path in OPTIONAL_TEST_ROOT.iterdir()
+        if path.is_dir() and not path.name.startswith("__")
+    }
+
+    assert directories == set(OPTIONAL_BACKENDS)
+    assert config["python"] == "3.12"
+    assert config["matrix-name-format"] == "{value}"
+    assert config["matrix"] == [{"backend": list(OPTIONAL_BACKENDS)}]
+
+    rules = config["overrides"]["matrix"]["backend"]["features"]
+    assert rules == [
+        {"value": data["feature"], "if": [backend]}
+        for backend, data in OPTIONAL_BACKENDS.items()
+    ]
+
+    scripts = config["scripts"]
+    assert scripts["test"] == (
+        "pytest tests/test_optional_backends/{matrix:backend} {args}"
+    )
+    assert "coverage-optional-{matrix:backend}.xml" in scripts["test-cov"]
+
+    assert config["dependencies"] == full_config["envs"]["test_github"]["dependencies"]
+    assert "live-db" not in config["scripts"]
+
+    with PYPROJECT_PATH.open("rb") as stream:
+        project_features = tomllib.load(stream)["project"]["optional-dependencies"]
+    assert {
+        data["feature"]
+        for data in OPTIONAL_BACKENDS.values()
+    } <= set(project_features)
+
+
+def test_local_non_live_commands_select_all_non_live_paths() -> None:
+    test_environment = _hatch_config()["envs"]["test"]
+    expected_paths = (
+        "tests/test_unit tests/test_integration tests/test_optional_backends"
+    )
+
+    assert expected_paths in test_environment["scripts"]["test"][0]
+    assert test_environment["scripts"]["test-quick"] == f"pytest {expected_paths}"
+    assert test_environment["scripts"]["test-core"] == (
+        "pytest tests/test_unit tests/test_integration {args}"
+    )
+
+    with PYPROJECT_PATH.open("rb") as stream:
+        project_features = tomllib.load(stream)["project"]["optional-dependencies"]
+    local_dependencies = set(test_environment["dependencies"])
+    for data in OPTIONAL_BACKENDS.values():
+        assert set(project_features[data["feature"]]) <= local_dependencies
