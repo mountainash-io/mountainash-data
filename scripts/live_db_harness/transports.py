@@ -256,16 +256,18 @@ def check_transport(
         target=target_name,
         backend=backend_name,
     )
-    if (connection_host, connection_port) != (identity.local_host, identity.local_port):
+    client_host = identity.client_host if identity.client_host is not None else identity.local_host
+    client_port = identity.client_port if identity.client_port is not None else identity.local_port
+    if (connection_host, connection_port) != (client_host, client_port):
         raise _error(
             target_name,
             backend_name,
             (
                 f"The selected connection endpoint {connection_host}:{connection_port} "
-                f"does not match the SSH tunnel local endpoint "
-                f"{identity.local_host}:{identity.local_port}."
+                f"does not match the SSH tunnel client endpoint "
+                f"{client_host}:{client_port}."
             ),
-            "Configure connection HOST and PORT to match the tunnel local endpoint.",
+            "Configure connection HOST and PORT to match the SSH tunnel client endpoint.",
         )
     _reject_external_compose_collision(
         identity.local_port,
@@ -488,14 +490,25 @@ def _check_ssh_identity(
 
     ancestry = tuple(identity.process_ancestry)
     ancestry_text = " -> ".join(ancestry)
-    if ancestry != ("launchd", "autossh", "ssh"):
+    supported_ancestries = (
+        ("launchd", "ssh"),
+        ("launchd", "autossh", "ssh"),
+    )
+    if ancestry not in supported_ancestries:
+        supported_text = ", ".join(" -> ".join(chain) for chain in supported_ancestries)
         raise _error(
             target,
             backend,
-            "The SSH process ancestry must be exactly launchd -> autossh -> ssh.",
-            "Configure the required launchd-managed autossh tunnel ancestry.",
+            (
+                f"Unsupported SSH process ancestry {ancestry_text}; "
+                f"supported chains are {supported_text}."
+            ),
+            "Configure one of the supported launchd-managed SSH process chains.",
         )
     expected_forward = f"{identity.local_port}:{identity.remote_host}:{identity.remote_port}"
+    expected_bound_forward = (
+        f"{identity.local_host}:{identity.local_port}:{identity.remote_host}:{identity.remote_port}"
+    )
     details_by_name: dict[str, tuple[int, ProcessDetails]] = {}
     pid = listener_pid
     for expected_name in reversed(ancestry):
@@ -540,7 +553,10 @@ def _check_ssh_identity(
 
     ssh_pid, ssh = details_by_name[ancestry[-1]]
     del ssh_pid
-    if not _has_forward(ssh.cmdline, expected_forward) or identity.ssh_destination not in ssh.cmdline:
+    if not (
+        _has_forward(ssh.cmdline, expected_forward)
+        or _has_forward(ssh.cmdline, expected_bound_forward)
+    ) or identity.ssh_destination not in ssh.cmdline:
         raise _error(
             target,
             backend,
@@ -548,7 +564,7 @@ def _check_ssh_identity(
             "Start the tunnel with the configured destination and -L forwarding tuple.",
         )
 
-    autossh_pid = details_by_name["autossh"][0]
+    launchd_child_pid = details_by_name[ancestry[1]][0]
     launchd_result = command_runner.run(
         ["launchctl", "print", f"gui/{os.getuid()}/{identity.launchd_label}"],
         phase=Phase.TRANSPORT,
@@ -559,7 +575,7 @@ def _check_ssh_identity(
     if not isinstance(output, str):
         output = ""
     match = re.search(r"\bpid\s*=\s*(\d+)", output)
-    if match is None or int(match.group(1)) != autossh_pid:
+    if match is None or int(match.group(1)) != launchd_child_pid:
         raise _error(
             target,
             backend,

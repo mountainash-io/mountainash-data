@@ -75,6 +75,127 @@ def _tree(*, destination: str = "mpnas", forwarding: str = "25432:127.0.0.1:5432
             200: ProcessDetails(("/usr/local/bin/autossh", "-M", "0"), 1),
         }
     )
+def _direct_tree(
+    *,
+    executable: str = "/usr/bin/ssh",
+    parent_pid: int | None = 1,
+    destination: str = "mpnas",
+    forwarding: str = "25432:127.0.0.1:5432",
+) -> FakeProcess:
+    return FakeProcess(
+        {
+            300: ProcessDetails((executable, "-L", forwarding, destination), parent_pid),
+        }
+    )
+
+
+def _direct_ssh_target() -> tuple[TargetDefinition, TargetBackendDefinition]:
+    return _ssh_target(
+        identity=TunnelIdentity(
+            launchd_label="com.example.postgres",
+            ssh_destination="mpnas",
+            local_host="127.0.0.1",
+            local_port=25432,
+            remote_host="127.0.0.1",
+            remote_port=5432,
+            process_ancestry=("launchd", "ssh"),
+        )
+    )
+
+
+def _check_direct_ssh(
+    target: TargetDefinition,
+    backend: TargetBackendDefinition,
+    *,
+    process: FakeProcess | None = None,
+    runner: FakeRunner | None = None,
+) -> FakeRunner:
+    runner = runner or FakeRunner("pid = 300\n")
+    check_transport(
+        "mpnas",
+        target,
+        "postgres",
+        backend,
+        listener_inspector=FakeListener({backend.tunnel.local_port: 300}),  # type: ignore[union-attr]
+        process_inspector=process or _direct_tree(),
+        command_runner=runner,
+    )
+    return runner
+
+
+def test_direct_ssh_identity_accepts_launchd_to_ssh_chain() -> None:
+    target, backend = _direct_ssh_target()
+    process = _direct_tree()
+
+    runner = _check_direct_ssh(target, backend, process=process)
+
+    assert process.inspected_pids == [300]
+    assert runner.commands == [
+        ("launchctl", "print", f"gui/{os.getuid()}/com.example.postgres")
+    ]
+
+
+def test_direct_ssh_identity_rejects_wrong_parent() -> None:
+    target, backend = _direct_ssh_target()
+
+    with pytest.raises(HarnessError, match="ancestry"):
+        _check_direct_ssh(target, backend, process=_direct_tree(parent_pid=42))
+
+
+def test_direct_ssh_identity_rejects_wrong_executable() -> None:
+    target, backend = _direct_ssh_target()
+
+    with pytest.raises(HarnessError, match="ancestry"):
+        _check_direct_ssh(target, backend, process=_direct_tree(executable="/usr/bin/autossh"))
+
+
+def test_direct_ssh_identity_rejects_wrong_launchd_pid() -> None:
+    target, backend = _direct_ssh_target()
+
+    with pytest.raises(HarnessError, match="launchd job PID"):
+        _check_direct_ssh(target, backend, runner=FakeRunner("pid = 999\n"))
+
+
+def test_ssh_identity_rejects_unsupported_chain() -> None:
+    target, backend = _ssh_target(
+        identity=TunnelIdentity(
+            launchd_label="com.example.postgres",
+            ssh_destination="mpnas",
+            local_host="127.0.0.1",
+            local_port=25432,
+            remote_host="127.0.0.1",
+            remote_port=5432,
+            process_ancestry=("launchd", "wrapper", "ssh"),
+        )
+    )
+
+    with pytest.raises(HarnessError, match=r"launchd -> wrapper -> ssh"):
+        _check_ssh(target, backend)
+
+
+def test_direct_ssh_identity_rejects_wrong_destination() -> None:
+    target, backend = _direct_ssh_target()
+
+    with pytest.raises(HarnessError, match="destination"):
+        _check_direct_ssh(target, backend, process=_direct_tree(destination="other-host"))
+
+
+def test_direct_ssh_identity_rejects_wrong_forwarding_tuple() -> None:
+    target, backend = _direct_ssh_target()
+
+    with pytest.raises(HarnessError, match="forwarding"):
+        _check_direct_ssh(
+            target,
+            backend,
+            process=_direct_tree(forwarding="25432:127.0.0.1:3306"),
+        )
+def test_ssh_identity_accepts_loopback_bound_forwarding_tuple() -> None:
+    target, backend = _direct_ssh_target()
+    process = _direct_tree(forwarding="127.0.0.1:25432:127.0.0.1:5432")
+
+    _check_direct_ssh(target, backend, process=process)
+
+
 
 
 def _check_ssh(
@@ -229,6 +350,56 @@ def test_ssh_identity_rejects_connection_endpoint_mismatch(connection: dict[str,
     with pytest.raises(HarnessError, match="does not match"):
         _check_ssh(target, mismatched_backend)
 
+
+def test_ssh_identity_accepts_decorated_client_host() -> None:
+    fingerprinted_host = "127.0.0.1/75A0CEEAC2EF6AA0FDB1BF590F58343B5E6AE05420E180C742FE6630EECF96B1"
+    identity = TunnelIdentity(
+        launchd_label="com.example.postgres",
+        ssh_destination="mpnas",
+        local_host="127.0.0.1",
+        local_port=25432,
+        remote_host="127.0.0.1",
+        remote_port=5432,
+        client_host=fingerprinted_host,
+    )
+    target, backend = _ssh_target(identity=identity)
+    backend = backend.model_copy(update={"connection": {"HOST": fingerprinted_host, "PORT": 25432}})
+
+    _check_ssh(target, backend)
+
+
+def test_ssh_identity_defaults_client_endpoint_to_local_endpoint() -> None:
+    target, backend = _ssh_target()
+
+    assert backend.tunnel.client_host is None  # type: ignore[union-attr]
+    assert backend.tunnel.client_port is None  # type: ignore[union-attr]
+    _check_ssh(target, backend)
+
+
+def test_ssh_identity_rejects_client_endpoint_mismatch() -> None:
+    target, backend = _ssh_target()
+    mismatched_backend = backend.model_copy(
+        update={"connection": {"HOST": "127.0.0.1/fingerprint", "PORT": 25432}}
+    )
+
+    with pytest.raises(HarnessError, match="client endpoint"):
+        _check_ssh(target, mismatched_backend)
+
+
+def test_ssh_identity_accepts_independent_client_port_override() -> None:
+    identity = TunnelIdentity(
+        launchd_label="com.example.postgres",
+        ssh_destination="mpnas",
+        local_host="127.0.0.1",
+        local_port=25432,
+        remote_host="127.0.0.1",
+        remote_port=5432,
+        client_port=5432,
+    )
+    target, backend = _ssh_target(identity=identity)
+    backend = backend.model_copy(update={"connection": {"HOST": "127.0.0.1", "PORT": 5432}})
+
+    _check_ssh(target, backend)
 
 def test_direct_target_uses_socket_reachability_not_process_identity() -> None:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
