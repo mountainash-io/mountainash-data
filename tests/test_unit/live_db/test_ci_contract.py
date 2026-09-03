@@ -24,6 +24,17 @@ OPTIONAL_BACKENDS = {
     "trino": {"feature": "trino", "module": "trino"},
     "bigquery": {"feature": "bigquery", "module": "google.oauth2"},
 }
+REQUIRED_PULL_REQUEST_PATHS = {
+    "src/mountainash_data/**",
+    "scripts/**",
+    "tests/**",
+    "hatch.toml",
+    "pytest.ini",
+    "pyproject.toml",
+    ".github/actions/**",
+    ".github/config/mountainash_dependencies.yml",
+    ".github/workflows/**",
+}
 
 
 def _hatch_config() -> dict:
@@ -266,3 +277,39 @@ def test_local_non_live_commands_select_all_non_live_paths() -> None:
     local_dependencies = set(test_environment["dependencies"])
     for data in OPTIONAL_BACKENDS.values():
         assert set(project_features[data["feature"]]) <= local_dependencies
+
+
+def test_pull_request_workflow_covers_test_contract_paths() -> None:
+    workflow = _workflow(PULL_REQUEST_WORKFLOW_PATH)
+
+    assert REQUIRED_PULL_REQUEST_PATHS <= set(workflow["on"]["pull_request"]["paths"])
+
+
+def test_pull_request_workflow_has_isolated_optional_backend_matrix() -> None:
+    workflow = _workflow(PULL_REQUEST_WORKFLOW_PATH)
+    job = workflow["jobs"]["optional-backend"]
+    expected = [
+        {"backend": "oracle", "module": "oracledb"},
+        {"backend": "trino", "module": "trino"},
+        {"backend": "bigquery", "module": "google.oauth2"},
+    ]
+
+    assert job["strategy"]["matrix"]["include"] == expected
+    assert "services" not in job
+
+    commands = [step["run"] for step in job["steps"] if "run" in step]
+    assert "hatch env create test_optional.${{ matrix.backend }}" in commands
+    assert (
+        "hatch run test_optional.${{ matrix.backend }}:test-cov"
+        in commands
+    )
+
+    upload = next(
+        step
+        for step in job["steps"]
+        if step.get("uses") == "codecov/codecov-action@v5"
+    )
+    assert upload["with"]["files"] == (
+        "coverage-optional-${{ matrix.backend }}.xml"
+    )
+    assert upload["with"]["flags"] == "optional-${{ matrix.backend }}"
