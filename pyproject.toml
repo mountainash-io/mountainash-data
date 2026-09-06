@@ -49,8 +49,6 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
-[project.entry-points."mountainash.resource_providers"]
-database = "mountainash_data.resource_provider.provider:create_provider"
 
 [project.optional-dependencies]
 all = [
