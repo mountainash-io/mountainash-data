@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **mountainash-data** provides physical access to backend data services — relational databases via Ibis, and Iceberg table-format catalogs via PyIceberg. It collapses what was previously 13 per-dialect connection classes into a data-driven `DialectSpec` registry, exposes clean `Backend` / `Connection` protocols, and provides factories and a high-level facade (`DatabaseUtils`).
 
+## Central Repository — Principles & Backlog
+
+Durable architecture principles and the implementation backlog for this project live in the
+**mountainash-central** repo, not here.
+
+- **Principles:** [`../mountainash-central/01.principles/mountainash-data/README.md`](../mountainash-central/01.principles/mountainash-data/README.md) — see [`PRINCIPLES.md`](../mountainash-central/01.principles/mountainash-data/PRINCIPLES.md) for governance (statuses, category precedence).
+- **Backlog:** [`../mountainash-central/04.planning/mountainash-data/a.backlog/INDEX.md`](../mountainash-central/04.planning/mountainash-data/a.backlog/INDEX.md) — prioritized items; see that directory's `CHANGELOG.md` for update history.
+- **Specs & plans:** save new design specs/plans to `../mountainash-central/04.planning/mountainash-data/superpowers/{specs,plans}/`, not under `docs/superpowers/` in this repo.
+
 ## Architecture
 
 ### Core Components
