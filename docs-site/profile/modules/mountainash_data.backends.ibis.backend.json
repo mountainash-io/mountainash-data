@@ -1,0 +1,62 @@
+{
+  "id": "mountainash_data.backends.ibis.backend",
+  "path": "src/mountainash_data/backends/ibis/backend.py",
+  "summary": "IbisBackend is the primary entry point for all Ibis-backed relational databases. Accepts settings, URL, or dialect+kwargs. Provides fluent connect/close, DDL (create/drop table/view/index), DML (insert/upsert/truncate), query (table/run_sql/run_expr/to_sql), and inspection (list_tables/inspect_table). IbisConnection wraps the raw ibis backend object.",
+  "role": "backend",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "backend-architecture"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": ["IbisBackend", "IbisConnection"],
+  "key_classes": [
+    {
+      "name": "IbisBackend",
+      "kind": "class",
+      "attribute": "name = 'ibis'",
+      "methods": [
+        "connect", "close", "__enter__", "__exit__",
+        "list_tables", "list_namespaces", "inspect_table", "inspect_namespace", "inspect_catalog",
+        "table", "table_exists", "run_sql", "run_expr", "to_sql",
+        "create_table", "drop_table", "create_view", "drop_view",
+        "insert", "truncate", "rename_table", "upsert",
+        "create_index", "drop_index", "create_unique_index",
+        "list_indexes", "index_exists",
+        "ibis_connection", "get_connection"
+      ]
+    },
+    {
+      "name": "IbisConnection",
+      "kind": "class",
+      "methods": ["list_namespaces", "list_tables", "inspect_table", "inspect_namespace", "inspect_catalog", "close"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.backends.ibis.dialects._registry",
+    "mountainash_data.core.inspection",
+    "mountainash_data.backends.ibis.inspect"
+  ],
+  "dependents": ["mountainash_data.init"],
+  "extension_points": [
+    "New dialects added via _registry.DIALECTS; IbisBackend dispatches automatically"
+  ],
+  "lifecycle_notes": [
+    "Fluent API: most mutating methods return self for chaining"
+  ],
+  "documentation_hooks": [
+    "Primary user-facing class for relational database access",
+    "Three construction paths: settings object, URL string, or dialect + kwargs"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/backends/ibis/test_backend.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/backend.py", "detail": "IbisBackend and IbisConnection classes"},
+    {"kind": "import", "path": "src/mountainash_data/__init__.py", "detail": "IbisBackend re-exported at package root"},
+    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_backend.py", "detail": "Backend construction and connection tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

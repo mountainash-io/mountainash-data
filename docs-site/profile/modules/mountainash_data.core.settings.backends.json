@@ -1,0 +1,79 @@
+{
+  "id": "mountainash_data.core.settings.backends",
+  "path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+  "summary": "20 per-backend settings modules following identical pattern: define a SPEC (BackendSpec) with parameters, define an *AuthSettings class (extending ConnectionProfile) with __spec__ = SPEC, and self-register via @register. Backends: sqlite, duckdb, motherduck, postgresql, mysql, mssql, snowflake, bigquery, redshift, trino, clickhouse, databricks, singlestoredb, exasol, impala, materialize, risingwave, druid, pyspark, pyiceberg_rest.",
+  "role": "backend",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "extension-authors"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": [
+    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
+    "PostgreSQLAuthSettings", "MySQLAuthSettings", "MSSQLAuthSettings",
+    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
+    "TrinoAuthSettings", "ClickHouseAuthSettings", "DatabricksAuthSettings",
+    "SingleStoreDBAuthSettings", "ExasolAuthSettings", "ImpalaAuthSettings",
+    "MaterializeAuthSettings", "RisingWaveAuthSettings", "DruidAuthSettings",
+    "PySparkAuthSettings", "PyIcebergRestAuthSettings"
+  ],
+  "key_classes": [
+    {"name": "*AuthSettings", "kind": "pydantic-model", "extends": "ConnectionProfile", "pattern": "One per backend, each with __spec__ class var pointing to its BackendSpec"}
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.core.settings.descriptor",
+    "mountainash_data.core.settings.profile",
+    "mountainash_data.core.settings.registry",
+    "mountainash_settings.auth"
+  ],
+  "dependents": [
+    "mountainash_data.core.settings",
+    "mountainash_data.core.settings.adapters",
+    "mountainash_data.backends.ibis.dialects"
+  ],
+  "extension_points": [
+    "Copy any existing backend file as template; define SPEC + class + @register"
+  ],
+  "lifecycle_notes": [
+    "Each file auto-registers on import; settings/__init__.py imports all of them"
+  ],
+  "documentation_hooks": [
+    "Users instantiate these with auth specs to configure connections",
+    "Each SPEC lists accepted auth_modes and parameter definitions"
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/core/settings/backends/test_sqlite.py",
+    "tests/test_unit/core/settings/backends/test_duckdb.py",
+    "tests/test_unit/core/settings/backends/test_postgresql.py",
+    "tests/test_unit/core/settings/backends/test_snowflake.py",
+    "tests/test_unit/core/settings/backends/test_bigquery.py",
+    "tests/test_unit/core/settings/backends/test_mssql.py",
+    "tests/test_unit/core/settings/backends/test_mysql.py",
+    "tests/test_unit/core/settings/backends/test_trino.py",
+    "tests/test_unit/core/settings/backends/test_redshift.py",
+    "tests/test_unit/core/settings/backends/test_clickhouse.py",
+    "tests/test_unit/core/settings/backends/test_databricks.py",
+    "tests/test_unit/core/settings/backends/test_exasol.py",
+    "tests/test_unit/core/settings/backends/test_impala.py",
+    "tests/test_unit/core/settings/backends/test_materialize.py",
+    "tests/test_unit/core/settings/backends/test_risingwave.py",
+    "tests/test_unit/core/settings/backends/test_druid.py",
+    "tests/test_unit/core/settings/backends/test_singlestoredb.py",
+    "tests/test_unit/core/settings/backends/test_motherduck.py",
+    "tests/test_unit/core/settings/backends/test_pyspark.py",
+    "tests/test_unit/core/settings/backends/test_pyiceberg_rest.py",
+    "tests/test_unit/databases/settings/test_settings_parametrized.py"
+  ],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/postgresql.py", "detail": "POSTGRESQL_SPEC + @register class PostgreSQLAuthSettings(ConnectionProfile)"},
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/sqlite.py", "detail": "SQLITE_SPEC + @register class SQLiteAuthSettings(ConnectionProfile)"},
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/duckdb.py", "detail": "DUCKDB_SPEC + @register class DuckDBAuthSettings(ConnectionProfile)"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/backends/", "detail": "20 per-backend test files"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

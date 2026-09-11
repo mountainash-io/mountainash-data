@@ -1,0 +1,60 @@
+{
+  "id": "mountainash_data.core.settings",
+  "path": "src/mountainash_data/core/settings/__init__.py",
+  "summary": "Settings package entry point. Re-exports BackendSpec, ParameterSpec, ConnectionProfile, all auth models (from mountainash_settings.auth), the DATABASES_REGISTRY, the @register decorator, and all 20 per-backend settings classes. Stable import anchor for downstream consumers.",
+  "role": "public-api",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "extension-authors"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": [
+    "MISSING", "Missing", "BackendSpec", "ParameterSpec", "ConnectionProfile",
+    "DATABASES_REGISTRY", "REGISTRY", "get_descriptor", "get_settings_class", "register",
+    "AuthSpec", "NoAuth", "PasswordAuth", "TokenAuth", "JWTAuth", "OAuth2Auth",
+    "ServiceAccountAuth", "IAMAuth", "WindowsAuth", "AzureADAuth", "KerberosAuth", "CertificateAuth",
+    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
+    "PostgreSQLAuthSettings", "ClickHouseAuthSettings", "DatabricksAuthSettings",
+    "MySQLAuthSettings", "SingleStoreDBAuthSettings", "MSSQLAuthSettings",
+    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
+    "PySparkAuthSettings", "TrinoAuthSettings", "ExasolAuthSettings",
+    "ImpalaAuthSettings", "MaterializeAuthSettings", "RisingWaveAuthSettings",
+    "DruidAuthSettings", "PyIcebergRestAuthSettings"
+  ],
+  "key_classes": [],
+  "key_functions": [
+    {"name": "get_descriptor", "signature": "(name: str) -> BackendSpec"},
+    {"name": "get_settings_class", "signature": "(name: str) -> type[ConnectionProfile]"},
+    {"name": "register", "signature": "decorator — registers a new backend in DATABASES_REGISTRY"}
+  ],
+  "dependencies": [
+    "mountainash_data.core.settings.descriptor",
+    "mountainash_data.core.settings.profile",
+    "mountainash_data.core.settings.registry",
+    "mountainash_settings.auth"
+  ],
+  "dependents": [
+    "mountainash_data.backends.iceberg.catalogs.rest"
+  ],
+  "extension_points": [
+    "@register decorator for adding new backend settings classes"
+  ],
+  "lifecycle_notes": [
+    "BackendDescriptor is deprecated; use BackendSpec",
+    "_Missing is deprecated; use Missing"
+  ],
+  "documentation_hooks": [
+    "Primary import target for settings and auth models",
+    "Users configure backends by instantiating *AuthSettings classes with auth specs"
+  ],
+  "examples": [],
+  "tests": [],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/__init__.py", "detail": "__all__ with 40+ symbols"},
+    {"kind": "import", "path": "src/mountainash_data/core/settings/__init__.py", "detail": "Imports all per-backend settings files, triggering auto-registration"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

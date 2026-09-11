@@ -1,0 +1,85 @@
+{
+  "audience": "backend-architecture",
+  "summary": "mountainash-data is built around a two-tier architecture: a Backend protocol defines the structural contract that any data store can satisfy, while data-driven dispatch layers — DialectSpec for Ibis SQL dialects and a catalog registry for Iceberg — route operations to the right driver. A parallel settings registry maps typed configuration to connection parameters through adapter pipelines. This design keeps each tier independently extensible.",
+  "use_cases": [
+    {
+      "title": "Tracing a query from Backend to driver",
+      "story": "A caller invokes backend.table('orders'). The Backend protocol dispatches to IbisBackend, which looks up the active DialectSpec, resolves the connection builder, and delegates to the Ibis library for the target SQL dialect. Understanding this path clarifies where to add dialect-specific hooks or intercept queries."
+    },
+    {
+      "title": "Understanding how settings become connections",
+      "story": "A SnowflakeAuthSettings object is passed to IbisBackend.from_settings(). The settings registry resolves BackendSpec metadata, the adapter pipeline transforms auth credentials into Snowflake-native driver kwargs, and the dialect's connection builder opens the session. Each stage is independently testable."
+    },
+    {
+      "title": "Comparing Ibis and Iceberg dispatch models",
+      "story": "Ibis dispatch is data-driven through a DialectSpec dictionary keyed by dialect name. Iceberg dispatch uses a catalog registry mapping catalog type strings to IcebergConnectionBase subclasses. Both achieve the same goal — routing to the right driver — but reflect the different extension patterns of SQL dialects versus catalog protocols."
+    },
+    {
+      "title": "Evaluating the inspection model's normalization layer",
+      "story": "Both Ibis and Iceberg backends return the same frozen dataclass hierarchy (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo). Per-backend converters normalize driver-specific metadata into this shared model, which enables backend-agnostic tooling and UI layers."
+    }
+  ],
+  "concepts": [
+    {
+      "name": "Backend protocol contract",
+      "description": "The Backend protocol is runtime-checkable and defines the structural interface for all data stores: connect, close, list tables, and inspect metadata. Any object that implements these methods is a valid backend — no inheritance required. This makes the protocol the primary integration point for new data stores.",
+      "module_ids": ["mountainash_data.core.protocol"]
+    },
+    {
+      "name": "Ibis dialect dispatch",
+      "description": "DialectSpec is a frozen dataclass that captures per-dialect configuration: connection builders, hook callables for dialect-specific operations, and metadata. A central DIALECTS dictionary maps dialect names to their DialectSpec, and IbisBackend routes all operations through the active spec. This data-driven design means adding a dialect is a registration step, not a subclass.",
+      "module_ids": [
+        "mountainash_data.backends.ibis.backend",
+        "mountainash_data.backends.ibis.dialects"
+      ]
+    },
+    {
+      "name": "Iceberg catalog dispatch",
+      "description": "The catalog registry maps catalog type strings (REST, Hive, Glue, SQL) to IcebergConnectionBase subclasses. IcebergBackend resolves the appropriate connection class at construction time, then delegates all operations through it. New catalog types participate by subclassing and registering.",
+      "module_ids": [
+        "mountainash_data.backends.iceberg.backend",
+        "mountainash_data.backends.iceberg.connection"
+      ]
+    },
+    {
+      "name": "Settings descriptor registry",
+      "description": "The settings layer uses BackendSpec descriptors (extending ProfileSpec from mountainash-settings) registered in DATABASES_REGISTRY via a @register decorator. Each backend's settings class self-registers on import, making the registry automatically comprehensive. ConnectionProfile subclasses provide to_driver_kwargs() and to_connection_string() for driver-native output.",
+      "module_ids": [
+        "mountainash_data.core.settings.descriptor",
+        "mountainash_data.core.settings.registry",
+        "mountainash_data.core.settings.profile"
+      ]
+    },
+    {
+      "name": "Adapter pipeline",
+      "description": "When a settings class needs non-trivial credential or parameter transformation, it declares an __adapter__ callable. The to_driver_kwargs() method delegates to this adapter, which handles backend-specific concerns like token exchange, SSL bundling, or cloud-provider credential resolution. Adapter files serve as isolated, testable transformation units.",
+      "module_ids": ["mountainash_data.core.settings.adapters", "mountainash_data.core.settings.profile"]
+    },
+    {
+      "name": "Inspection model",
+      "description": "A shared set of frozen dataclasses (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo) provides a backend-agnostic metadata representation. Per-backend converter modules normalize driver-specific metadata into this common model, enabling consistent introspection regardless of the underlying data store.",
+      "module_ids": [
+        "mountainash_data.core.inspection",
+        "mountainash_data.backends.ibis.inspect",
+        "mountainash_data.backends.iceberg.inspect"
+      ]
+    },
+    {
+      "name": "Backend capability differences",
+      "description": "Ibis and Iceberg backends offer different operation sets reflecting their underlying capabilities. Ibis backends support per-dialect hooks for operations like indexing, upserting, and renaming. Iceberg backends support table-level operations appropriate to lakehouse workloads. The operations modules document what each backend provides and where the boundaries are.",
+      "module_ids": [
+        "mountainash_data.backends.ibis.operations",
+        "mountainash_data.backends.iceberg.operations"
+      ]
+    }
+  ],
+  "featured_modules": [
+    "mountainash_data.core.protocol",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.backends.iceberg.connection",
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core.inspection"
+  ],
+  "hidden_or_internal_modules": [],
+  "open_questions": []
+}
