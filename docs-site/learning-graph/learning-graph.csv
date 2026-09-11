@@ -1,0 +1,101 @@
+ConceptID,ConceptLabel,Dependencies,TaxonomyID
+1,SQL Databases,,FOUND
+2,Database Schemas,1,FOUND
+3,Database Catalogs,2,FOUND
+4,Connection Management,1,FOUND
+5,Python Protocols,,FOUND
+6,Runtime Checkable Protocol,5,FOUND
+7,Pydantic Models,,FOUND
+8,Decorators,,FOUND
+9,Registry Pattern,8,FOUND
+10,Ibis Library,1,FOUND
+11,Backend Protocol Definition,5|6,PROTO
+12,Connect Method,11|4,PROTO
+13,Close Method,11|4,PROTO
+14,List Tables Method,11|2,PROTO
+15,Inspect Table Method,11|2,PROTO
+16,List Namespaces Method,11|2,PROTO
+17,Inspect Namespace Method,11|2,PROTO
+18,Inspect Catalog Method,11|3,PROTO
+19,IbisBackend Class,11|10,IBIS
+20,Ibis Connection,19|12|4,IBIS
+21,Fluent Query API,20|10,IBIS
+22,Raw SQL Queries,20|1,IBIS
+23,DDL Operations,20|1,IBIS
+24,Create Table,23,IBIS
+25,DML Operations,20|1,IBIS
+26,Insert Data,25,IBIS
+27,Upsert Data,25|26,IBIS
+28,Truncate Table,25,IBIS
+29,Create View,23,IBIS
+30,List Tables Ibis,19|14,IBIS
+31,Table Inspection Ibis,19|15|55,IBIS
+32,Namespace Inspection Ibis,19|17|55,IBIS
+33,Catalog Inspection Ibis,19|18|55,IBIS
+34,Context Manager Ibis,19|13,IBIS
+35,IcebergBackend Class,11|48,ICE
+36,Apache Iceberg Overview,3,ICE
+37,Iceberg Connection Base,35|4,ICE
+38,REST Catalog Type,42|37,ICE
+39,Hive Catalog Type,42|37,ICE
+40,Glue Catalog Type,42|37,ICE
+41,SQL Catalog Type,42|37,ICE
+42,Catalog Type Registry,9|37,ICE
+43,Iceberg Operations,35,ICE
+44,List Tables Iceberg,35|14,ICE
+45,Table Inspection Iceberg,35|15|55,ICE
+46,Namespace Inspection Iceberg,35|17|55,ICE
+47,Catalog Inspection Iceberg,35|18|55,ICE
+48,PyIceberg Library,36,ICE
+49,CatalogInfo Dataclass,7|3,INSP
+50,NamespaceInfo Dataclass,7|2,INSP
+51,TableInfo Dataclass,7|2,INSP
+52,ColumnInfo Dataclass,7,INSP
+53,Frozen Metadata Model,7|49|50|51|52,INSP
+54,Backend Agnostic Metadata,53|11,INSP
+55,Driver Metadata Conversion,54,INSP
+56,Unified Inspection API,54|14|15|16|17|18,INSP
+57,DialectSpec Overview,9|10,DIAL
+58,Dialect Registry,57|9,DIAL
+59,Dialect Name Key,57,DIAL
+60,Connection Builder,57|4,DIAL
+61,Operation Hooks,57,DIAL
+62,Per Dialect Configuration,57|58,DIAL
+63,SQLite Dialect,62,DIAL
+64,DuckDB Dialect,62,DIAL
+65,PostgreSQL Dialect,62,DIAL
+66,Snowflake Dialect,62,DIAL
+67,ConnectionProfile Base,7,SETT
+68,To Driver Kwargs Method,67,SETT
+69,BackendSpec Class,7,SETT
+70,ParameterSpec Class,69,SETT
+71,Parameter Tiers,70,SETT
+72,DATABASES REGISTRY,9,SETT
+73,Register Decorator,72|8,SETT
+74,Auto Registration,73|67,SETT
+75,SQLiteAuthSettings,74|63,SETT
+76,DuckDBAuthSettings,74|64,SETT
+77,PostgreSQLAuthSettings,74|65,SETT
+78,BigQueryAuthSettings,74,SETT
+79,SnowflakeAuthSettings,74|66,SETT
+80,RedshiftAuthSettings,74,SETT
+81,ClickhouseAuthSettings,74,SETT
+82,DatabricksAuthSettings,74,SETT
+83,MSSQLAuthSettings,74,SETT
+84,TrinoAuthSettings,74,SETT
+85,Adapter Pipeline,67|86,ADAPT
+86,Credential Transformation,67,ADAPT
+87,OAuth Adapter,86,ADAPT
+88,JWT Adapter,86,ADAPT
+89,Cloud Native Auth,86,ADAPT
+90,SSL Bundle Adapter,86,ADAPT
+91,NoAuth Settings,67,ADAPT
+92,PasswordAuth Settings,67,ADAPT
+93,TokenAuth Settings,67,ADAPT
+94,IAMAuth Settings,67|89,ADAPT
+95,Cross Backend Queries,19|35,ADV
+96,Backend Capability Matrix,19|35|23|25,ADV
+97,DDL Index Support,23|96,ADV
+98,Memory Intensive Upsert,27|35,ADV
+99,REST Catalog Cursors,38,ADV
+100,Unimplemented Operations,96,ADV

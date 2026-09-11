@@ -1,0 +1,10 @@
+{
+  "title": "Mountainash Data Concept Graph",
+  "description": "A concept dependency graph for the mountainash-data unified database and lakehouse connectivity library. 100 concepts across 9 categories covering backend protocol, Ibis, Iceberg, inspection model, dialects, settings, and adapters.",
+  "creator": "Nathaniel Ramm",
+  "date": "2026-06-03",
+  "version": "1.0",
+  "format": "Learning Graph JSON v1.0",
+  "schema": "https://raw.githubusercontent.com/dmccreary/learning-graphs/refs/heads/main/src/schema/learning-graph-schema.json",
+  "license": "CC BY-NC-SA 4.0 DEED"
+}

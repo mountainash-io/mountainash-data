@@ -1,0 +1,41 @@
+{
+  "id": "mountainash_data.backends.ibis.dialects",
+  "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+  "summary": "Data-driven dialect registry. DialectSpec (frozen dataclass) holds per-dialect config: ibis_backend_name, connection_mode, connection_string_scheme, connection_builder, and optional hook callables for index/upsert/rename. DIALECTS dict maps 23 dialect names to their specs. Private _build_* functions construct ibis connections per-dialect.",
+  "role": "orchestration",
+  "visibility": "internal",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": ["DialectSpec", "DIALECTS"],
+  "key_classes": [
+    {
+      "name": "DialectSpec",
+      "kind": "frozen-dataclass",
+      "fields": ["ibis_backend_name", "connection_mode", "connection_string_scheme", "connection_builder", "get_index_exists_sql", "get_list_indexes_sql", "upsert_hook", "create_index_hook", "drop_index_hook", "rename_table_hook", "extras"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": ["mountainash_data.backends.ibis.operations"],
+  "dependents": ["mountainash_data.backends.ibis.backend"],
+  "extension_points": [
+    "Add a new entry to DIALECTS dict + a _build_* connection builder to support a new SQL engine"
+  ],
+  "lifecycle_notes": [
+    "23 dialects: sqlite, duckdb, motherduck, postgres, mysql, mssql, oracle, snowflake, bigquery, redshift, trino, clickhouse, databricks, singlestoredb, exasol, impala, materialize, risingwave, druid, pyspark"
+  ],
+  "documentation_hooks": [
+    "Extension authors add dialects here — each is a two-line DialectSpec + a builder function"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/backends/ibis/test_dialect_spec.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/dialects/_registry.py", "detail": "DIALECTS dict with 23 entries, DialectSpec dataclass"},
+    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_dialect_spec.py", "detail": "Dialect spec validation tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
