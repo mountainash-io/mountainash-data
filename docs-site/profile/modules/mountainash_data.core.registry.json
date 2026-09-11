@@ -1,0 +1,41 @@
+{
+  "id": "mountainash_data.core.registry",
+  "path": "src/mountainash_data/core/registry.py",
+  "summary": "Service-locator registry for backend factories. Provides register(), get(), and names() functions against a module-level dict. Placeholder for Phase 4 — not yet wired to IbisBackend/IcebergBackend.",
+  "role": "orchestration",
+  "visibility": "semi-public",
+  "stability": "evolving",
+  "audiences": ["maintainers", "backend-architecture"],
+  "doc_priority": "useful",
+  "confidence": "medium",
+  "public_api": ["register", "get", "names"],
+  "key_classes": [],
+  "key_functions": [
+    {"name": "register", "signature": "(name: str, factory: Callable[..., Backend]) -> None"},
+    {"name": "get", "signature": "(name: str, **config: Any) -> Backend"},
+    {"name": "names", "signature": "() -> list[str]"}
+  ],
+  "dependencies": ["mountainash_data.core.protocol"],
+  "dependents": [],
+  "extension_points": [
+    "register() allows adding custom backend factories at runtime"
+  ],
+  "lifecycle_notes": [
+    "File header states it is a placeholder for Phase 4; final implementation pending"
+  ],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [
+    "Currently a stub — no backends are auto-registered into this registry"
+  ],
+  "open_questions": [
+    "When will IbisBackend and IcebergBackend be wired into this registry?"
+  ],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/registry.py", "detail": "3 public functions, _REGISTRY dict"},
+    {"kind": "doc", "path": "src/mountainash_data/core/registry.py", "detail": "Docstring says 'placeholder for Phase 4'"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

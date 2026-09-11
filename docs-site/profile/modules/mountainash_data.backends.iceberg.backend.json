@@ -1,0 +1,48 @@
+{
+  "id": "mountainash_data.backends.iceberg.backend",
+  "path": "src/mountainash_data/backends/iceberg/backend.py",
+  "summary": "IcebergBackend is the entry point for Iceberg table-format catalogs. Takes catalog type string + config kwargs. Delegates to catalog-specific connection classes via _CATALOG_REGISTRY. Currently supports 'rest' catalog only. Requires optional pyiceberg dependency.",
+  "role": "backend",
+  "visibility": "public",
+  "stability": "evolving",
+  "audiences": ["users", "maintainers", "backend-architecture"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": ["IcebergBackend"],
+  "key_classes": [
+    {
+      "name": "IcebergBackend",
+      "kind": "class",
+      "attribute": "name = 'iceberg'",
+      "methods": ["connect", "close", "__enter__", "__exit__", "list_tables", "list_namespaces", "inspect_table", "inspect_namespace", "inspect_catalog"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.backends.iceberg.connection",
+    "mountainash_data.backends.iceberg.catalogs.rest"
+  ],
+  "dependents": ["mountainash_data.init"],
+  "extension_points": [
+    "Add new catalog types by adding to _CATALOG_REGISTRY"
+  ],
+  "lifecycle_notes": [
+    "Optional dependency: guarded by try/except ImportError in __init__.py"
+  ],
+  "documentation_hooks": [
+    "Users instantiate with catalog='rest' and URI/credentials"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/backends/iceberg/test_backend.py"],
+  "risks": [],
+  "open_questions": [
+    "Will additional catalog types (e.g., Glue, Hive) be added?"
+  ],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/iceberg/backend.py", "detail": "IcebergBackend class with _CATALOG_REGISTRY"},
+    {"kind": "import", "path": "src/mountainash_data/__init__.py", "detail": "Conditionally re-exported at package root"},
+    {"kind": "test", "path": "tests/test_unit/backends/iceberg/test_backend.py", "detail": "Backend construction tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

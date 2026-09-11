@@ -1,0 +1,77 @@
+{
+  "audience": "maintainers",
+  "summary": "mountainash-data's maintenance surface spans three layers: the Backend protocol and connection contracts, the registry-driven settings architecture with typed descriptors and adapters, and the two backend implementations (Ibis dialect dispatch and Iceberg catalog delegation). Understanding how these layers interact — and where the active extension points are — helps you navigate changes confidently.",
+  "use_cases": [
+    {
+      "title": "Upgrading an Ibis dialect after a library release",
+      "story": "A new Ibis version changes the BigQuery connection signature. You locate the BigQuery DialectSpec in the dialects module, update the connection builder, adjust the adapter if auth parameters changed, and run the per-backend test file to verify. The dialect isolation means the change is contained."
+    },
+    {
+      "title": "Debugging a settings registration failure",
+      "story": "A new backend's settings class isn't appearing in DATABASES_REGISTRY. You check that the module imports trigger the @register decorator, verify the BackendSpec fields match the expected shape, and confirm the module is included in the package's __init__ imports. The self-registration pattern means the fix is usually an import path."
+    },
+    {
+      "title": "Investigating an Iceberg operation failure",
+      "story": "An Iceberg upsert is failing in production. You trace the delegation chain: IcebergBackend delegates to IcebergConnectionBase, which delegates to the operations module. You identify whether the issue is in catalog-specific connection handling or the shared operation logic, and scope the fix accordingly."
+    },
+    {
+      "title": "Reviewing a PR that adds a new catalog type",
+      "story": "A contributor submits a PR adding Glue catalog support. You check that the new IcebergConnectionBase subclass is registered in the catalog registry, that it follows the same delegation pattern as RestConnection, that settings are registered with appropriate auth modes, and that tests follow the per-backend pattern."
+    }
+  ],
+  "concepts": [
+    {
+      "name": "Dual contract surface",
+      "description": "The Backend protocol provides the structural contract (implement the methods and you're a backend), while BaseDBConnection provides a nominal ABC with shared implementation. IbisBackend satisfies the protocol directly; Iceberg connection classes inherit the ABC. Both approaches are valid and serve different extension patterns.",
+      "module_ids": ["mountainash_data.core.protocol", "mountainash_data.core.connection"]
+    },
+    {
+      "name": "Settings registry architecture",
+      "description": "BackendSpec descriptors extend ProfileSpec from mountainash-settings and register themselves in DATABASES_REGISTRY via the @register decorator. Each backend's settings module self-registers on import, keeping the registry automatically up to date. ConnectionProfile subclasses provide to_driver_kwargs() and to_connection_string() for backend-native output, with optional adapter delegation for complex transformations.",
+      "module_ids": [
+        "mountainash_data.core.settings.descriptor",
+        "mountainash_data.core.settings.profile",
+        "mountainash_data.core.settings.registry",
+        "mountainash_data.core.settings.adapters",
+        "mountainash_data.core.settings.backends"
+      ]
+    },
+    {
+      "name": "Ibis dialect dispatch",
+      "description": "DialectSpec frozen dataclasses in the DIALECTS dictionary capture per-dialect configuration: connection builders, hook callables for dialect-specific DDL and DML, and metadata. IbisBackend routes all operations through the active DialectSpec, so dialect-specific behavior is isolated and independently testable.",
+      "module_ids": [
+        "mountainash_data.backends.ibis.backend",
+        "mountainash_data.backends.ibis.dialects",
+        "mountainash_data.backends.ibis.operations"
+      ]
+    },
+    {
+      "name": "Iceberg mutation delegation",
+      "description": "IcebergBackend delegates mutations through a chain: IcebergBackend calls into IcebergConnectionBase, which delegates to the operations module. Catalog-specific subclasses (like RestConnection) handle connection lifecycle and catalog-specific concerns. This separation keeps catalog logic distinct from data operation logic.",
+      "module_ids": [
+        "mountainash_data.backends.iceberg.backend",
+        "mountainash_data.backends.iceberg.connection",
+        "mountainash_data.backends.iceberg.operations",
+        "mountainash_data.backends.iceberg.catalogs"
+      ]
+    },
+    {
+      "name": "Active development areas",
+      "description": "The core.registry module is a placeholder for a unified dispatch layer that will route to both IbisBackend and IcebergBackend. Iceberg operations have room to grow — some mutation paths are still maturing. These are active areas where contributions are welcome and where changes should be reviewed carefully.",
+      "module_ids": ["mountainash_data.core.registry", "mountainash_data.backends.iceberg.operations", "mountainash_data.backends.iceberg.catalogs"]
+    },
+    {
+      "name": "Test coverage patterns",
+      "description": "Per-backend test files follow an identical structure, with parametrized invariant tests and protocol conformance tests covering the shared contract. This consistent pattern makes it straightforward to verify that a change in one area hasn't broken the cross-backend guarantees.",
+      "module_ids": ["mountainash_data.core.settings.backends"]
+    }
+  ],
+  "featured_modules": [
+    "mountainash_data.core.protocol",
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.backends.iceberg.connection"
+  ],
+  "hidden_or_internal_modules": [],
+  "open_questions": []
+}

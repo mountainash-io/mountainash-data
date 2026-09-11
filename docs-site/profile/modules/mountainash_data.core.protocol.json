@@ -1,0 +1,47 @@
+{
+  "id": "mountainash_data.core.protocol",
+  "path": "src/mountainash_data/core/protocol.py",
+  "summary": "Defines the Backend runtime-checkable protocol: the structural contract every backend must satisfy (connect, close, list_tables, list_namespaces, inspect_table, inspect_namespace, inspect_catalog).",
+  "role": "protocol",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": ["users", "maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": ["Backend"],
+  "key_classes": [
+    {
+      "name": "Backend",
+      "kind": "protocol",
+      "methods": ["connect", "close", "__enter__", "__exit__", "list_tables", "list_namespaces", "inspect_table", "inspect_namespace", "inspect_catalog"],
+      "attributes": ["name"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": ["mountainash_data.core.inspection"],
+  "dependents": [
+    "mountainash_data.init",
+    "mountainash_data.core.registry",
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.iceberg.backend"
+  ],
+  "extension_points": [
+    "Any class satisfying this protocol can serve as a backend without subclassing"
+  ],
+  "lifecycle_notes": [],
+  "documentation_hooks": [
+    "Central contract for backend authors",
+    "Structural typing means no import needed at implementation site"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/core/test_protocol.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/protocol.py", "detail": "@t.runtime_checkable Protocol class Backend"},
+    {"kind": "import", "path": "src/mountainash_data/__init__.py", "detail": "Re-exported as top-level symbol"},
+    {"kind": "test", "path": "tests/test_unit/core/test_protocol.py", "detail": "Protocol conformance tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

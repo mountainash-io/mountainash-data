@@ -1,0 +1,44 @@
+{
+  "id": "mountainash_data.core.settings.profile",
+  "path": "src/mountainash_data/core/settings/profile.py",
+  "summary": "ConnectionProfile extends Profile (from mountainash_settings). Adds to_driver_kwargs() and to_connection_string() methods. Delegates to per-backend adapters when __adapter__ is set.",
+  "role": "api-builder",
+  "visibility": "semi-public",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": ["ConnectionProfile"],
+  "key_classes": [
+    {
+      "name": "ConnectionProfile",
+      "kind": "class",
+      "extends": "Profile",
+      "methods": ["to_driver_kwargs", "to_connection_string"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": ["mountainash_settings.profiles"],
+  "dependents": [
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core.settings.backends"
+  ],
+  "extension_points": [
+    "Override __adapter__ class var to provide custom driver kwargs pipeline"
+  ],
+  "lifecycle_notes": [],
+  "documentation_hooks": [
+    "Users call to_driver_kwargs() to get a dict ready for ibis.connect()",
+    "Users call to_connection_string() to get a URL like postgresql://user:pass@host/db"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/core/settings/test_profile.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/profile.py", "detail": "ConnectionProfile with to_driver_kwargs and to_connection_string"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/test_profile.py", "detail": "Profile construction and method tests"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
