@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "project": "mountainash-data",
+  "baseline": {
+    "source_commit": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+    "refresh_date": "2026-06-04",
+    "tool_versions": {
+      "chapter-content-generator": "0.09",
+      "learning-graph-generator": "0.05",
+      "faq-generator": "1.0",
+      "textbook-refresh": "1.0"
+    }
+  },
+  "chapter_state": {
+    "01-foundation-concepts": {
+      "content_hash": "a6a9a73b0dfb3542b95d9a68eea9ce975c8dab541b5e005c5448ee2c6e4dc492",
+      "word_count": 2542,
+      "has_concept_markers": true
+    },
+    "02-backend-protocol": {
+      "content_hash": "dfe37a22a2e6c03d962bd306d61119d88acd9eb64266c4dd087506bb26437ef4",
+      "word_count": 2191,
+      "has_concept_markers": true
+    },
+    "03-inspection-model": {
+      "content_hash": "55efe5a2e08478e4429c9552343518039c6abdadcea964b626cf2484d4777429",
+      "word_count": 2382,
+      "has_concept_markers": true
+    },
+    "04-ibis-backend": {
+      "content_hash": "01c8ba1a2a493f06afcc1de84b26185ec40d051c6280c35ff40c9eb0c54f17a7",
+      "word_count": 2833,
+      "has_concept_markers": true
+    },
+    "05-dialect-system": {
+      "content_hash": "87a94de8ea7c42a8c67481cd33eab4daa2d9ba422e4563f385311f23100c686b",
+      "word_count": 2273,
+      "has_concept_markers": true
+    },
+    "06-settings-and-configuration": {
+      "content_hash": "12da26325fe263e2940af916ca859c658656f6bde7f4c42f0c3fea6c5e6cb3d7",
+      "word_count": 2707,
+      "has_concept_markers": true
+    },
+    "07-adapters-and-auth": {
+      "content_hash": "b8eec155c557ea82f3aab414bd5052083fae23686afd24ea773c09eb8760434b",
+      "word_count": 2607,
+      "has_concept_markers": true
+    },
+    "08-iceberg-backend": {
+      "content_hash": "8cfeaf6d36d9a71779fa368202a8eb547ebaa8f4016182c3a8cfb548da8ccfba",
+      "word_count": 2381,
+      "has_concept_markers": true
+    },
+    "09-advanced-integration": {
+      "content_hash": "5732c4a127ad4491080fa63c674a49ea1af1803461e67995a2a531bf55bd17a8",
+      "word_count": 2691,
+      "has_concept_markers": true
+    }
+  },
+  "learning_graph_state": {
+    "concept_count": 100,
+    "edge_count": 165,
+    "enriched_count": 64,
+    "content_hash": "fcd809e08c6c0b9349797fb78773873f9d8d882ead2a0bbeafe9c2af6c1350d8"
+  },
+  "faq_state": {
+    "question_count": 46,
+    "content_hash": "f1847cb839b658865896edba41b4c46ea84680e546887048e9a00e3db6d2268d"
+  },
+  "refresh_history": []
+}
