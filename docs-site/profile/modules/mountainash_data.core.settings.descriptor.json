@@ -1,0 +1,44 @@
+{
+  "id": "mountainash_data.core.settings.descriptor",
+  "path": "src/mountainash_data/core/settings/descriptor.py",
+  "summary": "Defines BackendSpec (frozen dataclass extending ProfileSpec from mountainash_settings). Adds database-specific fields: default_port, connection_string_scheme, ibis_dialect, rides_on. Re-exports MISSING, Missing, ParameterSpec from upstream.",
+  "role": "model",
+  "visibility": "semi-public",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": ["BackendSpec", "MISSING", "Missing", "ParameterSpec"],
+  "key_classes": [
+    {
+      "name": "BackendSpec",
+      "kind": "frozen-dataclass",
+      "extends": "ProfileSpec",
+      "fields": ["default_port", "connection_string_scheme", "ibis_dialect", "rides_on"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": ["mountainash_settings.profiles"],
+  "dependents": [
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core.settings.backends"
+  ],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "BackendDescriptor is deprecated alias for BackendSpec"
+  ],
+  "documentation_hooks": [
+    "Extension authors define one BackendSpec per new backend"
+  ],
+  "examples": [],
+  "tests": ["tests/test_unit/core/settings/test_descriptor.py", "tests/test_unit/core/settings/test_descriptors_invariants.py"],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/settings/descriptor.py", "detail": "BackendSpec extends ProfileSpec"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/test_descriptor.py", "detail": "Descriptor construction tests"},
+    {"kind": "test", "path": "tests/test_unit/core/settings/test_descriptors_invariants.py", "detail": "Cross-backend invariant checks"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

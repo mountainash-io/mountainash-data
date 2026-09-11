@@ -1,0 +1,80 @@
+{
+  "audience": "users",
+  "summary": "mountainash-data gives you a single, consistent way to connect to any supported database or lakehouse. Import IbisBackend to work with SQL databases across every Ibis dialect, or IcebergBackend to work with Apache Iceberg catalogs. Typed settings classes handle connection configuration and authentication, while the Backend protocol provides a uniform interface for inspecting metadata and running queries.",
+  "use_cases": [
+    {
+      "title": "Connect to a local DuckDB file and explore its tables",
+      "story": "You have a DuckDB file from a colleague. You create an IbisBackend with the file path, call list_tables() to see what's inside, then inspect_table() to understand column types before running a query with run_expr()."
+    },
+    {
+      "title": "Query a production PostgreSQL database with OAuth2 credentials",
+      "story": "Your team's data lives in PostgreSQL behind OAuth2. You configure PostgresAuthSettings with an OAuth2Auth spec, create an IbisBackend, and immediately start querying — the settings class handles token exchange and connection pooling for you."
+    },
+    {
+      "title": "Browse an Iceberg catalog served by a REST endpoint",
+      "story": "Your data platform exposes tables through an Iceberg REST catalog. You point IcebergBackend at the REST URL, list namespaces and tables, inspect schemas, and read data — all through the same Backend interface you already know from IbisBackend."
+    },
+    {
+      "title": "Switch between dev and production databases by swapping settings",
+      "story": "You keep a dev settings object pointing at a local DuckDB and a production settings object pointing at Snowflake. Your analysis code accepts any Backend, so switching environments is a one-line change at the top of the script."
+    }
+  ],
+  "concepts": [
+    {
+      "name": "Getting started — IbisBackend",
+      "description": "IbisBackend is re-exported at the package root for convenient access. You can construct one from a typed settings object, a connection URL, or dialect-specific keyword arguments — whichever fits your workflow best.",
+      "module_ids": ["mountainash_data.init", "mountainash_data.backends.ibis.backend"]
+    },
+    {
+      "name": "Getting started — IcebergBackend",
+      "description": "IcebergBackend is also available at the package root. It connects to Apache Iceberg catalogs (REST, Hive, Glue, SQL) and exposes the same Backend interface, so your code works the same way regardless of the underlying catalog type.",
+      "module_ids": ["mountainash_data.init", "mountainash_data.backends.iceberg.backend"]
+    },
+    {
+      "name": "Configuring connections with settings",
+      "description": "Each supported database has a dedicated typed settings class (e.g. PostgresAuthSettings, SnowflakeAuthSettings) that knows how to produce driver keyword arguments and connection strings. Settings classes surface all connection parameters as typed fields, making configuration discoverable and validated at construction time.",
+      "module_ids": ["mountainash_data.core.settings", "mountainash_data.core.settings.backends"]
+    },
+    {
+      "name": "Authentication",
+      "description": "Auth modes are shared from mountainash-auth-client and cover common patterns: NoAuth, PasswordAuth, OAuth2Auth, IAMAuth, and more. You attach the appropriate auth spec to your settings object, and the backend handles credential exchange transparently.",
+      "module_ids": ["mountainash_data.core.settings"]
+    },
+    {
+      "name": "Inspecting metadata",
+      "description": "The inspection API returns structured, frozen dataclasses — CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo — so you can explore catalogs, namespaces, tables, and columns programmatically. The same models are returned by every backend.",
+      "module_ids": ["mountainash_data.core.inspection", "mountainash_data.core.protocol"]
+    },
+    {
+      "name": "Querying and DDL",
+      "description": "IbisBackend provides methods for reading tables, executing raw SQL, evaluating Ibis expressions, creating tables, inserting rows, and upserting data. The query interface lets you stay in Ibis expressions or drop to SQL when you need to.",
+      "module_ids": ["mountainash_data.backends.ibis.backend"]
+    }
+  ],
+  "featured_modules": [
+    "mountainash_data.init",
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.iceberg.backend",
+    "mountainash_data.core.settings",
+    "mountainash_data.core.settings.backends",
+    "mountainash_data.core.inspection"
+  ],
+  "hidden_or_internal_modules": [
+    "mountainash_data.core.connection",
+    "mountainash_data.core.constants",
+    "mountainash_data.core.registry",
+    "mountainash_data.core.settings.descriptor",
+    "mountainash_data.core.settings.profile",
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core.settings.auth",
+    "mountainash_data.core.settings.adapters",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.backends.ibis.inspect",
+    "mountainash_data.backends.ibis.operations",
+    "mountainash_data.backends.iceberg.connection",
+    "mountainash_data.backends.iceberg.operations",
+    "mountainash_data.backends.iceberg.inspect",
+    "mountainash_data.backends.iceberg.catalogs"
+  ],
+  "open_questions": []
+}

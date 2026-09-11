@@ -1,0 +1,53 @@
+{
+  "id": "mountainash_data.core.constants",
+  "path": "src/mountainash_data/core/constants.py",
+  "summary": "13 enum classes defining provider types, auth methods, SSL modes, connection status, pool modes, abstraction layers, backend capabilities, index types, and conflict actions.",
+  "role": "model",
+  "visibility": "semi-public",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "reference-only",
+  "confidence": "high",
+  "public_api": [
+    "IBIS_DB_CONNECTION_MODE",
+    "CONST_DB_PROVIDER_TYPE",
+    "CONST_DB_AUTH_METHOD",
+    "CONST_DB_SSL_MODE_MYSQL",
+    "CONST_DB_SSL_MODE_POSTGRES",
+    "CONST_DB_CONNECTION_STATUS",
+    "CONST_DB_POOL_MODE",
+    "CONST_DB_ABSTRACTION_LAYER",
+    "CONST_DB_BACKEND",
+    "CONST_DB_BACKEND_IBIS_PREFIX",
+    "CONST_DB_BACKEND_CAPABILITIES",
+    "CONST_INDEX_TYPE",
+    "CONST_CONFLICT_ACTION"
+  ],
+  "key_classes": [
+    {"name": "CONST_DB_PROVIDER_TYPE", "kind": "enum", "members": 21},
+    {"name": "CONST_DB_ABSTRACTION_LAYER", "kind": "enum", "members": 2},
+    {"name": "CONST_DB_BACKEND_CAPABILITIES", "kind": "enum", "members": 8}
+  ],
+  "key_functions": [],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.core.connection",
+    "mountainash_data.backends.ibis.operations",
+    "mountainash_data.backends.iceberg.connection",
+    "mountainash_data.backends.iceberg.catalogs.rest"
+  ],
+  "extension_points": [
+    "Add new members to CONST_DB_PROVIDER_TYPE when adding a new backend"
+  ],
+  "lifecycle_notes": [],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/constants.py", "detail": "13 Enum/StrEnum classes"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
