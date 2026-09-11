@@ -4,7 +4,7 @@ description: 'A unified Python interface for connecting to any database or lakeh
 ---
 
 
-[← Back to Ecosystem](../)
+[← Back to Ecosystem](https://docs.mountainash.io/)
 # Mountainash Data
 
 A single, consistent way to connect to any supported database or lakehouse — import `IbisBackend` for SQL databases across every Ibis dialect, or `IcebergBackend` for Apache Iceberg catalogs.
