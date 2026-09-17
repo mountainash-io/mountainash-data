@@ -15,7 +15,7 @@ dependencies = [
 
     "numpy>=1.23.2,<3",
     "rich>=12.4.4,<14",
-    "universal_pathlib==0.2.2",
+    "universal_pathlib>=0.2.2",
     "openlineage-python==1.17.1",
     "xarray==2024.11.0",
     "pyarrow>=17.0.0",
