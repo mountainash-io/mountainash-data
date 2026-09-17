@@ -76,7 +76,7 @@ hatch run test:test-target-quick \
   tests/test_integration/test_end_to_end_workflows.py
 ```
 
-Run the complete suite:
+Run the complete core suite (optional drivers are not installed):
 
 ```bash
 hatch run test:test-quick
@@ -86,10 +86,14 @@ Run live database tests against an explicit target when the required services ar
 
 ```bash
 hatch run test:live-db status --target docker
-hatch run test:live-db run --target docker postgres
+hatch run test_backend.postgres:live-db run --target docker postgres
 hatch run test:live-db status --target mpnas
-hatch run test:live-db test --target mpnas --all
+hatch run test_backend.postgres:live-db test --target mpnas postgres
 ```
+
+Choose `test_backend.<backend>` for each live backend; each environment installs
+only that backend extra. See `TESTING.md` for available selections and optional
+backend contract commands.
 
 ## Expected API
 

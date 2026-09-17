@@ -139,13 +139,6 @@ def test_singlestore_init_sql_creates_authenticated_ibis_testing_database() -> N
     assert "GRANT ALL PRIVILEGES ON ibis_testing.* TO 'ibis'@'%'" in init_sql
 
 
-def test_local_and_live_ci_environments_include_singlestore_driver() -> None:
-    config = _hatch_config()
-
-    for environment in ("test", "test_github_live"):
-        assert "ibis-framework[singlestoredb]>=12.0.0" in config["envs"][environment][
-            "dependencies"
-        ]
 
 
 def test_tracked_singlestore_backend_matches_compose_and_initialized_auth() -> None:
@@ -260,23 +253,6 @@ def test_optional_backend_matrix_matches_test_directories() -> None:
     } <= set(project_features)
 
 
-def test_local_non_live_commands_select_all_non_live_paths() -> None:
-    test_environment = _hatch_config()["envs"]["test"]
-    expected_paths = (
-        "tests/test_unit tests/test_integration tests/test_optional_backends"
-    )
-
-    assert expected_paths in test_environment["scripts"]["test"][0]
-    assert test_environment["scripts"]["test-quick"] == f"pytest {expected_paths}"
-    assert test_environment["scripts"]["test-core"] == (
-        "pytest tests/test_unit tests/test_integration {args}"
-    )
-
-    with PYPROJECT_PATH.open("rb") as stream:
-        project_features = tomllib.load(stream)["project"]["optional-dependencies"]
-    local_dependencies = set(test_environment["dependencies"])
-    for data in OPTIONAL_BACKENDS.values():
-        assert set(project_features[data["feature"]]) <= local_dependencies
 
 
 def test_pull_request_workflow_covers_test_contract_paths() -> None:
