@@ -30,7 +30,7 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
    pip install hatch
    ```
 
-2. Run the comprehensive test suite (recommended for daily use):
+2. Run the core test suite (recommended for daily use):
    ```bash
    hatch run test:test
    ```
@@ -46,11 +46,11 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```
   Runs only `tests/test_unit/` and `tests/test_integration/` — no optional-backend contracts.
 
-- **Full local suite with coverage:**
+- **Core suite with coverage:**
   ```bash
   hatch run test:test
   ```
-  Runs pytest with coverage across core plus every DB-free optional-backend contract, and generates JSON/XML/HTML reports.
+  Runs core tests with coverage and generates JSON/XML/HTML reports. Optional backend drivers are not installed.
 
 - **GitHub Actions test with coverage:**
   ```bash
@@ -62,13 +62,14 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```bash
   hatch run test:test-quick
   ```
-  Core plus every DB-free optional-backend contract, without coverage collection.
+  Core tests only, without coverage collection or optional backend drivers.
 
 - **One optional-backend contract, targeted:**
   ```bash
-  hatch run test:test-target-quick tests/test_optional_backends/oracle
+  hatch run test_backend.oracle:test-target-quick tests/test_optional_backends/oracle
   ```
-  Runs one optional-backend directory in the complete local environment (which already installs every backend extra).
+  Installs only the selected backend extra alongside the core test tools. Use
+  `test_backend.trino` or `test_backend.bigquery` for the other optional contracts.
 
 ### Targeted Testing (For debugging specific issues)
 
@@ -127,21 +128,30 @@ supported development command. The runner is the only entry point: it starts
 the selected service, sets the live-db environment context, and passes the
 `tests/test_live_backends` path to pytest explicitly.
 
+Use `test_backend.<backend>` to opt into a backend driver. Available selections:
+`postgres`, `mysql`, `oracle`, `singlestoredb`, `mssql`, `trino`, `exasol`,
+`pyspark`, and `bigquery`. Native prerequisites apply only to the selected
+backend (for example, MySQL needs MySQL/MariaDB development libraries).
+Status commands can use the driver-free `test` environment. Run live tests
+one backend at a time; these isolated environments do not install the drivers
+needed for an aggregate `--all` run. Selected live runs still fail on connection
+errors rather than silently skipping them.
+
 Docker target (starts and stops one Compose-managed service per backend):
 
 ```bash
 hatch run test:live-db status --target docker
-hatch run test:live-db run --target docker postgres
-hatch run test:live-db run --target docker mysql
-hatch run test:live-db run --target docker oracle
-hatch run test:live-db run --target docker singlestoredb
+hatch run test_backend.postgres:live-db run --target docker postgres
+hatch run test_backend.mysql:live-db run --target docker mysql
+hatch run test_backend.oracle:live-db run --target docker oracle
+hatch run test_backend.singlestoredb:live-db run --target docker singlestoredb
 ```
 
 External tunnel-backed target (checks tunnels; never starts or stops them):
 
 ```bash
 hatch run test:live-db status --target mpnas
-hatch run test:live-db test --target mpnas --all
+hatch run test_backend.postgres:live-db test --target mpnas postgres
 ```
 
 MSSQL is verified only through the `mpnas` forward; it has no Compose
@@ -150,7 +160,7 @@ service or live-CI job:
 ```bash
 brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
 HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18
-hatch run test:live-db test --target mpnas mssql
+hatch run test_backend.mssql:live-db test --target mpnas mssql
 ```
 
 The target uses `127.0.0.1:21433`, SQL Server authentication from the
@@ -161,7 +171,7 @@ Trino is also verified only through `mpnas`, with no Compose service or
 live-CI job:
 
 ```bash
-hatch run test:live-db test --target mpnas trino
+hatch run test_backend.trino:live-db test --target mpnas trino
 ```
 
 The target uses plain HTTP at `127.0.0.1:28080`, the writable
@@ -177,7 +187,7 @@ Exasol is verified only through `mpnas`, with no privileged container,
 Compose service, or live-CI job:
 
 ```bash
-hatch run test:live-db test --target mpnas exasol
+hatch run test_backend.exasol:live-db test --target mpnas exasol
 ```
 
 The target uses TLS at `127.0.0.1:28563`, pins the deployment certificate
@@ -191,7 +201,7 @@ PySpark remote verification uses Spark Connect through `mpnas`; it adds no
 repository Compose service or live-CI job:
 
 ```bash
-hatch run test:live-db test --target mpnas pyspark
+hatch run test_backend.pyspark:live-db test --target mpnas pyspark
 ```
 
 The target uses `sc://127.0.0.1:25002` with PySpark Connect 4.0.2 and
