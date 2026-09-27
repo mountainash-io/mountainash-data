@@ -44,16 +44,25 @@ class TestBackendProfile:
         assert kwargs["port"] == 1234
         assert kwargs["database"] == "db"
 
-    def test_emit_adapter_owns_pipeline(self):
-        def _adapter(profile):
-            return {"only": "thing"}
+    def test_emit_target_adapter_composes_mapped_kwargs_over_base(self):
+        def _adapter(profile, kwargs):
+            return {
+                **kwargs,
+                "endpoint": f"{kwargs['host']}:{kwargs['port']}",
+                "profile": profile.profile_name,
+            }
 
         class Adapted(BackendProfile):
             __spec__ = DUMMY_SPEC
-            __adapter__ = staticmethod(_adapter)
+            __adapters__ = {"dummy": _adapter}
 
         p = Adapted(HOST="h")
-        assert p.emit() == {"only": "thing"}
+        base = {"timeout": 30, "port": 1234}
+        assert p.emit("dummy", base=base) == {
+            "timeout": 30, "host": "h", "port": 9999,
+            "endpoint": "h:9999", "profile": "dummy",
+        }
+        assert base == {"timeout": 30, "port": 1234}
 
     def test_to_url_parts_returns_skeleton(self):
         p = DummyProfile(HOST="h", PORT=9999, DATABASE="db")
@@ -75,5 +84,5 @@ class TestBackendProfile:
             __spec__ = spec
 
         p = P()
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError, match="Profile 'x' has no URL form"):
             p.to_url_parts()

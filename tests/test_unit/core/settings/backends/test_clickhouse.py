@@ -46,4 +46,4 @@ class TestClickHouseBackendProfile:
 
     def test_ibis_dialect(self):
         s = self._minimal()
-        assert s.backend == "clickhouse"
+        assert s.profile_name == "clickhouse"

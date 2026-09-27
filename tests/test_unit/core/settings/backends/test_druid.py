@@ -32,4 +32,4 @@ class TestDruidBackendProfile:
         assert kwargs["scheme"] == "https"
 
     def test_ibis_dialect(self):
-        assert self._minimal().backend == "druid"
+        assert self._minimal().profile_name == "druid"

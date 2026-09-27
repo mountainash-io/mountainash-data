@@ -54,7 +54,7 @@ def provider_for_scheme(scheme: str) -> t.Any:
 def _normalize_and_validate_auth(profile: t.Any, auth_profile: AuthProfile | None) -> AuthProfile:
     auth = NoAuthProfile() if auth_profile is None else auth_profile
     if not isinstance(auth, tuple(profile.__spec__.supported_auth)):
-        raise ValueError(f"{profile.backend} does not support auth: {type(auth).__name__}")
+        raise ValueError(f"{profile.profile_name} does not support auth: {type(auth).__name__}")
     return auth
 
 
@@ -77,7 +77,7 @@ def build_driver_kwargs(profile: t.Any, auth_profile: AuthProfile | None = None)
         return base
     fn = auth_adapter(target, type(auth))
     if fn is None:
-        raise ValueError(f"{profile.backend}: no auth adapter for {type(auth).__name__}")
+        raise ValueError(f"{profile.profile_name}: no auth adapter for {type(auth).__name__}")
     return fn(auth, base)
 
 
@@ -125,5 +125,5 @@ def build_connection_string(profile: t.Any, auth_profile: AuthProfile | None = N
         return _url_password(parts, auth)                # L3
     applier = _URL_APPLIERS.get(profile.__spec__.provider_type, {}).get(type(auth))
     if applier is None:
-        raise NotImplementedError(f"{profile.backend}: no URL form for {type(auth).__name__}")
+        raise NotImplementedError(f"{profile.profile_name}: no URL form for {type(auth).__name__}")
     return applier(parts, auth)

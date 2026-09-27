@@ -50,4 +50,4 @@ class TestImpalaBackendProfile:
         assert kwargs["use_ssl"] is True
 
     def test_ibis_dialect(self):
-        assert self._minimal().backend == "impala"
+        assert self._minimal().profile_name == "impala"

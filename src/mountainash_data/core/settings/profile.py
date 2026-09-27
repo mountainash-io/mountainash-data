@@ -35,7 +35,7 @@ class BackendProfile(Profile):
         desc = lookup_class_var(type(self), "__spec__")
         scheme = getattr(desc, "connection_string_scheme", None)
         if scheme is None:
-            raise NotImplementedError(f"Profile {self.backend!r} has no URL form")
+            raise NotImplementedError(f"Profile {self.profile_name!r} has no URL form")
         scheme = scheme.removesuffix("://").removesuffix(":")
         return UrlParts(
             scheme=scheme,

@@ -30,4 +30,4 @@ class TestRisingWaveBackendProfile:
         assert s.HOST == "rw.local"
 
     def test_ibis_dialect(self):
-        assert self._minimal().backend == "risingwave"
+        assert self._minimal().profile_name == "risingwave"
