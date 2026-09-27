@@ -4,6 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 dependencies = [
+    "mountainash-settings>=0.1.0,<0.2",
+    "mountainash-auth-client>=26.6.1,<27",
     "ibis-framework[polars,sqlite,duckdb]>=12.0.0",
     # "hatchling",
 
@@ -35,7 +37,7 @@ name = "mountainash_data"
 dynamic = ["version"]
 description = 'Mountain Ash - Data'
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 # license = "Proprietary"
 authors = [
     { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },
@@ -43,10 +45,9 @@ authors = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
 
@@ -109,4 +110,3 @@ exclude_lines = ["no cov", "if __name__ == .__main__:", "if TYPE_CHECKING:"]
 # env — treat all unresolved/untyped third-party imports as Any rather than noise.
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
-

@@ -1,6 +1,6 @@
 # mountainash-data
 
-![Python](https://img.shields.io/badge/python-3.10%2B-blue) ![Category](https://img.shields.io/badge/category-core-purple) ![Tests](https://img.shields.io/badge/tests-✓-green) ![Docs](https://img.shields.io/badge/docs-✓-blue)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue) ![Category](https://img.shields.io/badge/category-core-purple) ![Tests](https://img.shields.io/badge/tests-✓-green) ![Docs](https://img.shields.io/badge/docs-✓-blue)
 
 
 Mountain Ash - Data
@@ -65,6 +65,48 @@ ibis_backend = connection.connect()
 ```
 
 
+
+## Settings 0.1 migration (candidate)
+
+Data retains its own `get_descriptor(name)` and read-only `REGISTRY` APIs,
+including membership, indexing, iteration and views. They delegate to the
+canonical settings registry. Backend profiles and auth-client profiles remain
+distinct: select a backend and a compatible auth profile before resolving values.
+
+The live-DB harness owns the selected filesystem store. `secret_providers` and
+`targets.*.secrets_provider` remain local configuration labels; they do not
+register process-global providers. Only the selected backend's references are
+resolved, so an unselected target's missing record cannot block local work.
+SQLite/DuckDB and ordinary Compose workflows need no store.
+
+The ownership boundary for selected resolution is a context manager:
+
+```python
+from mountainash_settings import SettingsParameters
+from mountainash_settings.secrets import FilesystemBackend
+
+# root must already be securely created and owned by the harness operator.
+# selected_settings_class / selected_values describe only the selected profile.
+with FilesystemBackend(root) as store:
+    selected = SettingsParameters.create(
+        settings_class=selected_settings_class,
+        secret_store=store,
+        **selected_values,
+    ).get_settings()
+# The harness closes the store after materialization, including on failure.
+```
+
+Child processes reconstruct the selection from configuration paths and selected
+identities, rather than receiving stores or resolved credentials. Literal
+resolved strings beginning with `secret:` remain a deferred limitation.
+
+The runtime bounds are `mountainash-settings>=0.1.0,<0.2` and
+`mountainash-auth-client>=26.6.1,<27`. The auth-client bound is provisional for
+this candidate rehearsal: use the exact migrated wheel identified by hash in
+the execution receipt, and advance the bound to its eventual migrated release
+before publication. Candidate checks cover CPython 3.12/3.13; Python 3.14 release
+qualification remains separate. Existing Hatch configuration is preserved
+developer configuration, not evidence of an installed-candidate check.
 
 ## Architecture
 
