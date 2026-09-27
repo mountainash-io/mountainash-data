@@ -5,11 +5,13 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from mountainash_settings import FilesystemBackend
 
 from scripts.live_db_harness.config import build_backend_selection, load_unresolved_harness
+from scripts.live_db_harness.runner import LiveDbRunner
 
 
 pytest_plugins = ("pytester",)
@@ -54,10 +56,12 @@ profile = "none"
 """
 
 
-def _enable_fixtures(pytester: pytest.FixtureRequest) -> None:
+def _enable_fixtures(pytester: pytest.Pytester) -> None:
+    pytester.makeini("[pytest]\nasyncio_default_fixture_loop_scope = function\n")
     tests_root = Path(__file__).parents[2]
     pytester.makeconftest(
         f"import sys\nsys.path.insert(0, {str(tests_root)!r})\n"
+        f"sys.path.insert(0, {str(tests_root.parent)!r})\n"
         'pytest_plugins = ("fixtures.live_db_fixtures",)'
     )
 
@@ -73,7 +77,7 @@ def test_normal_run_without_target_skips_with_exact_message(pytester, monkeypatc
     _enable_fixtures(pytester)
     pytester.makepyfile(test_probe="def test_probe(postgres_backend):\n    pass\n")
 
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(skipped=1)
     result.stdout.fnmatch_lines(["*no live backend target selected*"])
@@ -85,7 +89,7 @@ def test_required_run_without_target_fails(pytester, monkeypatch) -> None:
     _enable_fixtures(pytester)
     pytester.makepyfile(test_probe="def test_probe(postgres_backend):\n    pass\n")
 
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(errors=1)
     result.stdout.fnmatch_lines(["*no live backend target selected*"])
@@ -104,7 +108,7 @@ def test_fixture_ignores_legacy_ibis_test_variables(pytester, monkeypatch) -> No
     _enable_fixtures(pytester)
     pytester.makepyfile(test_probe="def test_probe(postgres_backend):\n    pass\n")
 
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(skipped=1)
     result.stdout.fnmatch_lines(["*no live backend target selected*"])
@@ -116,13 +120,13 @@ def test_fixture_rejects_backend_other_than_selected_backend(pytester, monkeypat
     _enable_fixtures(pytester)
     pytester.makepyfile(test_probe="def test_probe(postgres_backend):\n    pass\n")
 
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(skipped=1)
     result.stdout.fnmatch_lines(["*postgres_backend*mysql*"])
 
     monkeypatch.setenv("MOUNTAINASH_REQUIRE_LIVE_DB", "1")
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(errors=1)
     result.stdout.fnmatch_lines(["*postgres_backend*mysql*"])
@@ -143,7 +147,7 @@ def test_singlestore_fixture_without_target_skips_with_exact_message(
         test_probe="def test_probe(singlestore_backend):\n    pass\n"
     )
 
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(skipped=1)
     result.stdout.fnmatch_lines(["*no live backend target selected*"])
@@ -159,19 +163,30 @@ def test_singlestore_fixture_rejects_backend_other_than_selected_backend(
         test_probe="def test_probe(singlestore_backend):\n    pass\n"
     )
 
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(skipped=1)
     result.stdout.fnmatch_lines(["*singlestore_backend*mysql*"])
 
     monkeypatch.setenv("MOUNTAINASH_REQUIRE_LIVE_DB", "1")
-    result = pytester.runpytest("-q", "-rs")
+    result = pytester.runpytest_subprocess("-q", "-rs")
 
     result.assert_outcomes(errors=1)
     result.stdout.fnmatch_lines(["*singlestore_backend*mysql*"])
 
 
-def test_child_process_reloads_provider_and_auth_profile(pytester, tmp_path: Path) -> None:
+def test_child_process_reconstructs_selection_after_stores_close(
+    pytester: pytest.Pytester, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Observe real store closure without replacing resolution or filesystem IO.
+    closed_stores: list[FilesystemBackend] = []
+    original_close = FilesystemBackend.close
+
+    def track_close(store: FilesystemBackend) -> None:
+        original_close(store)
+        closed_stores.append(store)
+
+    monkeypatch.setattr(FilesystemBackend, "close", track_close)
     tracked = tmp_path / "tracked.toml"
     user = tmp_path / "user.toml"
     selected_secrets = tmp_path / "selected-secrets"
@@ -207,10 +222,57 @@ path = "{selected_secrets}"
     )
     parent_selection = build_backend_selection(loaded)
     assert parent_selection.auth_profile.PASSWORD.get_secret_value() == "child-sentinel-password"
+    assert len(closed_stores) == 3  # Two seed contexts and the parent selection context.
+    assert len({id(store) for store in closed_stores}) == 3
+
+    calls = []
+
+    def capture_command(argv: list[str], **kwargs: object) -> None:
+        calls.append((argv, kwargs))
+
+    runner = LiveDbRunner((tracked.resolve(), user.resolve()))
+    # The process boundary is the only fake: exercise the actual argv/env builder.
+    with monkeypatch.context() as env_patch:
+        env_patch.setattr(os, "environ", {
+            "PATH": os.defpath,
+            "IBIS_TEST_POSTGRES_PASSWORD": "legacy-password",
+            "IBIS_TEST_MYSQL_HOST": "legacy-host",
+            "MOUNTAINASH_LIVE_DB_CONFIG": "stale-config",
+            "MOUNTAINASH_LIVE_DB_TARGET": "stale-target",
+            "MOUNTAINASH_LIVE_DB_BACKEND": "stale-backend",
+            "MOUNTAINASH_REQUIRE_LIVE_DB": "0",
+        })
+        runner._run_pytest(
+            parent_selection, command_runner=SimpleNamespace(run=capture_command),
+        )
+    assert len(calls) == 1
+    argv, kwargs = calls[0]
+    assert argv == [
+        sys.executable, "-m", "pytest", "tests/test_live_backends",
+        "-k", "postgres", "-m", "integration",
+    ]
+    child_env = kwargs["env"]
+    assert child_env == {
+        "PATH": os.defpath,
+        "MOUNTAINASH_LIVE_DB_CONFIG": json.dumps([str(tracked.resolve()), str(user.resolve())]),
+        "MOUNTAINASH_LIVE_DB_TARGET": "local",
+        "MOUNTAINASH_LIVE_DB_BACKEND": "postgres",
+        "MOUNTAINASH_REQUIRE_LIVE_DB": "1",
+    }
+    assert all(isinstance(value, str) for value in child_env.values())
+    serialized_boundary = json.dumps([argv, child_env])
+    for forbidden in (
+        "child-sentinel-host", "child-sentinel-user", "child-sentinel-password",
+        "legacy-password", "legacy-host", str(selected_secrets), str(tracked_secrets),
+        "FilesystemBackend", "PosixPath",
+    ):
+        assert forbidden not in serialized_boundary
 
     tests_root = Path(__file__).parents[2]
+    child_ini = pytester.makeini("[pytest]\nasyncio_default_fixture_loop_scope = function\n")
     probe = pytester.makepyfile(
         test_probe=f"""
+import importlib.util
 import sys
 sys.path.insert(0, {str(tests_root)!r})
 
@@ -218,22 +280,21 @@ from mountainash_auth_client import PasswordAuthProfile
 from fixtures.live_db_fixtures import load_fixture_selection_from_environment
 
 
-def test_child_selection():
+def test_child_selection(pytestconfig):
+    assert pytestconfig.getini("asyncio_default_fixture_loop_scope") == "function"
     selection = load_fixture_selection_from_environment()
     assert selection.target_name == "local"
     assert selection.backend_name == "postgres"
     assert isinstance(selection.auth_profile, PasswordAuthProfile)
+    assert selection.auth_profile.profile_name == "password"
+    assert selection.auth_profile.USERNAME == "child-sentinel-user"
     assert selection.auth_profile.PASSWORD.get_secret_value() == "child-sentinel-password"
+    assert selection.settings_parameters.get_settings().HOST == "child-sentinel-host"
+    assert importlib.util.find_spec("mountainash_secrets") is None
 """
     )
-    child_env = {
-        "MOUNTAINASH_LIVE_DB_CONFIG": json.dumps([str(tracked.resolve()), str(user.resolve())]),
-        "MOUNTAINASH_LIVE_DB_TARGET": "local",
-        "MOUNTAINASH_LIVE_DB_BACKEND": "postgres",
-        "MOUNTAINASH_REQUIRE_LIVE_DB": "1",
-    }
     completed = subprocess.run(
-        [sys.executable, "-m", "pytest", str(probe), "-q"],
+        [sys.executable, "-m", "pytest", "-c", str(child_ini), str(probe), "-q"],
         cwd=Path(__file__).parents[3],
         env=child_env,
         capture_output=True,
@@ -241,7 +302,8 @@ def test_child_selection():
         check=False,
     )
 
-    assert completed.returncode == 0, "pytest subprocess failed"
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "asyncio_default_fixture_loop_scope" not in completed.stderr
 
 
 _LIVE_BACKEND_FILES = [

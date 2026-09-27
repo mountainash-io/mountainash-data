@@ -15,7 +15,6 @@ from mountainash_data.core.settings import DATABASES_REGISTRY
 from .config import (
     BackendSelection,
     build_backend_selection,
-    default_config_files,
     load_unresolved_harness,
     reject_unknown_keys,
 )
@@ -195,7 +194,7 @@ class LiveDbRunner:
     def _validate_unresolved_profile(self, target_name: str, backend_name: str, target_backend: Any, suite: Any) -> None:
         try:
             backend_class = DATABASES_REGISTRY.get_settings_class(suite.settings_profile)
-            backend_spec = DATABASES_REGISTRY.get_descriptor(suite.settings_profile)
+            backend_spec = DATABASES_REGISTRY.get_spec(suite.settings_profile)
             auth_class = AUTH_REGISTRY.get_settings_class(target_backend.auth.profile)
         except KeyError as exc:
             raise _error(
@@ -227,17 +226,8 @@ class LiveDbRunner:
             backend=backend_name,
             section="authentication",
         )
-        try:
-            backend_class(**target_backend.connection)
-            auth_class(**target_backend.auth.values)
-        except Exception:
-            raise _error(
-                target_name,
-                backend_name,
-                Phase.CONFIGURATION,
-                "Unable to validate the selected profile fields.",
-                "Fix the registered connection and authentication fields.",
-            ) from None
+        # Status validates metadata only. Profile construction resolves secret:
+        # references, including non-string fields, and belongs to selection.
 
     def _require_destructive_opt_in(self, selection: BackendSelection) -> None:
         if selection.target.transport != "compose" and not selection.target.allow_destructive_tests:
