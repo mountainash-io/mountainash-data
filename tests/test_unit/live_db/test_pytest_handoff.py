@@ -180,13 +180,15 @@ def test_child_process_reconstructs_selection_after_stores_close(
 ) -> None:
     # Observe real store closure without replacing resolution or filesystem IO.
     closed_stores: list[FilesystemBackend] = []
-    original_close = FilesystemBackend.close
+    original_exit = FilesystemBackend.__exit__
 
-    def track_close(store: FilesystemBackend) -> None:
-        original_close(store)
+    def track_exit(store: FilesystemBackend, *args: object) -> None:
+        original_exit(store, *args)
         closed_stores.append(store)
 
-    monkeypatch.setattr(FilesystemBackend, "close", track_close)
+    # __del__ also calls close; observing context exit avoids resurrecting stores
+    # from their destructor when the observer's retained references are released.
+    monkeypatch.setattr(FilesystemBackend, "__exit__", track_exit)
     tracked = tmp_path / "tracked.toml"
     user = tmp_path / "user.toml"
     selected_secrets = tmp_path / "selected-secrets"
