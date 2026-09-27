@@ -35,7 +35,7 @@ register = DATABASES_REGISTRY.decorator()
 
 
 def get_descriptor(name: str) -> BackendSpec:
-    return DATABASES_REGISTRY.get_descriptor(name)
+    return DATABASES_REGISTRY.get_spec(name)
 
 
 def get_settings_class(name: str) -> type["BackendProfile"]:
@@ -45,28 +45,28 @@ def get_settings_class(name: str) -> type["BackendProfile"]:
 # Backwards-compatibility alias — preserves ``from ... import REGISTRY`` imports.
 # Read-only from the outside; mutations should go through ``@register``.
 class _RegistryDictView(Mapping):
-    """Dict-like view that delegates to DATABASES_REGISTRY.descriptors."""
+    """Read-only mapping backed by DATABASES_REGISTRY and its specs snapshots."""
 
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and name in DATABASES_REGISTRY
 
     def __getitem__(self, name: str) -> BackendSpec:
-        return DATABASES_REGISTRY.get_descriptor(name)
+        return DATABASES_REGISTRY.get_spec(name)
 
     def __iter__(self) -> t.Iterator[str]:
-        return iter(DATABASES_REGISTRY.descriptors)
+        return iter(DATABASES_REGISTRY.specs)
 
     def __len__(self) -> int:
         return len(DATABASES_REGISTRY)
 
     def items(self) -> t.ItemsView[str, BackendSpec]:
-        return DATABASES_REGISTRY.descriptors.items()
+        return DATABASES_REGISTRY.specs.items()
 
     def keys(self) -> t.KeysView[str]:
-        return DATABASES_REGISTRY.descriptors.keys()
+        return DATABASES_REGISTRY.specs.keys()
 
     def values(self) -> t.ValuesView[BackendSpec]:
-        return DATABASES_REGISTRY.descriptors.values()
+        return DATABASES_REGISTRY.specs.values()
 
 
 REGISTRY = _RegistryDictView()
