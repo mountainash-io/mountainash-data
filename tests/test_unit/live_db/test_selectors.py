@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 
-from scripts.live_db_harness.models import HarnessSettings
+from scripts.live_db_harness.sources import load_harness_settings
 
 
 MYSQL_LIVE_NODE_IDS = {
@@ -18,7 +18,7 @@ MYSQL_LIVE_NODE_IDS = {
 def test_mysql_selector_collects_all_test_mysql_live_node_ids(
     capsys: pytest.CaptureFixture[str],
 ):
-    settings = HarnessSettings(config_files=[Path("tests/config/live-db.toml")])
+    settings = load_harness_settings((Path("tests/config/live-db.toml"),))
     selector = settings.backends["mysql"].selector
     result = pytest.main(
         [

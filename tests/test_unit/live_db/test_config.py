@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.live_db_harness import config
 from scripts.live_db_harness.config import (
     BackendSelection,
     build_backend_selection,
@@ -124,6 +125,20 @@ def test_auth_registry_builds_known_profile(tmp_path: Path) -> None:
     )
     assert selection.auth_profile.USERNAME == "postgres"
     assert selection.auth_profile.PASSWORD.get_secret_value() == "postgres"
+
+
+@pytest.mark.parametrize("backend", ["postgres", "sqlite"])
+def test_compose_selection_requires_no_store(tmp_path, monkeypatch, backend):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Compose without a provider must not construct a store")
+
+    monkeypatch.setattr(config, "FilesystemBackend", forbidden)
+    path = _write_config(tmp_path / "config.toml")
+    selection = build_backend_selection(
+        load_unresolved_harness((path,), selected_target="local", selected_backend=backend)
+    )
+    assert selection.backend_name == backend
+    assert selection.settings_parameters.secret_store is None
 
 
 def test_backend_rejects_unsupported_auth_profile_before_secret_resolution(tmp_path: Path) -> None:

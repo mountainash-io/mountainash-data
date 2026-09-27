@@ -7,8 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from mountainash_secrets import FilesystemSecretStore
-from mountainash_settings import clear_secrets_registry
+from mountainash_settings import FilesystemBackend
 
 from scripts.live_db_harness.config import build_backend_selection, load_unresolved_harness
 
@@ -53,13 +52,6 @@ PORT = 5432
 [targets.local.backends.unavailable.auth]
 profile = "none"
 """
-
-
-@pytest.fixture(autouse=True)
-def _clear_secret_registry():
-    clear_secrets_registry()
-    yield
-    clear_secrets_registry()
 
 
 def _enable_fixtures(pytester: pytest.FixtureRequest) -> None:
@@ -186,18 +178,16 @@ def test_child_process_reloads_provider_and_auth_profile(pytester, tmp_path: Pat
     tracked_secrets = tmp_path / "tracked-secrets"
     selected_secrets.mkdir(mode=0o700)
     tracked_secrets.mkdir(mode=0o700)
-    FilesystemSecretStore(selected_secrets).set(
-        "database",
-        {
+    with FilesystemBackend(selected_secrets) as store:
+        store.set("database", {
             "host": "child-sentinel-host",
             "username": "child-sentinel-user",
             "password": "child-sentinel-password",
-        },
-    )
-    FilesystemSecretStore(tracked_secrets).set(
-        "database",
-        {"host": "wrong-host", "username": "wrong-user", "password": "wrong-password"},
-    )
+        })
+    with FilesystemBackend(tracked_secrets) as store:
+        store.set("database", {
+            "host": "wrong-host", "username": "wrong-user", "password": "wrong-password",
+        })
     tracked.write_text(BACKEND_SUITE + TARGET, encoding="utf-8")
     user.write_text(
         f"""
@@ -217,7 +207,6 @@ path = "{selected_secrets}"
     )
     parent_selection = build_backend_selection(loaded)
     assert parent_selection.auth_profile.PASSWORD.get_secret_value() == "child-sentinel-password"
-    clear_secrets_registry()
 
     tests_root = Path(__file__).parents[2]
     probe = pytester.makepyfile(
@@ -226,13 +215,11 @@ import sys
 sys.path.insert(0, {str(tests_root)!r})
 
 from mountainash_auth_client import PasswordAuthProfile
-from mountainash_settings import get_secrets_backend
 from fixtures.live_db_fixtures import load_fixture_selection_from_environment
 
 
 def test_child_selection():
     selection = load_fixture_selection_from_environment()
-    assert get_secrets_backend("selected") is not None
     assert selection.target_name == "local"
     assert selection.backend_name == "postgres"
     assert isinstance(selection.auth_profile, PasswordAuthProfile)

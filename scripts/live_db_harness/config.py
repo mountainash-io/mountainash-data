@@ -1,24 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from contextlib import AbstractContextManager
+from contextlib import ExitStack
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
-from dataclasses import dataclass
 
 from pydantic import SecretStr
 
 from mountainash_auth_client import AUTH_REGISTRY, AuthProfile
 from mountainash_data.core.settings import DATABASES_REGISTRY
-from mountainash_secrets import FilesystemSecretStore
 from mountainash_settings import (
+    FilesystemBackend,
     MountainAshBaseSettings,
     Profile,
-    SecretsBackend,
+    SecretReader,
     SettingsParameters,
-    get_secrets_backend,
     lookup_class_var,
-    register_secrets_backend,
 )
 from pydantic_settings import SettingsConfigDict
 
@@ -28,9 +26,9 @@ from .models import (
     HarnessSettings,
     Phase,
     SecretProviderDefinition,
-    TargetBackendDefinition,
     TargetDefinition,
 )
+from .sources import load_harness_settings
 
 
 @dataclass(frozen=True)
@@ -87,14 +85,10 @@ def load_unresolved_harness(
     selected_backend: str | None,
 ) -> LoadedHarnessSettings:
     paths = _validate_config_files(config_files)
-    parameters = SettingsParameters.create(
-        settings_class=HarnessSettings,
-        config_files=paths,
-        selected_target=selected_target,
-        selected_backend=selected_backend,
-    )
     try:
-        settings = parameters.get_settings()
+        settings = load_harness_settings(
+            paths, selected_target=selected_target, selected_backend=selected_backend,
+        )
     except HarnessError:
         raise
     except Exception:
@@ -124,7 +118,7 @@ def walk_secret_scalars(value: object) -> Iterator[str]:
 
 
 class TrackingSecretsBackend:
-    def __init__(self, definition: SecretProviderDefinition, delegate: SecretsBackend) -> None:
+    def __init__(self, definition: SecretProviderDefinition, delegate: SecretReader) -> None:
         self.definition = definition
         self.delegate = delegate
         self.secret_values: set[str] = set()
@@ -135,26 +129,16 @@ class TrackingSecretsBackend:
             self.secret_values.update(walk_secret_scalars(record))
         return record
 
-    def set(self, key: str, data: dict[str, object]) -> None:
-        self.delegate.set(key, data)
-
-    def delete(self, key: str) -> None:
-        self.delegate.delete(key)
-
-    def transaction(self, key: str) -> AbstractContextManager[None]:
-        return self.delegate.transaction(key)
-
 
 def _normalized_provider_definition(definition: SecretProviderDefinition) -> SecretProviderDefinition:
     return definition.model_copy(update={"path": definition.path.expanduser().resolve()})
 
 
-def _provider_backend(
+def selected_definition(
     settings: HarnessSettings,
-    *,
     target_name: str,
     backend_name: str,
-) -> TrackingSecretsBackend:
+) -> SecretProviderDefinition:
     target = settings.targets[target_name]
     provider_name = target.secrets_provider
     if provider_name is None:
@@ -163,7 +147,7 @@ def _provider_backend(
             backend=backend_name,
             phase=Phase.CONFIGURATION,
             detail="The selected target has no secrets provider.",
-            corrective_action="Set secrets_provider to a registered filesystem provider.",
+            corrective_action="Set secrets_provider to a declared filesystem provider.",
         )
 
     definition = settings.secret_providers.get(provider_name)
@@ -175,37 +159,7 @@ def _provider_backend(
             detail=f"Unknown secrets provider: {provider_name}",
             corrective_action="Declare the selected secrets provider.",
         )
-    normalized = _normalized_provider_definition(definition)
-    try:
-        existing = get_secrets_backend(provider_name)
-    except KeyError:
-        existing = None
-    if existing is not None:
-        existing_definition = getattr(existing, "definition", None)
-        if isinstance(existing_definition, SecretProviderDefinition):
-            existing_definition = _normalized_provider_definition(existing_definition)
-        if existing_definition != normalized:
-            raise HarnessError(
-                target=target_name,
-                backend=backend_name,
-                phase=Phase.CONFIGURATION,
-                detail=f"Secrets provider {provider_name!r} has a different definition.",
-                corrective_action="Use one definition for each secrets provider name.",
-            )
-        if isinstance(existing, TrackingSecretsBackend):
-            return existing
-        raise HarnessError(
-            target=target_name,
-            backend=backend_name,
-            phase=Phase.CONFIGURATION,
-            detail=f"Secrets provider {provider_name!r} is already registered without its definition.",
-            corrective_action="Clear the provider registry and register the declared filesystem provider.",
-        )
-
-    delegate = FilesystemSecretStore(normalized.path)
-    backend = TrackingSecretsBackend(normalized, delegate)
-    register_secrets_backend(provider_name, backend)
-    return backend
+    return _normalized_provider_definition(definition)
 
 
 def profile_parameter_names(profile_class: type[Profile]) -> frozenset[str]:
@@ -230,6 +184,7 @@ def reject_unknown_keys(
             detail=f"Unknown {section} field: {unknown[0]}",
             corrective_action=f"Use a registered {section} field.",
         )
+
 
 def _plaintext_auth_field(value: object, *, path: str = "") -> str | None:
     if isinstance(value, SecretStr):
@@ -264,7 +219,7 @@ def _validate_external_auth_values(
             target=target_name,
             backend=backend_name,
             detail="The selected target has no secrets provider.",
-            corrective_action="Set secrets_provider to a registered filesystem provider.",
+            corrective_action="Set secrets_provider to a declared filesystem provider.",
         )
     field = _plaintext_auth_field(values)
     if field is not None:
@@ -337,7 +292,7 @@ def build_backend_selection(loaded: LoadedHarnessSettings) -> BackendSelection:
         )
     try:
         backend_class = DATABASES_REGISTRY.get_settings_class(suite.settings_profile)
-        backend_spec = DATABASES_REGISTRY.get_descriptor(suite.settings_profile)
+        backend_spec = DATABASES_REGISTRY.get_spec(suite.settings_profile)
     except KeyError:
         backend_class = None
         backend_spec = None
@@ -392,57 +347,57 @@ def build_backend_selection(loaded: LoadedHarnessSettings) -> BackendSelection:
         backend_name=backend_name,
     )
 
-    provider_name = target.secrets_provider
-    tracking_backend: TrackingSecretsBackend | None = None
-    if provider_name is not None:
-        tracking_backend = _provider_backend(
-            settings,
-            target_name=target_name,
-            backend_name=backend_name,
-        )
-
-    selection_parameters = SettingsParameters.create(
-        settings_class=SelectedBackendSettings,
-        secrets_provider=provider_name,
-        connection=target_backend.connection,
-        auth_values=target_backend.auth.values,
+    definition = (
+        selected_definition(settings, target_name, backend_name)
+        if target.secrets_provider is not None else None
     )
+    detail = "Unable to resolve credentials for the selected backend."
+    corrective_action = "Check the selected secrets provider and secret records."
     try:
-        resolved_selection = selection_parameters.get_settings()
+        with ExitStack() as stores:
+            tracker = None
+            if definition is not None:
+                raw_store = stores.enter_context(FilesystemBackend(definition.path))
+                tracker = TrackingSecretsBackend(definition, raw_store)
+            selection_parameters = SettingsParameters.create(
+                settings_class=SelectedBackendSettings,
+                secret_store=tracker,
+                connection=target_backend.connection,
+                auth_values=target_backend.auth.values,
+            )
+            resolved_selection = selection_parameters.get_settings()
+
+            detail = "Unable to construct the selected authentication profile."
+            corrective_action = "Fix the registered authentication fields."
+            auth_profile = auth_class(**resolved_selection.auth_values)
+
+            detail = "Unable to construct the selected connection profile."
+            corrective_action = "Fix the registered connection fields."
+            parameters = SettingsParameters.create(
+                settings_class=backend_class,
+                env_prefix="MOUNTAINASH_LIVE_DB_PROFILE_",
+                **resolved_selection.connection,
+            )
+            parameters.get_settings()
+            selection = BackendSelection(
+                target_name=target_name,
+                backend_name=backend_name,
+                target=target,
+                suite=suite,
+                config_files=loaded.config_files,
+                settings_parameters=parameters,
+                auth_profile=auth_profile,
+                secret_values=frozenset(tracker.secret_values if tracker else ()),
+            )
     except Exception:
-        resolved_selection = None
-    if resolved_selection is None:
+        selection = None
+    # Raise after leaving the handler so secret-bearing exceptions cannot become
+    # the cause or context of the fixed user-facing configuration diagnostic.
+    if selection is None:
         raise _selection_error(
             target=target_name,
             backend=backend_name,
-            detail="Unable to resolve credentials for the selected backend.",
-            corrective_action="Check the selected secrets provider and secret records.",
+            detail=detail,
+            corrective_action=corrective_action,
         )
-
-    parameters = SettingsParameters.create(
-        settings_class=backend_class,
-        env_prefix="MOUNTAINASH_LIVE_DB_PROFILE_",
-        **resolved_selection.connection,
-    )
-    try:
-        auth_profile = auth_class(**resolved_selection.auth_values)
-    except Exception:
-        auth_profile = None
-    if auth_profile is None:
-        raise _selection_error(
-            target=target_name,
-            backend=backend_name,
-            detail="Unable to construct the selected authentication profile.",
-            corrective_action="Fix the registered authentication fields.",
-        )
-
-    return BackendSelection(
-        target_name=target_name,
-        backend_name=backend_name,
-        target=target,
-        suite=suite,
-        config_files=loaded.config_files,
-        settings_parameters=parameters,
-        auth_profile=auth_profile,
-        secret_values=frozenset(tracking_backend.secret_values if tracking_backend else ()),
-    )
+    return selection
