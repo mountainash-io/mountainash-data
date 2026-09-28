@@ -129,7 +129,11 @@ def test_direct_unavailable_backend_is_usage_error(tmp_path: Path, capsys: pytes
 
 
 def test_status_does_not_resolve_secrets_or_connect(tmp_path: Path) -> None:
-    config = _config(tmp_path / "config.toml")
+    config = _config(
+        tmp_path / "config.toml",
+        CONFIG.replace('HOST = "127.0.0.1"', 'HOST = "secret:missing.host"')
+        .replace("PORT = 5432", 'PORT = "secret:missing.port"'),
+    )
     connect_attempted = False
 
     def forbidden(*args: object, **kwargs: object) -> None:
@@ -140,6 +144,22 @@ def test_status_does_not_resolve_secrets_or_connect(tmp_path: Path) -> None:
     runner = LiveDbRunner((config,), backend_factory=forbidden)
     assert runner.status("local") == 0
     assert not connect_attempted
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ('HOST = "127.0.0.1"', 'HOTS = "127.0.0.1"', "Unknown connection field: HOTS"),
+        ('USERNAME = "postgres"', 'USERNMAE = "postgres"', "Unknown authentication field: USERNMAE"),
+        ('profile = "password"', 'profile = "token"', "does not support authentication profile"),
+    ],
+)
+def test_status_rejects_invalid_profile_metadata_before_store_access(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], old: str, new: str, message: str,
+) -> None:
+    config = _config(tmp_path / "config.toml", CONFIG.replace(old, new, 1))
+    assert main(["--config", str(config), "status", "--target", "local"]) == 2
+    assert message in capsys.readouterr().out
 
 
 def test_wait_lock_is_available_on_backend_operations() -> None:

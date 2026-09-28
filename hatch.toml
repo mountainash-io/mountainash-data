@@ -19,8 +19,6 @@ path = ".venv"
 dependencies = [
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
-    "mountainash_transport @  {root:uri}/../mountainash-transport",
-    "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 
 ]
@@ -35,8 +33,6 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
-    "mountainash_transport @  {root:uri}/temp/mountainash-transport",
-    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 
 ]
@@ -77,18 +73,17 @@ python = ["3.12"]
 installer = "uv"
 dependencies = [
     "pytest==8.3.5",
+    "pytest-asyncio>=0.24",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
-    "mountainash_transport @  {root:uri}/temp/mountainash-transport",
-    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 ]
 [envs.test_github.scripts]
 test = "pytest {args}"
-test-cov = "pytest --cov --junitxml=junit.xml -o junit_family=legacy  --cov-report=xml"
+test-cov = "pytest --cov --cov-config={root}/pyproject.toml --junitxml=junit.xml -o junit_family=legacy --cov-report=xml"
 
 #================
 # Env: test_github_live
@@ -100,6 +95,7 @@ python = ["3.12"]
 installer = "uv"
 dependencies = [
     "pytest==8.3.5",
+    "pytest-asyncio>=0.24",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
 
@@ -114,8 +110,6 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
-    "mountainash_transport @  {root:uri}/temp/mountainash-transport",
-    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 ]
 [envs.test_github_live.scripts]
@@ -132,13 +126,12 @@ installer = "uv"
 matrix-name-format = "{value}"
 dependencies = [
     "pytest==8.3.5",
+    "pytest-asyncio>=0.24",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
-    "mountainash_transport @  {root:uri}/temp/mountainash-transport",
-    "mountainash_secrets @  {root:uri}/temp/mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 ]
 
@@ -154,7 +147,7 @@ matrix.backend.features = [
 
 [envs.test_optional.scripts]
 test = "pytest tests/test_optional_backends/{matrix:backend} {args}"
-test-cov = "pytest --cov --junitxml=junit-optional-{matrix:backend}.xml --cov-report=xml:coverage-optional-{matrix:backend}.xml tests/test_optional_backends/{matrix:backend} {args}"
+test-cov = "pytest --cov --cov-config={root}/pyproject.toml --junitxml=junit-optional-{matrix:backend}.xml --cov-report=xml:coverage-optional-{matrix:backend}.xml tests/test_optional_backends/{matrix:backend} {args}"
 
 
 #================
@@ -169,7 +162,7 @@ installer = "uv"
 dependencies = [
     "coverage[toml]>=6.5",
     "pytest==8.3.5",
-    "pytest-asyncio>=0.23.0",    # Async test support
+    "pytest-asyncio>=0.24",      # Registers asyncio_default_fixture_loop_scope
     "pytest-check==2.5.3",
     "pytest-mock==3.12.0",
     "pytest-json-report>=1.5.0", # Structured JSON output
@@ -184,8 +177,6 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
-    "mountainash_transport @  {root:uri}/../mountainash-transport",
-    "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 
 
@@ -196,7 +187,7 @@ dependencies = [
 # ===========================================
 
 test = [
-    "pytest --cov --junitxml=junit.xml tests/test_unit tests/test_integration",
+    "pytest --cov --cov-config={root}/pyproject.toml --junitxml=junit.xml tests/test_unit tests/test_integration",
     "coverage json --pretty-print",
     "coverage xml",
     "coverage html",
@@ -358,6 +349,7 @@ matrix.backend.extra-dependencies = [
 #================
 [envs.ruff]
 installer = "uv"
+detached = true
 dependencies = ["ruff==0.3.7"]
 [envs.ruff.scripts]
 check = "ruff check ./src"
@@ -369,6 +361,7 @@ fix = "ruff check ./src --fix"
 # Radon Complexity Checks
 [envs.radon]
 installer = "uv"
+detached = true
 dependencies = ["radon==6.0.1"]
 [envs.radon.scripts]
 radon-cc = "radon cc ./src -nd"
@@ -391,9 +384,27 @@ dependencies = [
     "pytest-check==2.5.3",
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
-    "mountainash_transport @  {root:uri}/../mountainash-transport",
-    "mountainash_secrets @  {root:uri}/../mountainash-secrets",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 ]
 [envs.mypy.scripts]
 check = "mypy --install-types --non-interactive {args:src/mountainash_data tests}"
+
+[envs.default.env-vars]
+UV_CONSTRAINT = "{root}/requirements-hatch.txt"
+HATCH_SIBLINGS = "{root:uri}/.."
+
+[envs.build_github.env-vars]
+UV_CONSTRAINT = "{root}/requirements-hatch.txt"
+HATCH_SIBLINGS = "{root:uri}/temp"
+
+[envs.test_github.env-vars]
+UV_CONSTRAINT = "{root}/requirements-hatch.txt"
+HATCH_SIBLINGS = "{root:uri}/temp"
+
+[envs.test_github_live.env-vars]
+UV_CONSTRAINT = "{root}/requirements-hatch.txt"
+HATCH_SIBLINGS = "{root:uri}/temp"
+
+[envs.test_optional.env-vars]
+UV_CONSTRAINT = "{root}/requirements-hatch.txt"
+HATCH_SIBLINGS = "{root:uri}/temp"

@@ -6,9 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveFloat, PositiveInt, model_validator
-from pydantic_settings import SettingsConfigDict
-
-from mountainash_settings import MountainAshBaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Phase(StrEnum):
@@ -140,7 +138,7 @@ class HarnessError(Exception):
         return self._render()
 
 
-class HarnessSettings(MountainAshBaseSettings):
+class HarnessSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="forbid", env_prefix="MOUNTAINASH_LIVE_DB_")
 
     selected_target: str | None = None

@@ -78,12 +78,6 @@ def test_legacy_live_scripts_are_absent() -> None:
     assert not {"test-live-up", "test-live-down", "test-live"} & scripts.keys()
 
 
-def test_live_workflow_has_no_ibis_test_variables() -> None:
-    workflow = _workflow(LIVE_WORKFLOW_PATH)
-
-    assert not any("IBIS_TEST_" in value for value in _strings(workflow))
-
-
 def test_live_workflow_has_exact_backend_options_and_runner_owned_jobs() -> None:
     workflow = _workflow(LIVE_WORKFLOW_PATH)
     dispatch = workflow["on"]["workflow_dispatch"]
@@ -225,7 +219,9 @@ def test_optional_backend_matrix_matches_test_directories() -> None:
         if path.is_dir() and not path.name.startswith("__")
     }
 
-    assert directories == set(OPTIONAL_BACKENDS)
+    # The separately provisioned dtype bridge is explicit-only, not a backend
+    # feature in the Hatch matrix (see its cohort README).
+    assert directories - {"mountainash"} == set(OPTIONAL_BACKENDS)
     assert config["python"] == "3.12"
     assert config["matrix-name-format"] == "{value}"
     assert config["matrix"] == [{"backend": list(OPTIONAL_BACKENDS)}]

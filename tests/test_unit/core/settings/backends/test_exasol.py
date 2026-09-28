@@ -32,4 +32,4 @@ class TestExasolBackendProfile:
         assert kwargs["schema"] == "APP"
 
     def test_ibis_dialect(self):
-        assert self._minimal().backend == "exasol"
+        assert self._minimal().profile_name == "exasol"

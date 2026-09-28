@@ -38,7 +38,7 @@ class TestDatabricksBackendProfile:
 
     def test_ibis_dialect(self):
         s = self._minimal()
-        assert s.backend == "databricks"
+        assert s.profile_name == "databricks"
 
     def test_use_cloud_fetch_plumbed(self):
         s = self._minimal(USE_CLOUD_FETCH=True)

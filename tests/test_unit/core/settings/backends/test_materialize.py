@@ -38,4 +38,4 @@ class TestMaterializeBackendProfile:
         assert s.HOST == "mz.local"
 
     def test_ibis_dialect(self):
-        assert self._minimal().backend == "materialize"
+        assert self._minimal().profile_name == "materialize"

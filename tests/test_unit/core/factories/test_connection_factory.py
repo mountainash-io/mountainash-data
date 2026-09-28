@@ -6,6 +6,7 @@ from mountainash_auth_client import (
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
 from mountainash_data.core.settings.profile import UrlParts
+from mountainash_data.core.settings import SQLiteBackendProfile
 from mountainash_data.core.factories.connection_factory import (
     build_driver_kwargs, build_connection_string, _normalize_and_validate_auth,
     apply_auth_adapter, provider_for_dialect,
@@ -24,7 +25,7 @@ class _Stub:
         self.__spec__ = _Spec(pt, sa)
         self._base, self._url = base, url or UrlParts(scheme="stub", host="h", port=1, database="db")
     @property
-    def backend(self): return self.__spec__.name
+    def profile_name(self): return self.__spec__.name
     def emit(self, target):
         assert target is self.__spec__.provider_type
         return dict(self._base)
@@ -42,12 +43,12 @@ def test_password_dispatch():
 
 
 def test_unsupported_auth_valueerror():
-    with pytest.raises(ValueError, match="does not support auth"):
-        build_driver_kwargs(_Stub(P.SQLITE, (NoAuthProfile,), {}), PasswordAuthProfile(USERNAME="u", PASSWORD="p"))
+    with pytest.raises(ValueError, match="sqlite does not support auth: PasswordAuthProfile"):
+        build_driver_kwargs(SQLiteBackendProfile(DATABASE=":memory:"), PasswordAuthProfile(USERNAME="u", PASSWORD="p"))
 
 
 def test_supported_but_no_adapter_fails_closed():
-    with pytest.raises(ValueError, match="no auth adapter"):
+    with pytest.raises(ValueError, match="stub: no auth adapter for WindowsAuthProfile"):
         build_driver_kwargs(_Stub(P.POSTGRESQL, (WindowsAuthProfile,), {"host": "h"}), WindowsAuthProfile(USERNAME="u"))
 
 
@@ -90,5 +91,5 @@ def test_url_noauth_authority_less():
 @pytest.mark.parametrize("auth", [WindowsAuthProfile(USERNAME="u"), TokenAuthProfile(TOKEN="T")])
 def test_url_unsupported_auth_not_implemented(auth):
     s = _Stub(P.POSTGRESQL, (type(auth),), {}, url=UrlParts(scheme="postgresql", host="db"))
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(NotImplementedError, match=f"stub: no URL form for {type(auth).__name__}"):
         build_connection_string(s, auth)

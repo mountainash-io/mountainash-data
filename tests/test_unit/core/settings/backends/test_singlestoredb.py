@@ -65,4 +65,4 @@ class TestSingleStoreDBBackendProfile:
 
     def test_ibis_dialect(self):
         s = self._minimal()
-        assert s.backend == "singlestoredb"
+        assert s.profile_name == "singlestoredb"
