@@ -12,7 +12,7 @@ import pytest
     ("name", "accepted", "rejected"),
     [
         ("mountainash-settings", "0.1.0", ("0.2", "26.5.0")),
-        ("mountainash-auth-client", "26.6.1", ("26.6.0", "27")),
+        ("mountainash-auth-client", "0.1.0", ("0.0.9", "0.2.0", "26.6.1")),
     ],
 )
 def test_internal_dependencies_are_unconditional(name, accepted, rejected):
