@@ -7,6 +7,7 @@ import tomllib
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from scripts.live_db_harness.sources import load_harness_settings
 
@@ -175,3 +176,39 @@ def test_supported_sources_preserve_raw_references(tmp_path, extension):
         path.write_text("\n".join(f"{key}='{json.dumps(value)}'" for key, value in data.items()))
     settings = load_harness_settings((path,))
     assert settings.targets["docker"].backends["postgres"].auth.values["PASSWORD"] == "secret:db.password"
+
+
+@pytest.mark.parametrize("fallback", ["", "selected_target=mpnas\n"])
+def test_prefixed_dotenv_selection_wins_over_unprefixed(tmp_path, fallback):
+    config = tmp_path / "config.toml"
+    config.write_text(POSTGRES_SUITE + DOCKER_TARGET + MPNAS_TARGET)
+    dotenv = tmp_path / "control.env"
+    dotenv.write_text(fallback + "MOUNTAINASH_LIVE_DB_selected_target=docker\n")
+
+    assert load_harness_settings((config, dotenv)).selected_target == "docker"
+
+
+def test_explicit_and_environment_override_mixed_dotenv(tmp_path, monkeypatch):
+    config = tmp_path / "config.toml"
+    config.write_text(POSTGRES_SUITE + DOCKER_TARGET + MPNAS_TARGET)
+    dotenv = tmp_path / "control.env"
+    dotenv.write_text("selected_target=mpnas\nMOUNTAINASH_LIVE_DB_selected_target=docker\n")
+    monkeypatch.setenv("MOUNTAINASH_LIVE_DB_selected_target", "mpnas")
+
+    assert load_harness_settings((config, dotenv)).selected_target == "mpnas"
+    assert load_harness_settings((config, dotenv), selected_target="docker").selected_target == "docker"
+
+
+@pytest.mark.parametrize("unknown", ["typo", "MOUNTAINASH_LIVE_DB_typo"])
+def test_dotenv_unknown_fields_remain_forbidden(tmp_path, unknown):
+    config = tmp_path / "config.toml"
+    config.write_text(POSTGRES_SUITE + DOCKER_TARGET)
+    dotenv = tmp_path / "control.env"
+    dotenv.write_text(f"MOUNTAINASH_LIVE_DB_selected_target=docker\n{unknown}=unexpected\n")
+
+    with pytest.raises(ValidationError) as caught:
+        load_harness_settings((config, dotenv))
+
+    assert [(error["loc"], error["type"]) for error in caught.value.errors()] == [
+        ((unknown,), "extra_forbidden")
+    ]

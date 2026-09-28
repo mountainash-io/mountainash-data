@@ -33,9 +33,12 @@ def load_harness_settings(
                 init_settings,
                 env_settings,
                 dotenv_settings,
+                # The primary source retains unknown keys for extra="forbid".
+                # This fallback must not re-emit its consumed prefixed keys.
                 DotEnvSettingsSource(
                     settings_cls, env_file=files.env_files, env_prefix="", env_file_encoding="utf-8",
                     case_sensitive=True, env_ignore_empty=True, env_parse_none_str="None",
+                    dotenv_filtering="only_existing",
                 ),
                 YamlConfigSettingsSource(settings_cls, yaml_file=files.yaml_files, deep_merge=True),
                 TomlConfigSettingsSource(settings_cls, toml_file=files.toml_files, deep_merge=True),
