@@ -101,12 +101,10 @@ identities, rather than receiving stores or resolved credentials. Literal
 resolved strings beginning with `secret:` remain a deferred limitation.
 
 The runtime bounds are `mountainash-settings>=0.1.0,<0.2` and
-`mountainash-auth-client>=26.6.1,<27`. The auth-client bound is provisional for
-this candidate rehearsal: use the exact migrated wheel identified by hash in
-the execution receipt, and advance the bound to its eventual migrated release
-before publication. Candidate checks cover CPython 3.12/3.13; Python 3.14 release
-qualification remains separate. Existing Hatch configuration is preserved
-developer configuration, not evidence of an installed-candidate check.
+`mountainash-auth-client>=0.1.0,<0.2`, matching the coordinated **0.1.0**
+development baseline. Hatch selects sibling sources for development and CI;
+installed-artifact checks record exact hashes separately. Python 3.14 release
+qualification and publication remain separate gates.
 
 ## Architecture
 
