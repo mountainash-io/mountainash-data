@@ -83,7 +83,7 @@ dependencies = [
 ]
 [envs.test_github.scripts]
 test = "pytest {args}"
-test-cov = "pytest --cov --junitxml=junit.xml -o junit_family=legacy  --cov-report=xml"
+test-cov = "pytest --cov --cov-config={root}/pyproject.toml --junitxml=junit.xml -o junit_family=legacy --cov-report=xml"
 
 #================
 # Env: test_github_live
@@ -147,7 +147,7 @@ matrix.backend.features = [
 
 [envs.test_optional.scripts]
 test = "pytest tests/test_optional_backends/{matrix:backend} {args}"
-test-cov = "pytest --cov --junitxml=junit-optional-{matrix:backend}.xml --cov-report=xml:coverage-optional-{matrix:backend}.xml tests/test_optional_backends/{matrix:backend} {args}"
+test-cov = "pytest --cov --cov-config={root}/pyproject.toml --junitxml=junit-optional-{matrix:backend}.xml --cov-report=xml:coverage-optional-{matrix:backend}.xml tests/test_optional_backends/{matrix:backend} {args}"
 
 
 #================
@@ -187,7 +187,7 @@ dependencies = [
 # ===========================================
 
 test = [
-    "pytest --cov --junitxml=junit.xml tests/test_unit tests/test_integration",
+    "pytest --cov --cov-config={root}/pyproject.toml --junitxml=junit.xml tests/test_unit tests/test_integration",
     "coverage json --pretty-print",
     "coverage xml",
     "coverage html",
