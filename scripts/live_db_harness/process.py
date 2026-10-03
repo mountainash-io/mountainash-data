@@ -241,14 +241,6 @@ class CommandRunner:
                 cls._terminate_group(process, cls._grace_period)
 
 
-@dataclass(frozen=True)
-class ProcessDetails:
-    """The process data needed to validate a transport identity."""
-
-    cmdline: tuple[str, ...]
-    parent_pid: int | None
-
-
 class ListenerInspector(Protocol):
     """Resolve the PID listening on a local TCP port."""
 
@@ -275,25 +267,3 @@ class PsutilListenerInspector:
                 if local_port == port and isinstance(process.pid, int) and process.pid > 0:
                     return process.pid
         return None
-
-
-class ProcessInspector(Protocol):
-    """Read the command line and parent PID for a process."""
-
-    def inspect(self, pid: int) -> ProcessDetails | None:
-        """Return process details, or ``None`` if the process is unavailable."""
-
-
-class PsutilProcessInspector:
-    """Read process identity data with psutil."""
-
-    def inspect(self, pid: int) -> ProcessDetails | None:
-        if pid <= 0:
-            return None
-        try:
-            process = psutil.Process(pid)
-            parent = process.parent()
-            parent_pid = parent.pid if parent is not None else None
-            return ProcessDetails(tuple(process.cmdline()), parent_pid)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return None

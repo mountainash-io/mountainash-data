@@ -33,7 +33,7 @@ profile = "password"
 '''
 
 MPNAS_TARGET = '''[targets.mpnas]
-transport = "ssh-tunnel"
+transport = "direct"
 max_parallel = 2
 test_timeout_seconds = 30
 
@@ -44,16 +44,6 @@ PORT = 5432
 [targets.mpnas.backends.postgres.auth]
 profile = "password"
 
-[targets.mpnas.backends.postgres.tunnel]
-launchd_label = "com.example.postgres"
-ssh_destination = "db.example"
-local_host = "127.0.0.1"
-local_port = 5432
-remote_host = "postgres.internal"
-remote_port = 5432
-client_host = "127.0.0.1/fingerprint"
-client_port = 5432
-process_ancestry = ["launchd"]
 '''
 
 
@@ -66,12 +56,9 @@ def test_tracked_and_user_files_add_targets(tmp_path: Path):
     settings = load_harness_settings((tracked, user))
 
     assert set(settings.targets) == {"docker", "mpnas"}
-    tunnel = settings.targets["mpnas"].backends["postgres"].tunnel
-    assert tunnel.client_host == "127.0.0.1/fingerprint"
-    assert tunnel.client_port == 5432
 
 
-def test_user_scalar_and_list_values_replace_tracked_values(tmp_path: Path):
+def test_user_scalar_values_replace_tracked_values(tmp_path: Path):
     tracked = tmp_path / "tracked.toml"
     user = tmp_path / "user.toml"
     tracked.write_text(POSTGRES_SUITE + DOCKER_TARGET + MPNAS_TARGET)
@@ -79,17 +66,12 @@ def test_user_scalar_and_list_values_replace_tracked_values(tmp_path: Path):
         '''[targets.docker]
 max_parallel = 3
 
-[targets.mpnas.backends.postgres.tunnel]
-process_ancestry = ["launchd", "autossh", "ssh"]
 '''
     )
 
     settings = load_harness_settings((tracked, user))
 
     assert settings.targets["docker"].max_parallel == 3
-    assert settings.targets["mpnas"].backends["postgres"].tunnel.process_ancestry == (
-        "launchd", "autossh", "ssh"
-    )
 
 
 def test_keyword_target_selection_wins_over_file_values(tmp_path: Path):

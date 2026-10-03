@@ -199,3 +199,4 @@ def test_external_target_rejects_plaintext_auth_value(tmp_path: Path) -> None:
 
     with pytest.raises(HarnessError, match="secret:"):
         build_backend_selection(loaded)
+

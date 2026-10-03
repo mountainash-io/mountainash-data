@@ -16,7 +16,6 @@ from scripts.live_db_harness.models import (
     ResultStatus,
     TargetBackendDefinition,
     TargetDefinition,
-    TunnelIdentity,
 )
 
 
@@ -24,9 +23,9 @@ def _auth() -> AuthDefinition:
     return AuthDefinition(profile="password", values={"USERNAME": "user"})
 
 
-def _target_backend(*, tunnel: TunnelIdentity | None = None) -> TargetBackendDefinition:
+def _target_backend() -> TargetBackendDefinition:
     return TargetBackendDefinition(
-        connection={"HOST": "127.0.0.1", "PORT": 5432}, auth=_auth(), tunnel=tunnel
+        connection={"HOST": "127.0.0.1", "PORT": 5432}, auth=_auth()
     )
 
 
@@ -61,19 +60,6 @@ def test_unavailable_backend_requires_backlog_item():
             settings_profile="postgresql",
             selector="postgres",
             runnable=False,
-        )
-
-
-def test_ssh_backend_requires_complete_tunnel_identity():
-    with pytest.raises(ValidationError):
-        HarnessSettings(
-            backends={"postgres": _suite_backend()},
-            targets={
-                "mpnas": TargetDefinition(
-                    transport="ssh-tunnel",
-                    backends={"postgres": _target_backend()},
-                )
-            },
         )
 
 
@@ -114,30 +100,6 @@ def test_backend_result_invariants():
     ).backlog == "DEBT-17"
 
 
-def test_target_transport_controls_tunnel_policy():
-    with pytest.raises(ValidationError):
-        HarnessSettings(
-            backends={"postgres": _suite_backend()},
-            targets={
-                "docker": TargetDefinition(
-                    transport="direct",
-                    backends={
-                        "postgres": _target_backend(
-                            tunnel=TunnelIdentity(
-                                launchd_label="com.example.tunnel",
-                                ssh_destination="db.example",
-                                local_host="127.0.0.1",
-                                local_port=5432,
-                                remote_host="db",
-                                remote_port=5432,
-                            )
-                        )
-                    },
-                )
-            },
-        )
-
-
 def test_target_backend_and_selection_references_are_validated():
     with pytest.raises(ValidationError):
         HarnessSettings(
@@ -165,3 +127,5 @@ def test_harness_error_is_frozen_and_rendered():
     ))
     with pytest.raises(FrozenInstanceError):
         error.detail = "changed"
+
+

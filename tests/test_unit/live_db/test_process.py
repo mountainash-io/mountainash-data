@@ -14,9 +14,6 @@ from scripts.live_db_harness import process as process_module
 from scripts.live_db_harness.models import HarnessError, Phase
 from scripts.live_db_harness.process import (
     CommandRunner,
-    ListenerInspector,
-    ProcessDetails,
-    ProcessInspector,
     PsutilListenerInspector,
     Redactor,
 )
@@ -55,23 +52,6 @@ def test_redactor_matches_percent_escape_hex_case_without_lowercasing_secret() -
 
     assert redactor.redact("credential=Secret%3aKey") == "credential=[REDACTED]"
     assert redactor.redact("credential=secret%3akey") == "credential=secret%3akey"
-
-
-def test_inspector_protocols_support_fake_listener_and_process_tree() -> None:
-    class FakeListener:
-        def pid_for_port(self, port: int) -> int | None:
-            return 123 if port == 5432 else None
-
-    class FakeProcess:
-        def inspect(self, pid: int) -> ProcessDetails:
-            return ProcessDetails(("ssh", "-L", "5432:127.0.0.1:5432"), 456)
-
-    listener: ListenerInspector = FakeListener()
-    process: ProcessInspector = FakeProcess()
-
-    assert listener.pid_for_port(5432) == 123
-    assert listener.pid_for_port(3306) is None
-    assert process.inspect(123) == ProcessDetails(("ssh", "-L", "5432:127.0.0.1:5432"), 456)
 
 
 def test_psutil_listener_skips_inaccessible_process_and_finds_listener(

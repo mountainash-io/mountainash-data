@@ -17,6 +17,7 @@ from .config import (
     build_backend_selection,
     load_unresolved_harness,
     reject_unknown_keys,
+    require_destructive_consent,
 )
 from .docker import DockerServiceLease
 from .locks import BackendLock
@@ -229,16 +230,6 @@ class LiveDbRunner:
         # Status validates metadata only. Profile construction resolves secret:
         # references, including non-string fields, and belongs to selection.
 
-    def _require_destructive_opt_in(self, selection: BackendSelection) -> None:
-        if selection.target.transport != "compose" and not selection.target.allow_destructive_tests:
-            raise _error(
-                selection.target_name,
-                selection.backend_name,
-                Phase.CONFIGURATION,
-                "The external target does not allow destructive tests.",
-                "Set allow_destructive_tests = true for this target.",
-            )
-
     def _compose_parts(self, target: str, backend: str) -> tuple[Any, Any, Any]:
         loaded = self._load(target, backend)
         target_def = loaded.settings.targets.get(target)
@@ -395,8 +386,8 @@ class LiveDbRunner:
         command_runner: Any | None = None,
         compose_inspector: Any | None = None,
     ) -> None:
-        self._require_destructive_opt_in(selection)
-        if not (test_mode and selection.target.transport == "compose"):
+        require_destructive_consent(selection)
+        if selection.target.transport == "compose" and not test_mode:
             self._check_transport(
                 selection,
                 startup=not test_mode,
