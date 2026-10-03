@@ -99,7 +99,10 @@ def load_unresolved_harness(
             backend=selected_backend,
             phase=Phase.CONFIGURATION,
             detail="Unable to load harness settings.",
-            corrective_action="Fix the selected target and configuration files.",
+            corrective_action=(
+                "Fix the selected target and configuration files. For operator-managed "
+                "endpoints use transport='direct' and remove all tunnel metadata."
+            ),
         )
     return LoadedHarnessSettings(settings=settings, config_files=paths)
 
@@ -401,3 +404,12 @@ def build_backend_selection(loaded: LoadedHarnessSettings) -> BackendSelection:
             corrective_action=corrective_action,
         )
     return selection
+
+
+def require_destructive_consent(selection: BackendSelection) -> None:
+    if selection.target.transport != "compose" and not selection.target.allow_destructive_tests:
+        raise HarnessError(
+            selection.target_name, selection.backend_name, Phase.CONFIGURATION,
+            "The external target does not allow destructive tests.",
+            "Set allow_destructive_tests = true only for an authorized disposable target.",
+        )

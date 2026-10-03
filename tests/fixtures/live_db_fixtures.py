@@ -14,6 +14,7 @@ from scripts.live_db_harness.config import (
     BackendSelection,
     build_backend_selection,
     load_unresolved_harness,
+    require_destructive_consent,
 )
 
 
@@ -105,6 +106,7 @@ def _connected_backend(
     expected_backend: str,
 ) -> Iterator[IbisBackend]:
     selection = _selection_for_fixture(fixture_name, expected_backend)
+    require_destructive_consent(selection)
     backend = IbisBackend(selection.settings_parameters)
     try:
         backend.connect(auth_profile=selection.auth_profile)

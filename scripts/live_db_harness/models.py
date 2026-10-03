@@ -56,20 +56,6 @@ class ComposeService(BaseModel):
     service: str
 
 
-class TunnelIdentity(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    launchd_label: str
-    ssh_destination: str
-    local_host: str
-    local_port: int
-    remote_host: str
-    remote_port: int
-    client_host: str | None = None
-    client_port: int | None = None
-    process_ancestry: tuple[str, ...] = ("launchd", "autossh", "ssh")
-
-
 class AuthDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -82,7 +68,6 @@ class TargetBackendDefinition(BaseModel):
 
     connection: dict[str, object]
     auth: AuthDefinition
-    tunnel: TunnelIdentity | None = None
 
 
 class BackendDefinition(BaseModel):
@@ -106,7 +91,7 @@ class BackendDefinition(BaseModel):
 class TargetDefinition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    transport: Literal["compose", "ssh-tunnel", "direct"]
+    transport: Literal["compose", "direct"]
     secrets_provider: str | None = None
     allow_destructive_tests: bool = False
     max_parallel: PositiveInt = 1
@@ -163,7 +148,7 @@ class HarnessSettings(BaseSettings):
                 )
 
         for target_name, target in self.targets.items():
-            for backend_name, target_backend in target.backends.items():
+            for backend_name in target.backends:
                 suite_backend = self.backends.get(backend_name)
                 if suite_backend is None:
                     raise ValueError(
@@ -175,20 +160,6 @@ class HarnessSettings(BaseSettings):
                             f"compose target {target_name!r} backend {backend_name!r} "
                             "requires suite Compose metadata"
                         )
-                    if target_backend.tunnel is not None:
-                        raise ValueError(
-                            f"compose target {target_name!r} backend {backend_name!r} "
-                            "cannot define a tunnel identity"
-                        )
-                elif target.transport == "ssh-tunnel":
-                    if target_backend.tunnel is None:
-                        raise ValueError(
-                            f"SSH-tunnel target {target_name!r} backend {backend_name!r} "
-                            "requires a complete tunnel identity"
-                        )
-                elif target_backend.tunnel is not None:
-                    raise ValueError(
-                        f"direct target {target_name!r} backend {backend_name!r} "
-                        "cannot define a tunnel identity"
-                    )
         return self
+
+
