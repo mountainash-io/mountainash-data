@@ -323,9 +323,6 @@ def case_insert_rolls_back(backend) -> None:
 
 
 def case_truncate_rolls_back(backend) -> None:
-    if backend.dialect == "sqlite":
-        pytest.skip("truncate() fails on SQLite even outside a transaction (Ibis emits "
-                    "TRUNCATE); tracked separately in sqlite-truncate-unsupported")
     t = table_name()
     seed(backend, t, [(1, 10), (2, 20)])
     try:

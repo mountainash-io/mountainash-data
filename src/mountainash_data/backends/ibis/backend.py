@@ -788,8 +788,12 @@ class IbisBackend:
         kwargs: dict[str, t.Any] = {}
         if rendered is not None:
             kwargs["database"] = rendered
+        hook = self._spec.truncate_table_hook
         with conn._protected():
-            conn._ibis_conn.truncate_table(name, **kwargs)
+            if hook is not None:
+                hook(conn._ibis_conn, name, **kwargs)
+            else:
+                conn._ibis_conn.truncate_table(name, **kwargs)
         return self
 
     def rename_table(self, old_name: str, new_name: str) -> IbisBackend:
