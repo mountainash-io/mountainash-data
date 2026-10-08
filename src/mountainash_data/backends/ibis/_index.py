@@ -102,6 +102,23 @@ def build_drop_index_sql(
 # ---------------------------------------------------------------------------
 
 
+def _check_index_exists(
+    index_name: str,
+    *,
+    table_name: t.Optional[str] = None,
+    namespace: t.Optional[str] = None,
+    exists_sql_fn: t.Any,
+) -> None:
+    """Local argument checks for _generic_index_exists (no database access)."""
+    if exists_sql_fn is None:
+        raise NotImplementedError("dialect has no get_index_exists_sql")
+    _validate_simple_identifier(index_name, kind="index_name")
+    if table_name is not None:
+        _validate_simple_identifier(table_name, kind="table_name")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
+
+
 def _generic_index_exists(
     ibis_conn: t.Any,
     index_name: str,
@@ -111,13 +128,9 @@ def _generic_index_exists(
     exists_sql_fn: t.Any,
 ) -> bool:
     """Run the dialect's introspection SQL and return whether the index exists."""
-    if exists_sql_fn is None:
-        raise NotImplementedError("dialect has no get_index_exists_sql")
-    _validate_simple_identifier(index_name, kind="index_name")
-    if table_name is not None:
-        _validate_simple_identifier(table_name, kind="table_name")
-    if namespace is not None:
-        _validate_simple_identifier(namespace, kind="namespace")
+    _check_index_exists(
+        index_name, table_name=table_name, namespace=namespace, exists_sql_fn=exists_sql_fn,
+    )
     result = ibis_conn.sql(exists_sql_fn(index_name, table_name, namespace))
     if result is None:
         return False
@@ -146,6 +159,41 @@ def _index_ref(ibis_conn: t.Any, index_name: str, namespace: t.Optional[str]) ->
     return quote_identifier(index_name, dialect)
 
 
+def _check_create_index(
+    table_name: str,
+    columns: t.Union[list[str], str],
+    *,
+    index_name: t.Optional[str],
+    unique: bool,
+    index_type: t.Optional[str],
+    where: t.Any,
+    namespace: t.Optional[str],
+    caps: IndexCapability,
+) -> tuple[list[str], str]:
+    """Local argument checks for _generic_create_index (no database access).
+
+    Returns the normalized columns and the resolved index name."""
+    _validate_simple_identifier(table_name, kind="table_name")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
+    cols = _normalize_columns(columns)
+    for c in cols:
+        _validate_simple_identifier(c, kind="column")
+
+    if index_type is not None and index_type not in caps.index_types:
+        raise ValueError(
+            f"index_type {index_type!r} not supported by this dialect; "
+            f"valid: {sorted(caps.index_types) or 'none'}"
+        )
+    if where is not None and not caps.partial:
+        raise ValueError("this dialect does not support partial indexes (where=)")
+
+    if index_name is None:
+        index_name = _generate_index_name(table_name, cols, unique=unique)
+    _validate_simple_identifier(index_name, kind="index_name")
+    return cols, index_name
+
+
 def _generic_create_index(
     ibis_conn: t.Any,
     table_name: str,
@@ -166,24 +214,10 @@ def _generic_create_index(
     auto-commit DDL) are documented-and-accepted per spec §6: the engine's
     error is surfaced, never swallowed.
     """
-    _validate_simple_identifier(table_name, kind="table_name")
-    if namespace is not None:
-        _validate_simple_identifier(namespace, kind="namespace")
-    cols = _normalize_columns(columns)
-    for c in cols:
-        _validate_simple_identifier(c, kind="column")
-
-    if index_type is not None and index_type not in caps.index_types:
-        raise ValueError(
-            f"index_type {index_type!r} not supported by this dialect; "
-            f"valid: {sorted(caps.index_types) or 'none'}"
-        )
-    if where is not None and not caps.partial:
-        raise ValueError("this dialect does not support partial indexes (where=)")
-
-    if index_name is None:
-        index_name = _generate_index_name(table_name, cols, unique=unique)
-    _validate_simple_identifier(index_name, kind="index_name")
+    cols, index_name = _check_create_index(
+        table_name, columns, index_name=index_name, unique=unique,
+        index_type=index_type, where=where, namespace=namespace, caps=caps,
+    )
 
     # Idempotency: native guard, or emulate via precheck.
     guard = ""
@@ -215,6 +249,25 @@ def _generic_create_index(
     ibis_conn.raw_sql(sql)
 
 
+def _check_drop_index(
+    index_name: str,
+    *,
+    table_name: t.Optional[str],
+    namespace: t.Optional[str],
+    caps: IndexCapability,
+) -> None:
+    """Local argument checks for _generic_drop_index (no database access)."""
+    _validate_simple_identifier(index_name, kind="index_name")
+    if caps.drop_scope is DropScope.TABLE_SCOPED and table_name is None:
+        raise ValueError(
+            "drop_index requires table_name for this dialect (DROP INDEX ... ON tbl)"
+        )
+    if table_name is not None:
+        _validate_simple_identifier(table_name, kind="table_name")
+    if namespace is not None:
+        _validate_simple_identifier(namespace, kind="namespace")
+
+
 def _generic_drop_index(
     ibis_conn: t.Any,
     index_name: str,
@@ -231,15 +284,7 @@ def _generic_drop_index(
     auto-commit DDL) are documented-and-accepted per spec §6: the engine's
     error is surfaced, never swallowed.
     """
-    _validate_simple_identifier(index_name, kind="index_name")
-    if caps.drop_scope is DropScope.TABLE_SCOPED and table_name is None:
-        raise ValueError(
-            "drop_index requires table_name for this dialect (DROP INDEX ... ON tbl)"
-        )
-    if table_name is not None:
-        _validate_simple_identifier(table_name, kind="table_name")
-    if namespace is not None:
-        _validate_simple_identifier(namespace, kind="namespace")
+    _check_drop_index(index_name, table_name=table_name, namespace=namespace, caps=caps)
 
     guard = ""
     if if_exists:

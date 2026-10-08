@@ -118,11 +118,19 @@ def run_transaction(
                     _attach(original, rollback_error)
             raise
         if state.poisoned:
-            if state.owns:
+            if not state.owns:
+                raise TransactionPoisonedError(
+                    "unit of work was poisoned by a caught failure; caller owns completion"
+                )
+            try:
                 _exec("ROLLBACK")
+            except Exception as rollback_error:
+                # e.g. SQLite already ended the transaction (ON CONFLICT ROLLBACK).
+                raise TransactionPoisonedError(
+                    "unit of work was poisoned by a caught failure; ROLLBACK failed"
+                ) from rollback_error
             raise TransactionPoisonedError(
-                "unit of work was poisoned by a caught failure"
-                + ("; rolled back" if state.owns else "; caller owns completion")
+                "unit of work was poisoned by a caught failure; rolled back"
             )
         if selected:
             _finish_selected(

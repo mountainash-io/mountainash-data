@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import polars as pl
 import pytest
 
 from mountainash_data import IbisBackend
@@ -109,4 +110,53 @@ def test_metadata_failure_propagates_inside_scope_only():
         assert cases.rows(b, t) == [(1, 10)]
     finally:
         raw.set_authorizer(None)
+        b.close()
+
+
+# --- Remaining operation families ---------------------------------------------
+
+
+@pytest.mark.parametrize("case", [
+    cases.case_table_ddl_rolls_back,
+    cases.case_view_ddl_rolls_back,
+    cases.case_insert_rolls_back,
+    cases.case_truncate_rolls_back,
+    cases.case_rename_rolls_back,
+    cases.case_add_columns_rolls_back,
+    cases.case_inspection_keeps_pending_work,
+    cases.case_local_rejection_does_not_poison,
+    cases.case_raw_commit_detected_at_exit,
+], ids=lambda f: f.__name__.removeprefix("case_"))
+def test_operation_family(backend, case):
+    case(backend)
+
+
+def test_index_ops_roll_back(backend):
+    cases.case_index_ops_roll_back(backend, partial=backend.dialect == "sqlite")
+
+
+def test_sqlite_conflict_rollback_then_drop_is_refused():
+    """ON CONFLICT ROLLBACK ends SQLite's transaction by itself. Without the
+    poisoned-scope check, a later DROP would run outside any transaction and
+    persist."""
+    from mountainash_data.core.errors import TransactionPoisonedError
+
+    b = IbisBackend(dialect="sqlite", database=":memory:").connect()
+    t, keep = cases.table_name(), cases.table_name("keep")
+    cases.execute(b, f"CREATE TABLE {t} (id INTEGER PRIMARY KEY ON CONFLICT ROLLBACK, v INTEGER)")
+    cases.execute(b, f"INSERT INTO {t} VALUES (1, 10)")
+    cases.seed(b, keep, [(1, 1)])
+    try:
+        with pytest.raises(TransactionPoisonedError):
+            with b.transaction():
+                try:
+                    b.insert(t, pl.DataFrame({"id": [1], "v": [99]}))
+                except TransactionPoisonedError:
+                    raise
+                except Exception:
+                    pass  # constraint error; SQLite has already rolled back
+                with pytest.raises(TransactionPoisonedError):
+                    b.drop_table(keep)
+        assert keep in b.list_tables()
+    finally:
         b.close()

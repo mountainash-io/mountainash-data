@@ -22,12 +22,17 @@ from mountainash_data.backends.ibis._adoption import (
     apply_options, snapshot_options, restore_options,
 )
 from mountainash_data.backends.ibis.operations import (
+    _check_add_columns,
+    _check_rename_table,
     _generic_add_columns,
     _generic_rename_table,
     _generic_upsert,
     _validate_simple_identifier,
 )
 from mountainash_data.backends.ibis._index import (
+    _check_create_index,
+    _check_drop_index,
+    _check_index_exists,
     _generic_create_index,
     _generic_drop_index,
     _generic_index_exists,
@@ -700,10 +705,11 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
         ensure_sqlite_nat_adapter()
-        conn._ibis_conn.create_table(
-            name, obj=obj, schema=schema, database=rendered,
-            temp=temp, overwrite=overwrite,
-        )
+        with conn._protected():
+            conn._ibis_conn.create_table(
+                name, obj=obj, schema=schema, database=rendered,
+                temp=temp, overwrite=overwrite,
+            )
         return self
 
     def drop_table(
@@ -715,7 +721,8 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        conn._ibis_conn.drop_table(name, database=rendered, force=force)
+        with conn._protected():
+            conn._ibis_conn.drop_table(name, database=rendered, force=force)
         return self
 
     def create_view(
@@ -728,7 +735,8 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        conn._ibis_conn.create_view(name, obj=obj, database=rendered, overwrite=overwrite)
+        with conn._protected():
+            conn._ibis_conn.create_view(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def drop_view(
@@ -740,7 +748,8 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        conn._ibis_conn.drop_view(name, database=rendered, force=force)
+        with conn._protected():
+            conn._ibis_conn.drop_view(name, database=rendered, force=force)
         return self
 
     def insert(
@@ -754,7 +763,8 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
         ensure_sqlite_nat_adapter()
-        conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
+        with conn._protected():
+            conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def truncate(
@@ -771,16 +781,20 @@ class IbisBackend:
         kwargs: dict[str, t.Any] = {}
         if rendered is not None:
             kwargs["database"] = rendered
-        conn._ibis_conn.truncate_table(name, **kwargs)
+        with conn._protected():
+            conn._ibis_conn.truncate_table(name, **kwargs)
         return self
 
     def rename_table(self, old_name: str, new_name: str) -> IbisBackend:
         conn = self._require_connected()
         hook = self._spec.rename_table_hook
-        if hook is not None:
-            hook(conn._ibis_conn, old_name, new_name)
-        else:
-            _generic_rename_table(conn._ibis_conn, old_name, new_name)
+        if hook is None:
+            _check_rename_table(old_name, new_name)
+        with conn._protected():
+            if hook is not None:
+                hook(conn._ibis_conn, old_name, new_name)
+            else:
+                _generic_rename_table(conn._ibis_conn, old_name, new_name)
         return self
 
     # --- Terminal operations (return data) ---
@@ -886,12 +900,15 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="add_columns")
         hook = self._spec.add_columns_hook
-        if hook is not None:
-            hook(conn._ibis_conn, name, source, namespace=rendered)
-        else:
-            _generic_add_columns(
-                conn._ibis_conn, name, source, namespace=rendered
-            )
+        if hook is None:
+            _check_add_columns(name, rendered)
+        with conn._protected():
+            if hook is not None:
+                hook(conn._ibis_conn, name, source, namespace=rendered)
+            else:
+                _generic_add_columns(
+                    conn._ibis_conn, name, source, namespace=rendered
+                )
         return self
 
     def create_index(
@@ -909,24 +926,31 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_index")
         hook = self._spec.create_index_hook
-        if hook is not None:
-            hook(
-                conn._ibis_conn, table_name, columns,
-                index_name=index_name, unique=unique, index_type=index_type,
-                where=where, namespace=rendered, if_not_exists=if_not_exists,
-            )
-        elif self._spec.index_caps is not None:
-            _generic_create_index(
-                conn._ibis_conn, table_name, columns,
-                index_name=index_name, unique=unique, index_type=index_type,
-                where=where, namespace=rendered, if_not_exists=if_not_exists,
-                caps=self._spec.index_caps,
-                exists_sql_fn=self._spec.get_index_exists_sql,
-            )
-        else:
+        caps = self._spec.index_caps
+        if hook is None and caps is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support create_index"
             )
+        if hook is None:
+            _check_create_index(
+                table_name, columns, index_name=index_name, unique=unique,
+                index_type=index_type, where=where, namespace=rendered, caps=caps,
+            )
+        with conn._protected():
+            if hook is not None:
+                hook(
+                    conn._ibis_conn, table_name, columns,
+                    index_name=index_name, unique=unique, index_type=index_type,
+                    where=where, namespace=rendered, if_not_exists=if_not_exists,
+                )
+            else:
+                _generic_create_index(
+                    conn._ibis_conn, table_name, columns,
+                    index_name=index_name, unique=unique, index_type=index_type,
+                    where=where, namespace=rendered, if_not_exists=if_not_exists,
+                    caps=caps,
+                    exists_sql_fn=self._spec.get_index_exists_sql,
+                )
         return self
 
     def create_unique_index(
@@ -958,22 +982,26 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="drop_index")
         hook = self._spec.drop_index_hook
-        if hook is not None:
-            hook(
-                conn._ibis_conn, index_name,
-                table_name=table_name, namespace=rendered, if_exists=if_exists,
-            )
-        elif self._spec.index_caps is not None:
-            _generic_drop_index(
-                conn._ibis_conn, index_name,
-                table_name=table_name, namespace=rendered, if_exists=if_exists,
-                caps=self._spec.index_caps,
-                exists_sql_fn=self._spec.get_index_exists_sql,
-            )
-        else:
+        caps = self._spec.index_caps
+        if hook is None and caps is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support drop_index"
             )
+        if hook is None:
+            _check_drop_index(index_name, table_name=table_name, namespace=rendered, caps=caps)
+        with conn._protected():
+            if hook is not None:
+                hook(
+                    conn._ibis_conn, index_name,
+                    table_name=table_name, namespace=rendered, if_exists=if_exists,
+                )
+            else:
+                _generic_drop_index(
+                    conn._ibis_conn, index_name,
+                    table_name=table_name, namespace=rendered, if_exists=if_exists,
+                    caps=caps,
+                    exists_sql_fn=self._spec.get_index_exists_sql,
+                )
         return self
 
     def index_exists(
@@ -989,11 +1017,16 @@ class IbisBackend:
             )
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="index_exists")
-        return _generic_index_exists(
-            conn._ibis_conn, index_name,
-            table_name=table_name, namespace=rendered,
-            exists_sql_fn=self._spec.get_index_exists_sql,
+        exists_sql_fn = self._spec.get_index_exists_sql
+        _check_index_exists(
+            index_name, table_name=table_name, namespace=rendered, exists_sql_fn=exists_sql_fn,
         )
+        with conn._protected():
+            return _generic_index_exists(
+                conn._ibis_conn, index_name,
+                table_name=table_name, namespace=rendered,
+                exists_sql_fn=exists_sql_fn,
+            )
 
     def list_indexes(
         self,
@@ -1008,17 +1041,15 @@ class IbisBackend:
         _validate_simple_identifier(table_name, kind="table_name")
         if rendered is not None:
             _validate_simple_identifier(rendered, kind="namespace")
-        if self._spec.list_indexes_hook is not None:
-            return self._spec.list_indexes_hook(
-                conn._ibis_conn, table_name, rendered
+        list_sql = self._spec.get_list_indexes_sql
+        hook = self._spec.list_indexes_hook
+        if hook is None and self._spec.index_caps is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support list_indexes"
             )
-        if self._spec.index_caps is not None:
-            list_sql = self._spec.get_list_indexes_sql
-            if list_sql is None:
-                raise RuntimeError("index capability lacks a list-index implementation")
-            return _generic_list_indexes(
-                conn._ibis_conn, table_name, rendered, list_sql
-            )
-        raise NotImplementedError(
-            f"Dialect {self.dialect!r} does not support list_indexes"
-        )
+        if hook is None and list_sql is None:
+            raise RuntimeError("index capability lacks a list-index implementation")
+        with conn._protected():
+            if hook is not None:
+                return hook(conn._ibis_conn, table_name, rendered)
+            return _generic_list_indexes(conn._ibis_conn, table_name, rendered, list_sql)
