@@ -62,27 +62,35 @@ class Backend(t.Protocol):
         ...
 
     def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
-        """Reentrant unit of work. Outermost issues BEGIN, nested calls join,
-        outermost COMMITs, any exception ROLLBACKs the whole unit. required=True
-        raises TransactionUnsupportedError on a backend with no transaction
-        concept; required=False warns once and runs as a no-op. Statements run
-        through this backend/ibis participate only while the driver is autocommit
-        (an adopted autocommit-off connection is refused with
-        TransactionIntegrityError). See spec §5.1–5.3."""
+        """Reentrant, flat unit of work on this backend's native connection.
+
+        If the connection is idle, the outermost scope begins a transaction
+        and owns it: COMMIT on success, ROLLBACK on error or after a caught
+        failure (TransactionPoisonedError). If the caller already has a native
+        transaction open (SQLite, DuckDB, PostgreSQL), the scope joins it and
+        never commits or rolls it back. Nested scopes join; no savepoints.
+        required=True raises TransactionUnsupportedError on a backend with no
+        transaction concept; required=False warns once and runs as a no-op.
+        TransactionIntegrityError reports a native state that cannot be
+        trusted (unknown on entry, or not eligible to commit on exit)."""
+        ...
+
+    def native_transaction_open(self) -> bool | None:
+        """Whether the native driver currently has a transaction open.
+
+        Read-only. False for backends with no transaction concept and for an
+        unconnected or closed backend; None when the state cannot be observed.
+        Probe errors propagate."""
         ...
 
     def in_transaction(self) -> bool:
-        """True if a unit of work opened via transaction() is currently active
-        on this backend's connection (any nesting depth). Runtime companion to
-        the static supports_transactions flag.
+        """True while a transaction() scope is registered on this backend's
+        connection (any nesting depth), including a scope that joined the
+        caller's own transaction. It does not mean this package will commit;
+        see native_transaction_open() for the driver's state.
 
-        Total: returns False — never raises — for backends with no transaction
+        Total: returns False, never raises, for backends with no transaction
         concept, a backend that was never connected or has been closed, and a
-        connection whose native handle has gone away. This is a point-in-time
-        snapshot, NOT a lock: an answer may be stale the instant it returns, so
-        it must not be used as a correctness-critical mutual-exclusion gate
-        without external coordination. Intended use is an ownership guard
-        ("refuse to run nested inside an ambient unit of work"). Note: True
-        means a unit of work is open, not that a fresh transaction() join would
-        succeed — a poisoned unit is still reported active until it unwinds."""
+        connection whose native handle has gone away. A point-in-time snapshot,
+        not a lock. A poisoned unit is still reported active until it unwinds."""
         ...

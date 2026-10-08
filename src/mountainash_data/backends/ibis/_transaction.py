@@ -1,12 +1,16 @@
-"""Reentrant, cross-dialect unit-of-work machinery (Gap 3).
+"""Reentrant, cross-dialect unit-of-work machinery.
 
-Ambient registry keyed on id(raw_handle) under a module lock: the outermost
-transaction() issues the dialect's begin statement, nested calls join it, the
-outermost COMMITs, and any exception (or a poisoned-by-caught-nested-failure
-state) ROLLBACKs the whole unit. Flat semantics — no savepoints. Never toggles
-the driver's autocommit flag. BEGIN/COMMIT/ROLLBACK go through the shared
+Ambient registry keyed on id(raw_handle) under a module lock. The outermost
+transaction() decides who owns completion; nested calls on the same raw
+handle join it. Flat semantics - no savepoints. Never toggles the driver's
+autocommit flag. BEGIN/COMMIT/ROLLBACK go through the shared
 `_raw.raw_execute` transport (honouring `raw_execute_hook`) because .execute()
 is not uniform across DBAPI drivers.
+
+Ownership dialects (OWNERSHIP_DIALECTS) observe native state on entry: idle ->
+begin and own the unit; already open (caller's transaction) -> join without
+ever completing it. Other transactional dialects keep the original
+begin/commit/rollback behaviour.
 """
 
 from __future__ import annotations
@@ -25,15 +29,30 @@ from mountainash_data.core.errors import (
     TransactionIntegrityError,
 )
 
+OWNERSHIP_DIALECTS = frozenset({"sqlite", "duckdb", "postgres"})
+
+Probe = t.Callable[[t.Any], t.Optional[bool]]
+
 
 @dataclass
 class _TxState:
     depth: int = 0
     poisoned: bool = False
+    owns: bool = True
+    # True on ownership dialects: package calls in this scope are protected.
+    selected: bool = False
 
 
 _ACTIVE: dict[int, _TxState] = {}
 _LOCK = threading.Lock()
+
+
+def _attach(primary: BaseException, secondary: BaseException) -> None:
+    """Keep `primary` as the raised error while preserving `secondary`."""
+    if primary.__context__ is None:
+        primary.__context__ = secondary
+    else:
+        primary.add_note(f"additionally: {secondary!r}")
 
 
 @contextlib.contextmanager
@@ -44,9 +63,12 @@ def run_transaction(
     begin_statement: t.Optional[str],
     dialect: str,
     required: bool,
-    autocommit_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None,
-    in_transaction_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None,
+    in_transaction_probe: t.Optional[Probe] = None,
     raw_execute_hook: t.Optional[t.Callable[[t.Any, str], None]] = None,
+    selected: bool = False,
+    begin_hook: t.Optional[t.Callable[[t.Any], None]] = None,
+    precommit_probe: t.Optional[Probe] = None,
+    on_commit_failure: t.Optional[t.Callable[[], None]] = None,
 ) -> t.Iterator[None]:
     if support is TransactionSupport.NONE:
         if required:
@@ -64,59 +86,66 @@ def run_transaction(
     key = id(raw_handle)
     with _LOCK:
         state = _ACTIVE.get(key)
-        is_outer = state is None
 
-    # NOTE: the outer-entry check above and the _ACTIVE[key] insert below are
-    # deliberately two separate critical sections, not one — the BEGIN must run
-    # between them (register-after-BEGIN, so a failed BEGIN leaves no stale
-    # entry). This is safe because a single raw driver connection is not safe
-    # for concurrent use across threads at the DBAPI level, so two threads
-    # racing to open the outer transaction on ONE handle is already
-    # unsupported; the registry's job is reentrancy for sequential/nested
-    # reuse of one connection, not cross-thread arbitration.
-    if is_outer:
-        # Entry precondition (finding 1): ibis interleaves commits on autocommit-off
-        # connections, so a transaction() that cannot guarantee atomicity refuses.
-        if autocommit_probe is not None and autocommit_probe(raw_handle) is False:
-            raise TransactionIntegrityError(
-                f"{dialect!r} connection has autocommit disabled; ibis would interleave "
-                f"commits inside transaction(). Enable autocommit on the driver."
-            )
-        # Register AFTER a successful BEGIN so a failed BEGIN leaves no stale entry.
-        if begin_statement is not None:
+    if state is not None:
+        yield from _join(state)
+        return
+
+    # Entry and registration are two critical sections with BEGIN between them
+    # (register-after-BEGIN, so a failed BEGIN leaves no stale entry). Safe
+    # because one raw driver connection is not usable concurrently anyway; the
+    # registry provides sequential reentrancy, not cross-thread arbitration.
+    owns = True
+    if selected:
+        owns = not _observe_entry(raw_handle, dialect, in_transaction_probe)
+    if owns:
+        if begin_hook is not None:
+            begin_hook(raw_handle)
+        elif begin_statement is not None:
             _exec(begin_statement)
-        state = _TxState(depth=1)
-        with _LOCK:
-            _ACTIVE[key] = state
+
+    state = _TxState(depth=1, owns=owns, selected=selected)
+    with _LOCK:
+        _ACTIVE[key] = state
+    try:
         try:
             yield
         except BaseException as original:
+            if state.owns:
+                try:
+                    _exec("ROLLBACK")
+                except Exception as rollback_error:
+                    _attach(original, rollback_error)
+            raise
+        if state.poisoned:
+            if not state.owns:
+                raise TransactionPoisonedError(
+                    "unit of work was poisoned by a caught failure; caller owns completion"
+                )
             try:
                 _exec("ROLLBACK")
             except Exception as rollback_error:
-                original.__context__ = rollback_error
-            raise
-        else:
-            if state.poisoned:
-                _exec("ROLLBACK")
+                # e.g. SQLite already ended the transaction (ON CONFLICT ROLLBACK).
                 raise TransactionPoisonedError(
-                    "unit of work was poisoned by a caught nested failure; rolled back"
-                )
-            # Commit-time integrity (finding 1): if ibis rolled the server tx back
-            # underneath us, refuse rather than commit nothing.
-            if in_transaction_probe is not None and in_transaction_probe(raw_handle) is False:
-                raise TransactionIntegrityError(
-                    "server transaction vanished before COMMIT (ibis interleaved a "
-                    "commit/rollback inside the unit of work)"
-                )
+                    "unit of work was poisoned by a caught failure; ROLLBACK failed"
+                ) from rollback_error
+            raise TransactionPoisonedError(
+                "unit of work was poisoned by a caught failure; rolled back"
+            )
+        if selected:
+            _finish_selected(
+                raw_handle, state.owns, _exec,
+                in_transaction_probe, precommit_probe, on_commit_failure,
+            )
+        else:
             _exec("COMMIT")
-        finally:
-            with _LOCK:
-                _ACTIVE.pop(key, None)
-        return
+    finally:
+        with _LOCK:
+            _ACTIVE.pop(key, None)
 
-    # Nested: join the in-flight unit of work (all state mutations under the lock).
-    assert state is not None  # is_outer is False here, so _ACTIVE.get(key) was not None
+
+def _join(state: _TxState) -> t.Iterator[None]:
+    """Nested entry on an already-registered handle: flat join, no BEGIN."""
     with _LOCK:
         if state.poisoned:
             raise TransactionPoisonedError(
@@ -134,14 +163,131 @@ def run_transaction(
             state.depth -= 1
 
 
+def _observe_entry(raw_handle: t.Any, dialect: str, probe: t.Optional[Probe]) -> bool:
+    """Return True when a native transaction is already open (join it)."""
+    if probe is None:
+        raise TransactionIntegrityError(f"{dialect!r} has no native transaction-state probe")
+    try:
+        present = probe(raw_handle)
+    except Exception as exc:
+        raise TransactionIntegrityError(
+            f"could not observe {dialect!r} native transaction state"
+        ) from exc
+    if present is None:
+        raise TransactionIntegrityError(
+            f"{dialect!r} native transaction state is unknown; refusing to start or join"
+        )
+    return present
+
+
+def _finish_selected(
+    raw_handle: t.Any,
+    owns: bool,
+    _exec: t.Callable[[str], None],
+    in_transaction_probe: t.Optional[Probe],
+    precommit_probe: t.Optional[Probe],
+    on_commit_failure: t.Optional[t.Callable[[], None]],
+) -> None:
+    """Clean outermost exit on an ownership dialect (spec section 2 table)."""
+    probe = precommit_probe or in_transaction_probe
+    assert probe is not None  # _observe_entry already required a presence probe
+    try:
+        eligible = probe(raw_handle)
+    except Exception as exc:
+        error = TransactionIntegrityError(
+            "could not determine native transaction state before COMMIT"
+        )
+        error.__cause__ = exc
+        _rollback_owned_best_effort(owns, _exec, error)
+        raise error
+
+    if eligible:
+        if not owns:
+            return
+        try:
+            _exec("COMMIT")
+        except BaseException as commit_error:
+            # Ambiguous: never retry and never claim a rollback.
+            if on_commit_failure is not None:
+                try:
+                    on_commit_failure()
+                except Exception as cleanup_error:
+                    _attach(commit_error, cleanup_error)
+            raise
+        return
+
+    if _vanished(raw_handle, eligible, in_transaction_probe, precommit_probe):
+        raise TransactionIntegrityError(
+            "native transaction ended before scope exit (for example a COMMIT "
+            "or ROLLBACK through a raw escape hatch); nothing was committed here"
+        )
+    error = TransactionIntegrityError(
+        "native transaction is not eligible to commit (aborted or unknown state)"
+    )
+    _rollback_owned_best_effort(owns, _exec, error)
+    raise error
+
+
+def _vanished(
+    raw_handle: t.Any,
+    eligible: t.Optional[bool],
+    in_transaction_probe: t.Optional[Probe],
+    precommit_probe: t.Optional[Probe],
+) -> bool:
+    if eligible is not False:
+        return False
+    if precommit_probe is None:
+        return True  # the eligibility probe is the presence probe
+    try:
+        return in_transaction_probe is not None and in_transaction_probe(raw_handle) is False
+    except Exception:
+        return False
+
+
+def _rollback_owned_best_effort(
+    owns: bool, _exec: t.Callable[[str], None], error: BaseException,
+) -> None:
+    if not owns:
+        return
+    try:
+        _exec("ROLLBACK")
+    except Exception as rollback_error:
+        error.add_note(f"rollback also failed: {rollback_error!r}")
+
+
+def protection_required(raw_handle: t.Any) -> bool:
+    """True when a package call on this handle must run protected.
+
+    That is the case inside a registered scope on an ownership dialect.
+    Raises TransactionPoisonedError if that scope is already poisoned, so no
+    further database work runs in a unit that can no longer commit.
+    """
+    with _LOCK:
+        state = _ACTIVE.get(id(raw_handle))
+        if state is None or not state.selected:
+            return False
+        if state.poisoned:
+            raise TransactionPoisonedError(
+                "transaction is poisoned by a prior failure in this unit of work"
+            )
+        return True
+
+
+def mark_poisoned(raw_handle: t.Any) -> None:
+    """Poison a registered scope on this handle; no-op when none is registered."""
+    with _LOCK:
+        state = _ACTIVE.get(id(raw_handle))
+        if state is not None:
+            state.poisoned = True
+
+
 def is_active(raw_handle: t.Any) -> bool:
     """True if a unit of work is registered on this raw handle (any depth).
 
-    Read-only companion to run_transaction(): reads the ambient registry under
-    the same lock the register/unregister critical sections take, so the read
-    observes a fully-committed registry mutation. Never mutates _ACTIVE. Keyed
-    on id(raw_handle), matching run_transaction's reentrancy key, so distinct
-    IbisBackend wrappers of one raw connection agree.
+    Read-only: never mutates _ACTIVE. Keyed on id(raw_handle), matching
+    run_transaction's reentrancy key, so distinct IbisBackend wrappers of one
+    raw connection agree. A registered scope may be joined caller work; this
+    is not a statement that Mountainash owns completion.
     """
     with _LOCK:
         return id(raw_handle) in _ACTIVE

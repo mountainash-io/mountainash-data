@@ -137,6 +137,9 @@ class _StubBackend:
     def in_transaction(self):
         return False
 
+    def native_transaction_open(self):
+        return False
+
 
 def test_non_ibis_stub_satisfies_backend_protocol():
     stub = _StubBackend()

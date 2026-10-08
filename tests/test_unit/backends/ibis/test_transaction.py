@@ -22,24 +22,6 @@ def _tx(h, **kw):
     return run_transaction(h, **kw)
 
 
-def test_autocommit_off_entry_raises():
-    h = FakeHandle()
-    with pytest.raises(TransactionIntegrityError):
-        with _tx(h, autocommit_probe=lambda _c: False):
-            pass
-    assert h.calls == []            # refused before BEGIN
-    assert id(h) not in _ACTIVE
-
-
-def test_commit_time_integrity_probe_raises_if_tx_vanished():
-    h = FakeHandle()
-    with pytest.raises(TransactionIntegrityError):
-        with _tx(h, in_transaction_probe=lambda _c: False):
-            pass
-    assert "COMMIT" not in h.calls   # integrity failure instead of a false commit
-    assert id(h) not in _ACTIVE
-
-
 def test_outermost_commit():
     h = FakeHandle()
     with _tx(h):
@@ -197,3 +179,165 @@ def test_is_active_does_not_mutate_registry():
     before = dict(_ACTIVE)
     assert is_active(h) is False
     assert _ACTIVE == before  # pure read
+
+
+# --- Ownership path (sqlite/duckdb/postgres) -------------------------------
+
+class NativeHandle(FakeHandle):
+    """Fake driver whose native transaction state follows BEGIN/COMMIT/ROLLBACK."""
+
+    def __init__(self, open_=False, fail_on=None):
+        super().__init__()
+        self.open = open_
+        self.fail_on = fail_on or {}
+
+    def execute(self, sql):
+        if sql in self.fail_on:
+            raise self.fail_on[sql]
+        super().execute(sql)
+        if sql == "BEGIN":
+            self.open = True
+        elif sql in ("COMMIT", "ROLLBACK"):
+            self.open = False
+
+
+def _owned_tx(h, **kw):
+    kw.setdefault("selected", True)
+    kw.setdefault("in_transaction_probe", lambda c: c.open)
+    return _tx(h, **kw)
+
+
+def test_idle_entry_owns_and_commits():
+    h = NativeHandle()
+    with _owned_tx(h):
+        assert h.open is True
+    assert h.calls == ["BEGIN", "COMMIT"]
+
+
+def test_open_entry_joins_without_completion():
+    h = NativeHandle(open_=True)
+    with _owned_tx(h):
+        assert is_active(h) is True
+    assert h.calls == []
+    assert h.open is True
+    assert is_active(h) is False
+
+
+def test_joined_scope_error_propagates_without_rollback():
+    h = NativeHandle(open_=True)
+    with pytest.raises(ValueError):
+        with _owned_tx(h):
+            raise ValueError("boom")
+    assert h.calls == []
+    assert h.open is True
+
+
+def test_joined_scope_poisoned_raises_without_completion():
+    h = NativeHandle(open_=True)
+    with pytest.raises(TransactionPoisonedError):
+        with _owned_tx(h):
+            try:
+                with _owned_tx(h):
+                    raise ValueError("inner")
+            except ValueError:
+                pass
+    assert h.calls == []
+    assert h.open is True
+
+
+@pytest.mark.parametrize("probe", [lambda c: None, lambda c: (_ for _ in ()).throw(OSError("probe"))])
+def test_unknown_entry_state_refuses_before_any_sql(probe):
+    h = NativeHandle()
+    with pytest.raises(TransactionIntegrityError):
+        with _owned_tx(h, in_transaction_probe=probe):
+            pass
+    assert h.calls == []
+    assert id(h) not in _ACTIVE
+
+
+def test_begin_hook_replaces_begin_statement():
+    h = NativeHandle()
+    def hook(c):
+        c.calls.append("hook")
+        c.open = True
+    with _owned_tx(h, begin_hook=hook):
+        pass
+    assert h.calls == ["hook", "COMMIT"]
+
+
+def test_owned_vanished_transaction_raises_without_completion():
+    h = NativeHandle()
+    with pytest.raises(TransactionIntegrityError):
+        with _owned_tx(h):
+            h.open = False  # e.g. a raw COMMIT through an escape hatch
+    assert h.calls == ["BEGIN"]
+
+
+def test_owned_ineligible_but_open_rolls_back():
+    # PostgreSQL INERROR: present, but not eligible to commit.
+    h = NativeHandle()
+    with pytest.raises(TransactionIntegrityError):
+        with _owned_tx(h, precommit_probe=lambda c: False):
+            pass
+    assert h.calls == ["BEGIN", "ROLLBACK"]
+
+
+def test_owned_failed_exit_probe_rolls_back_best_effort():
+    # e.g. DuckDB: an aborted transaction rejects even the state probe.
+    h = NativeHandle()
+    def failing_precommit(c):
+        raise OSError("aborted, cannot probe")
+    with pytest.raises(TransactionIntegrityError) as caught:
+        with _owned_tx(h, precommit_probe=failing_precommit):
+            pass
+    assert isinstance(caught.value.__cause__, OSError)
+    assert h.calls == ["BEGIN", "ROLLBACK"]
+
+
+def test_joined_ineligible_raises_without_completion():
+    h = NativeHandle(open_=True)
+    with pytest.raises(TransactionIntegrityError):
+        with _owned_tx(h, precommit_probe=lambda c: False):
+            pass
+    assert h.calls == []
+
+
+def test_owned_rollback_failure_keeps_original_error():
+    rollback_error = OSError("rollback failed")
+    h = NativeHandle(fail_on={"ROLLBACK": rollback_error})
+    with pytest.raises(ValueError) as caught:
+        with _owned_tx(h):
+            raise ValueError("primary")
+    assert str(caught.value) == "primary"
+    assert caught.value.__context__ is rollback_error
+    assert id(h) not in _ACTIVE
+
+
+def test_commit_failure_calls_callback_once_without_retry():
+    commit_error = OSError("commit lost")
+    h = NativeHandle(fail_on={"COMMIT": commit_error})
+    discarded = []
+    with pytest.raises(OSError) as caught:
+        with _owned_tx(h, on_commit_failure=lambda: discarded.append(True)):
+            pass
+    assert caught.value is commit_error
+    assert discarded == [True]
+    assert h.calls == ["BEGIN"]  # no retry, no ROLLBACK after an ambiguous COMMIT
+    assert id(h) not in _ACTIVE
+
+
+def test_protection_required_and_mark_poisoned():
+    from mountainash_data.backends.ibis._transaction import mark_poisoned, protection_required
+    h = NativeHandle()
+    mark_poisoned(h)                          # not registered: no-op, creates nothing
+    assert id(h) not in _ACTIVE
+    assert protection_required(h) is False    # no scope
+    with _tx(h):                              # other dialects: scope, but unprotected
+        assert protection_required(h) is False
+    with pytest.raises(TransactionPoisonedError):
+        with _owned_tx(h):
+            assert protection_required(h) is True
+            mark_poisoned(h)
+            with pytest.raises(TransactionPoisonedError):
+                protection_required(h)
+    assert h.calls == ["BEGIN", "COMMIT", "BEGIN", "ROLLBACK"]

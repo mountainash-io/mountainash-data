@@ -11,18 +11,28 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
-from mountainash_data.backends.ibis._transaction import run_transaction, is_active
+from mountainash_data.backends.ibis._protected import protected_call, real_driver_handle
+from mountainash_data.backends.ibis._transaction import (
+    OWNERSHIP_DIALECTS,
+    is_active,
+    run_transaction,
+)
 from mountainash_data.backends.ibis._sqlite_compat import ensure_sqlite_nat_adapter
 from mountainash_data.backends.ibis._adoption import (
     apply_options, snapshot_options, restore_options,
 )
 from mountainash_data.backends.ibis.operations import (
+    _check_add_columns,
+    _check_rename_table,
     _generic_add_columns,
     _generic_rename_table,
     _generic_upsert,
     _validate_simple_identifier,
 )
 from mountainash_data.backends.ibis._index import (
+    _check_create_index,
+    _check_drop_index,
+    _check_index_exists,
     _generic_create_index,
     _generic_drop_index,
     _generic_index_exists,
@@ -107,23 +117,31 @@ class IbisConnection:
         self._closed = False
         self._owns_connection = owns_connection
 
+    def _protected(self) -> t.ContextManager[bool]:
+        """Protect one package call inside an explicit transaction() scope."""
+        return protected_call(self._ibis_conn, self._dialect_spec.raw_handle_attr)
+
     def list_namespaces(self, catalog: str | None = None) -> list[str]:
         """Return the names of all namespaces (schemas/databases) visible to this connection."""
-        try:
-            # ibis backends vary — some expose list_databases, some list_schemas
-            if hasattr(self._ibis_conn, "list_databases"):
-                if catalog is not None:
-                    return self._ibis_conn.list_databases(catalog=catalog)
-                return self._ibis_conn.list_databases()
-            if hasattr(self._ibis_conn, "list_schemas"):
-                return self._ibis_conn.list_schemas()
-            return []
-        except Exception as e:
-            print(f"Error listing namespaces: {e}")
-            return []
+        with self._protected() as protected:
+            try:
+                # ibis backends vary — some expose list_databases, some list_schemas
+                if hasattr(self._ibis_conn, "list_databases"):
+                    if catalog is not None:
+                        return self._ibis_conn.list_databases(catalog=catalog)
+                    return self._ibis_conn.list_databases()
+                if hasattr(self._ibis_conn, "list_schemas"):
+                    return self._ibis_conn.list_schemas()
+                return []
+            except Exception as e:
+                if protected:
+                    raise  # inside a transaction a failed query is not "no namespaces"
+                print(f"Error listing namespaces: {e}")
+                return []
 
     def list_catalogs(self) -> list[str]:
-        """Return catalogs visible to this connection. Degrades, never raises.
+        """Return catalogs visible to this connection. Degrades, never raises
+        outside a transaction() scope.
 
         Not every ibis backend exposes catalogs (only the CanListCatalog mixin
         does). Fall back to the connection's current catalog, then — for
@@ -131,12 +149,15 @@ class IbisConnection:
         dialect's own ibis backend name as a single-entry pseudo-catalog, so
         callers always get at least one entry back for a live connection.
         """
-        try:
-            if hasattr(self._ibis_conn, "list_catalogs"):
-                return list(self._ibis_conn.list_catalogs())
-        except Exception as e:
-            print(f"Error listing catalogs: {e}")
-        current = getattr(self._ibis_conn, "current_catalog", None)
+        with self._protected() as protected:
+            try:
+                if hasattr(self._ibis_conn, "list_catalogs"):
+                    return list(self._ibis_conn.list_catalogs())
+            except Exception as e:
+                if protected:
+                    raise
+                print(f"Error listing catalogs: {e}")
+            current = getattr(self._ibis_conn, "current_catalog", None)
         if current is not None:
             return [current]
         return [self._dialect_spec.ibis_backend_name]
@@ -144,13 +165,16 @@ class IbisConnection:
     def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
         """Return the names of tables in the given namespace."""
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        try:
-            if rendered is not None:
-                return self._ibis_conn.list_tables(database=rendered)
-            return self._ibis_conn.list_tables()
-        except Exception as e:
-            print(f"Error listing tables: {e}")
-            return []
+        with self._protected() as protected:
+            try:
+                if rendered is not None:
+                    return self._ibis_conn.list_tables(database=rendered)
+                return self._ibis_conn.list_tables()
+            except Exception as e:
+                if protected:
+                    raise
+                print(f"Error listing tables: {e}")
+                return []
 
     def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
         """Return shared-model metadata for one table."""
@@ -158,19 +182,21 @@ class IbisConnection:
 
         ns = Namespace.coerce(namespace)
         rendered = _render_ibis_database(ns)
-        try:
-            ibis_table = self._ibis_conn.table(name, database=rendered)
-            return table_to_info(ibis_table, name=name, location=ns)
-        except Exception as e:
-            raise ValueError(f"Could not inspect table {name!r}: {e}") from e
+        with self._protected():
+            try:
+                ibis_table = self._ibis_conn.table(name, database=rendered)
+                return table_to_info(ibis_table, name=name, location=ns)
+            except Exception as e:
+                raise ValueError(f"Could not inspect table {name!r}: {e}") from e
 
     def inspect_namespace(self, name: str) -> NamespaceInfo:
         """Return shared-model metadata for one namespace."""
-        try:
-            tables = self.list_tables(namespace=name)
-            return NamespaceInfo(location=Namespace(path=(name,)), tables=tables)
-        except Exception as e:
-            raise ValueError(f"Could not inspect namespace {name!r}: {e}") from e
+        with self._protected():
+            try:
+                tables = self.list_tables(namespace=name)
+                return NamespaceInfo(location=Namespace(path=(name,)), tables=tables)
+            except Exception as e:
+                raise ValueError(f"Could not inspect namespace {name!r}: {e}") from e
 
     def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
         """Return shared-model metadata for the connection's catalog."""
@@ -191,8 +217,19 @@ class IbisConnection:
 
         When the connection was adopted (owns_connection=False), the
         underlying ibis connection belongs to the caller and is left open;
-        only this wrapper is marked closed.
+        only this wrapper is marked closed. Raises RuntimeError inside an
+        open transaction() scope on this connection's native handle.
         """
+        if not self._closed:
+            raw = real_driver_handle(self._ibis_conn, self._dialect_spec.raw_handle_attr)
+            if raw is not None and is_active(raw):
+                raise RuntimeError(
+                    "cannot close the connection inside an open transaction() scope"
+                )
+        self._release()
+
+    def _release(self) -> None:
+        """Mark closed and disconnect an owned connection, without the scope guard."""
         if not self._closed:
             try:
                 if self._owns_connection and hasattr(self._ibis_conn, "disconnect"):
@@ -521,11 +558,22 @@ class IbisBackend:
         return config, clean
 
     def close(self) -> IbisBackend:
-        """Release the connection. Idempotent. Returns self."""
+        """Release the connection. Idempotent. Returns self.
+
+        Raises RuntimeError inside an open transaction() scope: closing would
+        disconnect the handle the open unit of work depends on.
+        """
         if self._conn is not None:
             self._conn.close()
             self._conn = None
         return self
+
+    def _discard_connection(self) -> None:
+        """Drop an owned connection whose state can no longer be trusted
+        (after an ambiguous COMMIT failure) so it is not reused."""
+        conn, self._conn = self._conn, None
+        if conn is not None:
+            conn._release()
 
     def __enter__(self) -> IbisBackend:
         self.connect()
@@ -551,7 +599,7 @@ class IbisBackend:
         """
         conn = self._require_connected()
         attr = self._spec.raw_handle_attr
-        handle = getattr(conn._ibis_conn, attr, None)
+        handle = real_driver_handle(conn._ibis_conn, attr)
         if handle is None:
             raise RuntimeError(
                 f"No native driver handle on the {self.dialect!r} ibis backend "
@@ -564,27 +612,55 @@ class IbisBackend:
         return self._spec.transaction_support is not TransactionSupport.NONE
 
     def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
+        """Open, or join, an explicit unit of work on this backend's raw handle.
+
+        On SQLite, DuckDB and PostgreSQL: when the connection is idle the scope
+        starts a transaction and owns it (commit on success, rollback on error).
+        When the caller already has a native transaction open, the scope joins
+        it and never commits or rolls it back. Nested scopes are flat.
+        """
         support = self._spec.transaction_support
         raw = self.raw_driver_connection() if support is not TransactionSupport.NONE else None
+        owns_connection = self._conn is not None and self._conn._owns_connection
         return run_transaction(
             raw,
             support=support,
             begin_statement=self._spec.begin_statement,
             dialect=self.dialect,
             required=required,
-            autocommit_probe=self._spec.autocommit_probe,
             in_transaction_probe=self._spec.in_transaction_probe,
             raw_execute_hook=self._spec.raw_execute_hook,
+            selected=self.dialect in OWNERSHIP_DIALECTS,
+            begin_hook=self._spec.begin_hook,
+            precommit_probe=self._spec.precommit_probe,
+            on_commit_failure=self._discard_connection if owns_connection else None,
         )
 
-    def in_transaction(self) -> bool:
-        """True if a unit of work opened via transaction() is currently active
-        on this backend's raw connection (any nesting depth).
+    def native_transaction_open(self) -> bool | None:
+        """Whether the native driver has a transaction open right now.
 
-        Runtime companion to the static supports_transactions flag. Total:
-        returns False — never raises — for NONE dialects, a backend that was
-        never connected or has been closed, and a connection whose native
-        handle has gone away. A point-in-time snapshot, not a lock.
+        Read-only: never connects, begins, or changes session settings.
+        False for NONE dialects and for unconnected or closed backends; None
+        when the dialect has no native probe or the handle is absent. Probe
+        errors propagate. On DuckDB the probe replaces any unread result.
+        """
+        if self._spec.transaction_support is TransactionSupport.NONE or self._conn is None:
+            return False
+        handle = real_driver_handle(self._conn._ibis_conn, self._spec.raw_handle_attr)
+        probe = self._spec.in_transaction_probe
+        if handle is None or probe is None:
+            return None
+        return probe(handle)
+
+    def in_transaction(self) -> bool:
+        """True while a transaction() scope is registered on this backend's raw
+        connection (any nesting depth), whether it owns the unit or joined the
+        caller's. Not a statement that this package will commit.
+
+        Total: returns False, never raises, for NONE dialects, a backend that
+        was never connected or has been closed, and a connection whose native
+        handle has gone away. For the driver's own state see
+        native_transaction_open().
         """
         if self._spec.transaction_support is TransactionSupport.NONE:
             return False
@@ -636,10 +712,11 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
         ensure_sqlite_nat_adapter()
-        conn._ibis_conn.create_table(
-            name, obj=obj, schema=schema, database=rendered,
-            temp=temp, overwrite=overwrite,
-        )
+        with conn._protected():
+            conn._ibis_conn.create_table(
+                name, obj=obj, schema=schema, database=rendered,
+                temp=temp, overwrite=overwrite,
+            )
         return self
 
     def drop_table(
@@ -651,7 +728,8 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        conn._ibis_conn.drop_table(name, database=rendered, force=force)
+        with conn._protected():
+            conn._ibis_conn.drop_table(name, database=rendered, force=force)
         return self
 
     def create_view(
@@ -664,7 +742,8 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        conn._ibis_conn.create_view(name, obj=obj, database=rendered, overwrite=overwrite)
+        with conn._protected():
+            conn._ibis_conn.create_view(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def drop_view(
@@ -676,7 +755,8 @@ class IbisBackend:
     ) -> IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        conn._ibis_conn.drop_view(name, database=rendered, force=force)
+        with conn._protected():
+            conn._ibis_conn.drop_view(name, database=rendered, force=force)
         return self
 
     def insert(
@@ -690,7 +770,8 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
         ensure_sqlite_nat_adapter()
-        conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
+        with conn._protected():
+            conn._ibis_conn.insert(name, obj=obj, database=rendered, overwrite=overwrite)
         return self
 
     def truncate(
@@ -707,16 +788,20 @@ class IbisBackend:
         kwargs: dict[str, t.Any] = {}
         if rendered is not None:
             kwargs["database"] = rendered
-        conn._ibis_conn.truncate_table(name, **kwargs)
+        with conn._protected():
+            conn._ibis_conn.truncate_table(name, **kwargs)
         return self
 
     def rename_table(self, old_name: str, new_name: str) -> IbisBackend:
         conn = self._require_connected()
         hook = self._spec.rename_table_hook
-        if hook is not None:
-            hook(conn._ibis_conn, old_name, new_name)
-        else:
-            _generic_rename_table(conn._ibis_conn, old_name, new_name)
+        if hook is None:
+            _check_rename_table(old_name, new_name)
+        with conn._protected():
+            if hook is not None:
+                hook(conn._ibis_conn, old_name, new_name)
+            else:
+                _generic_rename_table(conn._ibis_conn, old_name, new_name)
         return self
 
     # --- Terminal operations (return data) ---
@@ -724,7 +809,8 @@ class IbisBackend:
     def table(self, name: str, *, namespace: NamespaceLike = None) -> t.Any:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        return conn._ibis_conn.table(name, database=rendered)
+        with conn._protected():
+            return conn._ibis_conn.table(name, database=rendered)
 
     def table_exists(self, name: str, namespace: NamespaceLike = None) -> bool:
         # ibis exposes no native table_exists; scope the membership check to the
@@ -740,7 +826,8 @@ class IbisBackend:
         dialect: str | None = None,
     ) -> t.Any:
         conn = self._require_connected()
-        return conn._ibis_conn.sql(query, schema=schema, dialect=dialect)
+        with conn._protected():
+            return conn._ibis_conn.sql(query, schema=schema, dialect=dialect)
 
     def run_expr(
         self,
@@ -751,7 +838,8 @@ class IbisBackend:
         **kwargs: t.Any,
     ) -> t.Any:
         conn = self._require_connected()
-        return conn._ibis_conn.execute(expr, params=params, limit=limit, **kwargs)
+        with conn._protected():
+            return conn._ibis_conn.execute(expr, params=params, limit=limit, **kwargs)
 
     def to_sql(
         self,
@@ -782,26 +870,27 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="upsert")
         hook = self._spec.upsert_hook
-        if hook is not None:
-            hook(
-                conn._ibis_conn, name, obj,
-                conflict_columns=conflict_columns,
-                update_columns=update_columns,
-                conflict_action=conflict_action,
-                update_condition=update_condition,
-                namespace=rendered,
-                schema=schema,
-            )
-        else:
-            _generic_upsert(
-                conn._ibis_conn, name, obj, style=self._spec.upsert_style,
-                conflict_columns=conflict_columns,
-                update_columns=update_columns,
-                conflict_action=conflict_action,
-                update_condition=update_condition,
-                namespace=rendered,
-                schema=schema,
-            )
+        with conn._protected():
+            if hook is not None:
+                hook(
+                    conn._ibis_conn, name, obj,
+                    conflict_columns=conflict_columns,
+                    update_columns=update_columns,
+                    conflict_action=conflict_action,
+                    update_condition=update_condition,
+                    namespace=rendered,
+                    schema=schema,
+                )
+            else:
+                _generic_upsert(
+                    conn._ibis_conn, name, obj, style=self._spec.upsert_style,
+                    conflict_columns=conflict_columns,
+                    update_columns=update_columns,
+                    conflict_action=conflict_action,
+                    update_condition=update_condition,
+                    namespace=rendered,
+                    schema=schema,
+                )
         return self
 
     def add_columns(
@@ -818,12 +907,15 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="add_columns")
         hook = self._spec.add_columns_hook
-        if hook is not None:
-            hook(conn._ibis_conn, name, source, namespace=rendered)
-        else:
-            _generic_add_columns(
-                conn._ibis_conn, name, source, namespace=rendered
-            )
+        if hook is None:
+            source = _check_add_columns(name, rendered, source)
+        with conn._protected():
+            if hook is not None:
+                hook(conn._ibis_conn, name, source, namespace=rendered)
+            else:
+                _generic_add_columns(
+                    conn._ibis_conn, name, source, namespace=rendered
+                )
         return self
 
     def create_index(
@@ -842,22 +934,29 @@ class IbisBackend:
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_index")
         hook = self._spec.create_index_hook
         if hook is not None:
-            hook(
-                conn._ibis_conn, table_name, columns,
-                index_name=index_name, unique=unique, index_type=index_type,
-                where=where, namespace=rendered, if_not_exists=if_not_exists,
+            with conn._protected():
+                hook(
+                    conn._ibis_conn, table_name, columns,
+                    index_name=index_name, unique=unique, index_type=index_type,
+                    where=where, namespace=rendered, if_not_exists=if_not_exists,
+                )
+            return self
+        caps = self._spec.index_caps
+        if caps is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support create_index"
             )
-        elif self._spec.index_caps is not None:
+        _check_create_index(
+            table_name, columns, index_name=index_name, unique=unique,
+            index_type=index_type, where=where, namespace=rendered, caps=caps,
+        )
+        with conn._protected():
             _generic_create_index(
                 conn._ibis_conn, table_name, columns,
                 index_name=index_name, unique=unique, index_type=index_type,
                 where=where, namespace=rendered, if_not_exists=if_not_exists,
-                caps=self._spec.index_caps,
+                caps=caps,
                 exists_sql_fn=self._spec.get_index_exists_sql,
-            )
-        else:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support create_index"
             )
         return self
 
@@ -891,20 +990,24 @@ class IbisBackend:
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="drop_index")
         hook = self._spec.drop_index_hook
         if hook is not None:
-            hook(
-                conn._ibis_conn, index_name,
-                table_name=table_name, namespace=rendered, if_exists=if_exists,
+            with conn._protected():
+                hook(
+                    conn._ibis_conn, index_name,
+                    table_name=table_name, namespace=rendered, if_exists=if_exists,
+                )
+            return self
+        caps = self._spec.index_caps
+        if caps is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support drop_index"
             )
-        elif self._spec.index_caps is not None:
+        _check_drop_index(index_name, table_name=table_name, namespace=rendered, caps=caps)
+        with conn._protected():
             _generic_drop_index(
                 conn._ibis_conn, index_name,
                 table_name=table_name, namespace=rendered, if_exists=if_exists,
-                caps=self._spec.index_caps,
+                caps=caps,
                 exists_sql_fn=self._spec.get_index_exists_sql,
-            )
-        else:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support drop_index"
             )
         return self
 
@@ -921,11 +1024,16 @@ class IbisBackend:
             )
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="index_exists")
-        return _generic_index_exists(
-            conn._ibis_conn, index_name,
-            table_name=table_name, namespace=rendered,
-            exists_sql_fn=self._spec.get_index_exists_sql,
+        exists_sql_fn = self._spec.get_index_exists_sql
+        _check_index_exists(
+            index_name, table_name=table_name, namespace=rendered, exists_sql_fn=exists_sql_fn,
         )
+        with conn._protected():
+            return _generic_index_exists(
+                conn._ibis_conn, index_name,
+                table_name=table_name, namespace=rendered,
+                exists_sql_fn=exists_sql_fn,
+            )
 
     def list_indexes(
         self,
@@ -940,17 +1048,16 @@ class IbisBackend:
         _validate_simple_identifier(table_name, kind="table_name")
         if rendered is not None:
             _validate_simple_identifier(rendered, kind="namespace")
-        if self._spec.list_indexes_hook is not None:
-            return self._spec.list_indexes_hook(
-                conn._ibis_conn, table_name, rendered
+        hook = self._spec.list_indexes_hook
+        if hook is not None:
+            with conn._protected():
+                return hook(conn._ibis_conn, table_name, rendered)
+        if self._spec.index_caps is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support list_indexes"
             )
-        if self._spec.index_caps is not None:
-            list_sql = self._spec.get_list_indexes_sql
-            if list_sql is None:
-                raise RuntimeError("index capability lacks a list-index implementation")
-            return _generic_list_indexes(
-                conn._ibis_conn, table_name, rendered, list_sql
-            )
-        raise NotImplementedError(
-            f"Dialect {self.dialect!r} does not support list_indexes"
-        )
+        list_sql = self._spec.get_list_indexes_sql
+        if list_sql is None:
+            raise RuntimeError("index capability lacks a list-index implementation")
+        with conn._protected():
+            return _generic_list_indexes(conn._ibis_conn, table_name, rendered, list_sql)
