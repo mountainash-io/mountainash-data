@@ -71,6 +71,7 @@ class BackendSpec(ProfileSpec):
     def __post_init__(self) -> None:
         if not self.supported_auth:
             raise ValueError(f"{self.name}: supported_auth must be non-empty")
+        prefixes: tuple[str, ...]
         if self.resource_read_disposition is None:
             if self.name == "pyspark":
                 disposition = DatabaseResourceReadDisposition.CONNECTED_IDENTITY

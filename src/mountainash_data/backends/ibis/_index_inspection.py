@@ -11,6 +11,10 @@ from mountainash_data.backends.ibis._render import _sql_literal, quote_identifie
 from mountainash_data.core.inspection import IndexInfo
 
 
+@t.overload
+def _normalize_flag(value: t.Any, field: str, *, allow_none: t.Literal[False] = ...) -> bool: ...
+@t.overload
+def _normalize_flag(value: t.Any, field: str, *, allow_none: bool) -> bool | None: ...
 def _normalize_flag(value: t.Any, field: str, *, allow_none: bool = False) -> bool | None:
     if value is None and allow_none:
         return None
@@ -21,6 +25,10 @@ def _normalize_flag(value: t.Any, field: str, *, allow_none: bool = False) -> bo
     raise RuntimeError(f"invalid {field} flag: {value!r}")
 
 
+@t.overload
+def _normalize_text(value: t.Any, field: str, *, allow_none: t.Literal[False]) -> str: ...
+@t.overload
+def _normalize_text(value: t.Any, field: str, *, allow_none: bool = ...) -> str | None: ...
 def _normalize_text(value: t.Any, field: str, *, allow_none: bool = True) -> str | None:
     if value is None and allow_none:
         return None

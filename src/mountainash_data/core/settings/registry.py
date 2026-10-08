@@ -39,7 +39,7 @@ def get_descriptor(name: str) -> BackendSpec:
 
 
 def get_settings_class(name: str) -> type["BackendProfile"]:
-    return DATABASES_REGISTRY.get_settings_class(name)  # type: ignore[return-value]
+    return DATABASES_REGISTRY.get_settings_class(name)
 
 
 # Backwards-compatibility alias — preserves ``from ... import REGISTRY`` imports.
