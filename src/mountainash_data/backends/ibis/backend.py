@@ -926,31 +926,31 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="create_index")
         hook = self._spec.create_index_hook
-        caps = self._spec.index_caps
-        if hook is None and caps is None:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support create_index"
-            )
-        if hook is None:
-            _check_create_index(
-                table_name, columns, index_name=index_name, unique=unique,
-                index_type=index_type, where=where, namespace=rendered, caps=caps,
-            )
-        with conn._protected():
-            if hook is not None:
+        if hook is not None:
+            with conn._protected():
                 hook(
                     conn._ibis_conn, table_name, columns,
                     index_name=index_name, unique=unique, index_type=index_type,
                     where=where, namespace=rendered, if_not_exists=if_not_exists,
                 )
-            else:
-                _generic_create_index(
-                    conn._ibis_conn, table_name, columns,
-                    index_name=index_name, unique=unique, index_type=index_type,
-                    where=where, namespace=rendered, if_not_exists=if_not_exists,
-                    caps=caps,
-                    exists_sql_fn=self._spec.get_index_exists_sql,
-                )
+            return self
+        caps = self._spec.index_caps
+        if caps is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support create_index"
+            )
+        _check_create_index(
+            table_name, columns, index_name=index_name, unique=unique,
+            index_type=index_type, where=where, namespace=rendered, caps=caps,
+        )
+        with conn._protected():
+            _generic_create_index(
+                conn._ibis_conn, table_name, columns,
+                index_name=index_name, unique=unique, index_type=index_type,
+                where=where, namespace=rendered, if_not_exists=if_not_exists,
+                caps=caps,
+                exists_sql_fn=self._spec.get_index_exists_sql,
+            )
         return self
 
     def create_unique_index(
@@ -982,26 +982,26 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="drop_index")
         hook = self._spec.drop_index_hook
-        caps = self._spec.index_caps
-        if hook is None and caps is None:
-            raise NotImplementedError(
-                f"Dialect {self.dialect!r} does not support drop_index"
-            )
-        if hook is None:
-            _check_drop_index(index_name, table_name=table_name, namespace=rendered, caps=caps)
-        with conn._protected():
-            if hook is not None:
+        if hook is not None:
+            with conn._protected():
                 hook(
                     conn._ibis_conn, index_name,
                     table_name=table_name, namespace=rendered, if_exists=if_exists,
                 )
-            else:
-                _generic_drop_index(
-                    conn._ibis_conn, index_name,
-                    table_name=table_name, namespace=rendered, if_exists=if_exists,
-                    caps=caps,
-                    exists_sql_fn=self._spec.get_index_exists_sql,
-                )
+            return self
+        caps = self._spec.index_caps
+        if caps is None:
+            raise NotImplementedError(
+                f"Dialect {self.dialect!r} does not support drop_index"
+            )
+        _check_drop_index(index_name, table_name=table_name, namespace=rendered, caps=caps)
+        with conn._protected():
+            _generic_drop_index(
+                conn._ibis_conn, index_name,
+                table_name=table_name, namespace=rendered, if_exists=if_exists,
+                caps=caps,
+                exists_sql_fn=self._spec.get_index_exists_sql,
+            )
         return self
 
     def index_exists(
@@ -1041,15 +1041,16 @@ class IbisBackend:
         _validate_simple_identifier(table_name, kind="table_name")
         if rendered is not None:
             _validate_simple_identifier(rendered, kind="namespace")
-        list_sql = self._spec.get_list_indexes_sql
         hook = self._spec.list_indexes_hook
-        if hook is None and self._spec.index_caps is None:
+        if hook is not None:
+            with conn._protected():
+                return hook(conn._ibis_conn, table_name, rendered)
+        if self._spec.index_caps is None:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} does not support list_indexes"
             )
-        if hook is None and list_sql is None:
+        list_sql = self._spec.get_list_indexes_sql
+        if list_sql is None:
             raise RuntimeError("index capability lacks a list-index implementation")
         with conn._protected():
-            if hook is not None:
-                return hook(conn._ibis_conn, table_name, rendered)
             return _generic_list_indexes(conn._ibis_conn, table_name, rendered, list_sql)
