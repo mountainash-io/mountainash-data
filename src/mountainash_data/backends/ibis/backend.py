@@ -8,6 +8,7 @@ an IbisConnection that satisfies core.protocol.Connection.
 
 from __future__ import annotations
 
+import importlib
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
@@ -52,6 +53,26 @@ from mountainash_data.core.factories.connection_factory import (
 )
 from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_auth_client import PasswordAuthProfile
+
+
+def _import_ibis_backend(spec: DialectSpec, dialect: str) -> t.Any:
+    """Import the dialect's Ibis backend module, naming the extra if a driver is absent.
+
+    Every Ibis backend imports its driver at module load, so a missing extra
+    surfaces here as a ModuleNotFoundError. Only that is translated; failures
+    while connecting (native libraries, optional sub-dependencies such as
+    Spark Connect's grpc, authentication, network) propagate unchanged.
+    """
+    module = f"ibis.backends.{spec.ibis_backend_name}"
+    try:
+        return importlib.import_module(module)
+    except ModuleNotFoundError as exc:
+        if exc.name == module:  # Ibis itself lacks the backend: not an extra
+            raise
+        raise ImportError(
+            f"{exc}\n\nInstall this backend with: "
+            f"pip install 'mountainash-data[{dialect}]'"
+        ) from exc
 
 
 def _render_ibis_database(ns: Namespace) -> tuple[str, str] | str | None:
@@ -359,8 +380,6 @@ class IbisBackend:
         leaving the caller's session uncorrupted. preserve_session=False (the
         default) reproduces plain ibis adoption behaviour.
         """
-        import importlib
-
         backend = cls(dialect=dialect)
         # Gate (fable finding 4): only verified dialects have a known-good raw
         # adoption path; others must use from_ibis_connection.
@@ -376,9 +395,7 @@ class IbisBackend:
         # BEFORE returning. If adoption raises after that, the caller's session is
         # already stomped — restore in the finally so a failed adoption does not
         # leave the session corrupted (Codex review).
-        ibis_backend_module = importlib.import_module(
-            f"ibis.backends.{backend._spec.ibis_backend_name}"
-        )
+        ibis_backend_module = _import_ibis_backend(backend._spec, dialect)
         try:
             ibis_conn = ibis_backend_module.Backend.from_connection(raw_conn)
         finally:
@@ -498,6 +515,8 @@ class IbisBackend:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} has no connection_builder configured"
             )
+        # before auth resolution: some auth adapters (trino, bigquery) import the driver
+        _import_ibis_backend(self._spec, self.dialect)
         if self._profile is not None:                       # settings path
             cfg = build_driver_kwargs(self._profile, auth_profile)
             cfg.update(self._extra_config)

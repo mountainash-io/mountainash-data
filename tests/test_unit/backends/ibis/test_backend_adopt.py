@@ -50,9 +50,10 @@ def test_upsert_through_adopted_connection(raw_db):
 
 
 def test_upsert_stages_full_rows_against_not_null_columns(raw_db):
-    """DuckDB validates NOT NULL on the INSERT path even when ON CONFLICT
-    resolves to UPDATE — consumers upserting a narrow update set must still
-    stage FULL rows. This pins both sides of that contract."""
+    """A row that will be INSERTed must satisfy NOT NULL, so consumers upserting
+    a narrow update set must still stage full rows for new keys. (DuckDB < 1.3
+    also rejected a partial row that resolves to UPDATE; later versions don't,
+    so only the new-key side is version-independent.)"""
     raw_db.execute(
         "CREATE TABLE nn (k INTEGER PRIMARY KEY, flag BOOLEAN, req TEXT NOT NULL)"
     )
@@ -66,10 +67,10 @@ def test_upsert_stages_full_rows_against_not_null_columns(raw_db):
     )
     assert raw_db.execute("SELECT flag, req FROM nn").fetchone() == (False, "x")
 
-    # partial-column frame: DuckDB rejects it before conflict resolution
+    # partial-column frame with a new key: the INSERT path violates NOT NULL
     with pytest.raises(Exception, match="NOT NULL"):
         backend.upsert(
-            "nn", pl.DataFrame({"k": [1], "flag": [True]}),
+            "nn", pl.DataFrame({"k": [2], "flag": [True]}),
             conflict_columns=["k"], update_columns=["flag"],
         )
 

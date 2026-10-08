@@ -423,7 +423,9 @@ class TestUpsertNoColumnsToUpdate:
                     update_condition=lambda inc, exi: inc.ver.sum() > 0,
                     namespace=None, schema=None,
                 )
-        assert caught == []
+        # count only the package's warnings: Ibis 12 on DuckDB >= 1.5 also
+        # emits a DeprecationWarning (fetch_arrow_table) that is not ours
+        assert [w for w in caught if issubclass(w.category, UserWarning)] == []
 
     def test_both_warnings_fire_exactly_once_when_downgraded_with_update_condition(self):
         con = ibis.duckdb.connect()
@@ -438,8 +440,9 @@ class TestUpsertNoColumnsToUpdate:
                 update_condition=lambda inc, exi: inc.id > 0,  # valid, but moot
                 namespace=None, schema=None,
             )
-        assert len(caught) == 2  # exactly one degrade warning + one ignored warning
-        messages = [str(w.message) for w in caught]
+        ours = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert len(ours) == 2  # exactly one degrade warning + one ignored warning
+        messages = [str(w.message) for w in ours]
         assert any("no columns to update" in m for m in messages)
         assert any("update_condition is ignored" in m for m in messages)
 
