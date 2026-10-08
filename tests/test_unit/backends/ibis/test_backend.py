@@ -232,7 +232,7 @@ def test_raw_driver_connection_duckdb_returns_native_handle():
         raw = be.raw_driver_connection()
         assert isinstance(raw, duckdb.DuckDBPyConnection)
         # usable as a real handle
-        assert raw.execute("SELECT 1").fetchone()[0] == 1
+        assert raw.execute("SELECT 1").fetchall() == [(1,)]
 
 
 def test_raw_driver_connection_sqlite_returns_native_handle():

@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 from pydantic import SecretStr
 
+from mountainash_auth_client import PasswordAuthProfile
 from mountainash_settings import FilesystemBackend
+from mountainash_settings.secrets import SecretRecord
+
+from mountainash_data.core.settings import PostgreSQLBackendProfile
 
 from scripts.live_db_harness import config
 
@@ -118,6 +122,7 @@ def test_same_local_label_is_isolated_in_first_second_first_order(tmp_path: Path
         selection = build_backend_selection(
             load_unresolved_harness((path,), selected_target="local", selected_backend="postgres")
         )
+        assert isinstance(selection.auth_profile, PasswordAuthProfile)
         assert selection.auth_profile.PASSWORD.get_secret_value() == password
         assert selection.secret_values == {"localhost", "postgres", password}
         assert selection.settings_parameters.secret_store is None
@@ -142,6 +147,7 @@ def test_selected_target_chooses_provider_from_two_definitions(tmp_path: Path) -
     selection = build_backend_selection(
         load_unresolved_harness((path,), selected_target="local", selected_backend="postgres")
     )
+    assert isinstance(selection.auth_profile, PasswordAuthProfile)
     assert selection.auth_profile.PASSWORD.get_secret_value() == "secret"
     assert selection.secret_values == {"localhost", "postgres", "secret"}
 
@@ -185,7 +191,7 @@ def test_selected_store_closes_once_and_failures_are_sanitized(tmp_path, monkeyp
     sentinel = "private-sentinel-password"
     root = tmp_path / "secrets"
     root.mkdir(mode=0o700)
-    record = {"host": "localhost", "username": "postgres", "password": sentinel}
+    record: SecretRecord = {"host": "localhost", "username": "postgres", "password": sentinel}
     if case == "missing_field":
         del record["password"]
     if case == "invalid_port":
@@ -228,8 +234,11 @@ def test_selected_store_closes_once_and_failures_are_sanitized(tmp_path, monkeyp
         loaded.settings.targets["local"].backends["postgres"].auth.values["PASSWORD"] = SecretStr(sentinel)
     if case == "success":
         selection = build_backend_selection(loaded)
+        assert isinstance(selection.auth_profile, PasswordAuthProfile)
         assert selection.auth_profile.PASSWORD.get_secret_value() == sentinel
-        assert selection.settings_parameters.get_settings().HOST == "localhost"
+        settings = selection.settings_parameters.get_settings()
+        assert isinstance(settings, PostgreSQLBackendProfile)
+        assert settings.HOST == "localhost"
     else:
         with pytest.raises(HarnessError) as caught:
             build_backend_selection(loaded)

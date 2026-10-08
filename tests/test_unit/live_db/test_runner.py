@@ -1,8 +1,11 @@
+# Tests replace LiveDbRunner methods on the instance with fakes on purpose.
+# mypy: disable-error-code="method-assign"
 from __future__ import annotations
 
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 import sys
 import threading
 import pytest
@@ -21,7 +24,7 @@ from scripts.live_db_harness.runner import LiveDbRunner, run_many
  
 
 
-def _loaded(runnable: dict[str, bool], *, max_parallel: int = 1) -> SimpleNamespace:
+def _loaded(runnable: dict[str, bool], *, max_parallel: int = 1) -> Any:
     suites = {
         name: SimpleNamespace(
             runnable=is_runnable,
@@ -41,7 +44,7 @@ def _loaded(runnable: dict[str, bool], *, max_parallel: int = 1) -> SimpleNamesp
     return SimpleNamespace(settings=SimpleNamespace(targets={"docker": target}, backends=suites))
 
 
-def _compose_selection() -> SimpleNamespace:
+def _compose_selection() -> Any:
     return SimpleNamespace(
         target_name="docker",
         backend_name="postgres",
@@ -83,8 +86,8 @@ def test_test_one_uses_connection_check_for_preprovisioned_compose_service() -> 
         def __enter__(self) -> Lock:
             return self
 
-        def __exit__(self, *args: object) -> bool:
-            return False
+        def __exit__(self, *args: object) -> None:
+            return None
 
     runner = LiveDbRunner(
         (),
@@ -128,8 +131,8 @@ def test_check_one_still_runs_transport_check_before_connection() -> None:
         def __enter__(self) -> Lock:
             return self
 
-        def __exit__(self, *args: object) -> bool:
-            return False
+        def __exit__(self, *args: object) -> None:
+            return None
 
     runner = LiveDbRunner(
         (),
@@ -147,7 +150,7 @@ def test_check_one_still_runs_transport_check_before_connection() -> None:
 
 
 def test_credential_free_pytest_context(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    seen: dict[str, object] = {}
+    seen: dict[str, Any] = {}
     runner = LiveDbRunner(config_files=(tmp_path / "one.toml",), command_runner=SimpleNamespace())
     monkeypatch.setenv("IBIS_TEST_POSTGRES_PASSWORD", "secret")
     monkeypatch.setenv("MOUNTAINASH_LIVE_DB_TARGET", "old")
@@ -158,7 +161,7 @@ def test_credential_free_pytest_context(monkeypatch: pytest.MonkeyPatch, tmp_pat
             return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     runner.command_runner = FakeRunner()
-    selection = SimpleNamespace(target_name="docker", backend_name="postgres", target=SimpleNamespace(test_timeout_seconds=12), suite=SimpleNamespace(selector="postgres"))
+    selection: Any = SimpleNamespace(target_name="docker", backend_name="postgres", target=SimpleNamespace(test_timeout_seconds=12), suite=SimpleNamespace(selector="postgres"))
     runner._run_pytest(selection)
     assert seen["argv"] == (
         sys.executable,
@@ -197,7 +200,7 @@ def test_effective_jobs_is_lower_cli_or_target_limit() -> None:
             active -= 1
         return BackendResult(backend=name, status=ResultStatus.PASS)
  
-    holder: dict[str, object] = {}
+    holder: dict[str, Any] = {}
  
     def invoke() -> None:
         holder["results"] = run_many(("one", "two", "three"), operation, jobs=8, target_limit=2)
@@ -223,7 +226,7 @@ def test_default_continues_after_failure() -> None:
     release_one = threading.Event()
     release_two = threading.Event()
     release_three = threading.Event()
-    results_holder: dict[str, object] = {}
+    results_holder: dict[str, Any] = {}
 
     def operation(target: str, backend: str, *, wait_lock: float = 0.0) -> BackendResult:
         {"one": started_one, "two": started_two, "three": started_three}[backend].set()
@@ -408,7 +411,7 @@ def test_failed_attempt_returns_nonzero() -> None:
     assert results[0].status is ResultStatus.FAIL
     assert code == 1
 def test_concurrent_backend_errors_use_their_own_secret_redactor() -> None:
-    selections = {
+    selections: dict[str, Any] = {
         "one": SimpleNamespace(
             target_name="docker",
             backend_name="one",
@@ -432,7 +435,6 @@ def test_concurrent_backend_errors_use_their_own_secret_redactor() -> None:
     runner = LiveDbRunner(())
     runner._selection = lambda target, backend: selections[backend]
     runner.transport_checker = lambda **kwargs: None
-    runner.lock_factory = lambda *args, **kwargs: _NoopLock()
 
     def connect(parameters: SimpleNamespace) -> None:
         barrier.wait(timeout=2)
@@ -476,7 +478,7 @@ def test_aggregate_interrupt_preserves_completed_backend_result(
         raise KeyboardInterrupt
 
     runner.check_one = operation
-    results_holder: dict[str, object] = {}
+    results_holder: dict[str, Any] = {}
     original_wait = runner_module.wait
     wait_calls = 0
 
@@ -515,7 +517,12 @@ def test_aggregate_interrupt_from_command_runner_stops_scheduling(
     selection.suite.selector = "this-test-is-interrupted"
     selection.target.test_timeout_seconds = 30.0
     selected: list[str] = []
-    runner._selection = lambda target, backend: (selected.append(backend) or selection)
+
+    def select(target: str, backend: str) -> Any:
+        selected.append(backend)
+        return selection
+
+    runner._selection = select
     events: list[str] = []
 
     class Lease:

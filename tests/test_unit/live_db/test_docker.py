@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import pytest
@@ -24,8 +25,8 @@ class FakeRunner:
         self.commands: list[tuple[str, ...]] = []
         self.failures = failures or {}
 
-    def run(self, argv: object, **kwargs: object) -> CompletedCommand:
-        command = tuple(str(part) for part in argv)  # type: ignore[arg-type]
+    def run(self, argv: Iterable[object], **kwargs: object) -> CompletedCommand:
+        command = tuple(str(part) for part in argv)
         self.commands.append(command)
         assert "down" not in command
         failure = self.failures.get(command)

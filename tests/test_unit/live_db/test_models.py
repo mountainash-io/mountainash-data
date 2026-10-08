@@ -126,6 +126,6 @@ def test_harness_error_is_frozen_and_rendered():
         "docker", "postgres", "transport", "service did not start", "Start the Docker service"
     ))
     with pytest.raises(FrozenInstanceError):
-        error.detail = "changed"
+        error.detail = "changed"  # type: ignore[misc]  # asserting the frozen field rejects writes
 
 
