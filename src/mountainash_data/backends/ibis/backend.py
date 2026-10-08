@@ -11,6 +11,7 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
+from mountainash_data.backends.ibis._protected import protected_call, real_driver_handle
 from mountainash_data.backends.ibis._transaction import (
     OWNERSHIP_DIALECTS,
     is_active,
@@ -111,23 +112,31 @@ class IbisConnection:
         self._closed = False
         self._owns_connection = owns_connection
 
+    def _protected(self) -> t.ContextManager[bool]:
+        """Protect one package call inside an explicit transaction() scope."""
+        return protected_call(self._ibis_conn, self._dialect_spec.raw_handle_attr)
+
     def list_namespaces(self, catalog: str | None = None) -> list[str]:
         """Return the names of all namespaces (schemas/databases) visible to this connection."""
-        try:
-            # ibis backends vary — some expose list_databases, some list_schemas
-            if hasattr(self._ibis_conn, "list_databases"):
-                if catalog is not None:
-                    return self._ibis_conn.list_databases(catalog=catalog)
-                return self._ibis_conn.list_databases()
-            if hasattr(self._ibis_conn, "list_schemas"):
-                return self._ibis_conn.list_schemas()
-            return []
-        except Exception as e:
-            print(f"Error listing namespaces: {e}")
-            return []
+        with self._protected() as protected:
+            try:
+                # ibis backends vary — some expose list_databases, some list_schemas
+                if hasattr(self._ibis_conn, "list_databases"):
+                    if catalog is not None:
+                        return self._ibis_conn.list_databases(catalog=catalog)
+                    return self._ibis_conn.list_databases()
+                if hasattr(self._ibis_conn, "list_schemas"):
+                    return self._ibis_conn.list_schemas()
+                return []
+            except Exception as e:
+                if protected:
+                    raise  # inside a transaction a failed query is not "no namespaces"
+                print(f"Error listing namespaces: {e}")
+                return []
 
     def list_catalogs(self) -> list[str]:
-        """Return catalogs visible to this connection. Degrades, never raises.
+        """Return catalogs visible to this connection. Degrades, never raises
+        outside a transaction() scope.
 
         Not every ibis backend exposes catalogs (only the CanListCatalog mixin
         does). Fall back to the connection's current catalog, then — for
@@ -135,12 +144,15 @@ class IbisConnection:
         dialect's own ibis backend name as a single-entry pseudo-catalog, so
         callers always get at least one entry back for a live connection.
         """
-        try:
-            if hasattr(self._ibis_conn, "list_catalogs"):
-                return list(self._ibis_conn.list_catalogs())
-        except Exception as e:
-            print(f"Error listing catalogs: {e}")
-        current = getattr(self._ibis_conn, "current_catalog", None)
+        with self._protected() as protected:
+            try:
+                if hasattr(self._ibis_conn, "list_catalogs"):
+                    return list(self._ibis_conn.list_catalogs())
+            except Exception as e:
+                if protected:
+                    raise
+                print(f"Error listing catalogs: {e}")
+            current = getattr(self._ibis_conn, "current_catalog", None)
         if current is not None:
             return [current]
         return [self._dialect_spec.ibis_backend_name]
@@ -148,13 +160,16 @@ class IbisConnection:
     def list_tables(self, namespace: NamespaceLike = None) -> list[str]:
         """Return the names of tables in the given namespace."""
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        try:
-            if rendered is not None:
-                return self._ibis_conn.list_tables(database=rendered)
-            return self._ibis_conn.list_tables()
-        except Exception as e:
-            print(f"Error listing tables: {e}")
-            return []
+        with self._protected() as protected:
+            try:
+                if rendered is not None:
+                    return self._ibis_conn.list_tables(database=rendered)
+                return self._ibis_conn.list_tables()
+            except Exception as e:
+                if protected:
+                    raise
+                print(f"Error listing tables: {e}")
+                return []
 
     def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
         """Return shared-model metadata for one table."""
@@ -162,19 +177,21 @@ class IbisConnection:
 
         ns = Namespace.coerce(namespace)
         rendered = _render_ibis_database(ns)
-        try:
-            ibis_table = self._ibis_conn.table(name, database=rendered)
-            return table_to_info(ibis_table, name=name, location=ns)
-        except Exception as e:
-            raise ValueError(f"Could not inspect table {name!r}: {e}") from e
+        with self._protected():
+            try:
+                ibis_table = self._ibis_conn.table(name, database=rendered)
+                return table_to_info(ibis_table, name=name, location=ns)
+            except Exception as e:
+                raise ValueError(f"Could not inspect table {name!r}: {e}") from e
 
     def inspect_namespace(self, name: str) -> NamespaceInfo:
         """Return shared-model metadata for one namespace."""
-        try:
-            tables = self.list_tables(namespace=name)
-            return NamespaceInfo(location=Namespace(path=(name,)), tables=tables)
-        except Exception as e:
-            raise ValueError(f"Could not inspect namespace {name!r}: {e}") from e
+        with self._protected():
+            try:
+                tables = self.list_tables(namespace=name)
+                return NamespaceInfo(location=Namespace(path=(name,)), tables=tables)
+            except Exception as e:
+                raise ValueError(f"Could not inspect namespace {name!r}: {e}") from e
 
     def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo:
         """Return shared-model metadata for the connection's catalog."""
@@ -570,7 +587,7 @@ class IbisBackend:
         """
         conn = self._require_connected()
         attr = self._spec.raw_handle_attr
-        handle = getattr(conn._ibis_conn, attr, None)
+        handle = real_driver_handle(conn._ibis_conn, attr)
         if handle is None:
             raise RuntimeError(
                 f"No native driver handle on the {self.dialect!r} ibis backend "
@@ -617,7 +634,7 @@ class IbisBackend:
         """
         if self._spec.transaction_support is TransactionSupport.NONE or self._conn is None:
             return False
-        handle = getattr(self._conn._ibis_conn, self._spec.raw_handle_attr, None)
+        handle = real_driver_handle(self._conn._ibis_conn, self._spec.raw_handle_attr)
         probe = self._spec.in_transaction_probe
         if handle is None or probe is None:
             return None
@@ -771,7 +788,8 @@ class IbisBackend:
     def table(self, name: str, *, namespace: NamespaceLike = None) -> t.Any:
         conn = self._require_connected()
         rendered = _render_ibis_database(Namespace.coerce(namespace))
-        return conn._ibis_conn.table(name, database=rendered)
+        with conn._protected():
+            return conn._ibis_conn.table(name, database=rendered)
 
     def table_exists(self, name: str, namespace: NamespaceLike = None) -> bool:
         # ibis exposes no native table_exists; scope the membership check to the
@@ -787,7 +805,8 @@ class IbisBackend:
         dialect: str | None = None,
     ) -> t.Any:
         conn = self._require_connected()
-        return conn._ibis_conn.sql(query, schema=schema, dialect=dialect)
+        with conn._protected():
+            return conn._ibis_conn.sql(query, schema=schema, dialect=dialect)
 
     def run_expr(
         self,
@@ -798,7 +817,8 @@ class IbisBackend:
         **kwargs: t.Any,
     ) -> t.Any:
         conn = self._require_connected()
-        return conn._ibis_conn.execute(expr, params=params, limit=limit, **kwargs)
+        with conn._protected():
+            return conn._ibis_conn.execute(expr, params=params, limit=limit, **kwargs)
 
     def to_sql(
         self,
@@ -829,26 +849,27 @@ class IbisBackend:
         conn = self._require_connected()
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="upsert")
         hook = self._spec.upsert_hook
-        if hook is not None:
-            hook(
-                conn._ibis_conn, name, obj,
-                conflict_columns=conflict_columns,
-                update_columns=update_columns,
-                conflict_action=conflict_action,
-                update_condition=update_condition,
-                namespace=rendered,
-                schema=schema,
-            )
-        else:
-            _generic_upsert(
-                conn._ibis_conn, name, obj, style=self._spec.upsert_style,
-                conflict_columns=conflict_columns,
-                update_columns=update_columns,
-                conflict_action=conflict_action,
-                update_condition=update_condition,
-                namespace=rendered,
-                schema=schema,
-            )
+        with conn._protected():
+            if hook is not None:
+                hook(
+                    conn._ibis_conn, name, obj,
+                    conflict_columns=conflict_columns,
+                    update_columns=update_columns,
+                    conflict_action=conflict_action,
+                    update_condition=update_condition,
+                    namespace=rendered,
+                    schema=schema,
+                )
+            else:
+                _generic_upsert(
+                    conn._ibis_conn, name, obj, style=self._spec.upsert_style,
+                    conflict_columns=conflict_columns,
+                    update_columns=update_columns,
+                    conflict_action=conflict_action,
+                    update_condition=update_condition,
+                    namespace=rendered,
+                    schema=schema,
+                )
         return self
 
     def add_columns(

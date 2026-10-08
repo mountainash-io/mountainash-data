@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import uuid
 
+import polars as pl
 import pytest
+
+from mountainash_data.core.errors import TransactionPoisonedError
 
 
 def table_name(prefix: str = "tx") -> str:
@@ -137,3 +140,102 @@ def case_close_inside_scope_refused(backend) -> None:
         with pytest.raises(RuntimeError):
             backend.close()
     assert backend.native_transaction_open() is False
+
+
+# --- Protected package calls --------------------------------------------------
+
+
+def _expr_rows(backend, t: str) -> list[tuple]:
+    out = backend.run_expr(backend.table(t).order_by("id"))
+    return [tuple(int(x) for x in r) for r in out.itertuples(index=False, name=None)]
+
+
+def case_owned_upsert_read_rolls_back(backend) -> None:
+    t = table_name()
+    seed(backend, t, [(1, 10)])
+    try:
+        abort = ValueError("abort owned work")
+        with pytest.raises(ValueError) as caught:
+            with backend.transaction():
+                backend.upsert(t, pl.DataFrame({"id": [1, 2], "v": [20, 30]}), conflict_columns=["id"])
+                assert _expr_rows(backend, t) == [(1, 20), (2, 30)]
+                raise abort
+        assert caught.value is abort
+        assert rows(backend, t) == [(1, 10)]
+
+        with backend.transaction():
+            backend.upsert(t, pl.DataFrame({"id": [1], "v": [40]}), conflict_columns=["id"])
+        assert rows(backend, t) == [(1, 40)]
+    finally:
+        drop(backend, t)
+
+
+def case_joined_upsert_leaves_completion_to_caller(backend, completion: str) -> None:
+    t = table_name()
+    seed(backend, t, [(1, 10)])
+    try:
+        execute(backend, "BEGIN")
+        with backend.transaction():
+            backend.upsert(t, pl.DataFrame({"id": [1, 2], "v": [20, 30]}), conflict_columns=["id"])
+            assert _expr_rows(backend, t) == [(1, 20), (2, 30)]
+        assert backend.native_transaction_open() is True
+        execute(backend, completion)
+        expected = [(1, 20), (2, 30)] if completion == "COMMIT" else [(1, 10)]
+        assert rows(backend, t) == expected
+    finally:
+        drop(backend, t)
+
+
+def case_schema_inference_keeps_pending_work(backend) -> None:
+    """run_sql infers a schema by querying; that must not commit pending work."""
+    t = table_name()
+    seed(backend, t, [(1, 10)])
+    try:
+        abort = ValueError("abort")
+        with pytest.raises(ValueError) as caught:
+            with backend.transaction():
+                execute(backend, f"UPDATE {t} SET v = 20 WHERE id = 1")
+                expr = backend.run_sql(f"SELECT id, v FROM {t}")
+                assert list(expr.columns) == ["id", "v"]
+                raise abort
+        assert caught.value is abort
+        assert rows(backend, t) == [(1, 10)]
+    finally:
+        drop(backend, t)
+
+
+def case_caught_operation_failure_poisons_scope(backend) -> None:
+    t = table_name()
+    seed(backend, t, [(1, 10)])
+    try:
+        with pytest.raises(TransactionPoisonedError):
+            with backend.transaction():
+                execute(backend, f"UPDATE {t} SET v = 20 WHERE id = 1")
+                try:
+                    backend.upsert(t, pl.DataFrame({"id": [1], "v": [1]}), conflict_columns=["no_such_column"])
+                except TransactionPoisonedError:
+                    raise
+                except Exception:
+                    pass  # caller swallows the failure; the scope must not commit
+                with pytest.raises(TransactionPoisonedError):
+                    backend.run_sql(f"SELECT id, v FROM {t}")  # rejected before any query
+        assert rows(backend, t) == [(1, 10)]
+    finally:
+        drop(backend, t)
+
+
+def case_other_wrapper_operation_joins_scope(backend, other) -> None:
+    """`other` wraps the same native handle; its operations join backend's unit."""
+    t = table_name()
+    seed(backend, t, [(1, 10)])
+    try:
+        abort = ValueError("abort")
+        with pytest.raises(ValueError) as caught:
+            with backend.transaction():
+                other.upsert(t, pl.DataFrame({"id": [1], "v": [20]}), conflict_columns=["id"])
+                assert _expr_rows(other, t) == [(1, 20)]
+                raise abort
+        assert caught.value is abort
+        assert rows(backend, t) == [(1, 10)]
+    finally:
+        drop(backend, t)

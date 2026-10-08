@@ -48,3 +48,65 @@ def test_two_wrappers_share_one_scope(backend):
 
 def test_close_inside_scope_refused(backend):
     cases.case_close_inside_scope_refused(backend)
+
+
+# --- Protected package calls --------------------------------------------------
+
+
+def test_owned_upsert_read_rolls_back(backend):
+    cases.case_owned_upsert_read_rolls_back(backend)
+
+
+@pytest.mark.parametrize("completion", ["COMMIT", "ROLLBACK"])
+def test_joined_upsert_leaves_completion_to_caller(backend, completion):
+    cases.case_joined_upsert_leaves_completion_to_caller(backend, completion)
+
+
+def test_schema_inference_keeps_pending_work(backend):
+    cases.case_schema_inference_keeps_pending_work(backend)
+
+
+def test_caught_operation_failure_poisons_scope(backend):
+    cases.case_caught_operation_failure_poisons_scope(backend)
+
+
+def test_other_wrapper_operation_joins_scope(backend):
+    other = IbisBackend.from_ibis_connection(backend.ibis_connection(), dialect=backend.dialect)
+    cases.case_other_wrapper_operation_joins_scope(backend, other)
+
+
+def test_metadata_failure_propagates_inside_scope_only():
+    """A denied metadata query is an error inside a scope, not an empty result."""
+    import sqlite3
+
+    from mountainash_data.core.errors import TransactionPoisonedError
+
+    b = IbisBackend(dialect="sqlite", database=":memory:").connect()
+    raw = b.raw_driver_connection()
+    t = cases.table_name()
+    cases.seed(b, t, [(1, 10)])
+
+    def deny_master(action, arg1, *_):
+        # Ibis lists SQLite tables through the table_list pragma.
+        if action == sqlite3.SQLITE_PRAGMA and arg1 == "table_list":
+            return sqlite3.SQLITE_DENY
+        return sqlite3.SQLITE_OK
+
+    try:
+        raw.set_authorizer(deny_master)
+        assert b.list_tables() == []  # standalone: existing fallback unchanged
+        raw.set_authorizer(None)
+
+        with pytest.raises(TransactionPoisonedError):
+            with b.transaction():
+                cases.execute(b, f"UPDATE {t} SET v = 20 WHERE id = 1")
+                raw.set_authorizer(deny_master)
+                try:
+                    with pytest.raises(sqlite3.DatabaseError):
+                        b.list_tables()
+                finally:
+                    raw.set_authorizer(None)
+        assert cases.rows(b, t) == [(1, 10)]
+    finally:
+        raw.set_authorizer(None)
+        b.close()

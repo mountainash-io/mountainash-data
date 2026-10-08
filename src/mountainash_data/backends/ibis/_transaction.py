@@ -39,6 +39,8 @@ class _TxState:
     depth: int = 0
     poisoned: bool = False
     owns: bool = True
+    # True on ownership dialects: package calls in this scope are protected.
+    selected: bool = False
 
 
 _ACTIVE: dict[int, _TxState] = {}
@@ -102,7 +104,7 @@ def run_transaction(
         elif begin_statement is not None:
             _exec(begin_statement)
 
-    state = _TxState(depth=1, owns=owns)
+    state = _TxState(depth=1, owns=owns, selected=selected)
     with _LOCK:
         _ACTIVE[key] = state
     try:
@@ -245,14 +247,22 @@ def _rollback_owned_best_effort(
         error.add_note(f"rollback also failed: {rollback_error!r}")
 
 
-def check_not_poisoned(raw_handle: t.Any) -> None:
-    """Raise if a registered scope on this handle is already poisoned."""
+def protection_required(raw_handle: t.Any) -> bool:
+    """True when a package call on this handle must run protected.
+
+    That is the case inside a registered scope on an ownership dialect.
+    Raises TransactionPoisonedError if that scope is already poisoned, so no
+    further database work runs in a unit that can no longer commit.
+    """
     with _LOCK:
         state = _ACTIVE.get(id(raw_handle))
-        if state is not None and state.poisoned:
+        if state is None or not state.selected:
+            return False
+        if state.poisoned:
             raise TransactionPoisonedError(
                 "transaction is poisoned by a prior failure in this unit of work"
             )
+        return True
 
 
 def mark_poisoned(raw_handle: t.Any) -> None:

@@ -326,16 +326,18 @@ def test_commit_failure_calls_callback_once_without_retry():
     assert id(h) not in _ACTIVE
 
 
-def test_poisoned_check_and_mark_helpers():
-    from mountainash_data.backends.ibis._transaction import check_not_poisoned, mark_poisoned
+def test_protection_required_and_mark_poisoned():
+    from mountainash_data.backends.ibis._transaction import mark_poisoned, protection_required
     h = NativeHandle()
-    mark_poisoned(h)              # not registered: no-op, creates nothing
+    mark_poisoned(h)                          # not registered: no-op, creates nothing
     assert id(h) not in _ACTIVE
-    check_not_poisoned(h)         # not registered: passes
+    assert protection_required(h) is False    # no scope
+    with _tx(h):                              # other dialects: scope, but unprotected
+        assert protection_required(h) is False
     with pytest.raises(TransactionPoisonedError):
         with _owned_tx(h):
-            check_not_poisoned(h)
+            assert protection_required(h) is True
             mark_poisoned(h)
             with pytest.raises(TransactionPoisonedError):
-                check_not_poisoned(h)
-    assert h.calls == ["BEGIN", "ROLLBACK"]
+                protection_required(h)
+    assert h.calls == ["BEGIN", "COMMIT", "BEGIN", "ROLLBACK"]
