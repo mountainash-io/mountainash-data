@@ -78,6 +78,7 @@ dependencies = [
     "pytest-asyncio>=0.24",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
+    "psutil>=7.0.0",  # live-db harness (scripts/live_db_harness/process.py), imported by unit tests
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
@@ -105,6 +106,7 @@ dependencies = [
     "pytest-asyncio>=0.24",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
+    "psutil>=7.0.0",  # live-db harness process management
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
@@ -128,6 +130,7 @@ dependencies = [
     "pytest-asyncio>=0.24",
     "pytest-check==2.5.3",
     "pytest-cov==6.1.1",
+    "psutil>=7.0.0",  # dependency parity with test_github (test_ci_contract)
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",

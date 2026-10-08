@@ -31,11 +31,14 @@ def _hint(dialect: str) -> str:
     return f"pip install 'mountainash-data[{dialect}]'"
 
 
-def _failing_postgres(exc: BaseException) -> IbisBackend:
+def _failing_connect(exc: BaseException) -> IbisBackend:
+    """A backend whose driver is installed (duckdb, in every test env) but whose
+    connection attempt raises ``exc``."""
+
     def builder(**_):
         raise exc
 
-    backend = IbisBackend(dialect="postgres", host="h", database="d")
+    backend = IbisBackend(dialect="duckdb", database=":memory:")
     backend._spec = dataclasses.replace(backend._spec, connection_builder=builder)
     return backend
 
@@ -51,10 +54,10 @@ def test_dialect_connect_names_extra_and_keeps_cause(block_modules):
     with pytest.raises(ImportError) as info:
         IbisBackend(dialect="duckdb", database=":memory:").connect()
     assert _hint("duckdb") in str(info.value)
-    assert "Failed to import the duckdb backend" in str(info.value)
     original = info.value.__cause__
-    assert isinstance(original, ImportError)
-    assert isinstance(original.__cause__, ModuleNotFoundError)
+    assert isinstance(original, ModuleNotFoundError)
+    assert original.name == "duckdb"
+    assert str(original) in str(info.value)
 
 
 def test_url_connect_names_alias_extra(block_modules):
@@ -87,23 +90,22 @@ def test_native_library_failure_is_not_relabelled():
     """psycopg without libpq raises a plain ImportError: no extra fixes that."""
     native = ImportError("no pq wrapper available")
     with pytest.raises(ImportError) as info:
-        _failing_postgres(native).connect()
+        _failing_connect(native).connect()
     assert info.value is native
 
 
-def test_missing_module_under_non_missing_cause_is_not_relabelled():
-    """Only a direct ModuleNotFoundError cause counts; deeper chains propagate."""
-    inner = ImportError("broken install")
-    inner.__cause__ = ModuleNotFoundError("x", name="x")
-    outer = ImportError("Failed to import the postgres backend")
-    outer.__cause__ = inner
+def test_missing_module_while_connecting_is_not_relabelled():
+    """A sub-dependency missing at connect time (e.g. Spark Connect's grpc under
+    a plain pyspark install) is not fixed by the backend extra; keep it as is."""
+    connect_dep = ImportError("Spark Connect requires grpcio")
+    connect_dep.__cause__ = ModuleNotFoundError("No module named 'grpc'", name="grpc")
     with pytest.raises(ImportError) as info:
-        _failing_postgres(outer).connect()
-    assert info.value is outer
+        _failing_connect(connect_dep).connect()
+    assert info.value is connect_dep
 
 
 def test_connection_errors_pass_through():
     refused = OSError("connection refused")
     with pytest.raises(OSError) as info:
-        _failing_postgres(refused).connect()
+        _failing_connect(refused).connect()
     assert info.value is refused
