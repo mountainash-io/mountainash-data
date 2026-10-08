@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import polars as pl
 import pytest
 
@@ -149,12 +151,9 @@ def test_sqlite_conflict_rollback_then_drop_is_refused():
     try:
         with pytest.raises(TransactionPoisonedError):
             with b.transaction():
-                try:
+                with pytest.raises(sqlite3.IntegrityError):
                     b.insert(t, pl.DataFrame({"id": [1], "v": [99]}))
-                except TransactionPoisonedError:
-                    raise
-                except Exception:
-                    pass  # constraint error; SQLite has already rolled back
+                assert b.native_transaction_open() is False  # SQLite rolled back itself
                 with pytest.raises(TransactionPoisonedError):
                     b.drop_table(keep)
         assert keep in b.list_tables()

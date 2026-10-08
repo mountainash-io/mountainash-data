@@ -134,6 +134,8 @@ def _normalize_to_schema(source: t.Any) -> ibis.Schema:
     treated as a frame and run through Ibis's native inference (identical to
     what ``create_table`` applies).
     """
+    if isinstance(source, ibis.Schema):
+        return source
     if isinstance(source, t.Mapping):
         return ibis.schema({k: _coerce_dtype(v) for k, v in source.items()})
     return ibis.memtable(source).schema()
@@ -204,11 +206,14 @@ def _generic_rename_table(ibis_conn: t.Any, old_name: str, new_name: str) -> Non
     ibis_conn.raw_sql(build_rename_sql(old_name, new_name, dialect=dialect_of(ibis_conn)))
 
 
-def _check_add_columns(table_name: str, namespace: str | None) -> None:
-    """Local argument checks for _generic_add_columns (no database access)."""
+def _check_add_columns(table_name: str, namespace: str | None, source: t.Any) -> ibis.Schema:
+    """Local argument checks for _generic_add_columns (no database access).
+
+    Returns the candidate schema resolved from `source`."""
     _validate_simple_identifier(table_name, kind="table_name")
     if namespace is not None:
         _validate_simple_identifier(namespace, kind="namespace")
+    return _normalize_to_schema(source)
 
 
 def _generic_add_columns(
@@ -234,8 +239,7 @@ def _generic_add_columns(
     of scope. `namespace` is a single namespace level (str | None); catalog-
     qualified targets are rejected upstream by `_render_ibis_namespace_single`.
     """
-    _check_add_columns(table_name, namespace)
-    candidate = _normalize_to_schema(source)
+    candidate = _check_add_columns(table_name, namespace, source)
     existing = set(ibis_conn.table(table_name, database=namespace).schema().names)
     type_mapper = ibis_conn.compiler.type_mapper
     dialect = ibis_conn.compiler.dialect

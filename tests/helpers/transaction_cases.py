@@ -139,7 +139,10 @@ def case_close_inside_scope_refused(backend) -> None:
     with backend.transaction():
         with pytest.raises(RuntimeError):
             backend.close()
+        with pytest.raises(RuntimeError):
+            backend.get_connection().close()
     assert backend.native_transaction_open() is False
+    assert backend.get_connection()._closed is False
 
 
 # --- Protected package calls --------------------------------------------------
@@ -416,6 +419,8 @@ def case_local_rejection_does_not_poison(backend) -> None:
                 backend.create_index(t, ["v"], index_name="bad name")
             with pytest.raises(ValueError):
                 backend.rename_table(t, "bad.name")
+            with pytest.raises(Exception):
+                backend.add_columns(t, {"a": "not_a_real_dtype"})  # rejected before any query
         assert rows(backend, t) == [(1, 20)]
     finally:
         drop(backend, t)

@@ -217,8 +217,19 @@ class IbisConnection:
 
         When the connection was adopted (owns_connection=False), the
         underlying ibis connection belongs to the caller and is left open;
-        only this wrapper is marked closed.
+        only this wrapper is marked closed. Raises RuntimeError inside an
+        open transaction() scope on this connection's native handle.
         """
+        if not self._closed:
+            raw = real_driver_handle(self._ibis_conn, self._dialect_spec.raw_handle_attr)
+            if raw is not None and is_active(raw):
+                raise RuntimeError(
+                    "cannot close the connection inside an open transaction() scope"
+                )
+        self._release()
+
+    def _release(self) -> None:
+        """Mark closed and disconnect an owned connection, without the scope guard."""
         if not self._closed:
             try:
                 if self._owns_connection and hasattr(self._ibis_conn, "disconnect"):
@@ -549,24 +560,20 @@ class IbisBackend:
     def close(self) -> IbisBackend:
         """Release the connection. Idempotent. Returns self.
 
-        Raises RuntimeError inside a registered transaction() scope: closing
-        would disconnect the handle the open unit of work depends on.
+        Raises RuntimeError inside an open transaction() scope: closing would
+        disconnect the handle the open unit of work depends on.
         """
         if self._conn is not None:
-            if self.in_transaction():
-                raise RuntimeError(
-                    "cannot close the backend inside an open transaction() scope"
-                )
             self._conn.close()
             self._conn = None
         return self
 
     def _discard_connection(self) -> None:
         """Drop an owned connection whose state can no longer be trusted
-        (for example after an ambiguous COMMIT failure) so it is not reused."""
+        (after an ambiguous COMMIT failure) so it is not reused."""
         conn, self._conn = self._conn, None
         if conn is not None:
-            conn.close()
+            conn._release()
 
     def __enter__(self) -> IbisBackend:
         self.connect()
@@ -901,7 +908,7 @@ class IbisBackend:
         rendered = _render_ibis_namespace_single(Namespace.coerce(namespace), op="add_columns")
         hook = self._spec.add_columns_hook
         if hook is None:
-            _check_add_columns(name, rendered)
+            source = _check_add_columns(name, rendered, source)
         with conn._protected():
             if hook is not None:
                 hook(conn._ibis_conn, name, source, namespace=rendered)
