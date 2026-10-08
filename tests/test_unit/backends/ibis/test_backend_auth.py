@@ -25,5 +25,5 @@ def test_dialect_path_applies_password(monkeypatch):
 
 def test_url_and_explicit_auth_conflict_raises():
     with pytest.raises(ValueError, match="both"):
-        IbisBackend("postgresql://u:p@host/db").connect(
+        IbisBackend("duckdb://u:p@host/db").connect(
             auth_profile=PasswordAuthProfile(USERNAME="x", PASSWORD="y"))

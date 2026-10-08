@@ -515,23 +515,21 @@ class IbisBackend:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} has no connection_builder configured"
             )
-        clean_url: str | None = None
+        # before auth resolution: some auth adapters (trino, bigquery) import the driver
+        _import_ibis_backend(self._spec, self.dialect)
         if self._profile is not None:                       # settings path
             cfg = build_driver_kwargs(self._profile, auth_profile)
             cfg.update(self._extra_config)
             self._config = cfg
+            ibis_conn = self._connect_via_builder()
         elif self._url is not None:                         # URL path
             config, clean_url = self._resolve_url_auth(self._url, auth_profile)
             config.update(self._url_config)                 # caller extras apply on top
             self._config = config
-        else:                                               # direct-dialect path
-            self._config = self._resolve_dialect_auth(auth_profile)
-        # after config validation, so a config error is reported even without the driver
-        _import_ibis_backend(self._spec, self.dialect)
-        if clean_url is not None:
             import ibis
             ibis_conn = ibis.connect(clean_url, **self._config)
-        else:
+        else:                                               # direct-dialect path
+            self._config = self._resolve_dialect_auth(auth_profile)
             ibis_conn = self._connect_via_builder()
         self._conn = IbisConnection(ibis_conn, self._spec)
         return self
