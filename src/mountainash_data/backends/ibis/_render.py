@@ -81,7 +81,7 @@ def validate_predicate(expr: ir.BooleanValue) -> None:
             subquery/EXISTS op.
     """
     node = expr.op()
-    for n in node.find(_FORBIDDEN_OPS):  # type: ignore[arg-type]
+    for n in node.find(_FORBIDDEN_OPS):
         raise ValueError(
             "update_condition must be a scalar row predicate; found "
             f"{type(n).__name__} (aggregation/window). Use the upsert_hook "
@@ -90,7 +90,7 @@ def validate_predicate(expr: ir.BooleanValue) -> None:
     # Detect subqueries/EXISTS by SPECIFIC subquery op types, NOT ops.Relation.
     # ops.Relation also matches the two allowed sentinel tables, so testing for
     # it would reject every valid predicate (Codex finding).
-    for n in node.find(_SUBQUERY_OPS):  # type: ignore[arg-type]
+    for n in node.find(_SUBQUERY_OPS):
         raise ValueError(
             "update_condition may not contain subqueries/EXISTS/third-table "
             "references; use the upsert_hook override."
