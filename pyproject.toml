@@ -6,31 +6,10 @@ build-backend = "hatchling.build"
 dependencies = [
     "mountainash-settings>=0.1.0,<0.2",
     "mountainash-auth-client>=0.1.0,<0.2",
-    "ibis-framework[polars,sqlite,duckdb]>=12.0.0",
-    # "hatchling",
-
-
-    # "ibis-framework[mssql,snowflake,bigquery,pyspark,trino] == 10.4.0",
-    # "psycopg2-binary==2.9.9",
-    # "pyodbc==5.2.0",
-    # "snowflake-connector-python==3.12.3",
-
-    "numpy>=1.23.2,<3",
-    "rich>=12.4.4,<14",
-    "universal_pathlib>=0.2.2",
-    "openlineage-python==1.17.1",
-    "xarray==2024.11.0",
-    "pyarrow>=17.0.0",
-    "pyarrow-hotfix>=0.4,<1",
-    "sqlalchemy",
-
-    "duckdb>=0.10.3, <1.3.0",
-    "sqlglot<30.18.0",  # 30.18.0 drops the DROP-VIEW identifier for DuckDB memtable materialization; verified regression, no upstream fix yet
-    "pandas>=2.2.0",
-    "polars>=1.16.0",
-    "psutil>=7.0.0",
-    "lazy_loader"
-
+    "ibis-framework>=12.0.0",
+    # Floor: CI's pinned version (requirements-hatch.txt); exp.Alter/AlterRename needed, absent in Ibis's 23.4 floor.
+    # Cap: 30.18.0 drops the DROP-VIEW identifier for DuckDB memtable materialization; verified regression, no upstream fix yet.
+    "sqlglot>=29.0.1,<30.18.0",
 ]
 keywords = []
 name = "mountainash_data"
@@ -52,32 +31,32 @@ classifiers = [
 
 
 [project.optional-dependencies]
-all = [
-    "psycopg-binary>=3.1.0",
-    "pyodbc==5.2.0",
-    "snowflake-connector-python==3.12.3",
-    "setuptools",
-    "ibis-framework[mssql,snowflake,postgres,pyspark,trino]>=12.0.0",
-    # "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino]>=10.8.0",
-]
-mssql = ["pyodbc==5.2.0", "ibis-framework[mssql]>=12.0.0"]
-snowflake = [
-    "snowflake-connector-python==3.12.3",
-    "ibis-framework[snowflake]>=12.0.0",
-]
-postgres = ["psycopg-binary>=3.1.0", "ibis-framework[postgres]>=12.0.0"]
-bigquery = ["ibis-framework[bigquery]>=12.0.0"]
-pyspark = ["setuptools", "ibis-framework[pyspark]>=12.0.0"]
-clickhouse = ["ibis-framework[clickhouse]>=12.0.0"]
-databricks = ["databricks-sql-connector>=4", "ibis-framework[databricks]>=12.0.0"]
-singlestoredb = ["singlestoredb>=1.0", "ibis-framework[singlestoredb]>=12.0.0"]
-exasol = ["pyexasol>=0.25.2", "ibis-framework[exasol]>=12.0.0"]
-impala = ["impyla>=0.17", "ibis-framework[impala]>=12.0.0"]
-materialize = ["psycopg>=3.2.0", "ibis-framework[materialize]>=12.0.0"]
-risingwave = ["psycopg2>=2.8.4", "ibis-framework[risingwave]>=12.0.0"]
-druid = ["pydruid>=0.6.7", "ibis-framework[druid]>=12.0.0"]
-trino = ["ibis-framework[trino]>=12.0.0"]
+# One extra per dialect, named as the dialect key, delegating to Ibis's extra.
+sqlite = ["ibis-framework[sqlite]>=12.0.0"]
+duckdb = ["ibis-framework[duckdb]>=12.0.0"]
+motherduck = ["ibis-framework[duckdb]>=12.0.0"]
+polars = ["ibis-framework[polars]>=12.0.0"]
+# psycopg[binary] bundles libpq; Ibis's plain psycopg needs a system libpq.
+postgres = ["ibis-framework[postgres]>=12.0.0", "psycopg[binary]>=3.2.0"]
+redshift = ["ibis-framework[postgres]>=12.0.0", "psycopg[binary]>=3.2.0"]
+materialize = ["ibis-framework[materialize]>=12.0.0", "psycopg[binary]>=3.2.0"]
+mysql = ["ibis-framework[mysql]>=12.0.0"]
+mssql = ["ibis-framework[mssql]>=12.0.0"]
 oracle = ["ibis-framework[oracle]>=12.0.0"]
+snowflake = ["ibis-framework[snowflake]>=12.0.0"]
+bigquery = ["ibis-framework[bigquery]>=12.0.0"]
+trino = ["ibis-framework[trino]>=12.0.0"]
+clickhouse = ["ibis-framework[clickhouse]>=12.0.0"]
+databricks = ["ibis-framework[databricks]>=12.0.0"]
+singlestoredb = ["ibis-framework[singlestoredb]>=12.0.0"]
+exasol = ["ibis-framework[exasol]>=12.0.0"]
+impala = ["ibis-framework[impala]>=12.0.0"]
+risingwave = ["ibis-framework[risingwave]>=12.0.0"]
+druid = ["ibis-framework[druid]>=12.0.0"]
+pyspark = ["ibis-framework[pyspark]>=12.0.0"]
+all = [
+    "mountainash_data[sqlite,duckdb,motherduck,polars,postgres,redshift,materialize,mysql,mssql,oracle,snowflake,bigquery,trino,clickhouse,databricks,singlestoredb,exasol,impala,risingwave,druid,pyspark]",
+]
 
 
 [project.urls]
