@@ -298,7 +298,21 @@ hatch run ruff:check
 
 # Type check
 hatch run mypy:check
+
+# Separate source and test checks
+hatch run mypy:check-src
+hatch run mypy:check-tests
+
+# Also check bodies of unannotated functions
+hatch run mypy:check-src-untyped
+hatch run mypy:check-tests-untyped
 ```
+
+The four targeted commands accept extra mypy flags without replacing their
+targets. Test checks still follow source imports and can also report source
+errors. The `-untyped` variants include `--check-untyped-defs`.
+Test shortcuts use `--explicit-package-bases` to distinguish nested `conftest`
+modules in the test tree.
 
 ### Contributing
 
