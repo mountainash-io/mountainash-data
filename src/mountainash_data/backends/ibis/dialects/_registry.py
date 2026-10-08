@@ -110,8 +110,12 @@ class DialectSpec:
     # second addition to this dataclass if Gap 1 lands after Gap 3).
     transaction_support: "TransactionSupport" = TransactionSupport.NONE
     begin_statement: t.Optional[str] = "BEGIN"
-    autocommit_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
+    # Native transaction presence: True open, False idle, None unknown.
     in_transaction_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
+    # Eligibility to COMMIT when it differs from presence (PostgreSQL INERROR).
+    precommit_probe: t.Optional[t.Callable[[t.Any], t.Optional[bool]]] = None
+    # Starts an owned unit instead of executing begin_statement.
+    begin_hook: t.Optional[t.Callable[[t.Any], None]] = None
     raw_execute_hook: t.Optional[t.Callable[[t.Any, str], None]] = None
     adoption_mutations: tuple["SessionOption", ...] = ()
     # session options ibis stomps on adoption; () = none (Gap 1).
@@ -752,14 +756,52 @@ from mountainash_data.backends.ibis.operations import (  # noqa: E402
 )
 
 
-def _postgres_autocommit_probe(con: t.Any) -> t.Optional[bool]:
-    """psycopg Connection.autocommit — True when ibis's connect default is in force."""
-    return bool(con.autocommit)
+def _sqlite_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
+    return bool(con.in_transaction)
+
+
+def _duckdb_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
+    """Equal txid_current() across two statements means an explicit unit is open.
+
+    In autocommit each statement runs in its own transaction. execute() returns
+    the connection itself, so it is fetched, never closed. Replaces any unread
+    result on this handle.
+    """
+    first = con.execute("SELECT txid_current()").fetchone()[0]
+    second = con.execute("SELECT txid_current()").fetchone()[0]
+    return first == second
 
 
 def _postgres_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
-    """False when no server-side transaction is open (psycopg transaction_status IDLE == 0)."""
-    return con.info.transaction_status != 0
+    """IDLE False; INTRANS/INERROR True; ACTIVE/UNKNOWN None (psycopg status)."""
+    from psycopg.pq import TransactionStatus
+
+    status = con.info.transaction_status
+    if status == TransactionStatus.IDLE:
+        return False
+    if status in (TransactionStatus.INTRANS, TransactionStatus.INERROR):
+        return True
+    return None
+
+
+def _postgres_precommit_probe(con: t.Any) -> t.Optional[bool]:
+    from psycopg.pq import TransactionStatus
+
+    return con.info.transaction_status == TransactionStatus.INTRANS
+
+
+def _postgres_begin(con: t.Any) -> None:
+    """Start an owned unit without touching autocommit.
+
+    With autocommit off, psycopg begins implicitly before the next statement;
+    an explicit BEGIN would then be a second BEGIN.
+    """
+    with con.cursor() as cur:
+        if con.autocommit:
+            cur.execute("BEGIN")
+        else:
+            cur.execute("SELECT 1")
+            cur.fetchone()
 
 
 def _sql_str_literal(v: t.Any) -> str:
@@ -807,6 +849,7 @@ DIALECTS: dict[str, DialectSpec] = {
         ),
         transaction_support=TransactionSupport.FULL,
         begin_statement="BEGIN",
+        in_transaction_probe=_sqlite_in_transaction_probe,
     ),
     "duckdb": DialectSpec(
         ibis_backend_name="duckdb",
@@ -823,6 +866,7 @@ DIALECTS: dict[str, DialectSpec] = {
         ),
         transaction_support=TransactionSupport.FULL,
         begin_statement="BEGIN",
+        in_transaction_probe=_duckdb_in_transaction_probe,
         adoption_mutations=_DUCKDB_ADOPTION,
         raw_adoption_verified=True,
     ),
@@ -859,8 +903,9 @@ DIALECTS: dict[str, DialectSpec] = {
         ),
         transaction_support=TransactionSupport.FULL,
         begin_statement="BEGIN",
-        autocommit_probe=_postgres_autocommit_probe,
         in_transaction_probe=_postgres_in_transaction_probe,
+        precommit_probe=_postgres_precommit_probe,
+        begin_hook=_postgres_begin,
     ),
     "mysql": DialectSpec(
         ibis_backend_name="mysql",

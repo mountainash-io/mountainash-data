@@ -11,7 +11,11 @@ from __future__ import annotations
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
-from mountainash_data.backends.ibis._transaction import run_transaction, is_active
+from mountainash_data.backends.ibis._transaction import (
+    OWNERSHIP_DIALECTS,
+    is_active,
+    run_transaction,
+)
 from mountainash_data.backends.ibis._sqlite_compat import ensure_sqlite_nat_adapter
 from mountainash_data.backends.ibis._adoption import (
     apply_options, snapshot_options, restore_options,
@@ -521,11 +525,26 @@ class IbisBackend:
         return config, clean
 
     def close(self) -> IbisBackend:
-        """Release the connection. Idempotent. Returns self."""
+        """Release the connection. Idempotent. Returns self.
+
+        Raises RuntimeError inside a registered transaction() scope: closing
+        would disconnect the handle the open unit of work depends on.
+        """
         if self._conn is not None:
+            if self.in_transaction():
+                raise RuntimeError(
+                    "cannot close the backend inside an open transaction() scope"
+                )
             self._conn.close()
             self._conn = None
         return self
+
+    def _discard_connection(self) -> None:
+        """Drop an owned connection whose state can no longer be trusted
+        (for example after an ambiguous COMMIT failure) so it is not reused."""
+        conn, self._conn = self._conn, None
+        if conn is not None:
+            conn.close()
 
     def __enter__(self) -> IbisBackend:
         self.connect()
@@ -564,27 +583,55 @@ class IbisBackend:
         return self._spec.transaction_support is not TransactionSupport.NONE
 
     def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
+        """Open, or join, an explicit unit of work on this backend's raw handle.
+
+        On SQLite, DuckDB and PostgreSQL: when the connection is idle the scope
+        starts a transaction and owns it (commit on success, rollback on error).
+        When the caller already has a native transaction open, the scope joins
+        it and never commits or rolls it back. Nested scopes are flat.
+        """
         support = self._spec.transaction_support
         raw = self.raw_driver_connection() if support is not TransactionSupport.NONE else None
+        owns_connection = self._conn is not None and self._conn._owns_connection
         return run_transaction(
             raw,
             support=support,
             begin_statement=self._spec.begin_statement,
             dialect=self.dialect,
             required=required,
-            autocommit_probe=self._spec.autocommit_probe,
             in_transaction_probe=self._spec.in_transaction_probe,
             raw_execute_hook=self._spec.raw_execute_hook,
+            selected=self.dialect in OWNERSHIP_DIALECTS,
+            begin_hook=self._spec.begin_hook,
+            precommit_probe=self._spec.precommit_probe,
+            on_commit_failure=self._discard_connection if owns_connection else None,
         )
 
-    def in_transaction(self) -> bool:
-        """True if a unit of work opened via transaction() is currently active
-        on this backend's raw connection (any nesting depth).
+    def native_transaction_open(self) -> bool | None:
+        """Whether the native driver has a transaction open right now.
 
-        Runtime companion to the static supports_transactions flag. Total:
-        returns False — never raises — for NONE dialects, a backend that was
-        never connected or has been closed, and a connection whose native
-        handle has gone away. A point-in-time snapshot, not a lock.
+        Read-only: never connects, begins, or changes session settings.
+        False for NONE dialects and for unconnected or closed backends; None
+        when the dialect has no native probe or the handle is absent. Probe
+        errors propagate. On DuckDB the probe replaces any unread result.
+        """
+        if self._spec.transaction_support is TransactionSupport.NONE or self._conn is None:
+            return False
+        handle = getattr(self._conn._ibis_conn, self._spec.raw_handle_attr, None)
+        probe = self._spec.in_transaction_probe
+        if handle is None or probe is None:
+            return None
+        return probe(handle)
+
+    def in_transaction(self) -> bool:
+        """True while a transaction() scope is registered on this backend's raw
+        connection (any nesting depth), whether it owns the unit or joined the
+        caller's. Not a statement that this package will commit.
+
+        Total: returns False, never raises, for NONE dialects, a backend that
+        was never connected or has been closed, and a connection whose native
+        handle has gone away. For the driver's own state see
+        native_transaction_open().
         """
         if self._spec.transaction_support is TransactionSupport.NONE:
             return False
