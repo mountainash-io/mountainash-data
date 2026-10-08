@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterator
+from typing import NoReturn
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ def _required_run() -> bool:
     return os.environ.get("MOUNTAINASH_REQUIRE_LIVE_DB") == "1"
 
 
-def _skip_or_fail(message: str) -> None:
+def _skip_or_fail(message: str) -> NoReturn:
     if _required_run():
         pytest.fail(message)
     pytest.skip(message)

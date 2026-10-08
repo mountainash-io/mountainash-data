@@ -116,13 +116,19 @@ def test_unknown_dialect_raises():
         )
 
 
+def _replacements(raw) -> object:
+    row = raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()
+    assert row is not None
+    return row[0]
+
+
 def test_from_raw_connection_preserves_python_enable_replacements():
     raw = duckdb.connect()
     # caller's session default is True
-    before = raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0]
+    before = _replacements(raw)
     assert before is True
     be = IbisBackend.from_raw_connection(raw, dialect="duckdb", preserve_session=True)
-    after = raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0]
+    after = _replacements(raw)
     assert after is True  # restored despite ibis stomping it to False during adoption
     be.close()
 
@@ -130,7 +136,7 @@ def test_from_raw_connection_preserves_python_enable_replacements():
 def test_from_raw_connection_without_preserve_leaves_ibis_default():
     raw = duckdb.connect()
     be = IbisBackend.from_raw_connection(raw, dialect="duckdb", preserve_session=False)
-    after = raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0]
+    after = _replacements(raw)
     assert after is False  # ibis stomped it; we did not restore
     be.close()
 
@@ -151,12 +157,12 @@ def test_from_raw_connection_gated_on_unverified_dialect():
 def test_apply_session_options_reenables_replacements():
     raw = duckdb.connect()
     adopted = ibis.duckdb.from_connection(raw)  # ibis stomps replacements to False
-    assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is False
+    assert _replacements(raw) is False
     be = IbisBackend.from_ibis_connection(
         adopted, dialect="duckdb",
         apply_session_options={"python_enable_replacements": True},
     )
-    assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is True
+    assert _replacements(raw) is True
     be.close()
 
 
@@ -165,7 +171,7 @@ def test_from_ibis_connection_default_unchanged():
     adopted = ibis.duckdb.from_connection(raw)
     be = IbisBackend.from_ibis_connection(adopted, dialect="duckdb")
     # no apply -> ibis default stands
-    assert raw.execute("SELECT current_setting('python_enable_replacements')").fetchone()[0] is False
+    assert _replacements(raw) is False
     be.close()
 
 

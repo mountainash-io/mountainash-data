@@ -89,3 +89,5 @@ exclude_lines = ["no cov", "if __name__ == .__main__:", "if TYPE_CHECKING:"]
 # env — treat all unresolved/untyped third-party imports as Any rather than noise.
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
+# Types pydantic models / pydantic-settings constructors (incl. `_env_file`-style init args).
+plugins = ["pydantic.mypy"]

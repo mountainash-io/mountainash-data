@@ -34,7 +34,7 @@ CONTEXT_KEYS = {
 }
 
 
-def _error(target: str, backend: str, phase: Phase, detail: str, action: str) -> HarnessError:
+def _error(target: str | None, backend: str | None, phase: Phase, detail: str, action: str) -> HarnessError:
     return HarnessError(target, backend, phase, detail, action)
 
 

@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from mountainash_auth_client import PasswordAuthProfile
+
+from mountainash_data.core.settings import PostgreSQLBackendProfile
 
 from scripts.live_db_harness import config
 from scripts.live_db_harness.config import (
@@ -114,8 +117,10 @@ def test_backend_registry_builds_known_profile(tmp_path: Path) -> None:
     )
 
     assert isinstance(selection, BackendSelection)
-    assert selection.settings_parameters.get_settings().HOST == "127.0.0.1"
-    assert selection.settings_parameters.get_settings().PORT == 5432
+    settings = selection.settings_parameters.get_settings()
+    assert isinstance(settings, PostgreSQLBackendProfile)
+    assert settings.HOST == "127.0.0.1"
+    assert settings.PORT == 5432
 
 
 def test_auth_registry_builds_known_profile(tmp_path: Path) -> None:
@@ -123,6 +128,7 @@ def test_auth_registry_builds_known_profile(tmp_path: Path) -> None:
     selection = build_backend_selection(
         load_unresolved_harness((path,), selected_target="local", selected_backend="postgres")
     )
+    assert isinstance(selection.auth_profile, PasswordAuthProfile)
     assert selection.auth_profile.USERNAME == "postgres"
     assert selection.auth_profile.PASSWORD.get_secret_value() == "postgres"
 

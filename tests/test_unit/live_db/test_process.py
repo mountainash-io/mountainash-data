@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 import subprocess
 import sys
 import threading
@@ -123,7 +124,7 @@ def test_process_group_registered_atomically_with_spawn(monkeypatch: pytest.Monk
     release_spawn = threading.Event()
     real_popen = subprocess.Popen
 
-    def blocking_popen(*args: object, **kwargs: object) -> subprocess.Popen[str]:
+    def blocking_popen(*args: Any, **kwargs: Any) -> subprocess.Popen[str]:
         process = real_popen(*args, **kwargs)
         spawned.set()
         assert release_spawn.wait(5)

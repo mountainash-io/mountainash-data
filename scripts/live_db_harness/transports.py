@@ -317,7 +317,7 @@ def _published_port(entry: Any) -> int | None:
     if isinstance(entry, dict):
         protocol = str(entry.get("protocol", "tcp")).lower()
         value = entry.get("published")
-        if protocol != "tcp" or value in (None, ""):
+        if protocol != "tcp" or value is None or value == "":
             return None
         try:
             port = int(value)

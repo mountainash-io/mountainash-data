@@ -6,8 +6,10 @@ import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
+from mountainash_auth_client import PasswordAuthProfile
 from mountainash_settings import FilesystemBackend
 
 from scripts.live_db_harness.config import build_backend_selection, load_unresolved_harness
@@ -182,7 +184,7 @@ def test_child_process_reconstructs_selection_after_stores_close(
     closed_stores: list[FilesystemBackend] = []
     original_exit = FilesystemBackend.__exit__
 
-    def track_exit(store: FilesystemBackend, *args: object) -> None:
+    def track_exit(store: FilesystemBackend, *args: Any) -> None:
         original_exit(store, *args)
         closed_stores.append(store)
 
@@ -223,13 +225,14 @@ path = "{selected_secrets}"
         (tracked, user), selected_target="local", selected_backend="postgres"
     )
     parent_selection = build_backend_selection(loaded)
+    assert isinstance(parent_selection.auth_profile, PasswordAuthProfile)
     assert parent_selection.auth_profile.PASSWORD.get_secret_value() == "child-sentinel-password"
     assert len(closed_stores) == 3  # Two seed contexts and the parent selection context.
     assert len({id(store) for store in closed_stores}) == 3
 
     calls = []
 
-    def capture_command(argv: list[str], **kwargs: object) -> None:
+    def capture_command(argv: list[str], **kwargs: Any) -> None:
         calls.append((argv, kwargs))
 
     runner = LiveDbRunner((tracked.resolve(), user.resolve()))

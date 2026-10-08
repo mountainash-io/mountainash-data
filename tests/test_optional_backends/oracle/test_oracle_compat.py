@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import decimal
+from typing import Any
 
 import oracledb
 import oracledb.errors as ora_errors
@@ -105,7 +106,7 @@ class TestPatchGetSchema:
         """The bare `nullable = 'Y' AS nullable` form Ibis hardcodes is
         invalid pre-23ai Oracle SQL (ORA-00923); get_schema must always
         emit the CASE-WHEN form instead."""
-        con = _FakeSafeRawSqlCon(rows=[("ID", "NUMBER", None, 0, 1)])
+        con: Any = _FakeSafeRawSqlCon(rows=[("ID", "NUMBER", None, 0, 1)])
         _patch_get_schema(con)
         con.get_schema("up_ora")
         assert "nullable = 'Y' AS nullable" not in con.captured_sql
@@ -115,7 +116,7 @@ class TestPatchGetSchema:
         """oracledb returns the NUMBER(1) result as decimal.Decimal, not
         int/bool -- Ibis's dt.Int64(nullable=...) rejects anything but an
         actual bool. get_schema must coerce before constructing fields."""
-        con = _FakeSafeRawSqlCon(rows=[("ID", "NUMBER", None, 0, decimal.Decimal("1"))])
+        con: Any = _FakeSafeRawSqlCon(rows=[("ID", "NUMBER", None, 0, decimal.Decimal("1"))])
         _patch_get_schema(con)
         schema = con.get_schema("up_ora")
         assert schema["ID"].nullable is True
@@ -123,7 +124,7 @@ class TestPatchGetSchema:
     def test_raises_table_not_found_when_no_rows(self):
         import ibis.common.exceptions as exc
 
-        con = _FakeSafeRawSqlCon(rows=[])
+        con: Any = _FakeSafeRawSqlCon(rows=[])
         _patch_get_schema(con)
         with pytest.raises(exc.TableNotFound):
             con.get_schema("missing")
@@ -149,6 +150,6 @@ class TestPatchOracleConnection:
         assert len(calls) == 1
 
     def test_marks_connection_as_patched(self):
-        con = _FakePatchTargetCon()
+        con: Any = _FakePatchTargetCon()
         patch_oracle_connection(con)
         assert con._mountainash_oracle_patched is True

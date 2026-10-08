@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator, cast
 
 from pydantic import SecretStr
 
@@ -18,6 +18,7 @@ from mountainash_settings import (
     SettingsParameters,
     lookup_class_var,
 )
+from mountainash_settings.secrets import SecretRecord
 from pydantic_settings import SettingsConfigDict
 
 from .models import (
@@ -126,7 +127,7 @@ class TrackingSecretsBackend:
         self.delegate = delegate
         self.secret_values: set[str] = set()
 
-    def get(self, key: str) -> dict[str, object] | None:
+    def get(self, key: str) -> SecretRecord | None:
         record = self.delegate.get(key)
         if record is not None:
             self.secret_values.update(walk_secret_scalars(record))
@@ -167,6 +168,8 @@ def selected_definition(
 
 def profile_parameter_names(profile_class: type[Profile]) -> frozenset[str]:
     profile_spec = lookup_class_var(profile_class, "__spec__")
+    if profile_spec is None:
+        raise TypeError(f"{profile_class.__name__} has no profile __spec__")
     return frozenset(parameter.name for parameter in profile_spec.parameters)
 
 
@@ -237,8 +240,8 @@ def _validate_external_auth_values(
 class SelectedBackendSettings(MountainAshBaseSettings):
     model_config = SettingsConfigDict(extra="forbid")
 
-    connection: dict[str, object]
-    auth_values: dict[str, object]
+    connection: dict[str, Any]
+    auth_values: dict[str, Any]
 
 
 def _selection_error(
@@ -368,11 +371,14 @@ def build_backend_selection(loaded: LoadedHarnessSettings) -> BackendSelection:
                 connection=target_backend.connection,
                 auth_values=target_backend.auth.values,
             )
-            resolved_selection = selection_parameters.get_settings()
+            # Created with settings_class=SelectedBackendSettings; parameter-based
+            # retrieval is deliberately typed as the base class upstream.
+            resolved_selection = cast(SelectedBackendSettings, selection_parameters.get_settings())
 
             detail = "Unable to construct the selected authentication profile."
             corrective_action = "Fix the registered authentication fields."
-            auth_profile = auth_class(**resolved_selection.auth_values)
+            # auth_class passed the backend's supported_auth check, so it is an AuthProfile.
+            auth_profile = cast(AuthProfile, auth_class(**resolved_selection.auth_values))
 
             detail = "Unable to construct the selected connection profile."
             corrective_action = "Fix the registered connection fields."

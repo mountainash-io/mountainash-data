@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from types import ModuleType, SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -43,15 +44,17 @@ def _install_spark_fakes(monkeypatch: pytest.MonkeyPatch):
     builder = _SessionBuilder()
     connect_calls: list[dict[str, object]] = []
 
-    ibis_module = ModuleType("ibis")
-    ibis_module.pyspark = SimpleNamespace(
-        connect=lambda **kwargs: connect_calls.append(kwargs) or "connected"
-    )
+    def connect(**kwargs: object) -> str:
+        connect_calls.append(kwargs)
+        return "connected"
+
+    ibis_module: Any = ModuleType("ibis")
+    ibis_module.pyspark = SimpleNamespace(connect=connect)
     monkeypatch.setitem(sys.modules, "ibis", ibis_module)
 
-    pyspark_module = ModuleType("pyspark")
+    pyspark_module: Any = ModuleType("pyspark")
     pyspark_module.SparkConf = _SparkConf
-    pyspark_sql_module = ModuleType("pyspark.sql")
+    pyspark_sql_module: Any = ModuleType("pyspark.sql")
     pyspark_sql_module.SparkSession = SimpleNamespace(builder=builder)
     monkeypatch.setitem(sys.modules, "pyspark", pyspark_module)
     monkeypatch.setitem(sys.modules, "pyspark.sql", pyspark_sql_module)

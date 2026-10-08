@@ -58,6 +58,7 @@ def test_raw_execute_cursor_path_when_no_execute():
     raw_execute(h, "SELECT 1")
     assert ("cur", "SELECT 1") in h.log
     assert ("close", None) in h.log
+    assert h.cursor_obj is not None
     assert h.cursor_obj.closed is True
 
 
