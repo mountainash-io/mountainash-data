@@ -12,13 +12,38 @@ behind a backend-agnostic `Backend` protocol ready for additional backends.
 
 ## Installation
 
+The base install carries no database driver or dataframe library. Install the
+extra for each backend you use; the extra is named exactly as the dialect:
+
+```bash
+pip install 'mountainash-data[duckdb]'           # one backend
+pip install 'mountainash-data[sqlite,polars]'    # SQLite plus Polars dataframe input
+pip install 'mountainash-data[all]'              # every backend
+```
+
+Extras: `sqlite`, `duckdb`, `motherduck`, `postgres`, `redshift`, `mysql`,
+`mssql`, `oracle`, `snowflake`, `bigquery`, `trino`, `clickhouse`,
+`databricks`, `singlestoredb`, `exasol`, `impala`, `materialize`,
+`risingwave`, `druid`, `pyspark`, plus `polars` for Polars dataframe input.
+Each installs the matching `ibis-framework[...]` extra. Connecting without the
+extra raises an `ImportError` naming the command to run.
+
+System prerequisites that pip cannot install:
+
+- `mssql`: an ODBC driver manager and the Microsoft ODBC Driver for SQL Server.
+- `mysql`: MySQL/MariaDB client libraries (e.g. `libmariadb-dev`) where no wheel exists.
+- `pyspark`: a Java runtime.
+- `risingwave`: `psycopg2` may build from source, which needs `pg_config` (libpq development files).
+
+`postgres`, `redshift` and `materialize` use `psycopg[binary]`, which bundles libpq.
+
 ### Development Installation
 
 ```bash
 # Clone and install in development mode
 git clone <repository-url>
 cd mountainash-data
-pip install -e .
+pip install -e '.[sqlite,duckdb,polars]'
 ```
 
 ### Using Hatch
@@ -193,12 +218,7 @@ from mountainash_data import (
 
 ### Optional Dependencies
 
-- **postgres**: `psycopg2-binary` + `ibis-framework[postgres]`
-- **mssql**: `pyodbc` + `ibis-framework[mssql]`
-- **snowflake**: `snowflake-connector-python` + `ibis-framework[snowflake]`
-- **bigquery**: `ibis-framework[bigquery]`
-- **pyspark**: `ibis-framework[pyspark]`
-- **trino**: `ibis-framework[trino]`
+One extra per dialect plus `polars` and `all`; see [Installation](#installation).
 
 
 

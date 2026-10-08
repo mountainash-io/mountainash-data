@@ -86,12 +86,7 @@ src/mountainash_data/
 ```
 
 ### Optional Dependencies (extras)
-- **postgres**: PostgreSQL support (psycopg2-binary, ibis-framework[postgres])
-- **mssql**: SQL Server support (pyodbc, ibis-framework[mssql])
-- **snowflake**: Snowflake support (snowflake-connector-python, ibis-framework[snowflake])
-- **bigquery**: Google BigQuery support (ibis-framework[bigquery])
-- **pyspark**: Apache Spark support (ibis-framework[pyspark])
-- **trino**: Trino support (ibis-framework[trino])
+One extra per registered dialect, named as the dialect key (`sqlite`, `duckdb`, `motherduck`, `postgres`, `redshift`, …), plus `polars` (dataframe input) and `all`. Each delegates to the matching `ibis-framework[...]` extra; `postgres`/`redshift`/`materialize` add `psycopg[binary]`. `IbisBackend.connect()` / `from_raw_connection()` translate a missing driver module into an `ImportError` naming `mountainash-data[<dialect>]`. Hatch test environments install `sqlite`, `duckdb`, `polars` via `features`.
 
 ## Build/Test/Lint Commands
 
@@ -115,24 +110,11 @@ src/mountainash_data/
 ## Dependencies
 
 ### Core Dependencies
-- **ibis-framework[polars,pandas,sqlite,duckdb]** >= 12.0.0 - Core data processing framework
-- **numpy** >=1.23.2,<3 - Numerical computing
-- **pandas** >=2.2.0 - Data manipulation and analysis
-- **polars** ==1.16.0 - Fast DataFrame library
-- **pyarrow** ==17.0.0 - Columnar in-memory analytics
-- **xarray** ==2024.11.0 - N-dimensional arrays
-- **rich** >=12.4.4,<14 - Rich text and beautiful formatting
-- **universal_pathlib** ==0.2.2 - Universal pathlib interface
-- **sqlalchemy** - SQL toolkit and ORM
-- **duckdb** - In-process SQL OLAP database
+- **mountainash-settings** >=0.1.0,<0.2 and **mountainash-auth-client** >=0.1.0,<0.2
+- **ibis-framework** >=12.0.0 (core only, no backend extras)
+- **sqlglot** >=29.0.1,<30.18.0 — floor is CI's pinned version (`requirements-hatch.txt`); cap is a verified DuckDB memtable regression
 
-### Internal Mountain Ash Dependencies
-- **mountainash-settings** - Settings management and configuration framework
-- **mountainash-constants** - Shared constants and configuration
-- **mountainash-dataframes** - DataFrame abstractions and utilities
-- **mountainash-transport** - File system utilities
-- **mountainash-utils-os** - Operating system utilities
-- **mountainash-utils-ssh** - SSH connection utilities
+No driver, dataframe library, NumPy or Arrow is a base requirement; they arrive through extras.
 
 ### Development Dependencies
 - **pytest==8.3.5** with extended plugins:
