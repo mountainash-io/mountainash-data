@@ -8,6 +8,7 @@ an IbisConnection that satisfies core.protocol.Connection.
 
 from __future__ import annotations
 
+import contextlib
 import typing as t
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
@@ -52,6 +53,26 @@ from mountainash_data.core.factories.connection_factory import (
 )
 from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_auth_client import PasswordAuthProfile
+
+
+@contextlib.contextmanager
+def _missing_extra_hint(dialect: str) -> t.Iterator[None]:
+    """Name the mountainash-data extra when a backend's driver module is absent.
+
+    Translates only a ModuleNotFoundError, or Ibis's backend-load ImportError
+    whose direct cause is one. Native-library, connection and other failures
+    propagate unchanged.
+    """
+    try:
+        yield
+    except ImportError as exc:
+        missing = exc if isinstance(exc, ModuleNotFoundError) else exc.__cause__
+        if not isinstance(missing, ModuleNotFoundError):
+            raise
+        raise ImportError(
+            f"{exc}\n\nInstall this backend with: "
+            f"pip install 'mountainash-data[{dialect}]'"
+        ) from exc
 
 
 def _render_ibis_database(ns: Namespace) -> tuple[str, str] | str | None:
@@ -376,9 +397,10 @@ class IbisBackend:
         # BEFORE returning. If adoption raises after that, the caller's session is
         # already stomped — restore in the finally so a failed adoption does not
         # leave the session corrupted (Codex review).
-        ibis_backend_module = importlib.import_module(
-            f"ibis.backends.{backend._spec.ibis_backend_name}"
-        )
+        with _missing_extra_hint(dialect):
+            ibis_backend_module = importlib.import_module(
+                f"ibis.backends.{backend._spec.ibis_backend_name}"
+            )
         try:
             ibis_conn = ibis_backend_module.Backend.from_connection(raw_conn)
         finally:
@@ -498,20 +520,21 @@ class IbisBackend:
             raise NotImplementedError(
                 f"Dialect {self.dialect!r} has no connection_builder configured"
             )
-        if self._profile is not None:                       # settings path
-            cfg = build_driver_kwargs(self._profile, auth_profile)
-            cfg.update(self._extra_config)
-            self._config = cfg
-            ibis_conn = self._connect_via_builder()
-        elif self._url is not None:                         # URL path
-            config, clean_url = self._resolve_url_auth(self._url, auth_profile)
-            config.update(self._url_config)                 # caller extras apply on top
-            self._config = config
-            import ibis
-            ibis_conn = ibis.connect(clean_url, **self._config)
-        else:                                               # direct-dialect path
-            self._config = self._resolve_dialect_auth(auth_profile)
-            ibis_conn = self._connect_via_builder()
+        with _missing_extra_hint(self.dialect):
+            if self._profile is not None:                       # settings path
+                cfg = build_driver_kwargs(self._profile, auth_profile)
+                cfg.update(self._extra_config)
+                self._config = cfg
+                ibis_conn = self._connect_via_builder()
+            elif self._url is not None:                         # URL path
+                config, clean_url = self._resolve_url_auth(self._url, auth_profile)
+                config.update(self._url_config)                 # caller extras apply on top
+                self._config = config
+                import ibis
+                ibis_conn = ibis.connect(clean_url, **self._config)
+            else:                                               # direct-dialect path
+                self._config = self._resolve_dialect_auth(auth_profile)
+                ibis_conn = self._connect_via_builder()
         self._conn = IbisConnection(ibis_conn, self._spec)
         return self
 
