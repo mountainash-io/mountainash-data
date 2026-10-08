@@ -400,7 +400,7 @@ dependencies = [
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 ]
 [envs.mypy.scripts]
-check = "mypy --install-types --non-interactive {args:src/mountainash_data tests}"
+check = "mypy --install-types --non-interactive --explicit-package-bases {args:src/mountainash_data tests}"
 check-src = "mypy --install-types --non-interactive src/mountainash_data {args}"
 check-tests = "mypy --install-types --non-interactive --explicit-package-bases tests {args}"
 check-src-untyped = "mypy --install-types --non-interactive --check-untyped-defs src/mountainash_data {args}"
