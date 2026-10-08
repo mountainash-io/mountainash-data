@@ -64,6 +64,49 @@ connection = DatabaseUtils.create_connection(settings_params)
 ibis_backend = connection.connect()
 ```
 
+## Transactions
+
+`backend.transaction()` groups package operations into one unit of work. On
+SQLite, DuckDB and PostgreSQL it checks the driver's own state first:
+
+- **Idle connection:** it begins a transaction and owns it. A clean exit
+  commits; an exception, or a failure you caught inside the block, rolls back.
+- **Your transaction is already open:** it joins it and never commits or rolls
+  it back. Completion stays with you.
+
+```python
+backend = IbisBackend(dialect="postgres", ...).connect()
+
+with backend.transaction():           # owned: commits on success
+    backend.upsert("orders", frame, conflict_columns=["id"])
+    backend.add_columns("orders", {"note": "string"})
+
+raw = backend.raw_driver_connection()
+raw.execute("BEGIN")                   # your transaction
+with backend.transaction():           # joined: no BEGIN, no COMMIT
+    backend.insert("audit", rows)
+raw.execute("COMMIT")                  # you decide
+```
+
+Inside a scope, package operations cannot commit or roll back behind it, and
+metadata queries that fail raise instead of returning empty results. Nested
+scopes are flat (no savepoints).
+
+- `backend.native_transaction_open()` reports whether the driver has a
+  transaction open (`True`/`False`, or `None` where it cannot tell).
+- `backend.in_transaction()` reports whether a `transaction()` scope is active,
+  including one that joined your transaction.
+
+Notes:
+
+- PostgreSQL with `autocommit` off starts a transaction implicitly on any
+  statement, including a read. A later `transaction()` therefore joins it
+  rather than owning it. The autocommit setting is never changed.
+- Statements you run on the native handle or on returned Ibis expressions are
+  not intercepted. A `COMMIT` issued that way just before the scope ends is
+  reported with `TransactionIntegrityError`; it cannot be undone.
+- Other dialects keep their earlier behaviour: the outermost scope begins and
+  commits.
 
 
 ## Settings 0.1 migration (candidate)
