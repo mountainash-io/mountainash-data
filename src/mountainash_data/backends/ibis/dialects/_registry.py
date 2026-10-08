@@ -65,6 +65,7 @@ UpsertHook = t.Callable[..., None]
 CreateIndexHook = t.Callable[..., None]
 DropIndexHook = t.Callable[..., None]
 RenameTableHook = t.Callable[..., None]
+TruncateTableHook = t.Callable[..., None]
 AddColumnsHook = t.Callable[..., None]
 
 
@@ -101,6 +102,8 @@ class DialectSpec:
     create_index_hook: t.Optional[CreateIndexHook] = None
     drop_index_hook: t.Optional[DropIndexHook] = None
     rename_table_hook: t.Optional[RenameTableHook] = None
+    truncate_table_hook: t.Optional[TruncateTableHook] = None
+    # (ibis_conn, name, *, database=None). None: ibis truncate_table().
     add_columns_hook: t.Optional[AddColumnsHook] = None
     raw_handle_attr: str = "con"
     # attribute on the ibis backend holding the native driver handle (Gap 2).
@@ -760,6 +763,25 @@ def _sqlite_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
     return bool(con.in_transaction)
 
 
+def _sqlite_truncate_table(
+    ibis_conn: t.Any, name: str, *, database: t.Any = None
+) -> None:
+    """SQLite has no TRUNCATE; delete all rows instead.
+
+    Ibis 12 SQLite inherits SQLBackend.truncate_table(), which emits TRUNCATE
+    TABLE. Mirrors ibis's own SQLite insert(overwrite=True): DELETE through
+    begin(), which commits (a no-op inside a package transaction scope).
+    """
+    import sqlglot as sg
+    import sqlglot.expressions as sge
+
+    catalog, db = ibis_conn._to_catalog_db_tuple(ibis_conn._to_sqlglot_table(database))
+    table = sg.table(name, db=db, catalog=catalog, quoted=ibis_conn.compiler.quoted)
+    with ibis_conn.begin() as cur:
+        cur.execute(sge.Delete(this=table).sql(ibis_conn.dialect))
+
+
+
 def _duckdb_in_transaction_probe(con: t.Any) -> t.Optional[bool]:
     """Equal txid_current() across two statements means an explicit unit is open.
 
@@ -850,6 +872,7 @@ DIALECTS: dict[str, DialectSpec] = {
         transaction_support=TransactionSupport.FULL,
         begin_statement="BEGIN",
         in_transaction_probe=_sqlite_in_transaction_probe,
+        truncate_table_hook=_sqlite_truncate_table,
     ),
     "duckdb": DialectSpec(
         ibis_backend_name="duckdb",

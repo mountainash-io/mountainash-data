@@ -329,6 +329,31 @@ def test_truncate_returns_self():
         assert result is backend
 
 
+def test_sqlite_truncate_commits_rows_away(tmp_path):
+    """SQLite has no TRUNCATE; the delete must also be committed, not left pending."""
+    db = tmp_path / "t.sqlite"
+    with IbisBackend(dialect="sqlite", database=str(db)) as backend:
+        backend.create_table("t", {"id": [1, 2, 3]})
+        backend.truncate("t")
+        assert backend.ibis_connection().table("t").count().execute() == 0
+    with sqlite3.connect(db) as other:
+        assert other.execute("SELECT count(*) FROM t").fetchone()[0] == 0
+        assert other.execute("SELECT name FROM sqlite_master").fetchall() == [("t",)]
+
+
+def test_sqlite_truncate_targets_attached_database_only(tmp_path):
+    with IbisBackend(dialect="sqlite", database=":memory:") as backend:
+        raw = backend.ibis_connection()
+        raw.raw_sql(f"ATTACH '{tmp_path / 'aux.sqlite'}' AS aux")
+        for db in ("main", "aux"):
+            raw.raw_sql(f'CREATE TABLE {db}."odd ""name" (id INTEGER)')
+            raw.raw_sql(f'INSERT INTO {db}."odd ""name" VALUES (1)')
+        backend.truncate('odd "name', namespace="aux")
+        count = 'SELECT count(*) FROM {}."odd ""name"'
+        assert raw.raw_sql(count.format("aux")).fetchone()[0] == 0
+        assert raw.raw_sql(count.format("main")).fetchone()[0] == 1
+
+
 def test_table_returns_ibis_table():
     """table() must return an ibis table expression."""
     with IbisBackend(dialect="sqlite", database=":memory:") as backend:
