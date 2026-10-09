@@ -131,6 +131,17 @@ errors. The `-untyped` variants include `--check-untyped-defs`.
 Test shortcuts use `--explicit-package-bases` to distinguish nested `conftest`
 modules in the test tree.
 
+The Pytest workflow's core job runs `hatch run mypy_github:check` before pytest.
+Any mypy error fails that job. This environment inherits the local mypy tools,
+features and scripts, but uses the existing CI sibling checkouts under `temp/`.
+Both environments use `requirements-hatch.txt` through `UV_CONSTRAINT`; local
+`mypy:check` continues to use sibling repositories beside this checkout.
+
+The workflow retains its code/configuration path filters. Documentation-only
+PRs do not trigger this job. It is deliberately not a required branch-protection
+check: GitHub would leave a path-filtered required check pending on those PRs.
+Do not require it without first providing a successful non-code PR path.
+
 ### Consumer examples
 
 Follow the source installation in [README.md](README.md#installation), then run:

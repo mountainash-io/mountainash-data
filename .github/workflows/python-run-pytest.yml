@@ -87,6 +87,9 @@ jobs:
       - name: Install Hatch
         run: pip install hatch
 
+      - name: Run mypy
+        run: hatch run mypy_github:check
+
       - name: Create virtual environment
         run: hatch env create test_github
 
