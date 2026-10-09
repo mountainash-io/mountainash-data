@@ -115,6 +115,36 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```
   Generates JSON test reports, JUnit XML, and all coverage formats.
 
+### Type checks
+
+```bash
+hatch run mypy:check
+hatch run mypy:check-src
+hatch run mypy:check-tests
+hatch run mypy:check-src-untyped
+hatch run mypy:check-tests-untyped
+```
+
+The four targeted commands accept extra mypy flags without replacing their
+targets. Test checks still follow source imports and can also report source
+errors. The `-untyped` variants include `--check-untyped-defs`.
+Test shortcuts use `--explicit-package-bases` to distinguish nested `conftest`
+modules in the test tree.
+
+### Consumer examples
+
+Follow the source installation in [README.md](README.md#installation), then run:
+
+```bash
+for recipe in examples/*/example.py; do
+  python "$recipe" || exit 1
+done
+```
+
+Each recipe checks the behavior it demonstrates. Compare its stdout with the
+expected output in its README and run the root README quick start separately.
+The [recipe index](examples/) lists requirements and verification conventions.
+
 ## Live Database Testing
 
 Live database tests run against a real backend service (Docker Compose or an
