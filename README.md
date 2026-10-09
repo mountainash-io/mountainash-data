@@ -1,336 +1,176 @@
 # mountainash-data
 
-![Python](https://img.shields.io/badge/python-3.12%2B-blue) ![Category](https://img.shields.io/badge/category-core-purple) ![Tests](https://img.shields.io/badge/tests-✓-green) ![Docs](https://img.shields.io/badge/docs-✓-blue)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+[![License: Proprietary](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
 
+Connect to relational databases, inspect their physical metadata and manage tables
+through `IbisBackend`. Ibis supplies backend-native table expressions; the package
+adds connection profiles, namespace handling, dialect-specific writes and
+transaction ownership behind a backend-neutral `Backend` protocol.
 
-Mountain Ash - Data
+[Examples](examples/) · [Testing](TESTING.md) ·
+[Contributing](CONTRIBUTING.md)
 
-Physical access to backend data services — relational databases via Ibis,
-behind a backend-agnostic `Backend` protocol ready for additional backends.
+## What it provides
 
+| Area | Capabilities | Explore |
+|---|---|---|
+| Connections | Dialect kwargs, connection URLs and settings recipes; separate authentication profiles | [Connections](examples/connections/) |
+| Tables and queries | Create, insert, read and drop tables; execute Ibis expressions | [Local tables](examples/local_tables/) |
+| Physical metadata | Catalogs, namespaces, tables and columns with typed inspection results | [Inspection](examples/inspection/) |
+| Mutations | Upsert and add columns using dialect-specific SQL | [Mutations](examples/mutations/) |
+| Indexes | Create, inspect and drop supported index types | [Indexes](examples/indexes/) |
+| Transactions | Commit/rollback scopes and joining caller-owned transactions | [Transactions](examples/transactions/) |
+| Connection adoption | Wrap existing Ibis or raw driver connections with explicit ownership | [Connection adoption](examples/connection_adoption/) |
 
+`table()` returns an Ibis table. Build queries with Ibis, or pass that table to
+`mountainash.relation()` when using the separate `mountainash` package. This
+package does not plan automatic joins between different database connections.
 
 ## Installation
 
-The base install carries no database driver or dataframe library. Install the
-extra for each backend you use; the extra is named exactly as the dialect:
+Requires **Python 3.12+** and **Ibis 12+**. The base package depends on
+`mountainash-settings` 0.1 and `mountainash-auth-client` 0.1, but installs no database
+driver or dataframe library. Add the extra for each backend you use.
+
+This README describes the **0.1.0 development baseline**. Until the runtime
+dependency chain is published, install development checkouts together. From the
+directory that will contain the repositories:
 
 ```bash
-pip install 'mountainash-data[duckdb]'           # one backend
-pip install 'mountainash-data[sqlite,polars]'    # SQLite plus Polars dataframe input
-pip install 'mountainash-data[all]'              # every backend
-```
-
-Extras: `sqlite`, `duckdb`, `motherduck`, `postgres`, `redshift`, `mysql`,
-`mssql`, `oracle`, `snowflake`, `bigquery`, `trino`, `clickhouse`,
-`databricks`, `singlestoredb`, `exasol`, `impala`, `materialize`,
-`risingwave`, `druid`, `pyspark`, plus `polars` for Polars dataframe input.
-Each installs the matching `ibis-framework[...]` extra. Connecting without the
-extra raises an `ImportError` naming the command to run.
-
-System prerequisites that pip cannot install:
-
-- `mssql`: an ODBC driver manager and the Microsoft ODBC Driver for SQL Server.
-- `mysql`: MySQL/MariaDB client libraries (e.g. `libmariadb-dev`) where no wheel exists.
-- `pyspark`: a Java runtime.
-- `risingwave`: `psycopg2` may build from source, which needs `pg_config` (libpq development files).
-
-`postgres`, `redshift` and `materialize` use `psycopg[binary]`, which bundles libpq.
-
-### Development Installation
-
-```bash
-# Clone and install in development mode
-git clone <repository-url>
+git clone --branch develop https://github.com/mountainash-io/mountainash-settings.git
+git clone --branch develop https://github.com/mountainash-io/mountainash-auth-client.git
+git clone --branch develop https://github.com/mountainash-io/mountainash-data.git
 cd mountainash-data
-pip install -e '.[sqlite,duckdb,polars]'
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ../mountainash-settings -e ../mountainash-auth-client \
+  -e '.[sqlite,duckdb]'
 ```
 
-### Using Hatch
+That installation runs the quick start and every local recipe. For Polars inputs,
+add `polars` to the extra list. Each dialect extra installs its matching Ibis
+backend dependencies; connecting without a required driver raises an `ImportError`
+that names the package extra to install.
 
-```bash
-# Create development environment
-hatch env create
+| Extra | Backend or input |
+|---|---|
+| `sqlite`, `duckdb` | Local databases used by the recipes |
+| `motherduck` | MotherDuck through DuckDB |
+| `postgres`, `redshift`, `materialize` | PostgreSQL-family backends; includes `psycopg[binary]` |
+| `mysql`, `singlestoredb`, `mssql`, `oracle` | MySQL/MariaDB, SingleStore, SQL Server and Oracle |
+| `snowflake`, `bigquery`, `databricks` | Hosted analytics services |
+| `trino`, `clickhouse`, `exasol`, `impala`, `risingwave`, `druid`, `pyspark` | Other registered Ibis backends |
+| `polars` | Polars dataframe input |
+| `all` | Every backend extra and Polars |
 
-# Run commands in the environment
-hatch run <command>
-```
+Some extras also need system software: SQL Server needs an ODBC driver manager and
+the Microsoft ODBC driver; MySQL may need MySQL/MariaDB client development
+libraries when no wheel is available; local PySpark needs Java; a source build of
+RisingWave's `psycopg2` needs `pg_config`. The `psycopg[binary]` extras bundle libpq.
 
+## Quick start
 
-
-## Quick Start
+Save this as `quickstart.py` and run `python quickstart.py`:
 
 ```python
-from mountainash_data import IbisBackend, DatabaseUtils
+import pyarrow as pa
 
-# Direct backend usage (new-style)
-backend = IbisBackend(dialect="sqlite", database=":memory:")
-conn = backend.connect()
-try:
-    tables = conn.list_tables()
-    info = conn.inspect_table("my_table")
-    ibis_table = conn.table("my_table")  # backend-native ibis Table
-    # Bridge to the unified mountainash package (pull-side):
-    #   import mountainash as ma
-    #   rel = ma.relation(ibis_table)  # compiles against Ibis automatically
-finally:
-    conn.close()
+from mountainash_data import IbisBackend
 
-# High-level facade (settings-driven)
-from mountainash_data import DatabaseUtils
-from mountainash_data.core.settings import SQLiteAuthSettings
-from mountainash_settings import SettingsParameters
+sales = pa.table({"id": [1, 2], "region": ["north", "south"], "total": [120, 95]})
 
-settings_params = SettingsParameters.create(
-    settings_class=SQLiteAuthSettings,
-    kwargs={"DATABASE": ":memory:"}
-)
-connection = DatabaseUtils.create_connection(settings_params)
-ibis_backend = connection.connect()
+with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+    backend.create_table("sales", sales)
+    table = backend.table("sales")
+    rows = table.order_by("id").to_pyarrow().to_pylist()
+    print(rows)
+    print(f"Sales total: {backend.run_expr(table.total.sum())}")
 ```
 
-## Transactions
+Expected output:
 
-`backend.transaction()` groups package operations into one unit of work. On
-SQLite, DuckDB and PostgreSQL it checks the driver's own state first:
-
-- **Idle connection:** it begins a transaction and owns it. A clean exit
-  commits; an exception, or a failure you caught inside the block, rolls back.
-- **Your transaction is already open:** it joins it and never commits or rolls
-  it back. Completion stays with you.
-
-```python
-backend = IbisBackend(dialect="postgres", ...).connect()
-
-with backend.transaction():           # owned: commits on success
-    backend.upsert("orders", frame, conflict_columns=["id"])
-    backend.add_columns("orders", {"note": "string"})
-
-raw = backend.raw_driver_connection()
-raw.execute("BEGIN")                   # your transaction
-with backend.transaction():           # joined: no BEGIN, no COMMIT
-    backend.insert("audit", rows)
-raw.execute("COMMIT")                  # you decide
+```text
+[{'id': 1, 'region': 'north', 'total': 120}, {'id': 2, 'region': 'south', 'total': 95}]
+Sales total: 215
 ```
 
-Inside a scope, package operations cannot commit or roll back behind it, and
-metadata queries that fail raise instead of returning empty results. Nested
-scopes are flat (no savepoints).
+The context manager connects and closes the backend. The in-memory database is
+private to this connection; the example needs no credentials or persistent files.
+PyArrow is installed by the selected backend extras.
 
-- `backend.native_transaction_open()` reports whether the driver has a
-  transaction open (`True`/`False`, or `None` where it cannot tell).
-- `backend.in_transaction()` reports whether a `transaction()` scope is active,
-  including one that joined your transaction.
+## Backend support and limits
 
-Notes:
+A registered dialect or installable extra does not guarantee every operation.
+Upsert styles, schema changes, indexes, namespaces and transaction support depend
+on the backend and, for services such as Trino, its configured connector.
+Unsupported operations can raise `NotImplementedError`; unsupported namespace
+shapes raise `ValueError`.
 
-- PostgreSQL with `autocommit` off starts a transaction implicitly on any
-  statement, including a read. A later `transaction()` therefore joins it
-  rather than owning it. The autocommit setting is never changed.
-- Statements you run on the native handle or on returned Ibis expressions are
-  not intercepted. A `COMMIT` issued that way just before the scope ends is
-  reported with `TransactionIntegrityError`; it cannot be undone.
-- Other dialects keep their earlier behaviour: the outermost scope begins and
-  commits.
+- `Namespace` represents a catalog and namespace path. Ibis operations support at
+  most one namespace level. Manual-SQL operations such as upsert, add-columns and
+  indexes reject catalog-qualified namespaces.
+- Oracle index operations have unresolved identifier and owner-resolution issues;
+  do not treat them as supported workflows.
+- Exasol's system-managed indexes and non-B-tree index families such as ClickHouse
+  data-skipping indexes are outside the current index API.
+- Raw connection adoption is restricted to verified dialects. Otherwise construct
+  an Ibis connection and use `from_ibis_connection()`.
+- The recipes exercise local SQLite and DuckDB. They do not qualify hosted
+  services, every operation on every dialect, or a public-release Python matrix.
 
+## Transaction ownership
 
-## Settings 0.1 migration (candidate)
+On SQLite, DuckDB and PostgreSQL, `backend.transaction()` checks the driver's
+native state. It begins and completes a transaction on an idle connection, or
+joins an existing caller transaction without committing or rolling it back.
+Nested scopes are flat, with no savepoints. An owned scope rolls back on failure,
+including a failed protected package call whose exception you caught inside it.
 
-Data retains its own `get_descriptor(name)` and read-only `REGISTRY` APIs,
-including membership, indexing, iteration and views. They delegate to the
-canonical settings registry. Backend profiles and auth-client profiles remain
-distinct: select a backend and a compatible auth profile before resolving values.
+`in_transaction()` reports an active package scope.
+`native_transaction_open()` reports native driver state, or `None` when the
+backend cannot determine it. PostgreSQL with autocommit disabled may open a
+transaction implicitly on a read, so a later package scope joins that transaction.
+The package does not change autocommit.
 
-The live-DB harness owns the selected filesystem store. `secret_providers` and
-`targets.*.secrets_provider` remain local configuration labels; they do not
-register process-global providers. Only the selected backend's references are
-resolved, so an unselected target's missing record cannot block local work.
-SQLite/DuckDB and ordinary Compose workflows need no store.
+Package calls are protected inside a scope. Operations issued directly on a raw
+handle or returned Ibis expression bypass those protections. Ending the native
+transaction that way can raise `TransactionIntegrityError` when the scope exits;
+it cannot undo an earlier raw commit. Other dialects retain their existing
+outermost-scope begin/commit behavior where transactions are supported.
 
-The ownership boundary for selected resolution is a context manager:
+Ibis can retain stale memtable registration after rollback: reusing the same
+in-memory expression may fail. No package workaround is installed. See the
+[transaction recipe](examples/transactions/) for a local commit/rollback example
+and [connection adoption](examples/connection_adoption/) for caller ownership.
 
-```python
-from mountainash_settings import SettingsParameters
-from mountainash_settings.secrets import FilesystemBackend
+## Learn more
 
-# root must already be securely created and owned by the harness operator.
-# selected_settings_class / selected_values describe only the selected profile.
-with FilesystemBackend(root) as store:
-    selected = SettingsParameters.create(
-        settings_class=selected_settings_class,
-        secret_store=store,
-        **selected_values,
-    ).get_settings()
-# The harness closes the store after materialization, including on failure.
-```
+The [database recipes](examples/) run offline and independently, using the same
+small sales dataset. Each documents its command, requirements and expected output.
 
-Child processes reconstruct the selection from configuration paths and selected
-identities, rather than receiving stores or resolved credentials. Literal
-resolved strings beginning with `secret:` remain a deferred limitation.
+| Guide | Contents |
+|---|---|
+| [Examples](examples/) | Connections, tables, metadata, mutations, indexes and transaction ownership |
+| [Testing](TESTING.md) | Test tiers, live-database harness and type checks |
+| [Contributing](CONTRIBUTING.md) | Development and pull requests |
+| [Textbook maintenance](docs-site/README.md) | Preview, publishing and refresh workflow for generated material |
 
-The runtime bounds are `mountainash-settings>=0.1.0,<0.2` and
-`mountainash-auth-client>=0.1.0,<0.2`, matching the coordinated **0.1.0**
-development baseline. Hatch selects sibling sources for development and CI;
-installed-artifact checks record exact hashes separately. Python 3.14 release
-qualification and publication remain separate gates.
+Textbook: [production](https://docs.mountainash.io/mountainash-data/) ·
+[development](https://docs.mountainash.io/mountainash-data/dev/).
 
-## Architecture
+## Contributing
 
-mountainash-data uses a layered architecture:
+Branch from `develop` and open a pull request targeting `develop`. See
+[CONTRIBUTING.md](CONTRIBUTING.md) and [TESTING.md](TESTING.md) for setup and checks.
+Documentation changes should run the README quick start and affected recipes.
 
-```
-src/mountainash_data/
-├── __init__.py                  # Public API surface
-├── __version__.py               # Version information
-├── core/                        # Protocol, inspection, settings, factories
-│   ├── protocol.py              # Backend / Connection protocols
-│   ├── inspection.py            # CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo
-│   ├── utils.py                 # DatabaseUtils high-level facade
-│   ├── constants.py             # CONST_DB_PROVIDER_TYPE and friends
-│   ├── settings/                # Per-dialect auth settings (pydantic)
-│   └── factories/               # ConnectionFactory, OperationsFactory, SettingsFactory
-└── backends/
-    └── ibis/                    # IbisBackend — 12-dialect registry
-        ├── backend.py           # IbisBackend + IbisConnection
-        ├── connection.py        # BaseIbisConnection + per-dialect subclasses
-        ├── operations.py        # BaseIbisOperations + per-dialect subclasses
-        ├── inspect.py           # Ibis-specific inspection helpers
-        └── dialects/            # DialectSpec registry (data-driven)
-```
-
-### Public API
-
-```python
-from mountainash_data import (
-    Backend,            # Protocol: what every backend must implement
-    Connection,         # Protocol: what every connection must implement
-    IbisBackend,        # Ibis-style relational backends (sqlite, duckdb, postgres, …)
-    CatalogInfo,        # Physical catalog metadata
-    NamespaceInfo,      # Physical namespace/schema metadata
-    TableInfo,          # Physical table metadata
-    ColumnInfo,         # Physical column metadata
-    DatabaseUtils,      # High-level facade (settings-driven)
-    ConnectionFactory,  # Factory: settings → connection
-    OperationsFactory,  # Factory: settings → operations
-    SettingsFactory,    # Factory: URL / backend-type → settings
-)
-```
-
-### Optional Dependencies
-
-One extra per dialect plus `polars` and `all`; see [Installation](#installation).
-
-
-
-## Features
-
-- **12-dialect ibis registry** — SQLite, DuckDB, MotherDuck, PostgreSQL, MySQL, MSSQL, Oracle, Snowflake, BigQuery, Redshift, Trino, PySpark
-- **Protocol-first design** — `Backend` and `Connection` protocols enable type-safe composition
-- **mountainash seam (pull-side)** — `table()` returns a backend-native ibis Table; `ma.relation(table)` in the unified `mountainash` package compiles against it directly. There is deliberately no push-side `to_relation()` bridge in this package.
-- **Settings-driven** — pydantic settings for every dialect, factory auto-detection from URLs
-- **Comprehensive test suite** ensuring reliability
-
-
-
-## Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Technical documentation and development guide
-- **[Examples](docs/examples/)** - Usage examples and tutorials
-- **[Mountain Ash Documentation](https://mountainash-io.github.io/mountainash-docs/)** - Complete ecosystem documentation
-
-
-
-## Textbook
-
-The [production textbook](https://docs.mountainash.io/mountainash-data/) is
-built from `main`; the [development textbook](https://docs.mountainash.io/mountainash-data/dev/)
-is built from `develop`. Each push to either branch builds both snapshots and
-publishes them together. A failed build leaves the previous paired site live.
-
-For initial activation, merge the textbook changes into both branches and
-configure Pages, its environment, and the shared custom domain first. Then set
-the repository Actions variable `TEXTBOOK_PUBLISHING_ENABLED` to `true` and
-manually dispatch `deploy-textbook.yml`. Until enabled, publishing runs are
-skipped; a one-sided bootstrap cannot deploy an incomplete site.
-
-The source artifacts live together in this repository:
-
-- `docs-site/profile/`: package profile and source provenance.
-- `docs-site/learning-graph/`: canonical graph and FAQ artifacts.
-- `docs-site/site/`: MkDocs configuration, textbook Markdown, and refresh state.
-
-Preview locally without installing the source package or sibling repositories:
-
-```bash
-uv run --no-project --with-requirements docs-site/requirements.txt \
-  python -m mkdocs serve --config-file docs-site/site/mkdocs.yml
-```
-
-Refreshes are manual. Load `textbook-refresh` from the central
-`hiivmind-documentation-profile` tooling project and supply this repository's
-absolute root as `source_repo`, starting with `mode: check`. For a separate
-profile update, supply `docs-site/profile/` as the profiler's explicit output.
-Do not regenerate content merely to publish it or advance source baselines on
-a directory move. Preserve the existing FAQ format; the marker-only FAQ
-exporter does not support it and must not overwrite its JSON.
-
-A strict build of the current content surfaces two pre-existing gaps, neither
-caused by this relocation: `learning-graph/index.md` links to
-`learning-graph/course-description.md`, which does not exist, and five
-learning-graph pages (`concept-list.md`, `concept-taxonomy.md`, `faq.md`,
-`quality-metrics.md`, `taxonomy-distribution.md`) exist on disk but are not
-wired into the site nav. Both are inherited from the source content and are
-left as-is here.
-
-## Development
-
-### Testing
-
-```bash
-# Run full test suite with coverage
-hatch run test:test
-
-# Quick run (no coverage)
-hatch run test:test-quick
-
-# Lint
-hatch run ruff:check
-
-# Type check
-hatch run mypy:check
-
-# Separate source and test checks
-hatch run mypy:check-src
-hatch run mypy:check-tests
-
-# Also check bodies of unannotated functions
-hatch run mypy:check-src-untyped
-hatch run mypy:check-tests-untyped
-```
-
-The four targeted commands accept extra mypy flags without replacing their
-targets. Test checks still follow source imports and can also report source
-errors. The `-untyped` variants include `--check-untyped-defs`.
-Test shortcuts use `--explicit-package-bases` to distinguish nested `conftest`
-modules in the test tree.
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
-
-
+Part of the [Mountain Ash ecosystem](https://github.com/mountainash-io), alongside
+`mountainash-settings`, `mountainash-auth-client`, `mountainash-transport`,
+`mountainash-files` and `mountainash`. Settings owns configuration recipes;
+auth-client owns authentication profiles and flows.
 
 ## License
 
-See LICENSE file for details.
-
-## Mountain Ash Ecosystem
-
-This package is part of the [Mountain Ash](https://github.com/mountainash-io) ecosystem of Python packages.
-
----
-*README.md updated 2026-04-09 to reflect the core+backends refactor*
+Proprietary; see [LICENSE](LICENSE). Public-release licensing is a separate release
+prerequisite; this documentation does not change the current license.
