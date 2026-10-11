@@ -7,8 +7,8 @@ dependencies = [
     "mountainash-settings>=0.1.0,<0.2",
     "mountainash-auth-client>=0.1.0,<0.2",
     "ibis-framework>=12.0.0",
-    # Floor: CI's pinned version (requirements-hatch.txt); exp.Alter/AlterRename needed, absent in Ibis's 23.4 floor.
-    # Cap: 30.18.0 drops the DROP-VIEW identifier for DuckDB memtable materialization; verified regression, no upstream fix yet.
+    # Floor: exp.Alter/AlterRename used here are absent in Ibis's 23.4 floor.
+    # Cap: 30.18+ drops identifiers from Ibis 12 DROP statements; 30.22.0 still fails.
     "sqlglot>=29.0.1,<30.18.0",
 ]
 keywords = []

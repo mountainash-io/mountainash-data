@@ -33,6 +33,11 @@ Requires **Python 3.12+** and **Ibis 12+**. The base package depends on
 `mountainash-settings` 0.1 and `mountainash-auth-client` 0.1, but installs no database
 driver or dataframe library. Add the extra for each backend you use.
 
+SQLGlot is constrained to `>=29.0.1,<30.18.0`: Ibis 12 emits invalid DROP
+statements with 30.18.0, and 30.22.0 still fails table deletion. The shared
+Mountainash/Data development rehearsal uses Ibis 12.0.0, SQLGlot 30.17.0 and
+DuckDB 1.5.6. These are test pins, not exact public runtime requirements.
+
 This README describes the **0.1.0 development baseline**. Until the runtime
 dependency chain is published, install development checkouts together. From the
 directory that will contain the repositories:
@@ -164,6 +169,8 @@ Textbook: [production](https://docs.mountainash.io/mountainash-data/) ·
 Branch from `develop` and open a pull request targeting `develop`. See
 [CONTRIBUTING.md](CONTRIBUTING.md) and [TESTING.md](TESTING.md) for setup and checks.
 Documentation changes should run the README quick start and affected recipes.
+
+Source distributions exclude `.hiivmind` development tooling, whose external symlinks are not package inputs and prevent safe source-distribution installation.
 
 Part of the [Mountain Ash ecosystem](https://github.com/mountainash-io), alongside
 `mountainash-settings`, `mountainash-auth-client`, `mountainash-transport`,
