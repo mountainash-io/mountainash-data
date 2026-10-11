@@ -165,6 +165,8 @@ Branch from `develop` and open a pull request targeting `develop`. See
 [CONTRIBUTING.md](CONTRIBUTING.md) and [TESTING.md](TESTING.md) for setup and checks.
 Documentation changes should run the README quick start and affected recipes.
 
+Source distributions exclude `.hiivmind` development tooling, whose external symlinks are not package inputs and prevent safe source-distribution installation.
+
 Part of the [Mountain Ash ecosystem](https://github.com/mountainash-io), alongside
 `mountainash-settings`, `mountainash-auth-client`, `mountainash-transport`,
 `mountainash-files` and `mountainash`. Settings owns configuration recipes;
