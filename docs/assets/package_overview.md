@@ -239,4 +239,4 @@ df = DataFrameFactory.create_from_list_of_dicts(data)
 ```
 
 ## License
-MIT License
+Apache License 2.0

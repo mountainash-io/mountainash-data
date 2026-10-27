@@ -1,7 +1,7 @@
 # mountainash-data
 
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
-[![License: Proprietary](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 Connect to relational databases, inspect their physical metadata and manage tables
 through `IbisBackend`. Ibis supplies backend-native table expressions; the package
@@ -179,5 +179,4 @@ auth-client owns authentication profiles and flows.
 
 ## License
 
-Proprietary; see [LICENSE](LICENSE). Public-release licensing is a separate release
-prerequisite; this documentation does not change the current license.
+Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE).

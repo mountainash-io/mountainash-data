@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -17,7 +17,8 @@ dynamic = ["version"]
 description = 'Mountain Ash - Data'
 readme = "README.md"
 requires-python = ">=3.12"
-# license = "Proprietary"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [
     { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },
 ]

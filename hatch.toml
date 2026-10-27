@@ -8,6 +8,7 @@ path = "src/mountainash_data/__version__.py"
 packages = ["src/mountainash_data"]
 
 [build.targets.sdist]
+include = ["/src", "/pyproject.toml", "/hatch.toml", "/requirements-hatch.txt", "/README.md", "/LICENSE", "/NOTICE"]
 exclude = ["/.hiivmind"]
 
 
