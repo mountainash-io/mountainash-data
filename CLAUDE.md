@@ -255,4 +255,4 @@ Uses CalVer (Calendar Versioning) with semantic versioning:
 - **pyproject.toml**: Python project configuration and dependencies
 
 ## License
-MIT License
+Apache License 2.0
