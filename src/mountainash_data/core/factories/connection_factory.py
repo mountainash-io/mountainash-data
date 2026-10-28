@@ -108,7 +108,8 @@ def _url_noauth(parts: UrlParts) -> str:
 
 
 def _url_motherduck_token(parts: UrlParts, auth: t.Any) -> str:
-    return f"{parts.scheme}:{parts.database}?motherduck_token={auth.TOKEN.get_secret_value()}"
+    token = quote(auth.TOKEN.get_secret_value(), safe="")
+    return f"{parts.scheme}:{parts.database}?motherduck_token={token}"
 
 
 _URL_APPLIERS: dict[t.Any, dict[type, t.Callable]] = {

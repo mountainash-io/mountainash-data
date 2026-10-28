@@ -20,7 +20,9 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass, field
 import typing as t
+from urllib.parse import quote
 
+from mountainash_data.core._redact import connect_redacted
 from mountainash_data.core.inspection import IndexInfo
 from mountainash_data.backends.ibis._exasol_compat import patch_exasol_connection
 
@@ -130,6 +132,44 @@ class DialectSpec:
 # ---------------------------------------------------------------------------
 
 
+_SECRET_KWARGS = ("password", "token", "passwd", "access_token")
+
+
+def _connect_url(
+    connection_string: str,
+    kwargs: t.Mapping[str, t.Any] | None = None,
+    *,
+    secrets: t.Iterable[str] = (),
+) -> t.Any:
+    """``ibis.connect`` with credential-free failures (F-4).
+
+    ibis echoes the whole URL in its errors, and a caller-supplied
+    ``connection_string`` may carry ``user:pass@``; strip that from anything raised.
+    Driver kwargs travel as a mapping, not ``**kwargs``, so no driver option name
+    can ever collide with this function's own parameters.
+    """
+    import ibis
+
+    kwargs = dict(kwargs or {})
+    known = [*secrets, *(v for k, v in kwargs.items() if k in _SECRET_KWARGS and isinstance(v, str))]
+    return connect_redacted(lambda: ibis.connect(connection_string, **kwargs), known)
+
+
+def _credential_kwargs(user: t.Any, password: t.Any) -> dict[str, t.Any]:
+    """Credentials as exact driver kwargs, never URL userinfo.
+
+    ibis percent-decodes a URL password but not the user name, so any URL form
+    would corrupt a user name containing ``@ : / # %``. ``ibis.connect`` merges
+    explicit kwargs over the parsed URL, so the URL carries only host/port/path.
+    """
+    creds: dict[str, t.Any] = {}
+    if user:
+        creds["user"] = user
+    if password:
+        creds["password"] = password
+    return creds
+
+
 def _build_sqlite_connection(**config: t.Any) -> t.Any:
     """Build a sqlite ibis connection.
 
@@ -152,8 +192,6 @@ def _build_duckdb_connection(**config: t.Any) -> t.Any:
     Preserves the read_only logic: defaults False for in-memory, configurable otherwise.
     Also preserves DuckDB-specific disconnect logic (handled on the connection object).
     """
-    import ibis
-
     database = config.get("database", None)
     read_only = config.get("read_only", False)
 
@@ -169,7 +207,7 @@ def _build_duckdb_connection(**config: t.Any) -> t.Any:
     extra = {k: v for k, v in config.items() if k not in ("database", "read_only")}
     kwargs.update(extra)
 
-    return ibis.connect(connection_string, **kwargs)
+    return _connect_url(connection_string, kwargs)
 
 
 def _build_motherduck_connection(**config: t.Any) -> t.Any:
@@ -179,19 +217,18 @@ def _build_motherduck_connection(**config: t.Any) -> t.Any:
     Connection scheme was 'duckdb://md:' — MotherDuck uses duckdb protocol.
     Accepts 'token' kwarg for authentication and 'database' for the MD database name.
     """
-    import ibis
-
     token = config.get("token", None)
     database = config.get("database", "")
 
     # MotherDuck connection string format: duckdb://md:<database>?motherduck_token=<token>
+    # ibis.connect parses the query with parse_qsl, so the token is percent-encoded.
     if token:
-        connection_string = f"duckdb://md:{database}?motherduck_token={token}"
+        connection_string = f"duckdb://md:{database}?motherduck_token={quote(str(token), safe='')}"
     else:
         connection_string = f"duckdb://md:{database}"
 
     extra = {k: v for k, v in config.items() if k not in ("token", "database")}
-    return ibis.connect(connection_string, **extra)
+    return _connect_url(connection_string, extra, secrets=(token,) if token else ())
 
 
 def _build_postgres_connection(**config: t.Any) -> t.Any:
@@ -202,12 +239,10 @@ def _build_postgres_connection(**config: t.Any) -> t.Any:
     Also had set_post_connection_options for session-level option setting.
     Accepts standard postgres kwargs: host, port, user, password, database, schema.
     """
-    import ibis
-
     # Support both a full connection_string or individual components
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
-        return ibis.connect(connection_string)
+        return _connect_url(connection_string)
 
     host = config.get("host", "localhost")
     port = config.get("port", 5432)
@@ -215,18 +250,13 @@ def _build_postgres_connection(**config: t.Any) -> t.Any:
     password = config.get("password", None)
     database = config.get("database", None)
 
-    conn_str = "postgres://"
-    if user and password:
-        conn_str += f"{user}:{password}@"
-    elif user:
-        conn_str += f"{user}@"
-    conn_str += f"{host}:{port}"
+    conn_str = f"postgres://{host}:{port}"
     if database:
         conn_str += f"/{database}"
 
     extra = {k: v for k, v in config.items()
              if k not in ("host", "port", "user", "username", "password", "database", "connection_string")}
-    return ibis.connect(conn_str, **extra)
+    return _connect_url(conn_str, {**_credential_kwargs(user, password), **extra})
 
 
 def _build_mysql_connection(**config: t.Any) -> t.Any:
@@ -235,11 +265,9 @@ def _build_mysql_connection(**config: t.Any) -> t.Any:
     Salvaged from databases/connections/ibis/mysql_ibis_connection.py.
     Connection scheme was 'mysql://' — uses ibis.connect with a connection string.
     """
-    import ibis
-
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
-        return ibis.connect(connection_string)
+        return _connect_url(connection_string)
 
     host = config.get("host", "localhost")
     port = config.get("port", 3306)
@@ -247,18 +275,13 @@ def _build_mysql_connection(**config: t.Any) -> t.Any:
     password = config.get("password", None)
     database = config.get("database", None)
 
-    conn_str = "mysql://"
-    if user and password:
-        conn_str += f"{user}:{password}@"
-    elif user:
-        conn_str += f"{user}@"
-    conn_str += f"{host}:{port}"
+    conn_str = f"mysql://{host}:{port}"
     if database:
         conn_str += f"/{database}"
 
     extra = {k: v for k, v in config.items()
              if k not in ("host", "port", "user", "username", "password", "database", "connection_string")}
-    return ibis.connect(conn_str, **extra)
+    return _connect_url(conn_str, {**_credential_kwargs(user, password), **extra})
 
 
 def _build_mssql_connection(**config: t.Any) -> t.Any:
@@ -268,11 +291,9 @@ def _build_mssql_connection(**config: t.Any) -> t.Any:
     Connection scheme was 'mssql://' — uses ibis.connect with a connection string.
     Note: Requires sudo apt-get install unixodbc unixodbc-dev.
     """
-    import ibis
-
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
-        return ibis.connect(connection_string)
+        return _connect_url(connection_string)
 
     host = config.get("host", "localhost")
     port = config.get("port", 1433)
@@ -280,18 +301,13 @@ def _build_mssql_connection(**config: t.Any) -> t.Any:
     password = config.get("password", None)
     database = config.get("database", None)
 
-    conn_str = "mssql://"
-    if user and password:
-        conn_str += f"{user}:{password}@"
-    elif user:
-        conn_str += f"{user}@"
-    conn_str += f"{host}:{port}"
+    conn_str = f"mssql://{host}:{port}"
     if database:
         conn_str += f"/{database}"
 
     extra = {k: v for k, v in config.items()
              if k not in ("host", "port", "user", "username", "password", "database", "connection_string")}
-    return ibis.connect(conn_str, **extra)
+    return _connect_url(conn_str, {**_credential_kwargs(user, password), **extra})
 
 
 def _build_oracle_connection(**config: t.Any) -> t.Any:
@@ -300,12 +316,11 @@ def _build_oracle_connection(**config: t.Any) -> t.Any:
     Salvaged from databases/connections/ibis/oracle_ibis_connection.py.
     Connection scheme was 'oracle://' — uses ibis.connect with a connection string.
     """
-    import ibis
     from .._oracle_compat import patch_oracle_connection
 
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
-        return patch_oracle_connection(ibis.connect(connection_string))
+        return patch_oracle_connection(_connect_url(connection_string))
 
     host = config.get("host", "localhost")
     port = config.get("port", 1521)
@@ -313,18 +328,13 @@ def _build_oracle_connection(**config: t.Any) -> t.Any:
     password = config.get("password", None)
     database = config.get("database", None)
 
-    conn_str = "oracle://"
-    if user and password:
-        conn_str += f"{user}:{password}@"
-    elif user:
-        conn_str += f"{user}@"
-    conn_str += f"{host}:{port}"
+    conn_str = f"oracle://{host}:{port}"
     if database:
         conn_str += f"/{database}"
 
     extra = {k: v for k, v in config.items()
              if k not in ("host", "port", "user", "username", "password", "database", "connection_string")}
-    return patch_oracle_connection(ibis.connect(conn_str, **extra))
+    return patch_oracle_connection(_connect_url(conn_str, {**_credential_kwargs(user, password), **extra}))
 
 
 def _build_snowflake_connection(**config: t.Any) -> t.Any:
@@ -334,13 +344,11 @@ def _build_snowflake_connection(**config: t.Any) -> t.Any:
     Connection scheme was 'snowflake://' — uses HYBRID mode (both connection string + kwargs).
     Accepts: user, password, account, database, schema, warehouse, role.
     """
-    import ibis
-
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
         # HYBRID mode: combine connection string with kwargs
         extra = {k: v for k, v in config.items() if k != "connection_string"}
-        return ibis.connect(connection_string, **extra)
+        return _connect_url(connection_string, extra)
 
     user = config.get("user", config.get("username", None))
     password = config.get("password", None)
@@ -351,17 +359,15 @@ def _build_snowflake_connection(**config: t.Any) -> t.Any:
     role = config.get("role", None)
 
     conn_str = "snowflake://"
-    if user and password and account:
-        conn_str += f"{user}:{password}@{account}"
-    elif user and account:
-        conn_str += f"{user}@{account}"
+    if account:
+        conn_str += f"{account}"
 
     if database:
         conn_str += f"/{database}"
         if schema:
             conn_str += f"/{schema}"
 
-    kwargs = {}
+    kwargs = _credential_kwargs(user, password)
     if warehouse:
         kwargs["warehouse"] = warehouse
     if role:
@@ -371,7 +377,7 @@ def _build_snowflake_connection(**config: t.Any) -> t.Any:
              if k not in ("user", "username", "password", "account", "database",
                           "schema", "warehouse", "role", "connection_string")}
     kwargs.update(extra)
-    return ibis.connect(conn_str, **kwargs)
+    return _connect_url(conn_str, kwargs)
 
 
 def _build_bigquery_connection(**config: t.Any) -> t.Any:
@@ -413,12 +419,10 @@ def _build_trino_connection(**config: t.Any) -> t.Any:
     Connection scheme was 'trino://' — uses HYBRID mode (connection string + kwargs).
     Accepts: host, port, user, catalog, schema.
     """
-    import ibis
-
     connection_string = config.get("connection_string", None)
     if connection_string is not None:
         extra = {k: v for k, v in config.items() if k != "connection_string"}
-        return ibis.connect(connection_string, **extra)
+        return _connect_url(connection_string, extra)
 
     host = config.get("host", "localhost")
     port = config.get("port", 8080)
@@ -426,10 +430,7 @@ def _build_trino_connection(**config: t.Any) -> t.Any:
     catalog = config.get("catalog", None)
     schema = config.get("schema", None)
 
-    conn_str = "trino://"
-    if user:
-        conn_str += f"{user}@"
-    conn_str += f"{host}:{port}"
+    conn_str = f"trino://{host}:{port}"
     if catalog:
         conn_str += f"/{catalog}"
         if schema:
@@ -437,7 +438,7 @@ def _build_trino_connection(**config: t.Any) -> t.Any:
 
     extra = {k: v for k, v in config.items()
              if k not in ("host", "port", "user", "username", "catalog", "schema", "connection_string")}
-    return ibis.connect(conn_str, **extra)
+    return _connect_url(conn_str, {**_credential_kwargs(user, None), **extra})
 
 
 def _build_clickhouse_connection(**config: t.Any) -> t.Any:
@@ -685,7 +686,7 @@ def _build_pyspark_connection(**config: t.Any) -> t.Any:
 
     connection_string = config.get("connection_string")
     if connection_string is not None:
-        return ibis.connect(connection_string)
+        return _connect_url(connection_string)
 
     session = config.get("session")
     mode = config.get("mode", "batch")

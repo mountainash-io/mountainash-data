@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib
 import typing as t
+from urllib.parse import SplitResult, unquote, urlsplit, urlunsplit
 
 from mountainash_data.backends.ibis.dialects._registry import DIALECTS, DialectSpec, TransactionSupport
 from mountainash_data.backends.ibis._protected import protected_call, real_driver_handle
@@ -53,6 +54,33 @@ from mountainash_data.core.factories.connection_factory import (
 )
 from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_auth_client import PasswordAuthProfile
+from mountainash_data.core._redact import connect_redacted
+
+
+def _split_url(url: str) -> SplitResult:
+    """``urlsplit`` whose failures never echo the URL.
+
+    A password with an unencoded ``/`` ends the authority early, so urllib
+    reports a fragment of the password as an invalid "port". Surface a
+    value-free error that says how to fix it instead. The in-process file
+    schemes (``duckdb://md:<db>``, ``duckdb://:memory:``, ``sqlite://:memory:``)
+    have a non-numeric "port" by design and carry no credentials.
+    """
+    malformed = False
+    try:
+        parts = urlsplit(url)
+        if parts.scheme.lower() not in ("duckdb", "sqlite"):
+            parts.port  # validated here: raises on a malformed authority
+    except ValueError:
+        malformed = True
+    if malformed:
+        # Raised outside the handler so the urllib error (which quotes a
+        # fragment of the URL) is not attached as __context__.
+        raise ValueError(
+            "Invalid connection URL (value redacted): percent-encode credentials "
+            "with urllib.parse.quote(value, safe='') or pass an auth profile"
+        )
+    return parts
 
 
 def _import_ibis_backend(spec: DialectSpec, dialect: str) -> t.Any:
@@ -445,9 +473,7 @@ class IbisBackend:
     def _init_from_url(
         self, url: str, config: dict[str, t.Any]
     ) -> None:
-        from urllib.parse import urlparse
-
-        scheme = urlparse(url).scheme.lower()
+        scheme = _split_url(url).scheme.lower()
 
         # Special case: MotherDuck URLs are "duckdb://md:..."
         resolved_dialect: str | None
@@ -527,7 +553,10 @@ class IbisBackend:
             config.update(self._url_config)                 # caller extras apply on top
             self._config = config
             import ibis
-            ibis_conn = ibis.connect(clean_url, **self._config)
+            cfg = self._config
+            secrets = [v for k, v in cfg.items()
+                       if k in ("password", "token") and isinstance(v, str)]
+            ibis_conn = connect_redacted(lambda: ibis.connect(clean_url, **cfg), secrets)
         else:                                               # direct-dialect path
             self._config = self._resolve_dialect_auth(auth_profile)
             ibis_conn = self._connect_via_builder()
@@ -553,20 +582,20 @@ class IbisBackend:
         return apply_auth_adapter(provider, base, auth_profile)
 
     def _resolve_url_auth(self, url: str, auth_profile: t.Any) -> tuple[dict[str, t.Any], str]:
-        from urllib.parse import urlsplit, urlunsplit, unquote
-        parts = urlsplit(url)
-        has_url_creds = bool(parts.username)
+        parts = _split_url(url)
+        has_url_creds = bool(parts.username or parts.password)
         if has_url_creds and auth_profile is not None:
             raise ValueError(
                 "both URL credentials and an explicit auth_profile given"
             )
         config: dict[str, t.Any] = {}
         clean = url
-        if has_url_creds:
-            netloc = parts.hostname or ""
-            if parts.port:
-                netloc += f":{parts.port}"
+        if "@" in parts.netloc:
+            # Drop userinfo wholesale (even an empty user with a password), keeping
+            # the host/port exactly as written (case, IPv6 brackets).
+            netloc = parts.netloc.rpartition("@")[2]
             clean = urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+        if has_url_creds:
             auth_profile = PasswordAuthProfile(
                 USERNAME=unquote(parts.username or ""),
                 PASSWORD=unquote(parts.password) if parts.password else "",
