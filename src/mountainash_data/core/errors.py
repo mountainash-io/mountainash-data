@@ -19,3 +19,7 @@ class TransactionIntegrityError(TransactionError):
     """The native transaction state cannot be trusted: unknown when entering a
     scope, or not eligible to commit at exit (ended early, aborted, or unknown).
     Nothing is committed on the scope's behalf when this is raised."""
+
+
+class BackendConnectionError(RuntimeError):
+    """A connection attempt failed; the message has been stripped of URL credentials."""
