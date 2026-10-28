@@ -55,17 +55,17 @@ def redacted_exception(exc: BaseException, secrets: t.Iterable[str] = ()) -> Bas
     return BackendConnectionError(f"{type(exc).__name__}: {message}")
 
 
-def connect_redacted(
-    connect: t.Callable[..., t.Any], *args: t.Any, secrets: t.Iterable[str] = (), **kwargs: t.Any
-) -> t.Any:
-    """Call ``connect(*args, **kwargs)``; re-raise any failure with credentials removed.
+def connect_redacted(connect: t.Callable[[], t.Any], secrets: t.Iterable[str] = ()) -> t.Any:
+    """Call the zero-argument ``connect``; re-raise any failure with credentials removed.
 
-    The original exception is replaced (and not chained) only when it carried
-    credentials; otherwise it propagates untouched.
+    Taking a closure (not ``*args/**kwargs``) means driver option names can never
+    collide with this function's own parameters. The original exception is
+    replaced (and not chained) only when it carried credentials; otherwise it
+    propagates untouched.
     """
     clean: BaseException | None
     try:
-        return connect(*args, **kwargs)
+        return connect()
     except Exception as exc:
         clean = redacted_exception(exc, secrets)
         if clean is None:

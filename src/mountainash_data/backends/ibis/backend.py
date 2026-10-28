@@ -553,9 +553,10 @@ class IbisBackend:
             config.update(self._url_config)                 # caller extras apply on top
             self._config = config
             import ibis
-            secrets = [v for k, v in self._config.items()
+            cfg = self._config
+            secrets = [v for k, v in cfg.items()
                        if k in ("password", "token") and isinstance(v, str)]
-            ibis_conn = connect_redacted(ibis.connect, clean_url, secrets=secrets, **self._config)
+            ibis_conn = connect_redacted(lambda: ibis.connect(clean_url, **cfg), secrets)
         else:                                               # direct-dialect path
             self._config = self._resolve_dialect_auth(auth_profile)
             ibis_conn = self._connect_via_builder()

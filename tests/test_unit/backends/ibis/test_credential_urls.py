@@ -195,3 +195,12 @@ def test_userinfo_redaction_runs_to_the_last_at_sign(monkeypatch):
 @pytest.mark.parametrize("url", ["duckdb://:memory:", "sqlite://:memory:", "duckdb://md:mydb"])
 def test_in_process_urls_are_not_rejected_by_port_validation(url):
     IbisBackend(url)
+
+
+def test_driver_kwargs_cannot_collide_with_connect_helper_parameters(captured):
+    # kwargs travel as a mapping, so option names like these bind to ibis, not the helper
+    _registry._build_postgres_connection(
+        host="h", user="u", password="p", secrets="x", kwargs="y", connect="z", connection_string=None, _secrets="w"
+    )
+    (_, passed), = captured
+    assert passed == {"user": "u", "password": "p", "secrets": "x", "kwargs": "y", "connect": "z", "_secrets": "w"}
