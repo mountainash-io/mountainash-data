@@ -23,62 +23,63 @@ runs:
   steps:
     - name: Process Dependencies
       shell: bash
+      # All inputs reach the script only as environment variables, quoted at use.
+      env:
+        DEPENDENCIES: ${{ inputs.dependencies }}
+        TARGET_BRANCH: ${{ inputs.target-branch }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        GH_DEP_TOKEN: ${{ inputs.token }}
+        DEFAULT_ORG: ${{ inputs.org-name }}
       run: |
-        # Debug: Show received input
-        # echo "Received dependencies input:"
-        # echo '${{ inputs.dependencies }}' | jq '.'
-        
+        # The token is sent as an HTTP header (never placed in a clone URL), so it
+        # is not written to the clone's .git/config or visible in the remote URL.
+        auth_header="Authorization: basic $(printf 'x-access-token:%s' "$GH_DEP_TOKEN" | base64 -w0)"
+        echo "::add-mask::${auth_header#Authorization: basic }"
+
         # Process each dependency
-        echo '${{ inputs.dependencies }}' | jq -c '.[]' | while read -r dep; do
+        printf '%s' "$DEPENDENCIES" | jq -c '.[]' | while read -r dep; do
           # Extract values with error checking
-          repo=$(echo "$dep" | jq -r '.name // empty')
+          repo=$(printf '%s' "$dep" | jq -r '.name // empty')
           if [ -z "$repo" ]; then
             echo "Error: Invalid repository name in dependency"
             continue
           fi
 
-          org_name=$(echo "$dep" | jq -r '.["org-name"] // "${{ inputs.org-name }}"')
+          org_name=$(printf '%s' "$dep" | jq -r --arg default_org "$DEFAULT_ORG" '.["org-name"] // $default_org')
 
-          # default_branch=$(echo "$dep" | jq -r '.["default-branch"] // "main"')
-          default_branch=${{ inputs.default-branch }}
-          
           echo "Processing dependency: $org_name/$repo"
-          echo "Target branch: $target_branch"
-          echo "Default branch: $default_branch"
-          
+          echo "Target branch: $TARGET_BRANCH"
+          echo "Default branch: $DEFAULT_BRANCH"
+
           # Determine Branch
-          target_branch="${{ inputs.target-branch }}"
           selected_branch=""
-          
-          response=$(curl -s -H "Authorization: token ${{ inputs.token }}" \
+
+          response=$(curl -s -H "Authorization: token $GH_DEP_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$org_name/$repo/branches/$target_branch")
-          
+            "https://api.github.com/repos/$org_name/$repo/branches/$TARGET_BRANCH")
+
           if echo "$response" | jq -e '.name' >/dev/null 2>&1; then
-            selected_branch="$target_branch"
+            selected_branch="$TARGET_BRANCH"
             echo "Using target branch: $selected_branch"
           else
-            selected_branch="$default_branch"
+            selected_branch="$DEFAULT_BRANCH"
             echo "Target branch not found, using default: $selected_branch"
           fi
-          
+
           echo "Cloning $org_name/$repo from branch $selected_branch"
-          
+
           # Create temp directory if it doesn't exist
           mkdir -p temp
-          
-          # Checkout Repository
-          git clone --depth 1 --branch "$selected_branch" \
-            "https://x-access-token:${{ inputs.token }}@github.com/$org_name/$repo.git" \
+
+          # Checkout Repository (empty -c resets any extraheader persisted by actions/checkout)
+          git -c "http.https://github.com/.extraheader=" \
+            -c "http.https://github.com/.extraheader=$auth_header" \
+            clone --depth 1 --branch "$selected_branch" \
+            "https://github.com/$org_name/$repo.git" \
             "temp/$repo" || {
               echo "Error: Failed to clone $org_name/$repo"
               continue
             }
 
-          # Scrub the embedded token from the clone's origin remote now that the
-          # fetch is done; nothing downstream needs to fetch/push again (DEBT-16).
-          git -C "temp/$repo" remote set-url origin \
-            "https://github.com/$org_name/$repo.git"
-          
           echo "Successfully checked out $org_name/$repo on branch $selected_branch"
         done

@@ -38,18 +38,23 @@ jobs:
 
     steps:
       - name: Set fallback branch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_FALLBACK_BRANCH: ${{ github.event.inputs.fallback_branch }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "FALLBACK_BRANCH=${{ github.event.inputs.fallback_branch }}" >> $GITHUB_ENV
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "FALLBACK_BRANCH=${{ github.base_ref }}" >> $GITHUB_ENV
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "FALLBACK_BRANCH=$DISPATCH_FALLBACK_BRANCH" >> "$GITHUB_ENV"
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "FALLBACK_BRANCH=$BASE_REF" >> "$GITHUB_ENV"
           else
-            echo "FALLBACK_BRANCH=develop" >> $GITHUB_ENV
+            echo "FALLBACK_BRANCH=develop" >> "$GITHUB_ENV"
           fi
 
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -145,18 +150,23 @@ jobs:
 
     steps:
       - name: Set fallback branch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_FALLBACK_BRANCH: ${{ github.event.inputs.fallback_branch }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "FALLBACK_BRANCH=${{ github.event.inputs.fallback_branch }}" >> $GITHUB_ENV
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "FALLBACK_BRANCH=${{ github.base_ref }}" >> $GITHUB_ENV
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "FALLBACK_BRANCH=$DISPATCH_FALLBACK_BRANCH" >> "$GITHUB_ENV"
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "FALLBACK_BRANCH=$BASE_REF" >> "$GITHUB_ENV"
           else
-            echo "FALLBACK_BRANCH=develop" >> $GITHUB_ENV
+            echo "FALLBACK_BRANCH=develop" >> "$GITHUB_ENV"
           fi
 
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
