@@ -63,7 +63,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
@@ -79,20 +79,20 @@ jobs:
           echo "ORGNAME=mountainash-io" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Checkout Repository (PR)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
 
       - name: Checkout Repository (Manual)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.inputs.source_branch }}
           fetch-depth: 0
@@ -384,59 +384,45 @@ jobs:
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Create Release and Upload Assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.VERSION }}
-          release_name: ${{ steps.release_config.outputs.RELEASE_TITLE }} v${{ env.VERSION }}
-          draft: false
-          prerelease: ${{ steps.release_config.outputs.IS_PRERELEASE }}
-          body: |
-            ${{ steps.release_config.outputs.RELEASE_DESCRIPTION }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TITLE: ${{ steps.release_config.outputs.RELEASE_TITLE }}
+          RELEASE_DESCRIPTION: ${{ steps.release_config.outputs.RELEASE_DESCRIPTION }}
+          RELEASE_TYPE: ${{ steps.release_config.outputs.RELEASE_TYPE }}
+          IS_PRERELEASE: ${{ steps.release_config.outputs.IS_PRERELEASE }}
+          VERSION_SUFFIX: ${{ steps.release_config.outputs.VERSION_SUFFIX }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          WHEEL_FILE: ${{ steps.build.outputs.WHEEL_FILE }}
+        run: |
+          {
+            printf '%s\n\n' "$RELEASE_DESCRIPTION"
+            printf '## Release Details\n'
+            printf -- '- Type: %s\n' "$RELEASE_TYPE"
+            printf -- '- Source Branch: %s\n' "$HEAD_REF"
+            printf -- '- Target Branch: %s\n' "$BASE_REF"
+            printf -- '- Version: %s\n\n' "$VERSION"
+            printf '## Package Information\n'
+            printf -- '- Package: %s\n' "$PACKAGE_NAME"
+            printf -- '- Base Version: %s\n' "$BASE_VERSION"
+            if [ -n "$VERSION_SUFFIX" ]; then
+              printf -- '- Version Suffix: %s\n' "$VERSION_SUFFIX"
+            fi
+          } > "$RUNNER_TEMP/release-notes.md"
 
-            ## Release Details
-            - Type: ${{ steps.release_config.outputs.RELEASE_TYPE }}
-            - Source Branch: ${{ github.head_ref }}
-            - Target Branch: ${{ github.base_ref }}
-            - Version: ${{ env.VERSION }}
+          args=(--verify-tag --title "$RELEASE_TITLE v$VERSION" --notes-file "$RUNNER_TEMP/release-notes.md")
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
 
-            ## Package Information
-            - Package: ${{ env.PACKAGE_NAME }}
-            - Base Version: ${{ env.BASE_VERSION }}
-            ${{ steps.release_config.outputs.VERSION_SUFFIX && format('- Version Suffix: {0}', steps.release_config.outputs.VERSION_SUFFIX) || '' }}
-
-      - name: Upload Package
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.build.outputs.WHEEL_FILE }}
-          asset_name: ${{ steps.build.outputs.WHEEL_FILENAME }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload SBOM (Full)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.json
-          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-full.json
-          asset_content_type: application/xml
-
-      - name: Upload SBOM (Direct)
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.json
-          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-sbom-direct.json
-          asset_content_type: application/xml
+          # Release is created with the wheel and both SBOMs attached
+          # (asset names are the file basenames, as before).
+          gh release create "v$VERSION" "${args[@]}" \
+            "$WHEEL_FILE" \
+            "${PACKAGE_NAME}-${VERSION}-sbom-full.json" \
+            "${PACKAGE_NAME}-${VERSION}-sbom-direct.json"
 
       - name: Setup Wheels Repository
         env:
