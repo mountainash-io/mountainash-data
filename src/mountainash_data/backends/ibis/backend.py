@@ -62,13 +62,14 @@ def _split_url(url: str) -> SplitResult:
 
     A password with an unencoded ``/`` ends the authority early, so urllib
     reports a fragment of the password as an invalid "port". Surface a
-    value-free error that says how to fix it instead. (MotherDuck's
-    ``duckdb://md:<db>`` form has a non-numeric "port" by design.)
+    value-free error that says how to fix it instead. The in-process file
+    schemes (``duckdb://md:<db>``, ``duckdb://:memory:``, ``sqlite://:memory:``)
+    have a non-numeric "port" by design and carry no credentials.
     """
     malformed = False
     try:
         parts = urlsplit(url)
-        if not url.startswith("duckdb://md:"):
+        if parts.scheme.lower() not in ("duckdb", "sqlite"):
             parts.port  # validated here: raises on a malformed authority
     except ValueError:
         malformed = True

@@ -178,3 +178,20 @@ def test_clean_exceptions_propagate_unchanged(monkeypatch):
     with pytest.raises(RuntimeError) as info:
         _registry._build_postgres_connection(host="h", user="u", password="p")
     assert info.value is original
+
+
+def test_userinfo_redaction_runs_to_the_last_at_sign(monkeypatch):
+    # the in-password '@' must not end the userinfo early and leave a tail behind
+    def boom(url, **kwargs):
+        raise ValueError(f"Don't know how to connect to {url!r}")
+
+    monkeypatch.setattr(ibis, "connect", boom)
+    with pytest.raises(ValueError) as info:
+        _registry._build_postgres_connection(connection_string="postgres://u:a@SENTINEL-tail:x@h/db")
+    _assert_clean(info.value)
+    assert str(info.value).endswith("postgres://***@h/db'")
+
+
+@pytest.mark.parametrize("url", ["duckdb://:memory:", "sqlite://:memory:", "duckdb://md:mydb"])
+def test_in_process_urls_are_not_rejected_by_port_validation(url):
+    IbisBackend(url)

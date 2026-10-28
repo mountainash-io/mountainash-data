@@ -20,7 +20,7 @@ REDACTED = "***"
 # end the match early and leave a password fragment behind.
 _USERINFO = re.compile(r"(?P<scheme>[A-Za-z][A-Za-z0-9+.\-]*://)[^\s'\"<>]*@")
 _QUERY_SECRET = re.compile(
-    r"(?P<key>(?:motherduck_)?token|access_token|password|passwd|pwd|secret|api_?key)=[^&\s'\"<>]*",
+    r"(?P<key>(?:motherduck_)?token|access_token|password|passwd|pwd|secret|secret_access_key|private_key|api_?key)=[^&\s'\"<>]*",
     re.IGNORECASE,
 )
 

@@ -678,7 +678,7 @@ def _build_pyspark_connection(**config: t.Any) -> t.Any:
 
     connection_string = config.get("connection_string")
     if connection_string is not None:
-        return ibis.connect(connection_string)
+        return _connect_url(connection_string)
 
     session = config.get("session")
     mode = config.get("mode", "batch")
