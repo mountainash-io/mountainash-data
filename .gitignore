@@ -120,6 +120,7 @@ celerybeat.pid
 
 # Environments
 .env
+*auth_settings.env
 .venv
 env/
 venv/

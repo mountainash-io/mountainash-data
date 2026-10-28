@@ -245,8 +245,6 @@ Uses CalVer (Calendar Versioning) with semantic versioning:
 
 ### Environment Settings
 - **settings/**: Environment-specific configuration files
-  - **local_auth_settings.env**: Local authentication settings
-  - **local_postgres_auth_settings.env**: PostgreSQL authentication
   - **mountainash_acrds_settings.env**: Mountain Ash ACRDS settings
 
 ### Configuration Files
