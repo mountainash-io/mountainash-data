@@ -35,11 +35,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0 # Get the target branch name (branch PR was merged into)
+          persist-credentials: false
 
       - name: Set Branch Vars
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          echo "SOURCE_BRANCH=${{ github.head_ref }}" >> $GITHUB_ENV
-          echo "TARGET_BRANCH=${{ github.base_ref }}" >> $GITHUB_ENV
+          echo "SOURCE_BRANCH=$HEAD_REF" >> "$GITHUB_ENV"
+          echo "TARGET_BRANCH=$BASE_REF" >> "$GITHUB_ENV"
 
       # ======================================================
       # DEPENDENCIES
@@ -78,4 +82,4 @@ jobs:
 
       - name: Setup Build Environment
         run: |
-          hatch env create ${{ env.BUILD_ENV }}
+          hatch env create "$BUILD_ENV"
