@@ -2,11 +2,11 @@
 
 ## Overview
 
-- **Total Concepts**: 139
+- **Total Concepts**: 151
 - **Foundational Concepts** (no prerequisites, other concepts depend on them): 4
-- **Terminal Nodes** (nothing depends on them, but have prerequisites): 68
+- **Terminal Nodes** (nothing depends on them, but have prerequisites): 71
 - **Orphaned Nodes** (completely disconnected, no edges): 0
-- **Concepts with Dependencies**: 135
+- **Concepts with Dependencies**: 147
 - **Average Dependencies per Concept**: 1.69
 
 ## Graph Structure Validation
@@ -26,31 +26,31 @@ These concepts have no prerequisites:
 
 ## Dependency Chain Analysis
 
-- **Maximum Dependency Chain Length**: 9
+- **Maximum Dependency Chain Length**: 10
 
 ### Longest Learning Path:
 
-1. **Decorators** (ID: 8)
-2. **Registry Pattern** (ID: 9)
-3. **DialectSpec Overview** (ID: 57)
-4. **Generic-Default Operations** (ID: 122)
-5. **Operation Hooks** (ID: 61)
-6. **Hook Dispatch Order** (ID: 123)
-7. **Adding A Dialect** (ID: 150)
-8. **Test Tiers** (ID: 153)
-9. **Live Database Harness** (ID: 154)
+1. **Python Protocols** (ID: 5)
+2. **Runtime Checkable Protocol** (ID: 6)
+3. **Backend Protocol Definition** (ID: 11)
+4. **IbisBackend Class** (ID: 19)
+5. **Ibis Connection** (ID: 20)
+6. **DML Operations** (ID: 25)
+7. **Insert Data** (ID: 26)
+8. **Upsert Data** (ID: 27)
+9. **Writing Expression Results Back** (ID: 167)
+10. **End To End Pipeline** (ID: 169)
 
 ## Terminal Nodes Analysis
 
 Terminal nodes are concepts that nothing else depends on but have prerequisites. They represent natural endpoints of learning paths — culminating or specialized concepts.
 
-- **Total Terminal Nodes**: 68 (48.9% of all concepts)
+- **Total Terminal Nodes**: 71 (47.0% of all concepts)
 - **Healthy Range**: 5-40% of total concepts
 
 Concepts at the end of learning paths:
 
 - **22**: Raw SQL Queries
-- **27**: Upsert Data
 - **28**: Truncate Table
 - **29**: Create View
 - **30**: List Tables Ibis
@@ -69,8 +69,9 @@ Concepts at the end of learning paths:
 - **75**: SQLiteBackendProfile
 - **76**: DuckDBBackendProfile
 - **77**: PostgreSQLBackendProfile
+- **78**: BigQueryBackendProfile
 
-*...and 48 more*
+*...and 51 more*
 
 ## Orphaned Nodes Analysis
 
@@ -93,31 +94,31 @@ Top 10 concepts that are prerequisites for the most other concepts:
 | Rank | Concept ID | Concept Label | Indegree |
 |------|-----------|---------------|----------|
 | 1 | 19 | IbisBackend Class | 15 |
-| 2 | 11 | Backend Protocol Definition | 13 |
+| 2 | 11 | Backend Protocol Definition | 14 |
 | 3 | 57 | DialectSpec Overview | 11 |
 | 4 | 74 | Auto Registration | 11 |
-| 5 | 7 | Pydantic Models | 9 |
-| 6 | 105 | AuthProfile Types | 9 |
-| 7 | 2 | Database Schemas | 8 |
-| 8 | 23 | DDL Operations | 8 |
-| 9 | 10 | Ibis Library | 7 |
-| 10 | 20 | Ibis Connection | 7 |
+| 5 | 105 | AuthProfile Types | 10 |
+| 6 | 7 | Pydantic Models | 9 |
+| 7 | 125 | Transaction Scope | 9 |
+| 8 | 2 | Database Schemas | 8 |
+| 9 | 10 | Ibis Library | 8 |
+| 10 | 23 | DDL Operations | 8 |
 
 ## Outdegree Distribution
 
 | Dependencies | Number of Concepts |
 |--------------|--------------------|
 | 0 | 4 |
-| 1 | 68 |
-| 2 | 51 |
-| 3 | 11 |
+| 1 | 73 |
+| 2 | 56 |
+| 3 | 13 |
 | 4 | 2 |
 | 5 | 1 |
 | 6 | 2 |
 
 ## Recommendations
 
-- ℹ️ **High terminal node percentage** (48.9%): Consider if some terminal concepts should be prerequisites for advanced concepts
+- ℹ️ **High terminal node percentage** (47.0%): Consider if some terminal concepts should be prerequisites for advanced concepts
 - ✅ **DAG structure verified**: Graph supports valid learning progressions
 
 ---

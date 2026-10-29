@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Inspecting databases
 
-Inspection answers "what is in this database?" without reading any rows. A connected backend lists its catalogs, namespaces and tables, and describes a table's columns, a namespace's tables or a whole catalog as frozen dataclasses. The results have the same shape on every dialect, so code that walks a SQLite file also walks a PostgreSQL schema or a Snowflake database.
+Inspection answers "what is in this database?" without reading any rows. A connected backend lists its catalogs, namespaces and tables, and describes a table's columns, a namespace's tables or a whole catalog as frozen dataclasses with the same shape on every dialect. This is physical metadata that mountainash relations do not own: a relation describes a computation over a table ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)), while inspection describes the tables, namespaces and catalogs as they exist in the database.
 
 All examples use an in-memory DuckDB or SQLite backend, as set up in [Installing and connecting](../02-installing-and-connecting/index.md).
 
@@ -50,7 +50,7 @@ main ['sales']
 memory [('memory.main', ['sales'])]
 ```
 
-The three `list_*` methods degrade rather than fail outside a transaction: if the engine rejects the listing, they print the error and return an empty list. Inside a [`transaction()`](../08-transactions/index.md) scope they raise instead, because a failed query there is not the same as "nothing found".
+The three `list_*` methods degrade rather than fail outside a transaction: if the engine rejects the listing, they print the error and return an empty list. Inside a [`transaction()`](../10-transactions/index.md) scope they raise instead, because a failed query there is not the same as "nothing found".
 
 ## Namespace and NamespaceLike
 
@@ -62,7 +62,7 @@ The three `list_*` methods degrade rather than fail outside a transaction: if th
 | `path` | `tuple[str, ...]` | The schema or namespace levels between the catalog and the table. Empty means the connection's default. |
 | `catalog` | `str` or `None` | The top-level catalog, always explicit. `None` means the connection's current catalog. |
 
-Every path segment must be a non-empty string; anything else raises `ValueError` when the object is built. Two read-only properties help with display and checks: `dotted` joins catalog and path with dots (for messages and logging, not for SQL), and `is_default` is `True` when both fields are empty. `Namespace` does not render itself into SQL. Each backend translates it at its own boundary, which is where the limits described in [Supported databases and limits](../10-supported-databases-and-limits/index.md) are enforced.
+Every path segment must be a non-empty string; anything else raises `ValueError` when the object is built. Two read-only properties help with display and checks: `dotted` joins catalog and path with dots (for messages and logging, not for SQL), and `is_default` is `True` when both fields are empty. `Namespace` does not render itself into SQL. Each backend translates it at its own boundary, which is where the limits described in [Supported databases and limits](../13-supported-databases-and-limits/index.md) are enforced.
 
 <!-- concept:111 -->
 Every method that takes a `namespace=` argument accepts a `NamespaceLike`: a `Namespace`, a plain string, a tuple of strings, or `None`. The package coerces it with `Namespace.coerce()`, so the short forms are equivalent to the explicit one:
@@ -199,7 +199,7 @@ memory.main.sales_copy
 <!-- concept:113 -->
 ### IndexInfo
 
-`IndexInfo` describes one index on a table. `list_indexes(table_name, namespace=None)` returns a list of them; the method, and which dialects support it, belong to [Indexes](../07-indexes/index.md).
+`IndexInfo` describes one index on a table. `list_indexes(table_name, namespace=None)` returns a list of them; the method, and which dialects support it, belong to [Indexes](../09-indexes/index.md).
 
 | Field | Contents |
 |---|---|
@@ -232,12 +232,12 @@ IndexInfo(name='ix_sales_region', unique=False, is_primary=False, columns=('regi
 Every inspection type, `Namespace` included, is a frozen dataclass. Assigning to a field raises `dataclasses.FrozenInstanceError`, as the `ColumnInfo` example shows, and `dataclasses.replace()` is the way to derive a modified copy. A result is a snapshot of the database at the moment of the call. It does not refresh when the table changes, and it holds no reference to the connection, so it stays valid after the backend closes and can be cached or compared with `==`. `Namespace` is hashable and works as a dictionary key; the info types are not hashable, because each holds a `metadata` mapping.
 
 <!-- concept:54 -->
-The types live in `mountainash_data.core.inspection` and `mountainash_data.core.namespace`, below any backend. They describe physical structure with no reference to Ibis, SQL or a driver: type names are portable strings and locations are `Namespace` values. Code that consumes them, such as a schema comparison or a catalog browser, works against any `Backend` implementation, including one that is not built on Ibis (see [Extending mountainash-data](../14-extending-mountainash-data/index.md)).
+The types live in `mountainash_data.core.inspection` and `mountainash_data.core.namespace`, below any backend. They describe physical structure with no reference to Ibis, SQL or a driver: type names are portable strings and locations are `Namespace` values. Code that consumes them, such as a schema comparison or a catalog browser, works against any `Backend` implementation, including one that is not built on Ibis (see [Extending mountainash-data](../17-extending-mountainash-data/index.md)).
 
 ## How driver metadata becomes TableInfo
 
 <!-- concept:55 -->
-The Ibis backend builds a `TableInfo` from the Ibis table's schema, through the public helper `table_to_info()` in `mountainash_data.backends.ibis.inspect`. For each column in schema order it records the name, `str()` of the Ibis data type as `type_name`, and the type's nullability. It sets the location to the coerced namespace you passed and leaves `description` and `metadata` empty. The conversion itself issues no queries; the only database work is Ibis resolving the table's schema. Index metadata follows a separate path, per-dialect catalog queries, described in [Indexes](../07-indexes/index.md).
+The Ibis backend builds a `TableInfo` from the Ibis table's schema, through the public helper `table_to_info()` in `mountainash_data.backends.ibis.inspect`. For each column in schema order it records the name, `str()` of the Ibis data type as `type_name`, and the type's nullability. It sets the location to the coerced namespace you passed and leaves `description` and `metadata` empty. The conversion itself issues no queries; the only database work is Ibis resolving the table's schema. Index metadata follows a separate path, per-dialect catalog queries, described in [Indexes](../09-indexes/index.md).
 
 ## Inspecting through IbisBackend
 
@@ -296,4 +296,4 @@ ValueError: A catalog-qualified ibis namespace requires one path level.
 `IbisBackend.list_namespaces()` asks Ibis for databases where the backend supports that (passing the catalog through when given) and falls back to Ibis's schema listing otherwise. `inspect_namespace(name)` takes a single-level name, lists that namespace's tables and wraps them in a `NamespaceInfo`. Because the table listing degrades outside a transaction, a namespace that does not exist usually comes back with an empty `tables` sequence rather than an error. To inspect a namespace in another catalog, use `inspect_catalog(catalog)` or `list_tables(namespace=Namespace(catalog=..., path=(...,)))`.
 
 <!-- concept:33 -->
-`IbisBackend.list_catalogs()` returns Ibis's catalog list where the backend has one. Otherwise it falls back to the connection's current catalog, and for engines with no catalog concept at all, to the dialect's Ibis backend name, so a live connection always returns at least one entry. `inspect_catalog(catalog)` lists the namespaces in that catalog and the tables in each, recording the catalog in every namespace's location. Which dialects accept catalog-qualified namespaces for which operations is covered in [Supported databases and limits](../10-supported-databases-and-limits/index.md).
+`IbisBackend.list_catalogs()` returns Ibis's catalog list where the backend has one. Otherwise it falls back to the connection's current catalog, and for engines with no catalog concept at all, to the dialect's Ibis backend name, so a live connection always returns at least one entry. `inspect_catalog(catalog)` lists the namespaces in that catalog and the tables in each, recording the catalog in every namespace's location. Which dialects accept catalog-qualified namespaces for which operations is covered in [Supported databases and limits](../13-supported-databases-and-limits/index.md).

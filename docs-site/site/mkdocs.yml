@@ -31,21 +31,24 @@ nav:
 
   - Chapters:
       - List of Chapters: chapters/index.md
-      - 1. What mountainash-data is: chapters/01-what-mountainash-data-is/index.md
+      - 1. mountainash-data in the mountainash ecosystem: chapters/01-mountainash-data-in-the-ecosystem/index.md
       - 2. Installing and connecting: chapters/02-installing-and-connecting/index.md
       - 3. Connection profiles and authentication: chapters/03-connection-profiles-and-authentication/index.md
-      - 4. Inspecting databases: chapters/04-inspecting-databases/index.md
-      - 5. Reading tables and running queries: chapters/05-reading-tables-and-running-queries/index.md
-      - 6. Creating and changing tables: chapters/06-creating-and-changing-tables/index.md
-      - 7. Indexes: chapters/07-indexes/index.md
-      - 8. Transactions: chapters/08-transactions/index.md
-      - 9. Adopting existing connections: chapters/09-adopting-existing-connections/index.md
-      - 10. Supported databases and limits: chapters/10-supported-databases-and-limits/index.md
-      - 11. How one backend serves 20 dialects: chapters/11-how-one-backend-serves-20-dialects/index.md
-      - 12. From settings to driver arguments: chapters/12-from-settings-to-driver-arguments/index.md
-      - 13. Transaction and adoption internals: chapters/13-transaction-and-adoption-internals/index.md
-      - 14. Extending mountainash-data: chapters/14-extending-mountainash-data/index.md
-      - 15. Contributing and testing: chapters/15-contributing-and-testing/index.md
+      - 4. Configuring connections with mountainash-settings: chapters/04-configuring-connections-with-mountainash-settings/index.md
+      - 5. Inspecting databases: chapters/05-inspecting-databases/index.md
+      - 6. Reading tables and running queries: chapters/06-reading-tables-and-running-queries/index.md
+      - 7. Running mountainash expressions against databases: chapters/07-running-mountainash-expressions-against-databases/index.md
+      - 8. Creating and changing tables: chapters/08-creating-and-changing-tables/index.md
+      - 9. Indexes: chapters/09-indexes/index.md
+      - 10. Transactions: chapters/10-transactions/index.md
+      - 11. Adopting existing connections: chapters/11-adopting-existing-connections/index.md
+      - 12. An end-to-end pipeline: chapters/12-an-end-to-end-pipeline/index.md
+      - 13. Supported databases and limits: chapters/13-supported-databases-and-limits/index.md
+      - 14. How one backend serves 20 dialects: chapters/14-how-one-backend-serves-20-dialects/index.md
+      - 15. From settings to driver arguments: chapters/15-from-settings-to-driver-arguments/index.md
+      - 16. Transaction and adoption internals: chapters/16-transaction-and-adoption-internals/index.md
+      - 17. Extending mountainash-data: chapters/17-extending-mountainash-data/index.md
+      - 18. Contributing and testing: chapters/18-contributing-and-testing/index.md
 
   - FAQ: faq.md
   - Glossary: glossary.md

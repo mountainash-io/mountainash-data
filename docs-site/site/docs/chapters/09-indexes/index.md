@@ -6,14 +6,14 @@ date: 2026-10-29
 
 # Indexes
 
-`IbisBackend` manages conventional secondary indexes with five methods: `create_index`, `create_unique_index`, `drop_index`, `list_indexes` and `index_exists`. Ibis has no index API, so mountainash-data renders the `CREATE INDEX` and `DROP INDEX` statements and the catalog queries itself, using each dialect's declared index capability. The capability says whether the engine has secondary indexes at all, whether it supports partial indexes and index methods, and whether `DROP INDEX` needs the table name. The same calls therefore work across engines, and an option an engine cannot honour raises `ValueError` before any SQL is sent.
+`IbisBackend` manages conventional secondary indexes with five methods: `create_index`, `create_unique_index`, `drop_index`, `list_indexes` and `index_exists`. Indexes belong to the physical side of the ecosystem: they shape the tables that results computed with mountainash expressions are written back to ([An end-to-end pipeline](../12-an-end-to-end-pipeline/index.md)), and mountainash relations do not model them. Ibis has no index API, so mountainash-data renders the `CREATE INDEX` and `DROP INDEX` statements and the catalog queries itself from each dialect's declared index capability: whether the engine has secondary indexes at all, whether it supports partial indexes and index methods, and whether `DROP INDEX` needs the table name. The same calls therefore work across engines, and an option an engine cannot honour raises `ValueError` before any SQL is sent.
 
 The examples run on in-memory SQLite, with DuckDB for contrast, and each block continues from the one before it. The anchor recipe is [`examples/indexes`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/indexes).
 
 ## Creating indexes
 
 <!-- concept:115 -->
-`create_index(table_name, columns, *, index_name=None, unique=False, index_type=None, where=None, namespace=None, if_not_exists=True)` creates an index and returns the backend. `create_unique_index(table_name, columns, *, index_name=None, where=None, namespace=None)` is the same call with `unique=True`; a unique index is also what `upsert` needs on SQLite, DuckDB and PostgreSQL (see [Upsert](../06-creating-and-changing-tables/index.md#upsert)).
+`create_index(table_name, columns, *, index_name=None, unique=False, index_type=None, where=None, namespace=None, if_not_exists=True)` creates an index and returns the backend. `create_unique_index(table_name, columns, *, index_name=None, where=None, namespace=None)` is the same call with `unique=True`; a unique index is also what `upsert` needs on SQLite, DuckDB and PostgreSQL (see [Upsert](../08-creating-and-changing-tables/index.md#upsert)).
 
 ```python
 from mountainash_data import IbisBackend
@@ -70,7 +70,7 @@ with IbisBackend(dialect="duckdb", database=":memory:") as duck:
 # → this dialect does not support partial indexes (where=)
 ```
 
-SQLite, DuckDB, MotherDuck and PostgreSQL have a native `CREATE INDEX IF NOT EXISTS`. On MySQL, SQL Server, Oracle and SingleStoreDB the package runs `index_exists` first and skips the `CREATE` when the index is there. That check and the create are two statements, so a concurrent session can still create the same index in between, and the engine's error is then raised, not suppressed. The engine's DDL rules also apply: MySQL and Oracle commit implicitly around DDL, so an index statement issued inside a [transaction](../08-transactions/index.md) is not undone by a rollback.
+SQLite, DuckDB, MotherDuck and PostgreSQL have a native `CREATE INDEX IF NOT EXISTS`. On MySQL, SQL Server, Oracle and SingleStoreDB the package runs `index_exists` first and skips the `CREATE` when the index is there. That check and the create are two statements, so a concurrent session can still create the same index in between, and the engine's error is then raised, not suppressed. The engine's DDL rules also apply: MySQL and Oracle commit implicitly around DDL, so an index statement issued inside a [transaction](../10-transactions/index.md) is not undone by a rollback.
 
 Dialects without a declared index capability raise `NotImplementedError` from every index method. ClickHouse, for example, has data-skipping indexes rather than secondary indexes, so it declares none. `index_exists` checks this before it needs a connection:
 
@@ -83,7 +83,7 @@ except NotImplementedError as exc:
 # → Dialect 'clickhouse' does not support index_exists
 ```
 
-Oracle declares index support, but its index operations still have unresolved identifier and owner-resolution issues and should not be relied on. The full per-dialect index support is in [Supported databases and limits](../10-supported-databases-and-limits/index.md).
+Oracle declares index support, but its index operations still have unresolved identifier and owner-resolution issues and should not be relied on. The full per-dialect index support is in [Supported databases and limits](../13-supported-databases-and-limits/index.md).
 
 ## Dropping indexes
 
@@ -106,7 +106,7 @@ Engines disagree about where an index name lives. On SQLite, DuckDB, MotherDuck,
 ## Listing indexes and IndexInfo
 
 <!-- concept:114 -->
-`list_indexes(table_name, *, namespace=None)` returns one `IndexInfo` per index on the table. `IndexInfo` is a frozen dataclass exported from `mountainash_data` and shared with the rest of the [inspection model](../04-inspecting-databases/index.md). Its fields are:
+`list_indexes(table_name, *, namespace=None)` returns one `IndexInfo` per index on the table. `IndexInfo` is a frozen dataclass exported from `mountainash_data` and shared with the rest of the [inspection model](../05-inspecting-databases/index.md). Its fields are:
 
 | Field | Type | Meaning |
 |---|---|---|

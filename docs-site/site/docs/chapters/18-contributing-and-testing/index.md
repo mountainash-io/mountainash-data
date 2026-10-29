@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Contributing and testing
 
-The mountainash-data repository holds the package source, its tests, runnable examples, a harness for testing against real database servers, and the source of this book. Contributions go through pull requests against `develop`, and Hatch environments run the tests and checks. The branching rules, review process and coding standards are in [CONTRIBUTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/CONTRIBUTING.md). The full command reference, coverage reports and CI behaviour are in [TESTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/TESTING.md).
+The mountainash-data repository holds the package source, its tests, runnable examples, a harness for testing against real database servers, and the source of this book. The package is developed as part of the mountainash ecosystem ([What mountainash-data is](../01-mountainash-data-in-the-ecosystem/index.md)), so its development and test environments install mountainash-settings, mountainash-auth-client and mountainash from sibling checkouts. Contributions go through pull requests against `develop`, and Hatch environments run the tests and checks. The branching rules, review process and coding standards are in [CONTRIBUTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/CONTRIBUTING.md), and the full command reference, coverage reports and CI behaviour are in [TESTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/TESTING.md).
 
 ## Repository layout
 
@@ -51,7 +51,7 @@ hatch run mypy:check                # type-check src/ and tests/
 hatch run radon:radon-cc            # cyclomatic complexity
 ```
 
-Each `test_backend.<backend>` environment adds exactly one backend extra to the core test tools, so a driver installed for one backend never hides a missing dependency in another. The recipes under `examples/` are checked separately by running each `example.py`, as TESTING.md describes. A change that adds a dialect or a settings backend also adds tests in the core tier; [Extending mountainash-data](../14-extending-mountainash-data/index.md) lists which ones.
+Each `test_backend.<backend>` environment adds exactly one backend extra to the core test tools, so a driver installed for one backend never hides a missing dependency in another. The recipes under `examples/` are checked separately by running each `example.py`, as TESTING.md describes. A change that adds a dialect or a settings backend also adds tests in the core tier; [Extending mountainash-data](../17-extending-mountainash-data/index.md) lists which ones.
 
 <!-- concept:154 -->
 ## The live-database harness

@@ -6,14 +6,14 @@ date: 2026-10-29
 
 # Transactions
 
-`IbisBackend.transaction()` groups package operations into one unit of work on the backend's native driver connection. On SQLite, DuckDB and PostgreSQL the scope first checks whether a transaction is already open: on an idle connection it begins one, commits it on a clean exit and rolls it back on failure; when the caller already has a transaction open, it joins that transaction and leaves the commit or rollback to the caller. Two read-only predicates report what is going on: `in_transaction()` for the package scope and `native_transaction_open()` for the driver. `raw_driver_connection()` hands out the native connection for work the package does not cover, and the transaction errors in `mountainash_data.core.errors` report the cases where a scope cannot honestly commit.
+`IbisBackend.transaction()` groups package operations into one unit of work on the backend's native driver connection, so results computed with mountainash expressions ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)) are written back all or nothing, as in [An end-to-end pipeline](../12-an-end-to-end-pipeline/index.md). On SQLite, DuckDB and PostgreSQL the scope begins, commits and rolls back its own transaction on an idle connection, and joins a transaction the caller already has open, leaving the commit or rollback to the caller. `in_transaction()` and `native_transaction_open()` report the package scope and the driver state, `raw_driver_connection()` hands out the native connection for work the package does not cover, and the transaction errors in `mountainash_data.core.errors` report the cases where a scope cannot honestly commit.
 
-The examples use the table operations from [Creating and changing tables](../06-creating-and-changing-tables/index.md) and the connection lifecycle from [Installing and connecting](../02-installing-and-connecting/index.md).
+The examples use the table operations from [Creating and changing tables](../08-creating-and-changing-tables/index.md) and the connection lifecycle from [Installing and connecting](../02-installing-and-connecting/index.md).
 
 <!-- concept:132 -->
 ## The raw driver connection
 
-`raw_driver_connection()` returns the native driver handle behind the Ibis backend: a `sqlite3.Connection` for SQLite, a `DuckDBPyConnection` for DuckDB, a psycopg connection for PostgreSQL. It works for connections the backend opened itself and for adopted ones (see [Adopting existing connections](../09-adopting-existing-connections/index.md)), and it raises rather than returning `None` when there is no handle.
+`raw_driver_connection()` returns the native driver handle behind the Ibis backend: a `sqlite3.Connection` for SQLite, a `DuckDBPyConnection` for DuckDB, a psycopg connection for PostgreSQL. It works for connections the backend opened itself and for adopted ones (see [Adopting existing connections](../11-adopting-existing-connections/index.md)), and it raises rather than returning `None` when there is no handle.
 
 ```python
 from mountainash_data import IbisBackend
@@ -80,7 +80,7 @@ rolled back: abandon the batch
 [{'id': 1, 'region': 'north', 'total': 130}, {'id': 2, 'region': 'south', 'total': 95}]
 ```
 
-The insert and upsert committed together. The truncate was rolled back, and the original `ValueError` reached the caller unchanged. Several Ibis operations commit internally (SQLite's overwrite insert is one); inside a scope the package stops those internal commits so they cannot end the unit early. [Protected package calls](../13-transaction-and-adoption-internals/index.md) explains how.
+The insert and upsert committed together. The truncate was rolled back, and the original `ValueError` reached the caller unchanged. Several Ibis operations commit internally (SQLite's overwrite insert is one); inside a scope the package stops those internal commits so they cannot end the unit early. [Protected package calls](../16-transaction-and-adoption-internals/index.md) explains how.
 
 `transaction()` takes one keyword, `required` (default `True`). The `supports_transactions` property says whether the dialect has a transaction concept at all. What a scope does depends on the dialect:
 
@@ -91,7 +91,7 @@ The insert and upsert committed together. The truncate was rolled back, and the 
 | `oracle`, `exasol` | As the previous row, but no begin statement is sent; the driver starts the transaction implicitly. |
 | `bigquery`, `clickhouse`, `databricks`, `impala`, `druid`, `pyspark` | No transaction concept: raises `TransactionUnsupportedError`, or with `required=False` warns once and runs the body without a transaction. |
 
-These come from each dialect's `transaction_support`, `begin_statement` and probe fields in `src/mountainash_data/backends/ibis/dialects/_registry.py`, together with the three ownership dialects named in `src/mountainash_data/backends/ibis/_transaction.py`. Trino, SingleStoreDB and RisingWave are registered with limited transaction support; for Trino it also depends on the configured connector. [Supported databases and limits](../10-supported-databases-and-limits/index.md) has the full matrix. The local tests exercise SQLite and DuckDB (`tests/test_unit/backends/ibis/test_transaction_scope.py`), and the live-database tier runs the same cases against PostgreSQL (`tests/test_live_backends/test_transaction_live.py`).
+These come from each dialect's `transaction_support`, `begin_statement` and probe fields in `src/mountainash_data/backends/ibis/dialects/_registry.py`, together with the three ownership dialects named in `src/mountainash_data/backends/ibis/_transaction.py`. Trino, SingleStoreDB and RisingWave are registered with limited transaction support; for Trino it also depends on the configured connector. [Supported databases and limits](../13-supported-databases-and-limits/index.md) has the full matrix. The local tests exercise SQLite and DuckDB (`tests/test_unit/backends/ibis/test_transaction_scope.py`), and the live-database tier runs the same cases against PostgreSQL (`tests/test_live_backends/test_transaction_live.py`).
 
 ```mermaid
 stateDiagram-v2
@@ -232,7 +232,7 @@ TransactionPoisonedError: unit of work was poisoned by a caught failure; rolled 
 (2,)
 ```
 
-Scopes are tracked per native connection, not per `IbisBackend` object. Two backends that wrap the same driver connection, such as one built with `IbisBackend.from_ibis_connection(backend.ibis_connection(), ...)`, share one unit of work: a scope opened through either is visible to `in_transaction()` on both, and a scope opened through the second joins the first. [The per-raw-handle scope registry](../13-transaction-and-adoption-internals/index.md) covers the mechanism.
+Scopes are tracked per native connection, not per `IbisBackend` object. Two backends that wrap the same driver connection, such as one built with `IbisBackend.from_ibis_connection(backend.ibis_connection(), ...)`, share one unit of work: a scope opened through either is visible to `in_transaction()` on both, and a scope opened through the second joins the first. [The per-raw-handle scope registry](../16-transaction-and-adoption-internals/index.md) covers the mechanism.
 
 <!-- concept:133 -->
 ## Transaction errors

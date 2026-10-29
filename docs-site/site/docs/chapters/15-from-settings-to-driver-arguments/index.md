@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # From settings to driver arguments
 
-When an `IbisBackend` is built from settings, `connect(auth_profile=...)` turns two separate objects into one set of driver keyword arguments: a `*BackendProfile` holding connection configuration (host, port, database, driver options) and a `*AuthProfile` holding credentials. The two are kept apart until connect time, so the same configuration can be used with different credentials and credentials never sit in a configuration file by accident. A typical user only writes the profile and the auth object, as shown in [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md). The composition step underneath is a small set of functions and a lookup table, which can also be called directly to see exactly what a driver will receive or to build a connection URL.
+When an `IbisBackend` is built from settings, `connect(auth_profile=...)` turns a `*BackendProfile` holding connection configuration and a `*AuthProfile` holding credentials into one set of driver keyword arguments. The profile's values usually come from mountainash-settings sources such as configuration files, environment variables and secret stores ([Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md)); the credentials come from mountainash-auth-client and stay apart from configuration until connect time, so the same configuration can be used with different credentials and credentials never sit in a configuration file by accident. A typical user only writes the profile and the auth object, as shown in [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md). The composition step underneath is a small set of functions and a lookup table, which can also be called directly to see exactly what a driver will receive or to build a connection URL.
 
 ## ConnectionFactory
 
@@ -21,7 +21,7 @@ When an `IbisBackend` is built from settings, `connect(auth_profile=...)` turns 
 | `provider_for_dialect(dialect)` | An Ibis dialect key, such as `"postgres"` | The settings provider type | The dialect-keyword path |
 | `provider_for_scheme(scheme)` | A URL scheme, such as `"postgresql"` | The settings provider type | The URL path |
 
-The two lookup functions bridge naming between layers. The dialect registry in [How one backend serves 20 dialects](../11-how-one-backend-serves-20-dialects/index.md) is keyed by Ibis dialect names, while auth adapters are keyed by the settings layer's `CONST_DB_PROVIDER_TYPE` values. Where several providers share one Ibis dialect (`postgresql` and `redshift` both use `postgres`; `duckdb` and `motherduck` both use `duckdb`), `provider_for_dialect` resolves deterministically to the provider whose name matches the dialect.
+The two lookup functions bridge naming between layers. The dialect registry in [How one backend serves 20 dialects](../14-how-one-backend-serves-20-dialects/index.md) is keyed by Ibis dialect names, while auth adapters are keyed by the settings layer's `CONST_DB_PROVIDER_TYPE` values. Where several providers share one Ibis dialect (`postgresql` and `redshift` both use `postgres`; `duckdb` and `motherduck` both use `duckdb`), `provider_for_dialect` resolves deterministically to the provider whose name matches the dialect.
 
 The project's `CLAUDE.md` once also described `OperationsFactory`, `SettingsFactory` and a `DatabaseUtils` facade; none of them exist in the source (profile record `core.factories`, `coverage.md` documentation-drift list).
 
@@ -60,7 +60,7 @@ POSTGRESQL VaultPasswordAuthProfile  mountainash_data.core.settings.adapters.sql
 POSTGRESQL OAuth2AuthProfile         None
 ```
 
-If a class inherits from two unrelated registered auth types, the lookup raises `TypeError` naming both rather than picking one. Each backend's `supported_auth` tuple and this table must agree; `tests/test_unit/core/settings/test_supported_auth_consistency.py` asserts that every non-`NoAuthProfile` entry in every `supported_auth` has an adapter. Registering adapters for a new backend is covered in [Extending mountainash-data](../14-extending-mountainash-data/index.md).
+If a class inherits from two unrelated registered auth types, the lookup raises `TypeError` naming both rather than picking one. Each backend's `supported_auth` tuple and this table must agree; `tests/test_unit/core/settings/test_supported_auth_consistency.py` asserts that every non-`NoAuthProfile` entry in every `supported_auth` has an adapter. Registering adapters for a new backend is covered in [Extending mountainash-data](../17-extending-mountainash-data/index.md).
 
 ## The adapter pipeline and build_driver_kwargs
 

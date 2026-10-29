@@ -1,43 +1,51 @@
 ---
 title: 'Mountainash Data'
-description: 'One typed Python handle for connecting to, inspecting and writing to relational databases across 20 Ibis dialects, from SQLite and DuckDB to PostgreSQL, Snowflake and BigQuery.'
+description: 'The physical data layer of the mountainash ecosystem: configuration-driven database connections, mountainash expressions over database tables, and portable writes back under transactions, across 20 Ibis dialects.'
 ---
 
 # Mountainash Data
 
-**One Python handle for connecting to, inspecting and writing to relational databases, from an in-memory DuckDB to PostgreSQL, Snowflake or BigQuery.**
+**The physical data layer of the mountainash ecosystem: connections from configuration, database tables for mountainash expressions, and portable writes back, across 20 databases from in-memory DuckDB to PostgreSQL, Snowflake and BigQuery.**
 
-Database code usually starts with one driver and a few SQL strings. Then the tests move to SQLite or DuckDB while production runs on PostgreSQL. A second warehouse arrives with its own connection arguments and its own way of handling credentials. The upsert that worked on one engine needs `ON CONFLICT` here, `ON DUPLICATE KEY` there and `MERGE` somewhere else, and nobody is sure which code path owns the transaction.
+[Ibis](https://ibis-project.org/) already connects Python to each of these engines and compiles queries for them, and a script that only needs a connection and a query can use Ibis on its own. A pipeline needs more around the query. Connection details differ between a laptop, staging and production, and belong in configuration files and environment variables rather than code. Passwords and tokens belong in a secret store. The business logic should run on a local dataframe in tests and on a warehouse table in production, and it often has to join that table with reference data held in Python. Then the results go back to the database, idempotently, as one unit that either lands or rolls back.
 
-`mountainash-data` puts all of that behind one class, `IbisBackend`. You choose a database by dialect name, URL or typed connection profile, pass credentials separately when you connect, and then use the same methods everywhere: list and inspect tables, read them as Ibis expressions, create and insert, upsert, add columns, manage indexes and group the work in a transaction. Where a database cannot do something, the call fails with a clear error instead of running something different.
+`mountainash-data` is the part of the [mountainash ecosystem](https://github.com/mountainash-io) that reaches the database. It turns [`mountainash-settings`](https://github.com/mountainash-io/mountainash-settings) configuration and [`mountainash-auth-client`](https://github.com/mountainash-io/mountainash-auth-client) credentials into a live connection, one `IbisBackend` for every dialect. It hands each table to [`mountainash`](https://github.com/mountainash-io/mountainash), whose expressions are written once and run anywhere: the same `ma.col("total").gt(90)` filters a Polars frame or a database table, and a relation over a table joins Polars frames and lists of dicts in one plan. It then writes the results back with an upsert that renders `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` for each dialect and validates the request first, with `add_columns()` and index management, inside `transaction()` scopes that own the transaction or join one the caller already opened. Inspection returns the same typed catalog, namespace, table, column and index records on every engine, and a call a database cannot honour fails with a clear error instead of running something different.
 
 ## Who it's for
 
 <div class="grid cards" markdown>
 
--   **Python developers working with databases**
+-   **Teams running mountainash expressions on their databases**
 
     ---
 
-    Write data-loading and inspection code once and run it on SQLite or DuckDB in tests and on a server database in production. Install only the driver extras you need; a missing driver raises an `ImportError` that names the extra to add.
+    Hand a database table to `mountainash` with `ma.relation(backend.table(...))`. The same filters, conformance schemas and data contracts that run on Polars frames in tests run as SQL on the warehouse table, and the table joins local frames and Python data in one plan.
 
-    [Install and connect](chapters/02-installing-and-connecting/index.md)
+    [Run mountainash expressions against databases](chapters/07-running-mountainash-expressions-against-databases/index.md)
 
--   **Teams running several databases**
+-   **Teams deploying by configuration**
 
     ---
 
-    Describe each database as a typed connection profile, one of 20 such as `PostgreSQLBackendProfile` or `SnowflakeBackendProfile`, and supply passwords, tokens or service accounts as a separate auth profile at connect time. Configuration files and secret stores stay with `mountainash-settings`.
+    Describe each database in YAML, TOML, JSON or dotenv files, override it per environment with prefixed variables, and keep passwords as `secret:` references. A `SettingsParameters` recipe carries no resolved credentials and travels to the worker that opens the connection. Moving from DuckDB to PostgreSQL changes the file, not the pipeline.
 
-    [Configure connection profiles](chapters/03-connection-profiles-and-authentication/index.md)
+    [Configure connections with mountainash-settings](chapters/04-configuring-connections-with-mountainash-settings/index.md)
 
 -   **Engineers building pipelines and loaders**
 
     ---
 
-    Load idempotently with `upsert()`, evolve a table with `add_columns()` and manage indexes through the same calls on every dialect that supports them. Wrap the work in `transaction()` scopes, or join a transaction your own code already opened.
+    Load idempotently with `upsert()`, widen a table with `add_columns()` and manage indexes through the same calls on every dialect that supports them. Wrap the work in `transaction()` scopes, join a transaction your own code opened, or adopt a connection you already have.
 
-    [Create and change tables](chapters/06-creating-and-changing-tables/index.md)
+    [Follow an end-to-end pipeline](chapters/12-an-end-to-end-pipeline/index.md)
+
+-   **Python developers working with databases directly**
+
+    ---
+
+    Connect by dialect name, URL or typed profile, list and inspect catalogs, namespaces, tables and indexes, and read tables as Ibis expressions. Install only the driver extras you need; a missing driver raises an `ImportError` that names the extra to add.
+
+    [Install and connect](chapters/02-installing-and-connecting/index.md)
 
 -   **Architects and extension authors**
 
@@ -45,51 +53,77 @@ Database code usually starts with one driver and a few SQL strings. Then the tes
 
     See how one class serves 20 dialects by declaring each database's capabilities as data, then add a dialect, a settings backend or an entirely new kind of store behind the same `Backend` protocol.
 
-    [How one backend serves 20 dialects](chapters/11-how-one-backend-serves-20-dialects/index.md)
+    [How one backend serves 20 dialects](chapters/14-how-one-backend-serves-20-dialects/index.md)
 
 </div>
 
 ## See it work
 
-Save this as `load_sales.py`. The function never mentions a database engine; the last two lines run it once on DuckDB and once on SQLite.
+A one-line configuration file names the database:
 
-```python
-from mountainash_data import IbisBackend
-
-
-def load_sales(backend: IbisBackend) -> None:
-    with backend:
-        backend.create_table("sales", [
-            {"id": 1, "region": "north", "total": 120},
-            {"id": 2, "region": "south", "total": 95},
-        ])
-        backend.create_index("sales", "id", index_name="ux_sales_id", unique=True)
-        backend.upsert(
-            "sales",
-            [
-                {"id": 1, "region": "north", "total": 140},
-                {"id": 3, "region": "west", "total": 80},
-            ],
-            conflict_columns="id",
-        )
-        backend.add_columns("sales", {"note": "string"})
-        sales = backend.table("sales")
-        print(backend.dialect, sales.columns, backend.run_expr(sales.total.sum()))
-
-
-load_sales(IbisBackend(dialect="duckdb", database=":memory:"))
-# → duckdb ('id', 'region', 'total', 'note') 315
-load_sales(IbisBackend("sqlite://"))
-# → sqlite ('id', 'region', 'total', 'note') 315
+```yaml
+# warehouse.yaml
+DATABASE: warehouse.duckdb
 ```
 
-Run it with the `sqlite` and `duckdb` extras installed (see [Installing and connecting](chapters/02-installing-and-connecting/index.md#choosing-extras)). On both engines the upsert updated row 1 and inserted row 3, and the `note` column was added, with the index, upsert and schema-change SQL rendered for each dialect by the package. Pointing the function at a server database means changing the line that builds the backend: the package's live-database test suite runs the same public `upsert()` call against PostgreSQL, MySQL, SingleStoreDB, SQL Server and Trino. Not every dialect supports every call (Snowflake, for example, has no index operations), and [Supported databases and limits](chapters/10-supported-databases-and-limits/index.md#support-matrix) lists what each of the 20 dialects supports.
+The script below reads it through `mountainash-settings`, filters a database table with a `mountainash` expression, joins the result with a local Polars frame, and upserts the joined rows into a second table inside a transaction. Save it as `daily_sales.py` next to the file.
+
+```python
+import mountainash as ma
+import polars as pl
+from mountainash_settings import SettingsParameters
+
+from mountainash_data import IbisBackend
+from mountainash_data.core.settings import DuckDBBackendProfile
+
+params = SettingsParameters.create(
+    settings_class=DuckDBBackendProfile,
+    config_files=["warehouse.yaml"],
+    env_prefix="WAREHOUSE_",
+)
+managers = pl.DataFrame({"region": ["north", "south"], "manager": ["Ada", "Lin"]})
+
+with IbisBackend(params) as backend:
+    # Stand-ins for tables another system maintains.
+    backend.create_table("sales", [
+        {"id": 1, "region": "north", "total": 120},
+        {"id": 2, "region": "south", "total": 95},
+        {"id": 3, "region": "north", "total": 40},
+    ], overwrite=True)
+    backend.create_table("big_sales", [{"id": 1, "region": "north", "total": 100}], overwrite=True)
+    backend.create_unique_index("big_sales", "id")
+
+    big = (
+        ma.relation(backend.table("sales"))
+        .filter(ma.col("total").gt(90))
+        .join(ma.relation(managers), on="region")
+        .sort("id")
+        .to_polars()
+    )
+
+    with backend.transaction():
+        backend.add_columns("big_sales", big)
+        backend.upsert("big_sales", big, conflict_columns="id")
+
+    print(backend.dialect, backend.table("big_sales").columns)
+    for row in backend.table("big_sales").order_by("id").to_pyarrow().to_pylist():
+        print(row)
+```
+
+```text
+duckdb ('id', 'region', 'total', 'manager')
+{'id': 1, 'region': 'north', 'total': 120, 'manager': 'Ada'}
+{'id': 2, 'region': 'south', 'total': 95, 'manager': 'Lin'}
+```
+
+The dialect came from the profile class and the database file from the configuration; `WAREHOUSE_DATABASE=:memory: python daily_sales.py` overrides the file from the environment and prints the same rows. The filter compiled to DuckDB SQL, `mountainash` uploaded the managers frame and joined it in the database, and in one transaction this package added the `manager` column, updated row 1 and inserted row 2. A PostgreSQL deployment needs a PostgreSQL profile in the configuration and a `PasswordAuthProfile` passed to `connect(auth_profile=...)`; the relation and the writes stay as they are. The examples need `mountainash-data` with its `duckdb` and `polars` extras, plus `mountainash-settings`, `mountainash-auth-client` and `mountainash` (see [Installing and connecting](chapters/02-installing-and-connecting/index.md#choosing-extras)). Not every dialect supports every call, and [Supported databases and limits](chapters/13-supported-databases-and-limits/index.md#support-matrix) lists what each of the 20 supports.
 
 ## Where to go next
 
-- Start with [What mountainash-data is](chapters/01-what-mountainash-data-is/index.md) for the package's layers and where Ibis fits, then [Installing and connecting](chapters/02-installing-and-connecting/index.md). Both assume intermediate Python and basic SQL; Ibis experience helps but isn't required.
+- Start with [mountainash-data in the mountainash ecosystem](chapters/01-mountainash-data-in-the-ecosystem/index.md) for what each package owns and what this one adds beyond Ibis, then [Installing and connecting](chapters/02-installing-and-connecting/index.md). Both assume intermediate Python and basic SQL; Ibis experience helps but isn't required.
+- [An end-to-end pipeline](chapters/12-an-end-to-end-pipeline/index.md) builds the example above out from a configuration file to an inspected result, and runs it unchanged on DuckDB and SQLite.
 - The [chapter list](chapters/index.md) shows everything the documentation covers, and the [FAQ](faq.md) and [glossary](glossary.md) answer common questions and define terms.
 - [About](about.md) explains why the package exists and the design ideas behind it, and has the license and the link to the code repository.
 
 !!! note "Development baseline"
-    This documentation describes the `mountainash-data` 0.1.0 development baseline, which requires Python 3.12 or later and Ibis 12 or later. Until its dependencies are published, install it from development checkouts alongside `mountainash-settings` and `mountainash-auth-client`, as described in [Installing and connecting](chapters/02-installing-and-connecting/index.md).
+    This documentation describes the `mountainash-data` 0.1.0 development baseline, which requires Python 3.12 or later and Ibis 12 or later. Until its dependencies are published, install it from development checkouts alongside `mountainash-settings`, `mountainash-auth-client` and, for the ecosystem examples, `mountainash`, as described in [Installing and connecting](chapters/02-installing-and-connecting/index.md).

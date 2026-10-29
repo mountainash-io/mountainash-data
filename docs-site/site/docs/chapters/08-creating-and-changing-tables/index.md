@@ -6,14 +6,16 @@ date: 2026-10-29
 
 # Creating and changing tables
 
-`IbisBackend` creates, fills, empties, merges into, widens and renames tables with the same method calls on every dialect it supports. Creating tables and views, inserting and truncating go straight to Ibis. Upsert, `add_columns` and `rename_table` are built by mountainash-data itself: it renders dialect-specific SQL from the live connection, so one call produces `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` depending on the engine. The examples on this page run on in-memory DuckDB, with SQLite differences noted in the text, and each block continues from the one before it. The anchor recipe is [`examples/mutations`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/mutations).
+`IbisBackend` creates, fills, empties, merges into, widens and renames tables with the same method calls on every dialect it supports. In the ecosystem workflow this is how results computed with mountainash expressions ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)) are written back to a database, usually inside a transaction scope as in [An end-to-end pipeline](../12-an-end-to-end-pipeline/index.md). Creating tables and views, inserting and truncating go straight to Ibis; upsert, `add_columns` and `rename_table` are built by mountainash-data, which renders dialect-specific SQL from the live connection, so one call produces `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` depending on the engine.
 
-Which operations a given dialect supports is listed in [Supported databases and limits](../10-supported-databases-and-limits/index.md). Inside an explicit transaction scope every method on this page is a protected package call; see [Transactions](../08-transactions/index.md).
+The examples on this page run on in-memory DuckDB, with SQLite differences noted in the text, and each block continues from the one before it. The anchor recipe is [`examples/mutations`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/mutations).
+
+Which operations a given dialect supports is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md). Inside an explicit transaction scope every method on this page is a protected package call; see [Transactions](../10-transactions/index.md).
 
 ## Creating tables and views
 
 <!-- concept:23 -->
-The DDL methods on `IbisBackend` are `create_table`, `drop_table`, `create_view` and `drop_view`. Each needs a connected backend and returns the backend itself, so calls chain. Each accepts a `namespace=` argument that targets a schema or database instead of the connection's default. It takes a string (one namespace level) or a `Namespace` (see [Inspecting databases](../04-inspecting-databases/index.md) for the value object). These four methods hand the namespace to Ibis's own `database=` argument, so they accept a catalog-qualified `Namespace` with one path level. Paths deeper than one level raise `ValueError`, because Ibis models only `catalog -> database -> table`. Errors from the engine, such as creating a table that already exists, pass through unchanged.
+The DDL methods on `IbisBackend` are `create_table`, `drop_table`, `create_view` and `drop_view`. Each needs a connected backend and returns the backend itself, so calls chain. Each accepts a `namespace=` argument that targets a schema or database instead of the connection's default. It takes a string (one namespace level) or a `Namespace` (see [Inspecting databases](../05-inspecting-databases/index.md) for the value object). These four methods hand the namespace to Ibis's own `database=` argument, so they accept a catalog-qualified `Namespace` with one path level. Paths deeper than one level raise `ValueError`, because Ibis models only `catalog -> database -> table`. Errors from the engine, such as creating a table that already exists, pass through unchanged.
 
 <!-- concept:24 -->
 `create_table(name, obj, *, schema=None, namespace=None, temp=False, overwrite=False)` creates a table from data or from a schema alone. `obj` is anything Ibis can load: a list of dicts, a Polars, pandas or PyArrow frame, or an Ibis table expression. Column types are inferred from it. Pass `obj=None` with an `ibis.schema(...)` to create an empty table with exact types. An existing table raises the engine's error unless `overwrite=True` replaces it, and `temp=True` creates a temporary table where the engine supports one.
@@ -140,7 +142,7 @@ except Exception as exc:
 #   referenced by a UNIQUE/PRIMARY KEY CONSTRAINT or INDEX
 ```
 
-SQLite fails the same way with `OperationalError: ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`. Adding a unique index (see [Indexes](../07-indexes/index.md)) fixes it:
+SQLite fails the same way with `OperationalError: ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`. Adding a unique index (see [Indexes](../09-indexes/index.md)) fixes it:
 
 ```python
 backend.create_unique_index("orders", "id")
@@ -266,7 +268,7 @@ The consequences differ in ways that matter for portable code:
 - With `MERGE`, matching is plain equality in the join condition. Because `NULL = NULL` is not true in SQL, an incoming row with a `NULL` key never matches and is inserted. The statement is rendered per engine: Oracle omits the `AS` keyword before aliases and SQL Server gets a terminating semicolon.
 - MySQL's `ON DUPLICATE KEY` fires on a collision with *any* unique index, not the one you meant. Before running it, the package reads `information_schema` and raises `ValueError` unless the table has exactly one unique index, its columns equal `conflict_columns` in order, it is not a prefix or functional index, and none of the conflict columns is nullable. With `conflict_action="NOTHING"` the matched row is still touched by a no-op assignment.
 
-ClickHouse, Impala, Materialize, Druid and PySpark declare no upsert family, and `upsert` raises `NotImplementedError` for them. A dialect entry can also register its own upsert implementation instead of a family; none does at this revision. The full per-dialect picture is in [Supported databases and limits](../10-supported-databases-and-limits/index.md), and the dispatch design in [How one backend serves 20 dialects](../11-how-one-backend-serves-20-dialects/index.md).
+ClickHouse, Impala, Materialize, Druid and PySpark declare no upsert family, and `upsert` raises `NotImplementedError` for them. A dialect entry can also register its own upsert implementation instead of a family; none does at this revision. The full per-dialect picture is in [Supported databases and limits](../13-supported-databases-and-limits/index.md), and the dispatch design in [How one backend serves 20 dialects](../14-how-one-backend-serves-20-dialects/index.md).
 
 ## Adding columns
 

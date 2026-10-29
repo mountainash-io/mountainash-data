@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Installing and connecting
 
-`IbisBackend` opens a connection to any of the package's 20 dialects from a dialect name plus driver keyword arguments, or from a connection URL. The base package installs no database driver; each dialect has a matching extra that pulls in the Ibis backend and its driver. Once constructed, a backend connects with `connect()`, releases its connection with `close()`, and can do both as a context manager. Typed settings profiles are a third way to construct a backend, covered in [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md).
+`IbisBackend` is the connection the rest of the mountainash ecosystem works through: configuration loaded with mountainash-settings becomes one ([Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md)), and mountainash relations compile against the tables it returns ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)). It connects to any of the package's 20 dialects from a dialect name plus driver keyword arguments, from a connection URL, or from a typed settings profile as described in [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md). The base package installs no database driver; each dialect has a matching extra that pulls in the Ibis backend and its driver. A backend connects with `connect()`, releases its connection with `close()`, and can do both as a context manager.
 
 ## Choosing extras
 
@@ -62,7 +62,7 @@ No module named 'psycopg'
 Install this backend with: pip install 'mountainash-data[postgres]'
 ```
 
-Only a missing driver module is translated this way. Failures while connecting (a missing native library, an optional sub-dependency such as Spark Connect's grpc, bad credentials, an unreachable host) propagate unchanged, or as `BackendConnectionError` with credentials removed from the message; see [Supported databases and limits](../10-supported-databases-and-limits/index.md). The driver import happens before credentials are applied, so a missing extra is reported first even when the auth profile is also wrong.
+Only a missing driver module is translated this way. Failures while connecting (a missing native library, an optional sub-dependency such as Spark Connect's grpc, bad credentials, an unreachable host) propagate unchanged, or as `BackendConnectionError` with credentials removed from the message; see [Supported databases and limits](../13-supported-databases-and-limits/index.md). The driver import happens before credentials are applied, so a missing extra is reported first even when the auth profile is also wrong.
 
 <!-- concept:19 -->
 ## IbisBackend by dialect and keyword arguments
@@ -98,7 +98,7 @@ sqlite
 "Unknown ibis dialect 'postgresql'. Available: ['bigquery', 'clickhouse', 'databricks', 'druid', 'duckdb', 'exasol', 'impala', 'materialize', 'motherduck', 'mssql', 'mysql', 'oracle', 'postgres', 'pyspark', 'redshift', 'risingwave', 'singlestoredb', 'snowflake', 'sqlite', 'trino']"
 ```
 
-The dialect keys are Ibis's backend names, so PostgreSQL is `postgres`, not `postgresql`. The `dialect` attribute holds the resolved key. Passing both a positional argument and `dialect=` raises `ValueError`, as does passing neither. Apart from the dialect name, nothing is validated at construction: keyword arguments are checked by Ibis and the driver when `connect()` runs. The extra arguments each dialect accepts are listed in the [Ibis backend documentation](https://ibis-project.org/backends/); the builders themselves are described in [How one backend serves 20 dialects](../11-how-one-backend-serves-20-dialects/index.md).
+The dialect keys are Ibis's backend names, so PostgreSQL is `postgres`, not `postgresql`. The `dialect` attribute holds the resolved key. Passing both a positional argument and `dialect=` raises `ValueError`, as does passing neither. Apart from the dialect name, nothing is validated at construction: keyword arguments are checked by Ibis and the driver when `connect()` runs. The extra arguments each dialect accepts are listed in the [Ibis backend documentation](https://ibis-project.org/backends/); the builders themselves are described in [How one backend serves 20 dialects](../14-how-one-backend-serves-20-dialects/index.md).
 
 ## IbisBackend from a URL
 
@@ -165,7 +165,7 @@ True
 ```
 
 <!-- concept:13 -->
-`close()` releases the connection, returns the backend, and is idempotent. After `close()` the backend is unconnected again and `connect()` opens a fresh connection. For an in-memory database that means a new, empty database. Two cases change what `close()` does. Inside an open `transaction()` scope it raises `RuntimeError` instead of closing, because the open unit of work depends on the handle ([Transactions](../08-transactions/index.md)). For a connection adopted with `from_ibis_connection()` or `from_raw_connection()`, it marks the wrapper closed but leaves the caller's connection open ([Adopting existing connections](../09-adopting-existing-connections/index.md)).
+`close()` releases the connection, returns the backend, and is idempotent. After `close()` the backend is unconnected again and `connect()` opens a fresh connection. For an in-memory database that means a new, empty database. Two cases change what `close()` does. Inside an open `transaction()` scope it raises `RuntimeError` instead of closing, because the open unit of work depends on the handle ([Transactions](../10-transactions/index.md)). For a connection adopted with `from_ibis_connection()` or `from_raw_connection()`, it marks the wrapper closed but leaves the caller's connection open ([Adopting existing connections](../11-adopting-existing-connections/index.md)).
 
 <!-- concept:20 -->
 ## The live IbisConnection

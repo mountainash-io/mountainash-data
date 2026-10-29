@@ -117,6 +117,13 @@
       "font": {
         "color": "black"
       }
+    },
+    "ECO": {
+      "classifierName": "mountainash Ecosystem Integration",
+      "color": "DarkOrange",
+      "font": {
+        "color": "black"
+      }
     }
   },
   "nodes": [
@@ -125,12 +132,12 @@
       "label": "SQL Databases",
       "group": "FOUND",
       "shape": "box",
-      "cis": 312,
+      "cis": 363,
       "source_module": null,
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 2,
@@ -141,7 +148,7 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 3,
@@ -152,53 +159,53 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 4,
       "label": "Connection Management",
       "group": "FOUND",
-      "cis": 89,
+      "cis": 101,
       "source_module": null,
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 5,
       "label": "Python Protocols",
       "group": "FOUND",
       "shape": "box",
-      "cis": 302,
+      "cis": 374,
       "source_module": null,
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 6,
       "label": "Runtime Checkable Protocol",
       "group": "FOUND",
-      "cis": 152,
+      "cis": 188,
       "source_module": null,
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 7,
       "label": "Pydantic Models",
       "group": "FOUND",
       "shape": "box",
-      "cis": 151,
+      "cis": 159,
       "source_module": null,
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 8,
@@ -210,7 +217,7 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 9,
@@ -221,35 +228,35 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 10,
       "label": "Ibis Library",
       "group": "FOUND",
-      "cis": 150,
+      "cis": 185,
       "source_module": null,
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 11,
       "label": "Backend Protocol Definition",
       "group": "PROTO",
-      "cis": 149,
+      "cis": 185,
       "source_module": "mountainash_data.core.protocol",
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "01-what-mountainash-data-is"
+      "chapter": "01-mountainash-data-in-the-ecosystem"
     },
     {
       "id": 12,
       "label": "Connect Method",
       "group": "PROTO",
-      "cis": 40,
+      "cis": 46,
       "source_module": "mountainash_data.core.protocol",
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
@@ -276,7 +283,7 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 15,
@@ -287,7 +294,7 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 16,
@@ -298,7 +305,7 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 17,
@@ -309,7 +316,7 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 18,
@@ -320,13 +327,13 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 19,
       "label": "IbisBackend Class",
       "group": "IBIS",
-      "cis": 72,
+      "cis": 97,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
@@ -337,7 +344,7 @@
       "id": 20,
       "label": "Ibis Connection",
       "group": "IBIS",
-      "cis": 37,
+      "cis": 43,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
@@ -353,7 +360,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "05-reading-tables-and-running-queries"
+      "chapter": "06-reading-tables-and-running-queries"
     },
     {
       "id": 22,
@@ -364,7 +371,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "05-reading-tables-and-running-queries"
+      "chapter": "06-reading-tables-and-running-queries"
     },
     {
       "id": 23,
@@ -375,7 +382,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 24,
@@ -386,40 +393,40 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 25,
       "label": "DML Operations",
       "group": "WRITE",
-      "cis": 8,
+      "cis": 12,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 26,
       "label": "Insert Data",
       "group": "WRITE",
-      "cis": 2,
+      "cis": 4,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 27,
       "label": "Upsert Data",
       "group": "WRITE",
-      "cis": 1,
+      "cis": 3,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 28,
@@ -430,7 +437,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 29,
@@ -441,7 +448,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 30,
@@ -452,7 +459,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 31,
@@ -463,7 +470,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 32,
@@ -474,7 +481,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 33,
@@ -485,7 +492,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 34,
@@ -507,7 +514,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 50,
@@ -518,7 +525,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 51,
@@ -529,7 +536,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 52,
@@ -540,7 +547,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 53,
@@ -551,7 +558,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 54,
@@ -562,7 +569,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 55,
@@ -573,7 +580,7 @@
       "source_path": "src/mountainash_data/backends/ibis/inspect.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 56,
@@ -584,7 +591,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 57,
@@ -595,7 +602,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 58,
@@ -606,7 +613,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 59,
@@ -617,7 +624,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 60,
@@ -628,7 +635,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 61,
@@ -639,7 +646,7 @@
       "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 62,
@@ -650,7 +657,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 63,
@@ -661,7 +668,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 64,
@@ -672,7 +679,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 65,
@@ -683,7 +690,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 66,
@@ -694,13 +701,13 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 67,
       "label": "BackendProfile Class",
       "group": "SETT",
-      "cis": 28,
+      "cis": 35,
       "source_module": "mountainash_data.core.settings.profile",
       "source_path": "src/mountainash_data/core/settings/profile.py",
       "match_confidence": 1.0,
@@ -716,7 +723,7 @@
       "source_path": "src/mountainash_data/core/factories/connection_factory.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 69,
@@ -903,7 +910,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 86,
@@ -914,7 +921,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 87,
@@ -925,7 +932,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 88,
@@ -936,7 +943,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 89,
@@ -947,7 +954,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 90,
@@ -958,7 +965,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 91,
@@ -1013,7 +1020,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "10-supported-databases-and-limits"
+      "chapter": "13-supported-databases-and-limits"
     },
     {
       "id": 97,
@@ -1024,7 +1031,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "10-supported-databases-and-limits"
+      "chapter": "13-supported-databases-and-limits"
     },
     {
       "id": 100,
@@ -1035,7 +1042,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "10-supported-databases-and-limits"
+      "chapter": "13-supported-databases-and-limits"
     },
     {
       "id": 101,
@@ -1074,7 +1081,7 @@
       "id": 104,
       "label": "SettingsParameters Construction",
       "group": "CONN",
-      "cis": 1,
+      "cis": 8,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
@@ -1085,7 +1092,7 @@
       "id": 105,
       "label": "AuthProfile Types",
       "group": "AUTH",
-      "cis": 33,
+      "cis": 34,
       "source_module": "mountainash_data.core.settings",
       "source_path": "src/mountainash_data/core/settings/__init__.py",
       "match_confidence": 1.0,
@@ -1112,7 +1119,7 @@
       "source_path": "src/mountainash_data/core/factories/connection_factory.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 108,
@@ -1123,7 +1130,7 @@
       "source_path": "src/mountainash_data/core/factories/connection_factory.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 109,
@@ -1134,7 +1141,7 @@
       "source_path": "src/mountainash_data/core/factories/connection_factory.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 110,
@@ -1145,7 +1152,7 @@
       "source_path": "src/mountainash_data/core/namespace.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 111,
@@ -1156,7 +1163,7 @@
       "source_path": "src/mountainash_data/core/namespace.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 112,
@@ -1167,7 +1174,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "10-supported-databases-and-limits"
+      "chapter": "13-supported-databases-and-limits"
     },
     {
       "id": 113,
@@ -1178,7 +1185,7 @@
       "source_path": "src/mountainash_data/core/inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "04-inspecting-databases"
+      "chapter": "05-inspecting-databases"
     },
     {
       "id": 114,
@@ -1189,7 +1196,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_index_inspection.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "07-indexes"
+      "chapter": "09-indexes"
     },
     {
       "id": 115,
@@ -1200,7 +1207,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_index.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "07-indexes"
+      "chapter": "09-indexes"
     },
     {
       "id": 116,
@@ -1211,7 +1218,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_index.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "07-indexes"
+      "chapter": "09-indexes"
     },
     {
       "id": 117,
@@ -1222,7 +1229,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_index.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "07-indexes"
+      "chapter": "09-indexes"
     },
     {
       "id": 118,
@@ -1233,7 +1240,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 119,
@@ -1244,7 +1251,7 @@
       "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 120,
@@ -1255,7 +1262,7 @@
       "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "06-creating-and-changing-tables"
+      "chapter": "08-creating-and-changing-tables"
     },
     {
       "id": 121,
@@ -1266,7 +1273,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 122,
@@ -1277,7 +1284,7 @@
       "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 123,
@@ -1288,7 +1295,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 124,
@@ -1299,18 +1306,18 @@
       "source_path": "src/mountainash_data/backends/ibis/_render.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 125,
       "label": "Transaction Scope",
       "group": "TXN",
-      "cis": 9,
+      "cis": 12,
       "source_module": "mountainash_data.backends.ibis._transaction",
       "source_path": "src/mountainash_data/backends/ibis/_transaction.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 126,
@@ -1321,7 +1328,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_transaction.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 127,
@@ -1332,7 +1339,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_transaction.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 128,
@@ -1343,7 +1350,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_transaction.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 129,
@@ -1354,7 +1361,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_transaction.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 130,
@@ -1365,7 +1372,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 131,
@@ -1376,7 +1383,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_protected.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "13-transaction-and-adoption-internals"
+      "chapter": "16-transaction-and-adoption-internals"
     },
     {
       "id": 132,
@@ -1387,7 +1394,7 @@
       "source_path": "src/mountainash_data/backends/ibis/_raw.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 133,
@@ -1398,18 +1405,18 @@
       "source_path": "src/mountainash_data/core/errors.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
     },
     {
       "id": 134,
       "label": "Connection Adoption",
       "group": "TXN",
-      "cis": 3,
+      "cis": 4,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "09-adopting-existing-connections"
+      "chapter": "11-adopting-existing-connections"
     },
     {
       "id": 135,
@@ -1420,7 +1427,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "09-adopting-existing-connections"
+      "chapter": "11-adopting-existing-connections"
     },
     {
       "id": 136,
@@ -1431,7 +1438,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "09-adopting-existing-connections"
+      "chapter": "11-adopting-existing-connections"
     },
     {
       "id": 137,
@@ -1442,18 +1449,18 @@
       "source_path": "src/mountainash_data/backends/ibis/_adoption.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "13-transaction-and-adoption-internals"
+      "chapter": "16-transaction-and-adoption-internals"
     },
     {
       "id": 138,
       "label": "Connection Ownership Flag",
       "group": "TXN",
-      "cis": 4,
+      "cis": 5,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "09-adopting-existing-connections"
+      "chapter": "11-adopting-existing-connections"
     },
     {
       "id": 139,
@@ -1464,7 +1471,7 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "05-reading-tables-and-running-queries"
+      "chapter": "06-reading-tables-and-running-queries"
     },
     {
       "id": 140,
@@ -1475,29 +1482,29 @@
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "05-reading-tables-and-running-queries"
+      "chapter": "06-reading-tables-and-running-queries"
     },
     {
       "id": 141,
       "label": "table Expression Access",
       "group": "IBIS",
-      "cis": 2,
+      "cis": 10,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "05-reading-tables-and-running-queries"
+      "chapter": "06-reading-tables-and-running-queries"
     },
     {
       "id": 142,
       "label": "Bridge To mountainash Relations",
-      "group": "IBIS",
-      "cis": 1,
+      "group": "ECO",
+      "cis": 9,
       "source_module": "mountainash_data.backends.ibis.backend",
       "source_path": "src/mountainash_data/backends/ibis/backend.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "05-reading-tables-and-running-queries"
+      "chapter": "07-running-mountainash-expressions-against-databases"
     },
     {
       "id": 143,
@@ -1508,7 +1515,7 @@
       "source_path": "src/mountainash_data/core/_redact.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 144,
@@ -1519,7 +1526,7 @@
       "source_path": "src/mountainash_data/core/errors.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "10-supported-databases-and-limits"
+      "chapter": "13-supported-databases-and-limits"
     },
     {
       "id": 145,
@@ -1530,7 +1537,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 146,
@@ -1541,7 +1548,7 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "11-how-one-backend-serves-20-dialects"
+      "chapter": "14-how-one-backend-serves-20-dialects"
     },
     {
       "id": 147,
@@ -1563,7 +1570,7 @@
       "source_path": "src/mountainash_data/core/settings/adapters",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "12-from-settings-to-driver-arguments"
+      "chapter": "15-from-settings-to-driver-arguments"
     },
     {
       "id": 149,
@@ -1574,7 +1581,7 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "14-extending-mountainash-data"
+      "chapter": "17-extending-mountainash-data"
     },
     {
       "id": 150,
@@ -1585,7 +1592,7 @@
       "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "14-extending-mountainash-data"
+      "chapter": "17-extending-mountainash-data"
     },
     {
       "id": 151,
@@ -1596,7 +1603,7 @@
       "source_path": "src/mountainash_data/core/settings",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "14-extending-mountainash-data"
+      "chapter": "17-extending-mountainash-data"
     },
     {
       "id": 152,
@@ -1607,7 +1614,7 @@
       "source_path": "src/mountainash_data/core/protocol.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "14-extending-mountainash-data"
+      "chapter": "17-extending-mountainash-data"
     },
     {
       "id": 153,
@@ -1618,7 +1625,7 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "15-contributing-and-testing"
+      "chapter": "18-contributing-and-testing"
     },
     {
       "id": 154,
@@ -1629,7 +1636,7 @@
       "source_path": null,
       "match_confidence": 0.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "15-contributing-and-testing"
+      "chapter": "18-contributing-and-testing"
     },
     {
       "id": 155,
@@ -1640,7 +1647,7 @@
       "source_path": "src/mountainash_data/core/registry.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "14-extending-mountainash-data"
+      "chapter": "17-extending-mountainash-data"
     },
     {
       "id": 156,
@@ -1651,7 +1658,139 @@
       "source_path": "src/mountainash_data/backends/ibis/_transaction.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
-      "chapter": "08-transactions"
+      "chapter": "10-transactions"
+    },
+    {
+      "id": 157,
+      "label": "Mountainash Ecosystem Layers",
+      "group": "ECO",
+      "cis": 2,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "01-mountainash-data-in-the-ecosystem"
+    },
+    {
+      "id": 158,
+      "label": "Value Beyond Ibis",
+      "group": "ECO",
+      "cis": 1,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "01-mountainash-data-in-the-ecosystem"
+    },
+    {
+      "id": 159,
+      "label": "Configuration File Sources",
+      "group": "ECO",
+      "cis": 5,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "04-configuring-connections-with-mountainash-settings"
+    },
+    {
+      "id": 160,
+      "label": "Environment Prefix Overrides",
+      "group": "ECO",
+      "cis": 1,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "04-configuring-connections-with-mountainash-settings"
+    },
+    {
+      "id": 161,
+      "label": "Secret References",
+      "group": "ECO",
+      "cis": 1,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "04-configuring-connections-with-mountainash-settings"
+    },
+    {
+      "id": 162,
+      "label": "Settings Recipes Across Workers",
+      "group": "ECO",
+      "cis": 2,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "04-configuring-connections-with-mountainash-settings"
+    },
+    {
+      "id": 164,
+      "label": "Write Once Run Anywhere Expressions",
+      "group": "ECO",
+      "cis": 4,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "07-running-mountainash-expressions-against-databases"
+    },
+    {
+      "id": 165,
+      "label": "Joining Database Tables With Local Data",
+      "group": "ECO",
+      "cis": 2,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "07-running-mountainash-expressions-against-databases"
+    },
+    {
+      "id": 166,
+      "label": "Conforming And Validating Database Tables",
+      "group": "ECO",
+      "cis": 1,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "07-running-mountainash-expressions-against-databases"
+    },
+    {
+      "id": 167,
+      "label": "Writing Expression Results Back",
+      "group": "ECO",
+      "cis": 2,
+      "source_module": "mountainash_data.backends.ibis.backend",
+      "source_path": "src/mountainash_data/backends/ibis/backend.py",
+      "match_confidence": 1.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "12-an-end-to-end-pipeline"
+    },
+    {
+      "id": 168,
+      "label": "mountainash[ibis] Connection Borrowing",
+      "group": "ECO",
+      "cis": 1,
+      "source_module": "mountainash_data.backends.ibis.backend",
+      "source_path": "src/mountainash_data/backends/ibis/backend.py",
+      "match_confidence": 1.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "11-adopting-existing-connections"
+    },
+    {
+      "id": 169,
+      "label": "End To End Pipeline",
+      "group": "ECO",
+      "cis": 1,
+      "source_module": null,
+      "source_path": null,
+      "match_confidence": 0.0,
+      "mapping_basis": "reviewed-2026-10-29-rev2",
+      "chapter": "12-an-end-to-end-pipeline"
     }
   ],
   "edges": [
@@ -2566,6 +2705,90 @@
     {
       "from": 156,
       "to": 24
+    },
+    {
+      "from": 157,
+      "to": 10
+    },
+    {
+      "from": 157,
+      "to": 11
+    },
+    {
+      "from": 158,
+      "to": 157
+    },
+    {
+      "from": 159,
+      "to": 104
+    },
+    {
+      "from": 160,
+      "to": 159
+    },
+    {
+      "from": 161,
+      "to": 159
+    },
+    {
+      "from": 161,
+      "to": 105
+    },
+    {
+      "from": 162,
+      "to": 104
+    },
+    {
+      "from": 162,
+      "to": 159
+    },
+    {
+      "from": 164,
+      "to": 142
+    },
+    {
+      "from": 165,
+      "to": 142
+    },
+    {
+      "from": 165,
+      "to": 164
+    },
+    {
+      "from": 166,
+      "to": 164
+    },
+    {
+      "from": 167,
+      "to": 142
+    },
+    {
+      "from": 167,
+      "to": 27
+    },
+    {
+      "from": 167,
+      "to": 125
+    },
+    {
+      "from": 168,
+      "to": 134
+    },
+    {
+      "from": 168,
+      "to": 125
+    },
+    {
+      "from": 169,
+      "to": 162
+    },
+    {
+      "from": 169,
+      "to": 165
+    },
+    {
+      "from": 169,
+      "to": 167
     }
   ]
 }

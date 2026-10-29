@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Extending mountainash-data
 
-mountainash-data has three extension points. A store that Ibis does not reach gets its own class that satisfies the `Backend` protocol. A relational engine that Ibis does reach becomes a new dialect of `IbisBackend`, declared as data rather than as a new class. A new way of configuring a connection becomes a settings backend: a `BackendSpec` plus a registered `BackendProfile` subclass. The first and third can live in your own code; adding a dialect is a change to this repository.
+mountainash-data has three extension points. A store that Ibis does not reach gets its own class that satisfies the `Backend` protocol. A relational engine that Ibis does reach becomes a new dialect of `IbisBackend`, declared as data rather than as a new class, and its tables are then reachable from mountainash relations like any other dialect's ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)). A new way of configuring a connection becomes a settings backend: a `BackendSpec` plus a registered `BackendProfile` subclass, which mountainash-settings sources populate like the built-in profiles ([Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md)). The first and third can live in your own code; adding a dialect is a change to this repository.
 
 Modules whose names start with an underscore, such as the dialect registry module and the transaction machinery, are private. Their contents can change between releases without notice, so extensions outside this repository should depend only on the public imports used below.
 
@@ -48,7 +48,7 @@ Because the runtime check is only a presence test, a conformance suite for a bac
 <!-- concept:152 -->
 ## Implementing a Backend
 
-A backend for a non-Ibis store implements every member of the protocol and reports metadata through the shared inspection model (`TableInfo`, `ColumnInfo`, `NamespaceInfo`, `CatalogInfo` and `Namespace`, described in [Inspecting databases](../04-inspecting-databases/index.md)). The members fall into four groups:
+A backend for a non-Ibis store implements every member of the protocol and reports metadata through the shared inspection model (`TableInfo`, `ColumnInfo`, `NamespaceInfo`, `CatalogInfo` and `Namespace`, described in [Inspecting databases](../05-inspecting-databases/index.md)). The members fall into four groups:
 
 | Group | Members | Contract |
 |---|---|---|
@@ -57,7 +57,7 @@ A backend for a non-Ibis store implements every member of the protocol and repor
 | Inspection | `inspect_table()`, `inspect_namespace()`, `inspect_catalog()` | Return the shared dataclasses, with `location` filled in. |
 | Driver and transactions | `raw_driver_connection()`, `supports_transactions`, `transaction(*, required=True)`, `native_transaction_open()`, `in_transaction()` | Raise when there is no handle. A store without transactions raises `TransactionUnsupportedError` when `required=True`, warns and runs a no-op scope when `required=False`, and returns `False` from both probes. |
 
-The transaction rules are the ones [Transactions](../08-transactions/index.md) describes for `IbisBackend`; a backend with real transactions should follow the same ownership semantics. The class below serves table schemas held in a nested dictionary:
+The transaction rules are the ones [Transactions](../10-transactions/index.md) describes for `IbisBackend`; a backend with real transactions should follow the same ownership semantics. The class below serves table schemas held in a nested dictionary:
 
 ```python
 # memory_backend.py
@@ -224,7 +224,7 @@ except KeyError as exc:
 <!-- concept:150 -->
 ## Adding a dialect
 
-A dialect of `IbisBackend` is one `DialectSpec` entry in the `DIALECTS` mapping in `src/mountainash_data/backends/ibis/dialects/_registry.py`, keyed by the dialect name that users pass as `IbisBackend(dialect=...)`. [How one backend serves 20 dialects](../11-how-one-backend-serves-20-dialects/index.md) explains how `IbisBackend` reads these fields at run time. The new engine must already have an Ibis backend; see the [Ibis backend list](https://ibis-project.org/backends/).
+A dialect of `IbisBackend` is one `DialectSpec` entry in the `DIALECTS` mapping in `src/mountainash_data/backends/ibis/dialects/_registry.py`, keyed by the dialect name that users pass as `IbisBackend(dialect=...)`. [How one backend serves 20 dialects](../14-how-one-backend-serves-20-dialects/index.md) explains how `IbisBackend` reads these fields at run time. The new engine must already have an Ibis backend; see the [Ibis backend list](https://ibis-project.org/backends/).
 
 Every entry sets the connection fields. The capability fields declare what the generic operations may do; leaving one at its default declines that capability, and the matching operation raises `NotImplementedError`.
 
@@ -246,7 +246,7 @@ Every entry sets the connection fields. The capability fields declare what the g
 
 Engines whose SQL the generic renderers cannot express get hooks instead: `upsert_hook`, `create_index_hook`, `drop_index_hook`, `rename_table_hook`, `truncate_table_hook`, `add_columns_hook`, and `ibis_connection_adapter` for patching the Ibis connection after it is built. A hook takes precedence over the generic path for its operation.
 
-Joining a caller's already-open transaction, rather than always beginning one, is limited to the dialects listed in `OWNERSHIP_DIALECTS` in the private transaction module (`sqlite`, `duckdb`, `postgres` at this revision); [Transaction and adoption internals](../13-transaction-and-adoption-internals/index.md) explains why. A new dialect also needs an extra in `pyproject.toml` with the same name, because the missing-driver `ImportError` tells users to install `mountainash-data[<dialect>]`.
+Joining a caller's already-open transaction, rather than always beginning one, is limited to the dialects listed in `OWNERSHIP_DIALECTS` in the private transaction module (`sqlite`, `duckdb`, `postgres` at this revision); [Transaction and adoption internals](../16-transaction-and-adoption-internals/index.md) explains why. A new dialect also needs an extra in `pyproject.toml` with the same name, because the missing-driver `ImportError` tells users to install `mountainash-data[<dialect>]`.
 
 The unit tests that pin each dialect's declarations are matrices keyed by dialect name, so a new entry must be added to them explicitly:
 
@@ -258,12 +258,12 @@ The unit tests that pin each dialect's declarations are matrices keyed by dialec
 | `test_missing_extra.py` | A case if the dialect shares a driver with another (as `motherduck` and `redshift` do). |
 | `test_upsert_render.py`, `test_index_render.py`, `test_rename_table_render.py` | Golden SQL for any generic rendering the dialect takes. |
 
-Behaviour against a real server belongs in the live tier: a backend entry in `tests/config/live-db.toml` and, if it can run locally, a Compose service. [Contributing and testing](../15-contributing-and-testing/index.md) covers that harness. Once the dialect is in, update the support matrix in [Supported databases and limits](../10-supported-databases-and-limits/index.md).
+Behaviour against a real server belongs in the live tier: a backend entry in `tests/config/live-db.toml` and, if it can run locally, a Compose service. [Contributing and testing](../18-contributing-and-testing/index.md) covers that harness. Once the dialect is in, update the support matrix in [Supported databases and limits](../13-supported-databases-and-limits/index.md).
 
 <!-- concept:151 -->
 ## Adding a settings backend
 
-A settings backend is a `BackendSpec` and a `BackendProfile` subclass decorated with `@register`, all importable from `mountainash_data.core.settings`. The spec names the parameters, their driver keys, the supported auth profile types and the Ibis dialect the profile connects through. [From settings to driver arguments](../12-from-settings-to-driver-arguments/index.md) describes the pipeline the profile feeds, and [mountainash-settings](https://github.com/mountainash-io/mountainash-settings) owns the `ParameterSpec` and registry machinery.
+A settings backend is a `BackendSpec` and a `BackendProfile` subclass decorated with `@register`, all importable from `mountainash_data.core.settings`. The spec names the parameters, their driver keys, the supported auth profile types and the Ibis dialect the profile connects through. [From settings to driver arguments](../15-from-settings-to-driver-arguments/index.md) describes the pipeline the profile feeds, and [mountainash-settings](https://github.com/mountainash-io/mountainash-settings) owns the `ParameterSpec` and registry machinery.
 
 This profile wraps DuckDB with read-only as the default:
 

@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Connection profiles and authentication
 
-A connection profile is a typed, validated description of how to reach one database: host, port, database name, SSL mode and the other options that database's driver accepts. Each of the 20 supported backends has a `*BackendProfile` class, such as `PostgreSQLBackendProfile`, `SnowflakeBackendProfile` or `SQLiteBackendProfile`, in `mountainash_data.core.settings`. Profiles hold configuration only. Credentials live in separate auth profiles (`PasswordAuthProfile`, `TokenAuthProfile`, `IAMAuthProfile` and others) and are handed to `IbisBackend.connect()`, which combines the two into driver arguments at the moment it connects.
+A connection profile is a typed, validated description of how to reach one database: host, port, database name, SSL mode and the other options that database's driver accepts. Each of the 20 supported backends has a `*BackendProfile` class in `mountainash_data.core.settings`, such as `PostgreSQLBackendProfile`, `SnowflakeBackendProfile` or `SQLiteBackendProfile`, and these are the objects that mountainash-settings sources (configuration files, environment variables and secret stores) populate, as shown in [Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md). Profiles hold configuration only. Credentials live in separate auth profiles from mountainash-auth-client (`PasswordAuthProfile`, `TokenAuthProfile`, `IAMAuthProfile` and others), which `IbisBackend.connect()` combines with the profile into driver arguments at the moment it connects.
 
 <!-- concept:67 -->
 ## BackendProfile and SettingsParameters
@@ -63,7 +63,7 @@ except ValidationError as exc:
 Value error, Invalid AWS region: sydney
 ```
 
-`IbisBackend` accepts the `SettingsParameters` object, not a profile instance; passing anything other than `SettingsParameters` or a string raises `TypeError`. Keyword arguments given next to the parameters, as in `IbisBackend(params, connect_timeout=5)`, override the driver arguments the profile produces. How values are loaded from files, environments and secret stores, and how a secret store's lifetime is managed, is documented in [`mountainash-settings`](https://docs.mountainash.io/mountainash-settings/).
+`IbisBackend` accepts the `SettingsParameters` object, not a profile instance; passing anything other than `SettingsParameters` or a string raises `TypeError`. Keyword arguments given next to the parameters, as in `IbisBackend(params, connect_timeout=5)`, override the driver arguments the profile produces. Loading values from configuration files, environment variables and secret stores is shown in [Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md); how a secret store's lifetime is managed is documented in [`mountainash-settings`](https://docs.mountainash.io/mountainash-settings/).
 
 <!-- concept:69 -->
 ## BackendSpec, ParameterSpec and parameter tiers
@@ -154,7 +154,7 @@ PostgreSQLBackendProfile
 Profile 'sqlite' is already registered in databases registry by mountainash_data.core.settings.sqlite.SQLiteBackendProfile
 ```
 
-Writing and registering a profile for a new backend, with its auth adapters, is covered in [Extending mountainash-data](../14-extending-mountainash-data/index.md).
+Writing and registering a profile for a new backend, with its auth adapters, is covered in [Extending mountainash-data](../17-extending-mountainash-data/index.md).
 
 <!-- concept:74 -->
 Registration is a side effect of import. Each backend's profile lives in its own module (`mountainash_data/core/settings/postgresql.py` and so on), and the `mountainash_data.core.settings` package imports all 20 modules. Importing `mountainash_data.core.settings`, or anything inside it, therefore registers every backend. `import mountainash_data` does so too, because `IbisBackend` depends on the settings package. Code never calls a registration function and never maintains a list of backends: a profile is available once its module has been imported. The same rule applies to a profile defined outside the package. Its module must be imported before its name is looked up.
@@ -192,7 +192,7 @@ redshift postgres postgres
 duckdb postgres
 ```
 
-The profile still decides what is sent: the MotherDuck and Redshift profiles have their own fields, URL schemes and auth adapters (a MotherDuck token, Redshift IAM credentials), and those shape the driver arguments before the underlying dialect connects. `rides_on` itself is metadata; nothing dispatches on it. The dialect registry also has its own `motherduck` and `redshift` entries, reached with `dialect="motherduck"` or `dialect="redshift"` (and, for MotherDuck, a `duckdb://md:` URL); see [Installing and connecting](../02-installing-and-connecting/index.md). Per-dialect operation support for these entries is listed in [Supported databases and limits](../10-supported-databases-and-limits/index.md).
+The profile still decides what is sent: the MotherDuck and Redshift profiles have their own fields, URL schemes and auth adapters (a MotherDuck token, Redshift IAM credentials), and those shape the driver arguments before the underlying dialect connects. `rides_on` itself is metadata; nothing dispatches on it. The dialect registry also has its own `motherduck` and `redshift` entries, reached with `dialect="motherduck"` or `dialect="redshift"` (and, for MotherDuck, a `duckdb://md:` URL); see [Installing and connecting](../02-installing-and-connecting/index.md). Per-dialect operation support for these entries is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md).
 
 ## Backend profile reference
 
@@ -308,6 +308,6 @@ flowchart LR
   kwargs --> ibis["Ibis connection"]
 ```
 
-On the settings path, the auth profile is checked against the spec's `supported_auth` first. Omitting `auth_profile` is the same as passing `NoAuthProfile()`, so a backend that does not list `NoAuthProfile` (Exasol, MySQL, Oracle, SQL Server, Redshift, Snowflake, MotherDuck) raises `ValueError` when connected without credentials (once its driver extra is installed, since the driver import comes first). A supported type is then applied by the auth adapter registered for that backend and auth type, which adds the credential arguments to the profile's emitted driver arguments. The result is a plain keyword dictionary passed to Ibis; the steps are traced in [From settings to driver arguments](../12-from-settings-to-driver-arguments/index.md).
+On the settings path, the auth profile is checked against the spec's `supported_auth` first. Omitting `auth_profile` is the same as passing `NoAuthProfile()`, so a backend that does not list `NoAuthProfile` (Exasol, MySQL, Oracle, SQL Server, Redshift, Snowflake, MotherDuck) raises `ValueError` when connected without credentials (once its driver extra is installed, since the driver import comes first). A supported type is then applied by the auth adapter registered for that backend and auth type, which adds the credential arguments to the profile's emitted driver arguments. The result is a plain keyword dictionary passed to Ibis; the steps are traced in [From settings to driver arguments](../15-from-settings-to-driver-arguments/index.md).
 
 The dialect-keyword and URL forms of `IbisBackend` accept `connect(auth_profile=...)` too, but they have no profile and so no `supported_auth` check. The auth profile goes straight to the adapter for the dialect (or for the URL scheme), and a combination with no adapter raises the `no auth adapter` `ValueError` shown above. `NoAuthProfile` on these paths adds nothing. In every form, credentials are applied only at connect time, and the backend's configuration before `connect()` holds no secrets.

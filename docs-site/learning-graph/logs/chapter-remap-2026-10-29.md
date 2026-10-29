@@ -187,3 +187,9 @@ The generic builders live in `backends/ibis/operations.py` (`_generic_add_column
 | 119 | Add Columns | `mountainash_data.backends.ibis._render` | `mountainash_data.backends.ibis.operations` |
 | 120 | Rename Table | `mountainash_data.backends.ibis._render` | `mountainash_data.backends.ibis.operations` |
 | 122 | Generic-Default Operations | `mountainash_data.backends.ibis._render` | `mountainash_data.backends.ibis.operations` |
+
+## Revision 2 — ecosystem positioning (approved 2026-10-29)
+
+The chapter plan was revised to 18 chapters (brief revision 2). Chapters from 4 on were renumbered and their slugs updated in the graph's `chapter` fields; chapter 1's slug became `01-mountainash-data-in-the-ecosystem`.
+
+New taxonomy `ECO` (mountainash Ecosystem Integration). New concepts 157–162 and 164–169 (163 unused). Concept 142 (Bridge To mountainash Relations) moved from `06-reading-tables-and-running-queries` to `07-running-mountainash-expressions-against-databases`, with its group changed to `ECO`. Concepts 167 and 168 map to `backends.ibis.backend`; the others are cross-package integration concepts with no module in this package.
