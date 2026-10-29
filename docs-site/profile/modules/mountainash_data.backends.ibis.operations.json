@@ -1,40 +1,125 @@
 {
   "id": "mountainash_data.backends.ibis.operations",
   "path": "src/mountainash_data/backends/ibis/operations.py",
-  "summary": "Module-level hook functions for per-dialect index operations (create/drop/exists/list) and upsert logic. DuckDB-family hooks provide the most complete implementation. Also includes motherduck_list_tables override.",
+  "summary": "Generic, dialect-agnostic write operations and per-dialect index-existence SQL. Contains the identifier allowlist validator, dtype coercion (including optional MountainashDtype bridging), rename (build_rename_sql with an Exasol RENAME TABLE branch), additive add_columns, and the generic upsert dispatcher with three SQL families: INSERT ... ON CONFLICT, MERGE INTO (Oracle-specific alias and parenthesised ON handling), and MySQL ON DUPLICATE KEY UPDATE guarded by a fail-closed unique-index preflight. Index-existence SQL generators cover duckdb, sqlite, motherduck, postgres, mysql, mssql, oracle and singlestore.",
   "role": "backend",
   "visibility": "internal",
-  "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture"],
-  "doc_priority": "internal-note",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors"
+  ],
+  "doc_priority": "useful",
   "confidence": "high",
   "public_api": [
-    "duckdb_get_index_exists_sql", "duckdb_get_list_indexes_sql",
-    "sqlite_get_index_exists_sql", "sqlite_get_list_indexes_sql",
-    "motherduck_get_index_exists_sql", "motherduck_get_list_indexes_sql",
-    "motherduck_list_tables",
-    "duckdb_family_create_index", "duckdb_family_drop_index", "duckdb_family_upsert"
+    "build_rename_sql",
+    "build_on_conflict_sql",
+    "build_merge_sql",
+    "build_on_duplicate_key_sql"
   ],
   "key_classes": [],
   "key_functions": [
-    {"name": "duckdb_family_upsert", "signature": "INSERT...ON CONFLICT upsert for DuckDB/SQLite"},
-    {"name": "duckdb_family_create_index", "signature": "CREATE INDEX for DuckDB/SQLite"},
-    {"name": "duckdb_family_drop_index", "signature": "DROP INDEX for DuckDB/SQLite"}
+    "_generic_upsert",
+    "_generic_rename_table",
+    "_generic_add_columns",
+    "_check_rename_table",
+    "_check_add_columns",
+    "_validate_simple_identifier",
+    "_coerce_dtype",
+    "_normalize_to_schema",
+    "_mysql_validate_conflict_key",
+    "_render_on_conflict",
+    "_render_merge",
+    "_render_on_duplicate_key",
+    "_generate_index_name",
+    "_normalize_columns",
+    "duckdb_get_index_exists_sql",
+    "sqlite_get_index_exists_sql",
+    "motherduck_get_index_exists_sql",
+    "postgres_get_index_exists_sql",
+    "mysql_get_index_exists_sql",
+    "mssql_get_index_exists_sql",
+    "oracle_get_index_exists_sql",
+    "singlestore_get_index_exists_sql"
   ],
-  "dependencies": ["mountainash_data.core.constants"],
-  "dependents": ["mountainash_data.backends.ibis.dialects"],
+  "dependencies": [
+    "mountainash_data.backends.ibis._render",
+    "mountainash_data.backends.ibis.dialects"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis._index",
+    "mountainash_data.backends.ibis.dialects"
+  ],
   "extension_points": [
-    "Add per-dialect SQL generator functions here; wire them into DialectSpec hooks"
+    "Pure build_*_sql builders accept an explicit dialect so new dialects can be golden-tested without a live connection",
+    "Dialects needing different semantics register a hook on DialectSpec instead of editing the generic path"
   ],
-  "lifecycle_notes": [],
-  "documentation_hooks": [],
-  "examples": [],
-  "tests": [],
-  "risks": [],
-  "open_questions": [],
+  "lifecycle_notes": [
+    "_generic_upsert follows a documented 12-step validation precedence; warnings are emitted only after all validation and preflight succeed",
+    "An UPDATE upsert with an empty update set degrades to insert-or-ignore with a warning",
+    "add_columns issues one ALTER TABLE ADD COLUMN per missing column and is not atomic across columns"
+  ],
+  "documentation_hooks": [
+    "Upsert family per dialect and conflict_action semantics (UPDATE / NOTHING)",
+    "update_condition predicate grammar and MySQL limitation",
+    "MySQL preflight rejection cases (multiple unique indexes, prefix/functional index, column mismatch, nullable keys)",
+    "Identifier allowlist: simple identifiers only; dotted names are rejected"
+  ],
+  "examples": [
+    "examples/mutations/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_upsert_render.py",
+    "tests/test_unit/backends/ibis/test_upsert_condition_render.py",
+    "tests/test_unit/backends/ibis/test_upsert_style_registry.py",
+    "tests/test_unit/backends/ibis/test_add_columns.py",
+    "tests/test_unit/backends/ibis/test_rename_table_render.py",
+    "tests/test_unit/backends/ibis/test_index_render.py",
+    "tests/test_unit/backends/ibis/test_backend.py",
+    "tests/test_optional_backends/mountainash/test_add_columns.py",
+    "tests/test_live_backends/test_upsert_mysql_preflight.py",
+    "tests/test_live_backends/test_write_ops_live.py"
+  ],
+  "risks": [
+    "motherduck_list_tables is defined but referenced nowhere in src or tests (dead code)",
+    "Module docstring lists _format_qualified_table as a helper; the function exists but is unused",
+    "ON DUPLICATE KEY uses VALUES(col), deprecated on MySQL 8.0.20+; tested against MariaDB",
+    "Error messages recommend an upsert_hook override, but no dialect registers one",
+    "add_columns is not concurrency-safe (single-process preflight, then per-column ALTER)"
+  ],
+  "open_questions": [
+    "Remove motherduck_list_tables and _format_qualified_table, or wire them into dispatch?"
+  ],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/operations.py", "detail": "10 public hook functions"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/operations.py",
+      "detail": "_generic_upsert dispatch over UpsertStyle"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "backend imports _generic_upsert, _generic_add_columns, _generic_rename_table"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+      "detail": "registry imports *_get_index_exists_sql functions"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_upsert_render.py",
+      "detail": "golden rendering for upsert families"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

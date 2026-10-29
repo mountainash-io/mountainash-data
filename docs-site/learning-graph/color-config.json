@@ -1,11 +1,15 @@
 {
   "FOUND": "SteelBlue",
   "PROTO": "DarkSlateBlue",
-  "IBIS": "DarkGreen",
-  "ICE": "LimeGreen",
-  "INSP": "Gold",
-  "DIAL": "Teal",
+  "CONN": "CadetBlue",
   "SETT": "MediumPurple",
-  "ADAPT": "Orange",
-  "ADV": "Crimson"
+  "AUTH": "Orange",
+  "IBIS": "DarkGreen",
+  "INSP": "Gold",
+  "WRITE": "SeaGreen",
+  "TXN": "Firebrick",
+  "DIAL": "Teal",
+  "LIMIT": "Crimson",
+  "EXT": "SlateGray",
+  "ECO": "DarkOrange"
 }

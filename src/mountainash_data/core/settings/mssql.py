@@ -1,6 +1,6 @@
 """MSSQL backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/mssql.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/mssql.md``.
 Driver: PyODBC connect + ODBC Driver 17/18 for SQL Server.
 """
 
@@ -10,10 +10,10 @@ import typing as t
 from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import mssql as _adapter
-from mountainash_settings.auth import AzureADAuth, PasswordAuth, WindowsAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import AzureADAuthProfile, PasswordAuthProfile, WindowsAuthProfile
+from .adapters import mssql as _mssql
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -29,13 +29,13 @@ class MSSQLEncryption(StrEnum):
     STRICT = "strict"
 
 
-MSSQL_DESCRIPTOR = BackendDescriptor(
+MSSQL_SPEC = BackendSpec(
     name="mssql",
     provider_type=CONST_DB_PROVIDER_TYPE.MSSQL,
     default_port=1433,
     connection_string_scheme="mssql://",
     ibis_dialect="mssql",
-    auth_modes=[PasswordAuth, WindowsAuth, AzureADAuth],
+    supported_auth=(PasswordAuthProfile, WindowsAuthProfile, AzureADAuthProfile),
     parameters=[
         ParameterSpec(
             name="HOST",
@@ -106,7 +106,7 @@ MSSQL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(MSSQL_DESCRIPTOR)
-class MSSQLAuthSettings(ConnectionProfile):
-    __descriptor__ = MSSQL_DESCRIPTOR
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+@register
+class MSSQLBackendProfile(BackendProfile):
+    __spec__ = MSSQL_SPEC
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.MSSQL: _mssql.host_fold}

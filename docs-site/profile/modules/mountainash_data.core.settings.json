@@ -1,60 +1,147 @@
 {
   "id": "mountainash_data.core.settings",
   "path": "src/mountainash_data/core/settings/__init__.py",
-  "summary": "Settings package entry point. Re-exports BackendSpec, ParameterSpec, ConnectionProfile, all auth models (from mountainash_settings.auth), the DATABASES_REGISTRY, the @register decorator, and all 20 per-backend settings classes. Stable import anchor for downstream consumers.",
+  "summary": "Package facade for database settings. Re-exports the BackendSpec/ParameterSpec primitives, BackendProfile and UrlParts, the DATABASES_REGISTRY with get_descriptor/get_settings_class/register, the twelve AuthProfile types from mountainash_auth_client, and the twenty per-backend *BackendProfile classes. Importing it imports every per-backend module, which registers each profile. A module __getattr__ maps the deprecated names BackendDescriptor and _Missing to BackendSpec and Missing with a DeprecationWarning.",
   "role": "public-api",
   "visibility": "public",
-  "stability": "stable",
-  "audiences": ["users", "maintainers", "extension-authors"],
+  "stability": "evolving",
+  "audiences": [
+    "users",
+    "maintainers",
+    "contributors",
+    "extension-authors",
+    "broader-hype"
+  ],
   "doc_priority": "essential",
   "confidence": "high",
   "public_api": [
-    "MISSING", "Missing", "BackendSpec", "ParameterSpec", "ConnectionProfile",
-    "DATABASES_REGISTRY", "REGISTRY", "get_descriptor", "get_settings_class", "register",
-    "AuthSpec", "NoAuth", "PasswordAuth", "TokenAuth", "JWTAuth", "OAuth2Auth",
-    "ServiceAccountAuth", "IAMAuth", "WindowsAuth", "AzureADAuth", "KerberosAuth", "CertificateAuth",
-    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
-    "PostgreSQLAuthSettings", "ClickHouseAuthSettings", "DatabricksAuthSettings",
-    "MySQLAuthSettings", "SingleStoreDBAuthSettings", "MSSQLAuthSettings",
-    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
-    "PySparkAuthSettings", "TrinoAuthSettings", "ExasolAuthSettings",
-    "ImpalaAuthSettings", "MaterializeAuthSettings", "RisingWaveAuthSettings",
-    "DruidAuthSettings", "PyIcebergRestAuthSettings"
+    "MISSING",
+    "Missing",
+    "BackendSpec",
+    "ParameterSpec",
+    "BackendProfile",
+    "UrlParts",
+    "DATABASES_REGISTRY",
+    "REGISTRY",
+    "get_descriptor",
+    "get_settings_class",
+    "register",
+    "AuthProfile",
+    "NoAuthProfile",
+    "PasswordAuthProfile",
+    "TokenAuthProfile",
+    "JWTAuthProfile",
+    "OAuth2AuthProfile",
+    "IAMAuthProfile",
+    "WindowsAuthProfile",
+    "AzureADAuthProfile",
+    "KerberosAuthProfile",
+    "CertificateAuthProfile",
+    "ServiceAccountAuthProfile",
+    "SQLiteBackendProfile",
+    "DuckDBBackendProfile",
+    "MotherDuckBackendProfile",
+    "PostgreSQLBackendProfile",
+    "ClickHouseBackendProfile",
+    "DatabricksBackendProfile",
+    "MySQLBackendProfile",
+    "SingleStoreDBBackendProfile",
+    "MSSQLBackendProfile",
+    "OracleBackendProfile",
+    "SnowflakeBackendProfile",
+    "BigQueryBackendProfile",
+    "RedshiftBackendProfile",
+    "PySparkBackendProfile",
+    "TrinoBackendProfile",
+    "ExasolBackendProfile",
+    "ImpalaBackendProfile",
+    "MaterializeBackendProfile",
+    "RisingWaveBackendProfile",
+    "DruidBackendProfile"
   ],
-  "key_classes": [],
+  "key_classes": [
+    "BackendSpec",
+    "BackendProfile",
+    "UrlParts",
+    "AuthProfile",
+    "NoAuthProfile",
+    "PasswordAuthProfile",
+    "SQLiteBackendProfile",
+    "PostgreSQLBackendProfile"
+  ],
   "key_functions": [
-    {"name": "get_descriptor", "signature": "(name: str) -> BackendSpec"},
-    {"name": "get_settings_class", "signature": "(name: str) -> type[ConnectionProfile]"},
-    {"name": "register", "signature": "decorator — registers a new backend in DATABASES_REGISTRY"}
+    "get_descriptor",
+    "get_settings_class",
+    "register",
+    "__getattr__ (deprecated-name shim)"
   ],
   "dependencies": [
     "mountainash_data.core.settings.descriptor",
     "mountainash_data.core.settings.profile",
     "mountainash_data.core.settings.registry",
-    "mountainash_settings.auth"
+    "mountainash_data.core.settings.backends"
   ],
   "dependents": [
-    "mountainash_data.backends.iceberg.catalogs.rest"
+    "mountainash_data.core.factories"
   ],
   "extension_points": [
-    "@register decorator for adding new backend settings classes"
+    "Add a backend by writing a per-backend module with a BackendSpec and a @register-decorated BackendProfile subclass, then importing it here so it registers at package import."
   ],
   "lifecycle_notes": [
-    "BackendDescriptor is deprecated; use BackendSpec",
-    "_Missing is deprecated; use Missing"
+    "Registration is an import side effect: any import of a core.settings submodule (e.g. core.factories importing core.settings.profile) executes this __init__ and registers all twenty backends.",
+    "Auth types are no longer defined locally; the former core.settings.auth module was removed and the twelve AuthProfile classes are re-exported from mountainash_auth_client.",
+    "BackendDescriptor and _Missing are deprecated aliases that emit DeprecationWarning."
   ],
   "documentation_hooks": [
-    "Primary import target for settings and auth models",
-    "Users configure backends by instantiating *AuthSettings classes with auth specs"
+    "Settings recipe: construct a *BackendProfile and pass an AuthProfile separately to IbisBackend.connect(auth_profile=...)",
+    "Table of the twenty registered backends with their supported auth types",
+    "Migration note: BackendDescriptor \u2192 BackendSpec, *AuthSettings \u2192 *BackendProfile, PasswordAuth \u2192 PasswordAuthProfile"
   ],
-  "examples": [],
-  "tests": [],
-  "risks": [],
-  "open_questions": [],
+  "examples": [
+    "examples/connections/example.py",
+    "examples/connections/README.md"
+  ],
+  "tests": [
+    "tests/test_unit/core/settings/test_registry.py",
+    "tests/test_unit/core/settings/test_settings_flip.py",
+    "tests/test_unit/core/settings/test_supported_auth_consistency.py",
+    "tests/test_unit/databases/settings/test_settings_parametrized.py",
+    "tests/test_unit/core/test_m4b_installed_workflow.py"
+  ],
+  "risks": [
+    "CLAUDE.md is stale against this surface: it names BackendDescriptor/ProfileDescriptor, ConnectionProfile with to_driver_kwargs()/to_connection_string(), AuthSpec subclasses (PasswordAuth, OAuth2Auth, IAMAuth) re-exported from mountainash_settings.auth, and SQLiteAuthSettings/PostgreSQLAuthSettings/NoAuth usage. The code exports BackendSpec, BackendProfile (no auth methods), *BackendProfile classes and *AuthProfile types from mountainash_auth_client.",
+    "Importing any settings submodule eagerly imports all twenty backend modules; a broken backend module breaks every settings import."
+  ],
+  "open_questions": [
+    "Should CLAUDE.md's Settings section and usage example be corrected to the BackendProfile/AuthProfile API before textbook regeneration?"
+  ],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/__init__.py", "detail": "__all__ with 40+ symbols"},
-    {"kind": "import", "path": "src/mountainash_data/core/settings/__init__.py", "detail": "Imports all per-backend settings files, triggering auto-registration"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/settings/__init__.py",
+      "detail": "__all__ lists primitives, auth union members, and twenty backend profile classes"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/core/settings/__init__.py",
+      "detail": "AuthProfile types imported from mountainash_auth_client"
+    },
+    {
+      "kind": "example",
+      "path": "examples/connections/example.py",
+      "detail": "imports NoAuthProfile and SQLiteBackendProfile from mountainash_data.core.settings"
+    },
+    {
+      "kind": "doc",
+      "path": "CLAUDE.md",
+      "detail": "Settings section still describes BackendDescriptor/ConnectionProfile/AuthSpec"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

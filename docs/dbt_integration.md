@@ -526,7 +526,7 @@
   | Snapshots          | mountainash-data       | mountainash-dataframes | Operations + Join for SCD           |
   | Seeds (Enhanced)   | mountainash-dataframes | -                      | Convert from structured Python data |
   | Materializations   | mountainash-data       | -                      | Connection, Operations              |
-  | External Tables    | mountainash-data       | mountainash-dataframes | PyIceberg, External file ops        |
+  | External Tables    | mountainash-data       | mountainash-dataframes | External file ops                   |
 
   ---
   🎯 Integration Architecture Pattern
@@ -598,7 +598,6 @@
 
   Phase 4: Advanced Features (Innovation)
   9. ✅ Custom materializations using mountainash-data connections
-  10. ✅ PyIceberg integration for data lakes
 
   ---
   This alignment creates a powerful synergy where:
@@ -1640,7 +1639,6 @@
   - ✅ PostgreSQL, MySQL, Oracle, MS SQL Server
   - ✅ Snowflake, BigQuery, Redshift
   - ✅ PySpark, Trino
-  - ✅ PyIceberg (data lakes)
 
   dbt Integration Points:
   - ✅ Incremental model upserts

@@ -1,6 +1,7 @@
-"""Backend registry — populated in Phase 4 once IbisBackend and
-IcebergBackend exist. This module is intentionally a placeholder for
-now so that imports from core.registry don't break across phases."""
+"""Backend registry — name -> factory lookup for Backend implementations.
+
+Backend-agnostic infrastructure: any backend can register itself here so
+callers can construct one by name without importing its module."""
 
 from __future__ import annotations
 

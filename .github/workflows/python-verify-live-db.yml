@@ -1,0 +1,234 @@
+name: Verify Live DB
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: "Backend to live-verify"
+        required: true
+        type: choice
+        options:
+          - postgres
+          - mysql
+          - oracle
+          - singlestoredb
+      fallback_branch:
+        description: "Fallback branch for sibling dependency checkout"
+        required: true
+        default: "develop"
+        type: choice
+        options:
+          - develop
+          - main
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    if: ${{ inputs.backend == 'postgres' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch==1.16.5
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:live-db run --target docker postgres
+
+  mysql:
+    if: ${{ inputs.backend == 'mysql' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch==1.16.5
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:live-db run --target docker mysql
+
+  oracle:
+    if: ${{ inputs.backend == 'oracle' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch==1.16.5
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:live-db run --target docker oracle
+
+  singlestoredb:
+    if: ${{ inputs.backend == 'singlestoredb' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Install system dependencies for live-db drivers
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmariadb-dev
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.ref_name }}
+          default-branch: ${{ inputs.fallback_branch }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install Hatch
+        run: pip install hatch==1.16.5
+
+      - name: Create virtual environment
+        run: hatch env create test_github_live
+
+      - name: Run live tests
+        run: hatch run test_github_live:live-db run --target docker singlestoredb

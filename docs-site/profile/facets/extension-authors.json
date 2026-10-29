@@ -1,71 +1,85 @@
 {
   "audience": "extension-authors",
-  "summary": "mountainash-data provides clear extension points for integrating new data stores. The runtime-checkable Backend protocol is the primary integration contract — implement its methods and your object is a valid backend. You can also extend the Ibis dialect registry, add Iceberg catalog types, and register typed settings classes, all through well-defined patterns with existing implementations as templates.",
-  "use_cases": [
-    {
-      "title": "Building a custom backend from scratch",
-      "story": "You have a proprietary data store that speaks neither SQL nor Iceberg. You implement the Backend protocol's methods (connect, close, list_tables, inspect_table, etc.) on your own class. Because the protocol is runtime-checkable and structural, your backend works with any mountainash-data consumer immediately — no inheritance required."
-    },
-    {
-      "title": "Adding an Ibis dialect for a new SQL database",
-      "story": "Your organization uses a niche SQL database that Ibis supports but mountainash-data doesn't yet register. You create a DialectSpec entry with a connection builder, add optional hook callables for any dialect-specific operations, and register a settings class. The existing dialects serve as complete, copy-and-adapt templates."
-    },
-    {
-      "title": "Integrating a new Iceberg catalog provider",
-      "story": "Your cloud provider offers an Iceberg-compatible catalog with a custom authentication flow. You subclass IcebergConnectionBase, implement the connection lifecycle, write an adapter function for the custom auth, and register everything. Your catalog type is then available to any IcebergBackend consumer."
-    },
-    {
-      "title": "Publishing backend settings as a separate package",
-      "story": "You want to distribute your custom backend settings without modifying mountainash-data. You define a BackendSpec and ConnectionProfile subclass in your own package with @register. When your package is imported, the settings self-register in DATABASES_REGISTRY and are available to any mountainash-data consumer."
-    }
-  ],
+  "summary": "Extension authors plug in at three points: implement the Backend protocol structurally for a new store, add or override a dialect through DialectSpec fields and hooks, or register a new settings backend with BackendSpec, @register and adapter rows.",
   "concepts": [
     {
-      "name": "The Backend protocol",
-      "description": "The Backend protocol is runtime-checkable, meaning any object that implements the required methods (connect, close, list_tables, inspect_table, etc.) is a valid backend. No subclassing is needed. This makes it straightforward to integrate data stores that don't fit the Ibis or Iceberg model.",
-      "module_ids": ["mountainash_data.core.protocol"]
+      "name": "Implementing the Backend protocol",
+      "module_ids": [
+        "mountainash_data.core.protocol",
+        "mountainash_data.core.inspection",
+        "mountainash_data.core.namespace",
+        "mountainash_data.core.errors"
+      ],
+      "recommended_docs": [
+        "extension guide: backend"
+      ],
+      "evidence": [
+        "tests/test_unit/core/test_protocol.py"
+      ]
     },
     {
-      "name": "Adding an Ibis dialect",
-      "description": "DialectSpec is a frozen dataclass with fields for connection builders and optional hook callables for dialect-specific operations. Add an entry to the DIALECTS dictionary and your dialect participates in IbisBackend's dispatch. The private _build_* builder functions in existing dialects serve as clear templates.",
+      "name": "Dialect hooks and capability fields",
       "module_ids": [
         "mountainash_data.backends.ibis.dialects",
-        "mountainash_data.backends.ibis.operations"
+        "mountainash_data.backends.ibis.operations",
+        "mountainash_data.backends.ibis.backend"
+      ],
+      "recommended_docs": [
+        "extension guide: dialect hooks"
+      ],
+      "evidence": [
+        "src/mountainash_data/backends/ibis/dialects/_registry.py"
       ]
     },
     {
-      "name": "Adding an Iceberg catalog type",
-      "description": "IcebergConnectionBase is an abstract base class defining the catalog connection lifecycle. Subclass it, implement the required methods, and register your class in the catalog registry. IcebergRestConnection is a fully implemented reference that demonstrates the expected patterns and delegation chain.",
+      "name": "Registering settings backends and auth adapters",
       "module_ids": [
-        "mountainash_data.backends.iceberg.connection",
-        "mountainash_data.backends.iceberg.catalogs"
-      ]
-    },
-    {
-      "name": "Registering backend settings",
-      "description": "Define a BackendSpec with ParameterSpec fields describing your backend's connection parameters, create a ConnectionProfile subclass with typed fields and the @register decorator, and the settings self-register in DATABASES_REGISTRY on import. The settings layer automatically provides to_driver_kwargs() and to_connection_string() for driver-native output.",
-      "module_ids": [
+        "mountainash_data.core.settings",
         "mountainash_data.core.settings.descriptor",
         "mountainash_data.core.settings.profile",
-        "mountainash_data.core.settings.registry"
+        "mountainash_data.core.settings.registry",
+        "mountainash_data.core.settings.adapters",
+        "mountainash_data.core.settings.backends",
+        "mountainash_data.core.factories"
+      ],
+      "recommended_docs": [
+        "extension guide: settings"
+      ],
+      "evidence": [
+        "src/mountainash_data/core/settings/registry.py"
       ]
     },
     {
-      "name": "Adapter functions for custom auth",
-      "description": "When your backend needs non-trivial credential or parameter transformation, declare an __adapter__ callable on the settings class. The adapter receives the settings instance and returns driver-native kwargs. Existing adapter files demonstrate patterns for OAuth token exchange, cloud-provider credentials, SSL bundling, and more.",
-      "module_ids": ["mountainash_data.core.settings.adapters"]
+      "name": "Backend name registry",
+      "module_ids": [
+        "mountainash_data.core.registry"
+      ],
+      "recommended_docs": [
+        "extension guide: registry"
+      ],
+      "evidence": [
+        "src/mountainash_data/core/registry.py"
+      ]
     }
   ],
   "featured_modules": [
     "mountainash_data.core.protocol",
     "mountainash_data.backends.ibis.dialects",
-    "mountainash_data.backends.iceberg.connection",
-    "mountainash_data.core.settings.descriptor",
-    "mountainash_data.core.settings.registry"
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core.settings.adapters"
   ],
   "hidden_or_internal_modules": [
-    "mountainash_data.core.constants",
-    "mountainash_data.core.settings.auth"
+    "mountainash_data.backends.ibis._render",
+    "mountainash_data.backends.ibis._transaction",
+    "mountainash_data.core._redact"
   ],
-  "open_questions": []
+  "documentation_plan": [
+    "Protocol conformance checklist with the _StubBackend test as template",
+    "Hook signatures and when generic defaults apply",
+    "Settings registration walkthrough",
+    "Compatibility boundary: what is private (_-prefixed modules)"
+  ],
+  "open_questions": [
+    "core.registry is unwired; document it as an extension point only once a consumer exists?"
+  ]
 }

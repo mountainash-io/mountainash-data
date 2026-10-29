@@ -1,6 +1,6 @@
 """Redshift backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/redshift.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/redshift.md``.
 Driver: redshift_connector OR psycopg (via Ibis postgres). Endpoint
 resolution via boto3 ``describe_clusters`` is a Phase-4 follow-up.
 """
@@ -14,10 +14,9 @@ from enum import StrEnum
 from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import redshift as _adapter
-from mountainash_settings.auth import IAMAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import IAMAuthProfile, PasswordAuthProfile
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -34,14 +33,14 @@ _REGION_RE = re.compile(r"^[a-z]{2,4}-[a-z-]+-\d{1,2}$")
 _ROLE_ARN_RE = re.compile(r"^arn:aws(?:-us-gov|-cn)?:iam::\d{12}:role/.+$")
 
 
-REDSHIFT_DESCRIPTOR = BackendDescriptor(
+REDSHIFT_SPEC = BackendSpec(
     name="redshift",
     provider_type=CONST_DB_PROVIDER_TYPE.REDSHIFT,
     default_port=5439,
     connection_string_scheme="redshift://",
     ibis_dialect="postgres",
     rides_on="postgres",
-    auth_modes=[PasswordAuth, IAMAuth],
+    supported_auth=(PasswordAuthProfile, IAMAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=5439,
@@ -67,10 +66,9 @@ REDSHIFT_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(REDSHIFT_DESCRIPTOR)
-class RedshiftAuthSettings(ConnectionProfile):
-    __descriptor__ = REDSHIFT_DESCRIPTOR
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+@register
+class RedshiftBackendProfile(BackendProfile):
+    __spec__ = REDSHIFT_SPEC
 
     @field_validator("REGION", check_fields=False)
     @classmethod

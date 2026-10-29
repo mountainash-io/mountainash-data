@@ -1,6 +1,6 @@
 """Trino backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/trino.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/trino.md``.
 Driver: https://github.com/trinodb/trino-python-client/blob/master/trino/dbapi.py
 Ibis: ``ibis.backends.trino.do_connect``
 """
@@ -11,20 +11,19 @@ import typing as t
 from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import trino as _adapter
-from mountainash_settings.auth import JWTAuth, KerberosAuth, NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import JWTAuthProfile, KerberosAuthProfile, NoAuthProfile, PasswordAuthProfile
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
 
-TRINO_DESCRIPTOR = BackendDescriptor(
+TRINO_SPEC = BackendSpec(
     name="trino",
     provider_type=CONST_DB_PROVIDER_TYPE.TRINO,
     default_port=8080,
     connection_string_scheme="trino://",
     ibis_dialect="trino",
-    auth_modes=[PasswordAuth, JWTAuth, KerberosAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, JWTAuthProfile, KerberosAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=8080,
@@ -75,7 +74,6 @@ TRINO_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(TRINO_DESCRIPTOR)
-class TrinoAuthSettings(ConnectionProfile):
-    __descriptor__ = TRINO_DESCRIPTOR
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+@register
+class TrinoBackendProfile(BackendProfile):
+    __spec__ = TRINO_SPEC

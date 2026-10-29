@@ -1,0 +1,66 @@
+{
+  "id": "mountainash_data.backends.ibis._protected",
+  "path": "src/mountainash_data/backends/ibis/_protected.py",
+  "summary": "Prevents Ibis from completing a package transaction scope. Inside a registered scope on an ownership dialect, protected_call() temporarily swaps the Ibis backend's driver handle for a _NonOwningDriver view whose commit/rollback/transaction are no-ops (SQLite and PostgreSQL only; DuckDB needs no swap). Any exception escaping a protected call poisons the scope, and calls into a poisoned scope are rejected. real_driver_handle() unwraps the view.",
+  "role": "orchestration",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [
+    "_NonOwningDriver"
+  ],
+  "key_functions": [
+    "protected_call",
+    "real_driver_handle"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis._transaction"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend"
+  ],
+  "extension_points": [
+    "_COMPLETING_IBIS_BACKENDS lists Ibis backends that complete transactions internally"
+  ],
+  "lifecycle_notes": [
+    "Swap is restored in finally; nested protected calls do not double-wrap"
+  ],
+  "documentation_hooks": [
+    "Why Ibis's internal commits would otherwise end a caller's unit of work"
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_transaction_scope.py",
+    "tests/test_live_backends/test_transaction_live.py"
+  ],
+  "risks": [
+    "No unit test imports this module directly; coverage is indirect through transaction scope tests",
+    "Depends on Ibis internals (driver attribute name and internal commit paths) that may change across Ibis releases"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_protected.py",
+      "detail": "_NonOwningDriver, protected_call"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "IbisConnection._protected wraps every package operation"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

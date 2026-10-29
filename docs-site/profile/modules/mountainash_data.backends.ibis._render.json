@@ -1,0 +1,79 @@
+{
+  "id": "mountainash_data.backends.ibis._render",
+  "path": "src/mountainash_data/backends/ibis/_render.py",
+  "summary": "Shared sqlglot rendering primitives for the generic write paths: dialect lookup, identifier quoting, literal escaping, qualified names, type rendering, source resolution and projection to the target schema, and two predicate compilers. compile_condition renders an (incoming, existing) -> bool upsert predicate by compiling a sentinel-table join and remapping aliases; compile_index_predicate renders an unqualified partial-index WHERE. Aggregations, window functions and subqueries are rejected.",
+  "role": "backend",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [
+    "ConditionAliases"
+  ],
+  "key_functions": [
+    "dialect_of",
+    "dialect_name",
+    "quote_identifier",
+    "_sql_literal",
+    "qualified_name",
+    "render_type",
+    "validate_predicate",
+    "validate_condition",
+    "resolve_source",
+    "compile_projected_source",
+    "compile_condition",
+    "compile_index_predicate"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis._sqlite_compat"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.operations",
+    "mountainash_data.backends.ibis._index",
+    "mountainash_data.backends.ibis._index_inspection"
+  ],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "compile_projected_source stages memtables on the live connection and installs the SQLite NaT adapter first"
+  ],
+  "documentation_hooks": [
+    "Predicate grammar accepted by update_condition and index where="
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_render_primitives.py",
+    "tests/test_unit/backends/ibis/test_upsert_condition_render.py",
+    "tests/test_unit/backends/ibis/test_index_render.py",
+    "tests/test_unit/backends/ibis/test_index_capability.py"
+  ],
+  "risks": [
+    "render_type is used only by tests, not by source modules",
+    "Relies on Ibis private _register_in_memory_tables"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_render.py",
+      "detail": "compile_condition / compile_index_predicate"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/operations.py",
+      "detail": "operations imports rendering primitives"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

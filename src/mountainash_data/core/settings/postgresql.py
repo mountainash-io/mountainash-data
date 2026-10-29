@@ -1,6 +1,6 @@
 """PostgreSQL backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/postgresql.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/postgresql.md``.
 Driver: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS
 Ibis: ``ibis.backends.postgres.do_connect(host, user, password, port=5432,
        database, schema, autocommit=True, **kwargs)`` (psycopg).
@@ -15,9 +15,9 @@ from pathlib import Path
 from pydantic import SecretStr
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth, PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -63,13 +63,13 @@ def _join_require_auth(v: list[PostgresRequireAuthMethods]) -> str:
     return ",".join(m.value for m in v)
 
 
-POSTGRESQL_DESCRIPTOR = BackendDescriptor(
+POSTGRESQL_SPEC = BackendSpec(
     name="postgresql",
     provider_type=CONST_DB_PROVIDER_TYPE.POSTGRESQL,
     default_port=5432,
     connection_string_scheme="postgresql://",
     ibis_dialect="postgres",
-    auth_modes=[PasswordAuth, NoAuth],
+    supported_auth=(PasswordAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="HOSTADDR", type=t.Optional[str], tier="advanced",
@@ -156,6 +156,6 @@ POSTGRESQL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(POSTGRESQL_DESCRIPTOR)
-class PostgreSQLAuthSettings(ConnectionProfile):
-    __descriptor__ = POSTGRESQL_DESCRIPTOR
+@register
+class PostgreSQLBackendProfile(BackendProfile):
+    __spec__ = POSTGRESQL_SPEC

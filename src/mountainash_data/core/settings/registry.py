@@ -12,9 +12,8 @@ from collections.abc import Mapping
 
 from mountainash_settings.profiles import Registry
 
-if t.TYPE_CHECKING:
-    from mountainash_settings.profiles import ProfileDescriptor
-    from .profile import ConnectionProfile
+from .descriptor import BackendSpec
+from .profile import BackendProfile
 
 __all__ = [
     "DATABASES_REGISTRY",
@@ -26,44 +25,48 @@ __all__ = [
     "register",
 ]
 
-DATABASES_REGISTRY = Registry("databases")
+DATABASES_REGISTRY = Registry(
+    "databases",
+    spec_type=BackendSpec,
+    profile_type=BackendProfile,
+)
 
 register = DATABASES_REGISTRY.decorator()
 
 
-def get_descriptor(name: str) -> "ProfileDescriptor":
-    return DATABASES_REGISTRY.get_descriptor(name)
+def get_descriptor(name: str) -> BackendSpec:
+    return DATABASES_REGISTRY.get_spec(name)
 
 
-def get_settings_class(name: str) -> type["ConnectionProfile"]:
-    return DATABASES_REGISTRY.get_settings_class(name)  # type: ignore[return-value]
+def get_settings_class(name: str) -> type["BackendProfile"]:
+    return DATABASES_REGISTRY.get_settings_class(name)
 
 
 # Backwards-compatibility alias — preserves ``from ... import REGISTRY`` imports.
 # Read-only from the outside; mutations should go through ``@register``.
 class _RegistryDictView(Mapping):
-    """Dict-like view that delegates to DATABASES_REGISTRY.descriptors."""
+    """Read-only mapping backed by DATABASES_REGISTRY and its specs snapshots."""
 
     def __contains__(self, name: object) -> bool:
         return isinstance(name, str) and name in DATABASES_REGISTRY
 
-    def __getitem__(self, name: str) -> "ProfileDescriptor":
-        return DATABASES_REGISTRY.get_descriptor(name)
+    def __getitem__(self, name: str) -> BackendSpec:
+        return DATABASES_REGISTRY.get_spec(name)
 
     def __iter__(self) -> t.Iterator[str]:
-        return iter(DATABASES_REGISTRY.descriptors)
+        return iter(DATABASES_REGISTRY.specs)
 
     def __len__(self) -> int:
         return len(DATABASES_REGISTRY)
 
-    def items(self) -> t.ItemsView[str, "ProfileDescriptor"]:
-        return DATABASES_REGISTRY.descriptors.items()
+    def items(self) -> t.ItemsView[str, BackendSpec]:
+        return DATABASES_REGISTRY.specs.items()
 
     def keys(self) -> t.KeysView[str]:
-        return DATABASES_REGISTRY.descriptors.keys()
+        return DATABASES_REGISTRY.specs.keys()
 
-    def values(self) -> t.ValuesView["ProfileDescriptor"]:
-        return DATABASES_REGISTRY.descriptors.values()
+    def values(self) -> t.ValuesView[BackendSpec]:
+        return DATABASES_REGISTRY.specs.values()
 
 
 REGISTRY = _RegistryDictView()

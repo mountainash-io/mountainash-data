@@ -1,71 +1,63 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
 dependencies = [
-    "ibis-framework[polars,sqlite,duckdb]>=11.0.0",
-    # "hatchling",
-
-
-    # "ibis-framework[mssql,snowflake,bigquery,pyspark,trino] == 10.4.0",
-    # "psycopg2-binary==2.9.9",
-    # "pyodbc==5.2.0",
-    # "snowflake-connector-python==3.12.3",
-
-    "numpy>=1.23.2,<3",
-    "rich>=12.4.4,<14",
-    "universal_pathlib==0.2.2",
-    "openlineage-python==1.17.1",
-    "xarray==2024.11.0",
-    "pyarrow>=17.0.0",
-    "pyarrow-hotfix>=0.4,<1",
-    "sqlalchemy",
-
-    "duckdb>=0.10.3, <1.3.0",
-    "pandas>=2.2.0",
-    "polars>=1.16.0",
-    "psutil>=7.0.0",
-    "lazy_loader"
-
+    "mountainash-settings>=0.1.0,<0.2",
+    "mountainash-auth-client>=0.1.0,<0.2",
+    "ibis-framework>=12.0.0",
+    # Floor: exp.Alter/AlterRename used here are absent in Ibis's 23.4 floor.
+    # Cap: 30.18+ drops identifiers from Ibis 12 DROP statements; 30.22.0 still fails.
+    "sqlglot>=29.0.1,<30.18.0",
 ]
 keywords = []
 name = "mountainash_data"
 dynamic = ["version"]
 description = 'Mountain Ash - Data'
 readme = "README.md"
-requires-python = ">=3.10"
-# license = "Proprietary"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [
     { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
 ]
 
+
 [project.optional-dependencies]
+# One extra per dialect, named as the dialect key, delegating to Ibis's extra.
+sqlite = ["ibis-framework[sqlite]>=12.0.0"]
+duckdb = ["ibis-framework[duckdb]>=12.0.0"]
+motherduck = ["ibis-framework[duckdb]>=12.0.0"]
+polars = ["ibis-framework[polars]>=12.0.0"]
+# psycopg[binary] bundles libpq; Ibis's plain psycopg needs a system libpq.
+postgres = ["ibis-framework[postgres]>=12.0.0", "psycopg[binary]>=3.2.0"]
+redshift = ["ibis-framework[postgres]>=12.0.0", "psycopg[binary]>=3.2.0"]
+materialize = ["ibis-framework[materialize]>=12.0.0", "psycopg[binary]>=3.2.0"]
+mysql = ["ibis-framework[mysql]>=12.0.0"]
+mssql = ["ibis-framework[mssql]>=12.0.0"]
+oracle = ["ibis-framework[oracle]>=12.0.0"]
+snowflake = ["ibis-framework[snowflake]>=12.0.0"]
+bigquery = ["ibis-framework[bigquery]>=12.0.0"]
+trino = ["ibis-framework[trino]>=12.0.0"]
+clickhouse = ["ibis-framework[clickhouse]>=12.0.0"]
+databricks = ["ibis-framework[databricks]>=12.0.0"]
+singlestoredb = ["ibis-framework[singlestoredb]>=12.0.0"]
+exasol = ["ibis-framework[exasol]>=12.0.0"]
+impala = ["ibis-framework[impala]>=12.0.0"]
+risingwave = ["ibis-framework[risingwave]>=12.0.0"]
+druid = ["ibis-framework[druid]>=12.0.0"]
+pyspark = ["ibis-framework[pyspark]>=12.0.0"]
 all = [
-    "psycopg2-binary==2.9.9",
-    "pyodbc==5.2.0",
-    "snowflake-connector-python==3.12.3",
-    "setuptools",
-    "ibis-framework[mssql,snowflake,postgres,pyspark,trino]>=11.0.0",
-    # "ibis-framework[mssql,snowflake,postgres,bigquery,pyspark,trino]>=10.8.0",
+    "mountainash_data[sqlite,duckdb,motherduck,polars,postgres,redshift,materialize,mysql,mssql,oracle,snowflake,bigquery,trino,clickhouse,databricks,singlestoredb,exasol,impala,risingwave,druid,pyspark]",
 ]
-mssql = ["pyodbc==5.2.0", "ibis-framework[mssql]>=11.0.0"]
-snowflake = [
-    "snowflake-connector-python==3.12.3",
-    "ibis-framework[snowflake]>=11.0.0",
-]
-postgres = ["psycopg2-binary==2.9.9", "ibis-framework[postgres]>=11.0.0"]
-bigquery = ["ibis-framework[bigquery]>=11.0.0"]
-pyspark = ["setuptools", "ibis-framework[pyspark]>=11.0.0"]
-trino = ["ibis-framework[trino]>=11.0.0"]
 
 
 [project.urls]
@@ -92,7 +84,11 @@ tests = ["tests", "*/mountainash-data/tests"]
 [tool.coverage.report]
 exclude_lines = ["no cov", "if __name__ == .__main__:", "if TYPE_CHECKING:"]
 
-
-[tool.pyright]
-venvPath = "/home/nathanielramm/git/mountainash-ide/mountainash-dev-local/.venv"
-venv = ".venv"
+[tool.mypy]
+# Internal mountainash siblings ship no py.typed marker, and optional drivers
+# (trino/google/mountainash_dataframes) are not installed in the type
+# env — treat all unresolved/untyped third-party imports as Any rather than noise.
+ignore_missing_imports = true
+disable_error_code = ["import-untyped"]
+# Types pydantic models / pydantic-settings constructors (incl. `_env_file`-style init args).
+plugins = ["pydantic.mypy"]

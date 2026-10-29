@@ -1,44 +1,74 @@
 {
   "id": "mountainash_data.core.settings.profile",
   "path": "src/mountainash_data/core/settings/profile.py",
-  "summary": "ConnectionProfile extends Profile (from mountainash_settings). Adds to_driver_kwargs() and to_connection_string() methods. Delegates to per-backend adapters when __adapter__ is set.",
+  "summary": "Defines BackendProfile, the database subclass of mountainash_settings.profiles.Profile that emits configuration only and carries no auth methods, and UrlParts, a frozen credential-free URL skeleton (scheme, database, host, port, path, query). BackendProfile.to_url_parts() builds UrlParts from the class __spec__ connection_string_scheme and the HOST/PORT/DATABASE fields, raising NotImplementedError for backends with no URL form.",
   "role": "api-builder",
   "visibility": "semi-public",
-  "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors"
+  ],
   "doc_priority": "useful",
   "confidence": "high",
-  "public_api": ["ConnectionProfile"],
-  "key_classes": [
-    {
-      "name": "ConnectionProfile",
-      "kind": "class",
-      "extends": "Profile",
-      "methods": ["to_driver_kwargs", "to_connection_string"]
-    }
+  "public_api": [
+    "BackendProfile",
+    "UrlParts"
   ],
-  "key_functions": [],
-  "dependencies": ["mountainash_settings.profiles"],
+  "key_classes": [
+    "BackendProfile",
+    "UrlParts"
+  ],
+  "key_functions": [
+    "BackendProfile.to_url_parts"
+  ],
+  "dependencies": [],
   "dependents": [
+    "mountainash_data.core.settings",
     "mountainash_data.core.settings.registry",
-    "mountainash_data.core.settings.backends"
+    "mountainash_data.core.settings.backends",
+    "mountainash_data.core.factories"
   ],
   "extension_points": [
-    "Override __adapter__ class var to provide custom driver kwargs pipeline"
+    "Per-backend profiles may override to_url_parts() (MotherDuckBackendProfile does).",
+    "Per-backend profiles may declare __adapters__ to reshape driver kwargs; the hook is resolved by mountainash_settings Profile."
   ],
-  "lifecycle_notes": [],
+  "lifecycle_notes": [
+    "Auth is applied by core.factories (ConnectionFactory), never by BackendProfile; UrlParts is the L1 skeleton that the factory renders with credentials."
+  ],
   "documentation_hooks": [
-    "Users call to_driver_kwargs() to get a dict ready for ibis.connect()",
-    "Users call to_connection_string() to get a URL like postgresql://user:pass@host/db"
+    "Config/auth separation: BackendProfile is credential-free; credentials arrive as an AuthProfile at connect time"
   ],
-  "examples": [],
-  "tests": ["tests/test_unit/core/settings/test_profile.py"],
-  "risks": [],
+  "examples": [
+    "examples/connections/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/core/settings/test_profile.py",
+    "tests/test_unit/core/factories/test_url_consistency.py"
+  ],
+  "risks": [
+    "CLAUDE.md describes a ConnectionProfile with to_driver_kwargs()/to_connection_string(); neither the class name nor those methods exist here."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/profile.py", "detail": "ConnectionProfile with to_driver_kwargs and to_connection_string"},
-    {"kind": "test", "path": "tests/test_unit/core/settings/test_profile.py", "detail": "Profile construction and method tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/settings/profile.py",
+      "detail": "class BackendProfile(Profile) with to_url_parts"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/core/factories/connection_factory.py",
+      "detail": "imports UrlParts"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

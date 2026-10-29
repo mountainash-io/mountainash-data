@@ -1,8 +1,6 @@
-# Concept List for Mountainash Data
+# Concept List
 
-Total concepts: 100
-
-## Foundation Concepts (1-10)
+Internal concept inventory for the mountainash-data book (source `2d0782b`). Canonical data: `learning-graph.csv` / `learning-graph.json`.
 
 1. SQL Databases
 2. Database Schemas
@@ -14,9 +12,6 @@ Total concepts: 100
 8. Decorators
 9. Registry Pattern
 10. Ibis Library
-
-## Backend Protocol (11-18)
-
 11. Backend Protocol Definition
 12. Connect Method
 13. Close Method
@@ -25,9 +20,6 @@ Total concepts: 100
 16. List Namespaces Method
 17. Inspect Namespace Method
 18. Inspect Catalog Method
-
-## Ibis Backend (19-34)
-
 19. IbisBackend Class
 20. Ibis Connection
 21. Fluent Query API
@@ -44,26 +36,6 @@ Total concepts: 100
 32. Namespace Inspection Ibis
 33. Catalog Inspection Ibis
 34. Context Manager Ibis
-
-## Iceberg Backend (35-48)
-
-35. IcebergBackend Class
-36. Apache Iceberg Overview
-37. Iceberg Connection Base
-38. REST Catalog Type
-39. Hive Catalog Type
-40. Glue Catalog Type
-41. SQL Catalog Type
-42. Catalog Type Registry
-43. Iceberg Operations
-44. List Tables Iceberg
-45. Table Inspection Iceberg
-46. Namespace Inspection Iceberg
-47. Catalog Inspection Iceberg
-48. PyIceberg Library
-
-## Inspection Model (49-56)
-
 49. CatalogInfo Dataclass
 50. NamespaceInfo Dataclass
 51. TableInfo Dataclass
@@ -72,9 +44,6 @@ Total concepts: 100
 54. Backend Agnostic Metadata
 55. Driver Metadata Conversion
 56. Unified Inspection API
-
-## Dialect System (57-66)
-
 57. DialectSpec Overview
 58. Dialect Registry
 59. Dialect Name Key
@@ -85,46 +54,90 @@ Total concepts: 100
 64. DuckDB Dialect
 65. PostgreSQL Dialect
 66. Snowflake Dialect
-
-## Settings & Configuration (67-84)
-
-67. ConnectionProfile Base
-68. To Driver Kwargs Method
+67. BackendProfile Class
+68. build_driver_kwargs Function
 69. BackendSpec Class
 70. ParameterSpec Class
 71. Parameter Tiers
-72. DATABASES REGISTRY
+72. DATABASES_REGISTRY
 73. Register Decorator
 74. Auto Registration
-75. SQLiteAuthSettings
-76. DuckDBAuthSettings
-77. PostgreSQLAuthSettings
-78. BigQueryAuthSettings
-79. SnowflakeAuthSettings
-80. RedshiftAuthSettings
-81. ClickhouseAuthSettings
-82. DatabricksAuthSettings
-83. MSSQLAuthSettings
-84. TrinoAuthSettings
-
-## Adapters & Auth (85-94)
-
+75. SQLiteBackendProfile
+76. DuckDBBackendProfile
+77. PostgreSQLBackendProfile
+78. BigQueryBackendProfile
+79. SnowflakeBackendProfile
+80. RedshiftBackendProfile
+81. ClickHouseBackendProfile
+82. DatabricksBackendProfile
+83. MSSQLBackendProfile
+84. TrinoBackendProfile
 85. Adapter Pipeline
 86. Credential Transformation
 87. OAuth Adapter
 88. JWT Adapter
 89. Cloud Native Auth
 90. SSL Bundle Adapter
-91. NoAuth Settings
-92. PasswordAuth Settings
-93. TokenAuth Settings
-94. IAMAuth Settings
-
-## Advanced Features (95-100)
-
-95. Cross Backend Queries
+91. NoAuthProfile
+92. PasswordAuthProfile
+93. TokenAuthProfile
+94. IAMAuthProfile
 96. Backend Capability Matrix
 97. DDL Index Support
-98. Memory Intensive Upsert
-99. REST Catalog Cursors
 100. Unimplemented Operations
+101. Installation Extras
+102. Missing Driver ImportError
+103. Connection URL Construction
+104. SettingsParameters Construction
+105. AuthProfile Types
+106. Connect-Time Auth Composition
+107. ConnectionFactory
+108. build_connection_string Function
+109. Supported Auth Validation
+110. Namespace Value Object
+111. NamespaceLike Alias
+112. Catalog-Qualified Namespace Limits
+113. IndexInfo Dataclass
+114. List Indexes
+115. Create Index
+116. Drop Index
+117. Index Exists
+118. IndexCapability Descriptor
+119. Add Columns
+120. Rename Table
+121. UpsertStyle Descriptor
+122. Generic-Default Operations
+123. Hook Dispatch Order
+124. sqlglot Rendering
+125. Transaction Scope
+126. Transaction Ownership
+127. Flat Nested Scopes
+128. in_transaction Predicate
+129. native_transaction_open Probe
+130. TransactionSupport Descriptor
+131. Protected Package Calls
+132. Raw Driver Connection
+133. Transaction Errors
+134. Connection Adoption
+135. from_ibis_connection
+136. from_raw_connection
+137. Session Option Preservation
+138. Connection Ownership Flag
+139. run_expr Execution
+140. to_sql Compilation
+141. table Expression Access
+142. Bridge To mountainash Relations
+143. Credential Redaction
+144. BackendConnectionError
+145. DropScope Descriptor
+146. Dialect Compatibility Shims
+147. Rides-On Backends
+148. Auth Adapter Registry
+149. Protocol Conformance Testing
+150. Adding A Dialect
+151. Adding A Settings Backend
+152. Implementing A Backend
+153. Test Tiers
+154. Live Database Harness
+155. Backend Name Registry
+156. Memtable Rollback Caveat

@@ -1,75 +1,116 @@
 {
   "profile_version": "1.0",
-  "generated_at": "2026-06-02T00:00:00Z",
+  "generated_at": "2026-10-29T08:42:24Z",
   "source": {
     "root": "src/mountainash_data",
     "git": {
-      "previous_hash": null,
-      "current_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-      "branch": "develop",
-      "working_tree_dirty": true
+      "previous_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+      "current_hash": "2d0782b507141baecd5a120ac0547c7e8af11662",
+      "branch": "docs/textbook-rebuild",
+      "working_tree_dirty": false,
+      "dirty_files": [],
+      "dirty_note": "Working tree clean at scan time."
     }
   },
   "scope": {
-    "include": ["src/mountainash_data/**/*.py"],
-    "exclude": ["**/__pycache__/**"],
-    "package_roots": ["src/mountainash_data"]
+    "include": [
+      "src/mountainash_data/**/*.py"
+    ],
+    "exclude": [
+      "**/__pycache__/**"
+    ],
+    "package_roots": [
+      "src/mountainash_data"
+    ]
   },
   "audiences": [
     "users",
     "maintainers",
     "contributors",
     "backend-architecture",
-    "extension-authors"
+    "extension-authors",
+    "broader-hype"
   ],
   "counts": {
-    "modules_discovered": 22,
-    "modules_profiled": 22,
-    "profiles_ignored": 0,
-    "facets_written": 5
+    "modules_discovered": 36,
+    "modules_profiled": 30,
+    "profiles_ignored": 6,
+    "facets_written": 6
   },
   "changed_scopes": {
     "files": [],
     "modules": [],
-    "facets": []
+    "facets": [],
+    "refresh": "incremental",
+    "refresh_reason": "No files under src/mountainash_data changed between 17d9ed3 and 2d0782b (CLAUDE.md and profile outputs only); module records unchanged and remain accurate for the target.",
+    "removed_modules": []
   },
   "ignored_paths": [
     {
       "path": "src/mountainash_data/__version__.py",
-      "reason": "Version-only file, no API surface"
+      "reason": "Single __version__ string; re-exported and documented via mountainash_data.init."
+    },
+    {
+      "path": "src/mountainash_data/core/__init__.py",
+      "reason": "Package marker re-exporting Namespace/NamespaceLike; covered by mountainash_data.core.namespace."
+    },
+    {
+      "path": "src/mountainash_data/core/factories/__init__.py",
+      "reason": "Docstring-only package marker; covered by mountainash_data.core.factories."
+    },
+    {
+      "path": "src/mountainash_data/backends/__init__.py",
+      "reason": "Empty package marker."
+    },
+    {
+      "path": "src/mountainash_data/backends/ibis/__init__.py",
+      "reason": "Empty package marker; IbisBackend is exported from the package root."
+    },
+    {
+      "path": "src/mountainash_data/backends/ibis/dialects/__init__.py",
+      "reason": "Empty package marker; covered by mountainash_data.backends.ibis.dialects."
     }
   ],
   "profile_files": {
     "modules": {
-      "mountainash_data.init": "modules/mountainash_data.init.json",
-      "mountainash_data.core.protocol": "modules/mountainash_data.core.protocol.json",
-      "mountainash_data.core.inspection": "modules/mountainash_data.core.inspection.json",
-      "mountainash_data.core.connection": "modules/mountainash_data.core.connection.json",
-      "mountainash_data.core.constants": "modules/mountainash_data.core.constants.json",
-      "mountainash_data.core.registry": "modules/mountainash_data.core.registry.json",
-      "mountainash_data.core.settings": "modules/mountainash_data.core.settings.json",
-      "mountainash_data.core.settings.descriptor": "modules/mountainash_data.core.settings.descriptor.json",
-      "mountainash_data.core.settings.profile": "modules/mountainash_data.core.settings.profile.json",
-      "mountainash_data.core.settings.registry": "modules/mountainash_data.core.settings.registry.json",
-      "mountainash_data.core.settings.auth": "modules/mountainash_data.core.settings.auth.json",
-      "mountainash_data.core.settings.adapters": "modules/mountainash_data.core.settings.adapters.json",
-      "mountainash_data.core.settings.backends": "modules/mountainash_data.core.settings.backends.json",
+      "mountainash_data.backends.ibis._adoption": "modules/mountainash_data.backends.ibis._adoption.json",
+      "mountainash_data.backends.ibis._exasol_compat": "modules/mountainash_data.backends.ibis._exasol_compat.json",
+      "mountainash_data.backends.ibis._index": "modules/mountainash_data.backends.ibis._index.json",
+      "mountainash_data.backends.ibis._index_inspection": "modules/mountainash_data.backends.ibis._index_inspection.json",
+      "mountainash_data.backends.ibis._oracle_compat": "modules/mountainash_data.backends.ibis._oracle_compat.json",
+      "mountainash_data.backends.ibis._protected": "modules/mountainash_data.backends.ibis._protected.json",
+      "mountainash_data.backends.ibis._raw": "modules/mountainash_data.backends.ibis._raw.json",
+      "mountainash_data.backends.ibis._render": "modules/mountainash_data.backends.ibis._render.json",
+      "mountainash_data.backends.ibis._sqlite_compat": "modules/mountainash_data.backends.ibis._sqlite_compat.json",
+      "mountainash_data.backends.ibis._transaction": "modules/mountainash_data.backends.ibis._transaction.json",
       "mountainash_data.backends.ibis.backend": "modules/mountainash_data.backends.ibis.backend.json",
       "mountainash_data.backends.ibis.dialects": "modules/mountainash_data.backends.ibis.dialects.json",
       "mountainash_data.backends.ibis.inspect": "modules/mountainash_data.backends.ibis.inspect.json",
       "mountainash_data.backends.ibis.operations": "modules/mountainash_data.backends.ibis.operations.json",
-      "mountainash_data.backends.iceberg.backend": "modules/mountainash_data.backends.iceberg.backend.json",
-      "mountainash_data.backends.iceberg.connection": "modules/mountainash_data.backends.iceberg.connection.json",
-      "mountainash_data.backends.iceberg.operations": "modules/mountainash_data.backends.iceberg.operations.json",
-      "mountainash_data.backends.iceberg.inspect": "modules/mountainash_data.backends.iceberg.inspect.json",
-      "mountainash_data.backends.iceberg.catalogs": "modules/mountainash_data.backends.iceberg.catalogs.json"
+      "mountainash_data.core._redact": "modules/mountainash_data.core._redact.json",
+      "mountainash_data.core._warn": "modules/mountainash_data.core._warn.json",
+      "mountainash_data.core.constants": "modules/mountainash_data.core.constants.json",
+      "mountainash_data.core.errors": "modules/mountainash_data.core.errors.json",
+      "mountainash_data.core.factories": "modules/mountainash_data.core.factories.json",
+      "mountainash_data.core.inspection": "modules/mountainash_data.core.inspection.json",
+      "mountainash_data.core.namespace": "modules/mountainash_data.core.namespace.json",
+      "mountainash_data.core.protocol": "modules/mountainash_data.core.protocol.json",
+      "mountainash_data.core.registry": "modules/mountainash_data.core.registry.json",
+      "mountainash_data.core.settings.adapters": "modules/mountainash_data.core.settings.adapters.json",
+      "mountainash_data.core.settings.backends": "modules/mountainash_data.core.settings.backends.json",
+      "mountainash_data.core.settings.descriptor": "modules/mountainash_data.core.settings.descriptor.json",
+      "mountainash_data.core.settings": "modules/mountainash_data.core.settings.json",
+      "mountainash_data.core.settings.profile": "modules/mountainash_data.core.settings.profile.json",
+      "mountainash_data.core.settings.registry": "modules/mountainash_data.core.settings.registry.json",
+      "mountainash_data.init": "modules/mountainash_data.init.json"
     },
     "facets": {
-      "users": "facets/users.json",
-      "maintainers": "facets/maintainers.json",
-      "contributors": "facets/contributors.json",
       "backend-architecture": "facets/backend-architecture.json",
-      "extension-authors": "facets/extension-authors.json"
+      "broader-hype": "facets/broader-hype.json",
+      "contributors": "facets/contributors.json",
+      "extension-authors": "facets/extension-authors.json",
+      "maintainers": "facets/maintainers.json",
+      "users": "facets/users.json"
     }
   }
 }

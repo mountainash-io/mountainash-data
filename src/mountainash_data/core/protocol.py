@@ -1,4 +1,4 @@
-"""Backend and Connection protocols.
+"""Backend protocol.
 
 This is the structural contract every backend implementation must
 satisfy. Implementations are plain classes — there is no inheritance.
@@ -13,56 +13,84 @@ from mountainash_data.core.inspection import (
     NamespaceInfo,
     TableInfo,
 )
-
-
-@t.runtime_checkable
-class Connection(t.Protocol):
-    """A live, owned connection to a backend.
-
-    Connections are obtained by calling Backend.connect(). They expose
-    physical introspection and lifecycle methods. Logical query
-    construction is the job of mountainash-expressions, reached via
-    to_relation() on backends that support it.
-    """
-
-    def list_namespaces(self) -> list[str]:
-        """Return the names of all namespaces (schemas) visible to this connection."""
-        ...
-
-    def list_tables(self, namespace: str | None = None) -> list[str]:
-        """Return the names of tables in the given namespace."""
-        ...
-
-    def inspect_table(
-        self, name: str, namespace: str | None = None
-    ) -> TableInfo:
-        """Return shared-model metadata for one table."""
-        ...
-
-    def inspect_namespace(self, name: str) -> NamespaceInfo:
-        """Return shared-model metadata for one namespace."""
-        ...
-
-    def inspect_catalog(self) -> CatalogInfo:
-        """Return shared-model metadata for the connection's catalog."""
-        ...
-
-    def close(self) -> None:
-        """Release the connection. Idempotent."""
-        ...
+from mountainash_data.core.namespace import NamespaceLike
 
 
 @t.runtime_checkable
 class Backend(t.Protocol):
-    """A factory for Connections to a particular backend service.
+    """The single handle for interacting with a backend service.
 
-    Backends are constructed with config and are stateless from the
-    consumer's perspective. State lives on the Connection returned by
-    connect().
+    Backends are constructed with config, connected via connect(),
+    used for inspection and operations, then closed.
     """
 
     name: str
 
-    def connect(self) -> Connection:
-        """Open a connection. Caller is responsible for closing it."""
+    def connect(self) -> t.Self: ...
+    def close(self) -> t.Self: ...
+    def __enter__(self) -> t.Self: ...
+    def __exit__(self, *args: t.Any) -> None: ...
+
+    def list_tables(self, namespace: NamespaceLike = None) -> list[str]: ...
+    def list_namespaces(self, catalog: str | None = None) -> list[str]: ...
+    def list_catalogs(self) -> list[str]: ...
+
+    def inspect_table(
+        self, name: str, namespace: NamespaceLike = None
+    ) -> TableInfo: ...
+
+    def inspect_namespace(self, name: str) -> NamespaceInfo: ...
+    def inspect_catalog(self, catalog: str | None = None) -> CatalogInfo: ...
+
+    def raw_driver_connection(self) -> t.Any:
+        """Return the underlying native driver handle (escape hatch).
+
+        For SQL backends this is a live PEP-249 / native connection
+        (duckdb.DuckDBPyConnection, psycopg.Connection, sqlite3.Connection,
+        ...) suitable for transactions, DDL, information_schema, and
+        driver-specific idioms. The handle *kind* varies by backend (DBAPI
+        connection / client object / session object) and is NOT guaranteed to
+        be DBAPI-conformant — callers must not assume DBAPI semantics without
+        first checking the concrete backend. Raises (never returns ``None`` as
+        a sentinel) if not connected or the backend exposes no driver handle.
+        """
+        ...
+
+    @property
+    def supports_transactions(self) -> bool:
+        """True if transaction() opens a real unit of work (transaction_support is not NONE)."""
+        ...
+
+    def transaction(self, *, required: bool = True) -> t.ContextManager[None]:
+        """Reentrant, flat unit of work on this backend's native connection.
+
+        If the connection is idle, the outermost scope begins a transaction
+        and owns it: COMMIT on success, ROLLBACK on error or after a caught
+        failure (TransactionPoisonedError). If the caller already has a native
+        transaction open (SQLite, DuckDB, PostgreSQL), the scope joins it and
+        never commits or rolls it back. Nested scopes join; no savepoints.
+        required=True raises TransactionUnsupportedError on a backend with no
+        transaction concept; required=False warns once and runs as a no-op.
+        TransactionIntegrityError reports a native state that cannot be
+        trusted (unknown on entry, or not eligible to commit on exit)."""
+        ...
+
+    def native_transaction_open(self) -> bool | None:
+        """Whether the native driver currently has a transaction open.
+
+        Read-only. False for backends with no transaction concept and for an
+        unconnected or closed backend; None when the state cannot be observed.
+        Probe errors propagate."""
+        ...
+
+    def in_transaction(self) -> bool:
+        """True while a transaction() scope is registered on this backend's
+        connection (any nesting depth), including a scope that joined the
+        caller's own transaction. It does not mean this package will commit;
+        see native_transaction_open() for the driver's state.
+
+        Total: returns False, never raises, for backends with no transaction
+        concept, a backend that was never connected or has been closed, and a
+        connection whose native handle has gone away. A point-in-time snapshot,
+        not a lock. A poisoned unit is still reported active until it unwinds."""
         ...

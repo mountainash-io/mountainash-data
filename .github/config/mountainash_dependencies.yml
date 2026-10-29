@@ -2,8 +2,8 @@
 
 # Private Package Dependencies
 dependencies:
-  # - name: mountainash-constants
-  #   org-name: mountainash-io
+  - name: mountainash-auth-client
+    org-name: mountainash-io
   # - name: mountainash-data
   #   org-name: mountainash-io
   - name: mountainash-settings
@@ -12,9 +12,9 @@ dependencies:
   #   org-name: mountainash-io
   # - name: mountainash-utils-factoryclasses
   #   org-name: mountainash-io
-  - name: mountainash
+  - name: mountainash-transport
     org-name: mountainash-io
-  - name: mountainash-utils-files
+  - name: mountainash
     org-name: mountainash-io
   # - name: mountainash-utils-hamilton
   #   org-name: mountainash-io
@@ -22,5 +22,3 @@ dependencies:
   #   org-name: mountainash-io
   # - name: mountainash-utils-rules
   #   org-name: mountainash-io
-  - name: mountainash-utils-ssh
-    org-name: mountainash-io

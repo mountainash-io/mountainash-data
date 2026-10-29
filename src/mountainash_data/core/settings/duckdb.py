@@ -1,6 +1,6 @@
 """DuckDB backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/duckdb.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/duckdb.md``.
 Driver: https://duckdb.org/docs/current/configuration/overview.html
 Ibis: ``ibis.backends.duckdb.do_connect(database=':memory:', read_only=False,
        extensions=None, **config)``
@@ -14,12 +14,12 @@ import typing as t
 from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import NoAuthProfile
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
-__all__ = ["DuckDBAuthSettings", "DUCKDB_DESCRIPTOR"]
+__all__ = ["DuckDBBackendProfile", "DUCKDB_SPEC"]
 
 _MEMORY_LIMIT_RE = re.compile(r"^(?:\d+(?:\.\d+)?\s*[KMG]i?B|\d+%)$", re.IGNORECASE)
 
@@ -34,12 +34,12 @@ def _validate_memory_limit(value: t.Any) -> t.Any:
     return value
 
 
-DUCKDB_DESCRIPTOR = BackendDescriptor(
+DUCKDB_SPEC = BackendSpec(
     name="duckdb",
     provider_type=CONST_DB_PROVIDER_TYPE.DUCKDB,
     connection_string_scheme="duckdb://",
     ibis_dialect="duckdb",
-    auth_modes=[NoAuth],
+    supported_auth=(NoAuthProfile,),
     parameters=[
         ParameterSpec(
             name="DATABASE",
@@ -84,9 +84,9 @@ DUCKDB_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(DUCKDB_DESCRIPTOR)
-class DuckDBAuthSettings(ConnectionProfile):
-    __descriptor__ = DUCKDB_DESCRIPTOR
+@register
+class DuckDBBackendProfile(BackendProfile):
+    __spec__ = DUCKDB_SPEC
 
     @field_validator("MEMORY_LIMIT", check_fields=False)
     @classmethod

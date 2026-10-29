@@ -1,6 +1,6 @@
 """BigQuery backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/bigquery.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/bigquery.md``.
 Ibis: ``ibis.backends.bigquery.do_connect``
 """
 
@@ -12,13 +12,12 @@ import typing as t
 from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import bigquery as _adapter
-from mountainash_settings.auth import NoAuth, ServiceAccountAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import NoAuthProfile, ServiceAccountAuthProfile
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
-__all__ = ["BigQueryAuthSettings", "BIGQUERY_DESCRIPTOR"]
+__all__ = ["BigQueryBackendProfile", "BIGQUERY_SPEC"]
 
 _PROJECT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
 
@@ -32,12 +31,12 @@ def _validate_project_id(value: str) -> str:
     return value
 
 
-BIGQUERY_DESCRIPTOR = BackendDescriptor(
+BIGQUERY_SPEC = BackendSpec(
     name="bigquery",
     provider_type=CONST_DB_PROVIDER_TYPE.BIGQUERY,
     connection_string_scheme="bigquery://",
     ibis_dialect="bigquery",
-    auth_modes=[ServiceAccountAuth, NoAuth],
+    supported_auth=(ServiceAccountAuthProfile, NoAuthProfile),
     parameters=[
         ParameterSpec(name="PROJECT_ID", type=str, tier="core",
                       driver_key="project_id"),
@@ -60,10 +59,9 @@ BIGQUERY_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(BIGQUERY_DESCRIPTOR)
-class BigQueryAuthSettings(ConnectionProfile):
-    __descriptor__ = BIGQUERY_DESCRIPTOR
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+@register
+class BigQueryBackendProfile(BackendProfile):
+    __spec__ = BIGQUERY_SPEC
 
     @field_validator("PROJECT_ID", check_fields=False)
     @classmethod

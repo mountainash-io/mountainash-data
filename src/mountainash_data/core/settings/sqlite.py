@@ -1,6 +1,6 @@
 """SQLite backend settings.
 
-Spec: audit report ``docs/superpowers/specs/2026-04-15-settings-audit/sqlite.md``.
+Spec: audit report ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/sqlite.md``.
 Driver: https://docs.python.org/3/library/sqlite3.html#sqlite3.connect
 Ibis: ``ibis.backends.sqlite.do_connect(database, type_map=None)``
 """
@@ -10,20 +10,20 @@ from __future__ import annotations
 import typing as t
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_settings.auth import NoAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import NoAuthProfile
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
-__all__ = ["SQLiteAuthSettings", "SQLITE_DESCRIPTOR"]
+__all__ = ["SQLiteBackendProfile", "SQLITE_SPEC"]
 
 
-SQLITE_DESCRIPTOR = BackendDescriptor(
+SQLITE_SPEC = BackendSpec(
     name="sqlite",
     provider_type=CONST_DB_PROVIDER_TYPE.SQLITE,
     connection_string_scheme="sqlite://",
     ibis_dialect="sqlite",
-    auth_modes=[NoAuth],
+    supported_auth=(NoAuthProfile,),
     parameters=[
         ParameterSpec(
             name="DATABASE",
@@ -45,6 +45,6 @@ SQLITE_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(SQLITE_DESCRIPTOR)
-class SQLiteAuthSettings(ConnectionProfile):
-    __descriptor__ = SQLITE_DESCRIPTOR
+@register
+class SQLiteBackendProfile(BackendProfile):
+    __spec__ = SQLITE_SPEC

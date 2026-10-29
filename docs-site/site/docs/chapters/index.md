@@ -1,15 +1,32 @@
 # Chapters
 
-This textbook covers the mountainash-data unified database and lakehouse connectivity library across 9 chapters, progressing from foundational concepts through the Backend protocol, inspection model, Ibis and Iceberg backends, dialect system, settings, adapters, and advanced integration patterns.
 
-## Chapter List
+## Overview
 
-1. [Foundation Concepts](./01-foundation-concepts/index.md) — SQL databases, Python protocols, Pydantic models, and the registry pattern
-2. [Backend Protocol](./02-backend-protocol/index.md) — The runtime-checkable Backend protocol defining the universal contract
-3. [Inspection Model](./03-inspection-model/index.md) — Frozen metadata dataclasses for backend-agnostic catalog introspection
-4. [Ibis Backend](./04-ibis-backend/index.md) — IbisBackend class with fluent queries, DDL, DML, and inspection
-5. [Dialect System](./05-dialect-system/index.md) — DialectSpec registry for backend-specific connection and operation routing
-6. [Settings and Configuration](./06-settings-and-configuration/index.md) — ConnectionProfile, BackendSpec, ParameterSpec, DATABASES registry, and provider auth settings
-7. [Adapters and Auth](./07-adapters-and-auth/index.md) — Credential transformation pipeline for OAuth, JWT, cloud-native auth, and SSL
-8. [Iceberg Backend](./08-iceberg-backend/index.md) — IcebergBackend for Apache Iceberg catalogs with REST, Hive, Glue, and SQL catalog types
-9. [Advanced Integration](./09-advanced-integration/index.md) — Cross-backend queries, capability matrix, Iceberg operations, and known limitations
+1. [mountainash-data in the mountainash ecosystem](./01-mountainash-data-in-the-ecosystem/index.md): Where the package sits between mountainash-settings, mountainash expressions and your databases, and what it adds beyond Ibis.
+
+## Using the package
+
+2. [Installing and connecting](./02-installing-and-connecting/index.md): Install the right extra and open a connection from a dialect name or a URL.
+3. [Connection profiles and authentication](./03-connection-profiles-and-authentication/index.md): Configure connections with typed profiles and supply credentials separately at connect time.
+4. [Configuring connections with mountainash-settings](./04-configuring-connections-with-mountainash-settings/index.md): Load connection settings from config files, the environment and secret stores, and carry them to where work runs.
+5. [Inspecting databases](./05-inspecting-databases/index.md): List and inspect catalogs, namespaces, tables, columns and indexes.
+6. [Reading tables and running queries](./06-reading-tables-and-running-queries/index.md): Read tables as Ibis expressions, run queries and SQL, and compile to SQL.
+7. [Running mountainash expressions against databases](./07-running-mountainash-expressions-against-databases/index.md): Run the same mountainash expressions on database tables and local data, and join them in one plan.
+8. [Creating and changing tables](./08-creating-and-changing-tables/index.md): Create, insert into, truncate, upsert, add columns to and rename tables.
+9. [Indexes](./09-indexes/index.md): Create, list, check and drop indexes.
+10. [Transactions](./10-transactions/index.md): Group operations in transactions and work safely with caller-owned transactions.
+11. [Adopting existing connections](./11-adopting-existing-connections/index.md): Wrap a connection you already have while keeping control of its lifecycle.
+12. [An end-to-end pipeline](./12-an-end-to-end-pipeline/index.md): Configure, connect, combine database and local data with mountainash expressions, and write results back in a transaction.
+13. [Supported databases and limits](./13-supported-databases-and-limits/index.md): What each database supports and how unsupported operations fail.
+
+## Architecture and internals
+
+14. [How one backend serves 20 dialects](./14-how-one-backend-serves-20-dialects/index.md): How per-database behaviour is declared as data and dispatched.
+15. [From settings to driver arguments](./15-from-settings-to-driver-arguments/index.md): How profiles and credentials become driver arguments and connection URLs.
+16. [Transaction and adoption internals](./16-transaction-and-adoption-internals/index.md): How transaction scopes and connection adoption are implemented.
+
+## Extending
+
+17. [Extending mountainash-data](./17-extending-mountainash-data/index.md): Add a database dialect, a settings backend or a new kind of backend.
+18. [Contributing and testing](./18-contributing-and-testing/index.md): Repository layout, test tiers and the live-database harness.

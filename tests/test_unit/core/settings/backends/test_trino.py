@@ -1,56 +1,35 @@
-"""Trino backend settings tests.
-
-Tests migration with auth-wrapper adapter.
-"""
+"""Trino backend settings tests."""
 
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr
 
-from mountainash_data.core.settings.auth import (
-    JWTAuth,
-    KerberosAuth,
-    NoAuth,
-    PasswordAuth,
-)
-from mountainash_data.core.settings.trino import TrinoAuthSettings
+from mountainash_data.core.settings.trino import TrinoBackendProfile
 
 
 @pytest.mark.unit
-class TestTrinoAuthSettings:
-    def _minimal(self, auth, **extra):
-        return TrinoAuthSettings(HOST="h", CATALOG="c", auth=auth, **extra)
+class TestTrinoBackendProfile:
+    def _minimal(self, **extra):
+        return TrinoBackendProfile(HOST="h", CATALOG="c", **extra)
 
     def test_port_default_8080(self):
-        s = self._minimal(auth=NoAuth())
+        s = self._minimal()
         assert s.PORT == 8080
 
-    def test_password_wraps_basic_auth(self):
-        """Audit regression: previously emitted bare `password=` kwarg.
+    def test_emit_core_fields(self):
+        s = self._minimal()
+        kwargs = s.emit()
+        assert kwargs["host"] == "h"
+        assert kwargs["catalog"] == "c"
+        assert kwargs["port"] == 8080
 
-        The driver has NO `password` kwarg — it must be wrapped.
-        """
-        pytest.importorskip("trino")
-        from trino.auth import BasicAuthentication
+    def test_http_scheme_default_https(self):
+        s = self._minimal()
+        assert s.HTTP_SCHEME == "https"
 
-        s = self._minimal(
-            auth=PasswordAuth(username="alice", password=SecretStr("pw"))
-        )
-        kwargs = s.to_driver_kwargs()
-        assert kwargs["user"] == "alice"
-        assert isinstance(kwargs["auth"], BasicAuthentication)
-        assert "password" not in kwargs  # must NOT be bare
-
-    def test_jwt_auth_wraps(self):
-        pytest.importorskip("trino")
-        from trino.auth import JWTAuthentication
-
-        s = self._minimal(auth=JWTAuth(token=SecretStr("tok")))
-        kwargs = s.to_driver_kwargs()
-        assert isinstance(kwargs["auth"], JWTAuthentication)
-
-    def test_noauth_no_auth_key(self):
-        s = self._minimal(auth=NoAuth())
-        kwargs = s.to_driver_kwargs()
+    def test_noauth_emits_no_auth_key(self):
+        """Profile emit() must not include an 'auth' key — auth is orthogonal."""
+        s = self._minimal()
+        kwargs = s.emit()
         assert "auth" not in kwargs
+        assert "password" not in kwargs

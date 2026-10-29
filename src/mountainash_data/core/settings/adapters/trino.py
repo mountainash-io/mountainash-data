@@ -1,44 +1,19 @@
-"""Adapter translating AuthSpec → trino.auth.Authentication wrappers."""
-
+"""Trino auth adapter functions."""
 from __future__ import annotations
-
 import typing as t
 
-from mountainash_settings.auth import (
-    JWTAuth,
-    KerberosAuth,
-    NoAuth,
-    PasswordAuth,
-)
 
-if t.TYPE_CHECKING:
-    from mountainash_data.core.settings.trino import TrinoAuthSettings
+def password(auth: t.Any, base: dict[str, t.Any]) -> dict[str, t.Any]:
+    from trino.auth import BasicAuthentication
+    return {**base, "user": auth.USERNAME,
+            "auth": BasicAuthentication(auth.USERNAME, auth.PASSWORD.get_secret_value())}
 
 
-def build_driver_kwargs(profile: "TrinoAuthSettings") -> dict[str, t.Any]:
-    kwargs = profile._default_kwargs()
-    auth = profile.auth
-    if isinstance(auth, PasswordAuth):
-        from trino.auth import BasicAuthentication
+def jwt(auth: t.Any, base: dict[str, t.Any]) -> dict[str, t.Any]:
+    from trino.auth import JWTAuthentication
+    return {**base, "auth": JWTAuthentication(auth.TOKEN.get_secret_value())}
 
-        kwargs["user"] = auth.username
-        kwargs["auth"] = BasicAuthentication(
-            auth.username, auth.password.get_secret_value()
-        )
-    elif isinstance(auth, JWTAuth):
-        from trino.auth import JWTAuthentication
 
-        kwargs["auth"] = JWTAuthentication(auth.token.get_secret_value())
-    elif isinstance(auth, KerberosAuth):
-        from trino.auth import KerberosAuthentication
-
-        kwargs["auth"] = KerberosAuthentication(
-            config=None,
-            service_name=auth.service_name,
-            principal=auth.principal,
-        )
-    elif isinstance(auth, NoAuth):
-        pass
-    else:
-        raise ValueError(f"trino adapter does not support auth: {type(auth).__name__}")
-    return kwargs
+def kerberos(auth: t.Any, base: dict[str, t.Any]) -> dict[str, t.Any]:
+    from trino.auth import KerberosAuthentication
+    return {**base, "auth": KerberosAuthentication(config=None, service_name=auth.SERVICE_NAME, principal=auth.PRINCIPAL)}

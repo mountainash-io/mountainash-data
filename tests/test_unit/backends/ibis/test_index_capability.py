@@ -1,0 +1,124 @@
+"""IndexCapability descriptor + DropScope enum (registry capability model)."""
+
+import dataclasses
+
+import pytest
+
+from mountainash_data import IndexInfo
+from mountainash_data.backends.ibis._render import _sql_literal
+from mountainash_data.backends.ibis.dialects._registry import (
+    DialectSpec,
+    DropScope,
+    IndexCapability,
+)
+
+
+def test_dropscope_members():
+    assert DropScope.SCHEMA_GLOBAL.value == "schema_global"
+    assert DropScope.TABLE_SCOPED.value == "table_scoped"
+
+
+def test_index_capability_is_frozen():
+    caps = IndexCapability(
+        drop_scope=DropScope.SCHEMA_GLOBAL,
+        partial=True,
+        native_if_not_exists=True,
+        native_if_exists=True,
+        index_types=frozenset({"btree"}),
+    )
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        caps.partial = False  # type: ignore[misc]
+
+
+def test_dialectspec_index_caps_defaults_none():
+    spec = DialectSpec(
+        ibis_backend_name="x",
+        connection_mode="kwargs",
+        connection_string_scheme="x://",
+    )
+    assert spec.index_caps is None
+
+
+from mountainash_data.backends.ibis.dialects._registry import DIALECTS
+
+# Verified against official vendor docs 2026-06-30 (spec §4). frozenset of USING types.
+# (drop_scope, partial, native_if_not_exists, native_if_exists, index_types)
+_EXPECTED = {
+    "sqlite":        (DropScope.SCHEMA_GLOBAL, True,  True,  True,  frozenset()),
+    "duckdb":        (DropScope.SCHEMA_GLOBAL, False, True,  True,  frozenset()),
+    "motherduck":    (DropScope.SCHEMA_GLOBAL, False, True,  True,  frozenset()),
+    "postgres":      (DropScope.SCHEMA_GLOBAL, True,  True,  True,
+                      frozenset({"btree", "hash", "gist", "gin", "brin", "spgist"})),
+    "mysql":         (DropScope.TABLE_SCOPED,  False, False, False, frozenset({"btree"})),
+    "singlestoredb": (DropScope.TABLE_SCOPED,  False, False, False, frozenset({"btree", "hash"})),
+    "mssql":         (DropScope.TABLE_SCOPED,  True,  False, True,  frozenset()),
+    "oracle":        (DropScope.SCHEMA_GLOBAL, False, False, False, frozenset()),
+}
+
+_UNSUPPORTED = {
+    "snowflake", "bigquery", "redshift", "trino", "clickhouse", "databricks",
+    "exasol", "impala", "materialize", "risingwave", "druid", "pyspark",
+}
+
+
+@pytest.mark.parametrize("name", list(_EXPECTED))
+def test_index_caps_matrix(name):
+    caps = DIALECTS[name].index_caps
+    assert caps is not None, f"{name} must have index_caps"
+    drop_scope, partial, ine, ie, types = _EXPECTED[name]
+    assert caps.drop_scope is drop_scope
+    assert caps.partial is partial
+    assert caps.native_if_not_exists is ine
+    assert caps.native_if_exists is ie
+    assert caps.index_types == types
+
+
+@pytest.mark.parametrize("name", sorted(_UNSUPPORTED))
+def test_unsupported_dialects_have_no_index_caps(name):
+    assert DIALECTS[name].index_caps is None
+
+
+@pytest.mark.parametrize("name", list(_EXPECTED))
+def test_invariant_caps_implies_exists_sql(name):
+    spec = DIALECTS[name]
+    assert spec.index_caps is not None
+    assert spec.get_index_exists_sql is not None
+
+
+def test_no_dialect_violates_invariant():
+    """Every supported index dialect has exactly one list-index route."""
+    for name, spec in DIALECTS.items():
+        if spec.index_caps is not None:
+            assert (spec.get_list_indexes_sql is None) != (
+                spec.list_indexes_hook is None
+            ), f"{name}: index_caps must have one list-index route"
+
+
+def test_list_index_route_matrix():
+    generic = {"sqlite", "postgres", "mysql", "mssql", "oracle", "singlestoredb"}
+    hook = {"duckdb", "motherduck"}
+    for name in generic:
+        assert DIALECTS[name].get_list_indexes_sql is not None
+        assert DIALECTS[name].list_indexes_hook is None
+    for name in hook:
+        assert DIALECTS[name].get_list_indexes_sql is None
+        assert DIALECTS[name].list_indexes_hook is not None
+
+
+
+def test_indexinfo_is_frozen_and_preserves_ordered_columns():
+    info = IndexInfo(
+        name="ix",
+        unique=False,
+        is_primary=True,
+        columns=("id",),
+        included_columns=("partition_id",),
+        metadata={"source_kind": "index"},
+    )
+    assert info.columns == ("id",)
+    assert info.included_columns == ("partition_id",)
+    assert info.unique is False and info.is_primary is True
+
+
+def test_sql_literal_is_neutral_shared_helper():
+    assert _sql_literal("x'y") == "'x''y'"

@@ -1,108 +1,130 @@
-"""
-Connection Factory for settings-driven database connection creation.
+"""ConnectionFactory: compose BackendProfile config + AuthProfile creds."""
+from __future__ import annotations
+import typing as t
+from urllib.parse import quote
 
-Uses SettingsParameters to auto-detect backend and create appropriate connection.
-"""
-
-import logging
-from typing import Type
-
-from mountainash_settings import SettingsParameters
-
-from ..connection import BaseDBConnection
-from ..constants import CONST_DB_PROVIDER_TYPE
-from .base_strategy_factory import BaseStrategyFactory
-from .settings_type_factory_mixin import SettingsTypeFactoryMixin
-
-logger = logging.getLogger(__name__)
+from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile, TokenAuthProfile, AuthProfile
+from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
+from mountainash_data.core.settings.profile import UrlParts
+from mountainash_data.core.settings.adapters.registry import auth_adapter
 
 
-class ConnectionFactory(
-    SettingsTypeFactoryMixin,
-    BaseStrategyFactory[SettingsParameters, Type[BaseDBConnection]],
-):
-    """
-    Settings-driven factory for database connections.
+def _iter_specs() -> t.Iterator[t.Any]:
+    """Registered BackendSpecs, regardless of whether the registry stores
+    specs or profile classes."""
+    from mountainash_data.core.settings.registry import REGISTRY
+    for v in REGISTRY.values():
+        yield v.__spec__ if hasattr(v, "__spec__") else v
 
-    Detects backend type from SettingsParameters.settings_class and returns
-    appropriate connection class with lazy loading.
 
-    Example:
-        settings_params = SettingsParameters.create(
-            settings_class=PostgreSQLAuthSettings,
-            config_files=["postgres.env"]
-        )
+def provider_for_dialect(dialect: str) -> t.Any:
+    matches = [
+        spec.provider_type
+        for spec in _iter_specs()
+        if getattr(spec, "ibis_dialect", None) == dialect
+    ]
+    if not matches:
+        raise KeyError(f"no provider_type for ibis dialect {dialect!r}")
+    if len(matches) == 1:
+        return matches[0]
+    # Multiple providers share one ibis dialect (postgres: postgresql+redshift;
+    # duckdb: duckdb+motherduck). Resolve deterministically to the canonical base.
+    for pt in matches:                       # exact provider name == dialect wins
+        if pt.name.lower() == dialect:
+            return pt
+    corresponding = sorted(                  # else the name-corresponding match, deterministically
+        (pt for pt in matches
+         if pt.name.lower().startswith(dialect) or dialect.startswith(pt.name.lower())),
+        key=lambda p: p.name,
+    )
+    if corresponding:
+        return corresponding[0]
+    return sorted(matches, key=lambda p: p.name)[0]
 
-        factory = ConnectionFactory()
-        connection_class = factory.get_strategy(settings_params)
-        connection = connection_class(db_auth_settings_parameters=settings_params)
-        backend = connection.connect()
-    """
 
-    # Each subclass needs its own dictionaries to avoid sharing with other factories
-    _strategy_cache = {}
-    _strategy_modules = {}
-    _strategy_classes = {}
+def provider_for_scheme(scheme: str) -> t.Any:
+    norm = scheme.rstrip(":/")
+    for spec in _iter_specs():
+        s = getattr(spec, "connection_string_scheme", None)
+        if s and s.rstrip(":/") == norm:
+            return spec.provider_type
+    raise KeyError(f"no provider_type for URL scheme {scheme!r}")
 
-    @classmethod
-    def _configure_strategy_mapping(cls) -> None:
-        """
-        Configure strategy mappings using ONLY strings (no imports).
 
-        Maps backend types to connection module paths and class names.
-        """
-        # Ibis-based connections — point directly at backends.ibis.connection
-        # (bypasses the databases.connections.ibis shim chain from Phase 4)
-        cls._strategy_modules = {
-            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.SQLITE: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.DUCKDB: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.BIGQUERY: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.MSSQL: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.MYSQL: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.TRINO: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.PYSPARK: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.REDSHIFT: "mountainash_data.backends.ibis.connection",
-            CONST_DB_PROVIDER_TYPE.ORACLE: "mountainash_data.backends.ibis.connection",
-            # Iceberg connections — point directly at backends.iceberg
-            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "mountainash_data.backends.iceberg.catalogs.rest",
-        }
+def _normalize_and_validate_auth(profile: t.Any, auth_profile: AuthProfile | None) -> AuthProfile:
+    auth = NoAuthProfile() if auth_profile is None else auth_profile
+    if not isinstance(auth, tuple(profile.__spec__.supported_auth)):
+        raise ValueError(f"{profile.profile_name} does not support auth: {type(auth).__name__}")
+    return auth
 
-        cls._strategy_classes = {
-            CONST_DB_PROVIDER_TYPE.POSTGRESQL: "Postgres_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.SQLITE: "SQLite_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.DUCKDB: "DuckDB_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.MOTHERDUCK: "MotherDuck_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.SNOWFLAKE: "Snowflake_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.BIGQUERY: "BigQuery_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.MSSQL: "MSSQL_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.MYSQL: "MySQL_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.TRINO: "Trino_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.PYSPARK: "PySpark_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.REDSHIFT: "Redshift_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.ORACLE: "Oracle_IbisConnection",
-            CONST_DB_PROVIDER_TYPE.PYICEBERG_REST: "IcebergRestConnection",
-        }
 
-    @classmethod
-    def get_connection(
-        cls, settings_parameters: SettingsParameters
-    ) -> BaseDBConnection:
-        """
-        Convenience method to get connection instance directly.
+def apply_auth_adapter(provider_type: t.Any, base: dict, auth_profile: AuthProfile | None) -> dict:
+    """Apply auth WITHOUT a profile (ibis dialect / URL paths). No supported_auth gate."""
+    if auth_profile is None or isinstance(auth_profile, NoAuthProfile):
+        return base
+    fn = auth_adapter(provider_type, type(auth_profile))
+    if fn is None:
+        raise ValueError(f"{provider_type}: no auth adapter for {type(auth_profile).__name__}")
+    base = dict(base)
+    return fn(auth_profile, base)
 
-        Args:
-            settings_parameters: SettingsParameters with settings_class
 
-        Returns:
-            Connection instance ready to use
+def build_driver_kwargs(profile: t.Any, auth_profile: AuthProfile | None = None) -> dict:
+    auth = _normalize_and_validate_auth(profile, auth_profile)
+    target = profile.__spec__.provider_type
+    base = profile.emit(target)
+    if isinstance(auth, NoAuthProfile):
+        return base
+    fn = auth_adapter(target, type(auth))
+    if fn is None:
+        raise ValueError(f"{profile.profile_name}: no auth adapter for {type(auth).__name__}")
+    return fn(auth, base)
 
-        Example:
-            factory = ConnectionFactory()
-            connection = factory.get_connection(settings_params)
-            backend = connection.connect()
-        """
-        connection_class = cls.get_strategy(settings_parameters)
-        return connection_class(db_auth_settings_parameters=settings_parameters)
+
+# --- URL appliers (L3 for the URL target) ---------------------------------
+
+def _url_password(parts: UrlParts, auth: t.Any) -> str:
+    if parts.host is None:
+        raise NotImplementedError("password URL form requires a host authority")
+    user, pw = quote(str(auth.USERNAME), safe=""), quote(auth.PASSWORD.get_secret_value(), safe="")
+    url = f"{parts.scheme}://{user}:{pw}@{parts.host}"
+    if parts.port is not None:
+        url += f":{parts.port}"
+    if parts.database is not None:
+        url += f"/{parts.database}"
+    return url
+
+
+def _url_noauth(parts: UrlParts) -> str:
+    if parts.host is None:
+        # authority-less form (e.g. an in-process/file backend): scheme:database
+        return f"{parts.scheme}:{parts.database}" if parts.database is not None else f"{parts.scheme}:"
+    url = f"{parts.scheme}://{parts.host}"
+    if parts.port is not None:
+        url += f":{parts.port}"
+    if parts.database is not None:
+        url += f"/{parts.database}"
+    return url
+
+
+def _url_motherduck_token(parts: UrlParts, auth: t.Any) -> str:
+    token = quote(auth.TOKEN.get_secret_value(), safe="")
+    return f"{parts.scheme}:{parts.database}?motherduck_token={token}"
+
+
+_URL_APPLIERS: dict[t.Any, dict[type, t.Callable]] = {
+    P.MOTHERDUCK: {TokenAuthProfile: _url_motherduck_token},
+}
+
+
+def build_connection_string(profile: t.Any, auth_profile: AuthProfile | None = None) -> str:
+    auth = _normalize_and_validate_auth(profile, auth_profile)
+    parts = profile.to_url_parts()                       # L1
+    if isinstance(auth, NoAuthProfile):
+        return _url_noauth(parts)
+    if isinstance(auth, PasswordAuthProfile):
+        return _url_password(parts, auth)                # L3
+    applier = _URL_APPLIERS.get(profile.__spec__.provider_type, {}).get(type(auth))
+    if applier is None:
+        raise NotImplementedError(f"{profile.profile_name}: no URL form for {type(auth).__name__}")
+    return applier(parts, auth)

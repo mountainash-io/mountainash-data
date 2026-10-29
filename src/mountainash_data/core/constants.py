@@ -21,8 +21,15 @@ class CONST_DB_PROVIDER_TYPE(Enum):
     DUCKDB =auto()
     MOTHERDUCK = auto()
     TRINO = auto()
-    PYICEBERG_REST = auto()
     ORACLE = auto()
+    CLICKHOUSE = auto()
+    DATABRICKS = auto()
+    SINGLESTOREDB = auto()
+    EXASOL = auto()
+    IMPALA = auto()
+    MATERIALIZE = auto()
+    RISINGWAVE = auto()
+    DRUID = auto()
     PYSPARK = auto()
 
 
@@ -68,17 +75,6 @@ class CONST_DB_POOL_MODE(StrEnum):
     NONE = "none"
 
 
-class CONST_DB_ABSTRACTION_LAYER(Enum):
-    """
-    Enumeration for different database abstraction layers.
-
-    Attributes:
-        - IBIS (str): Ibis database abstraction layer.
-        - FUGUE (str): Fugue database abstraction layer.
-    """
-    IBIS =     auto()
-    PYICEBERG = auto()
-
 class CONST_DB_BACKEND(StrEnum):
     """
     Enumeration for different database backends.
@@ -108,8 +104,14 @@ class CONST_DB_BACKEND(StrEnum):
     REDSHIFT =     "REDSHIFT"
     MSSQL =        "MSSQL"
     MYSQL =        "MYSQL"
+    CLICKHOUSE =   "CLICKHOUSE"
     MOTHERDUCK =   "MOTHERDUCK"
-    PYICEBERG =    "PYICEBERG"
+    SINGLESTOREDB = "SINGLESTOREDB"
+    EXASOL =       "EXASOL"
+    IMPALA =       "IMPALA"
+    MATERIALIZE =  "MATERIALIZE"
+    RISINGWAVE =   "RISINGWAVE"
+    DRUID =        "DRUID"
     # POLARS =       "POLARS"
     # PANDAS =       "PANDAS"
 
@@ -142,7 +144,14 @@ class CONST_DB_BACKEND_IBIS_PREFIX(StrEnum):
     ORACLE =       "oracle:"
     REDSHIFT =     "redshift:"
     MSSQL =        "mssql:"
+    CLICKHOUSE =   "clickhouse:"
     MYSQL =        "mysql:"
+    SINGLESTOREDB = "singlestoredb:"
+    EXASOL =       "exasol:"
+    IMPALA =       "impala:"
+    MATERIALIZE =  "materialize:"
+    RISINGWAVE =   "risingwave:"
+    DRUID =        "druid:"
 
 class CONST_DB_BACKEND_CAPABILITIES(Enum):
     """

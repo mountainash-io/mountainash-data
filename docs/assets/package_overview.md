@@ -7,9 +7,7 @@
 ### Core Components
 
 1. **Database Connections Layer** (`src/mountainash_data/databases/`)
-   - Base database connection abstraction (`BaseDBConnection`)
    - Ibis-based connections supporting multiple backends (SQLite, DuckDB, PostgreSQL, SQL Server, etc.)
-   - PyIceberg support for data lake operations
    - Connection factory pattern for backend instantiation
 
 2. **DataFrame Abstraction Layer** (`src/mountainash_data/dataframes/`)
@@ -43,7 +41,6 @@ src/mountainash_data/
 │   │   │   ├── postgres_ibis_connection.py
 │   │   │   └── [other backends...]
 │   │   └── ibis_connection_factory.py
-│   └── pyiceberg/               # PyIceberg support
 ├── dataframes/                   # DataFrame abstraction layer
 │   ├── base_dataframe.py        # Abstract dataframe interface
 │   ├── ibis_dataframe.py        # Ibis dataframe implementation
@@ -109,10 +106,9 @@ src/mountainash_data/
 - **python-run-radon.yml**: Complexity analysis and code quality metrics
 
 ### Release Process
-- **build-and-release-package.yml**: Automated release workflow
+- **build-and-release-package.yml**: Shared release-chain workflow. PRs build and verify a candidate; merging a PR performs no release action (no tag, no GitHub release, no wheels-repository PR). PyPI publication is manual only: `workflow_dispatch` with `publish=true` on `main`, approved in the protected `pypi` environment (Trusted Publishing)
   - Supports production, RC, and beta releases
   - Generates SBOMs (Software Bill of Materials)
-  - Creates releases in GitHub and mountainash-wheels repository
 - **main-release-branch-validation.yml**: Validates release branches
 - **main-release-build-dependencies.yml**: Manages build dependencies
 
@@ -200,8 +196,6 @@ Uses CalVer (Calendar Versioning) with semantic versioning:
 
 ### Environment Settings
 - **settings/**: Environment-specific configuration files
-  - **local_auth_settings.env**: Local authentication settings
-  - **local_postgres_auth_settings.env**: PostgreSQL authentication
   - **mountainash_acrds_settings.env**: Mountain Ash ACRDS settings
 
 ### Configuration Files
@@ -242,4 +236,4 @@ df = DataFrameFactory.create_from_list_of_dicts(data)
 ```
 
 ## License
-MIT License
+Apache License 2.0

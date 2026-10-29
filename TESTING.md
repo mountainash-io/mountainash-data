@@ -4,11 +4,22 @@ This document outlines the testing procedures for the Mountain Ash Data project,
 
 ## Table of Contents
 
-1. [Local Testing](#local-testing)
-2. [Test Commands Reference](#test-commands-reference)
-3. [Coverage Reports](#coverage-reports)
-4. [GitHub Actions Testing](#github-actions-testing)
-5. [Testing Dependencies](#testing-dependencies)
+1. [Test Layout](#test-layout)
+2. [Local Testing](#local-testing)
+3. [Test Commands Reference](#test-commands-reference)
+4. [Coverage Reports](#coverage-reports)
+5. [GitHub Actions Testing](#github-actions-testing)
+6. [Testing Dependencies](#testing-dependencies)
+
+## Test Layout
+
+| Tier | Path | Dependencies | Service | Default pytest |
+|---|---|---|---|---|
+| Core | `tests/test_unit/`, `tests/test_integration/` | Core package | No | Yes |
+| Optional backend | `tests/test_optional_backends/<backend>/` | One backend extra | No | No |
+| Live backend | `tests/test_live_backends/` | Selected backend extra | Yes | No |
+
+Capability defines the tier. The `integration` marker does not define dependency or service requirements; it only tags an existing test as part of the integration suite.
 
 ## Local Testing
 
@@ -19,7 +30,7 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
    pip install hatch
    ```
 
-2. Run the comprehensive test suite (recommended for daily use):
+2. Run the core test suite (recommended for daily use):
    ```bash
    hatch run test:test
    ```
@@ -29,11 +40,17 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
 
 ### Core Testing Commands (Use these daily)
 
-- **Full test suite with coverage:**
+- **Core tests only:**
+  ```bash
+  hatch run test:test-core
+  ```
+  Runs only `tests/test_unit/` and `tests/test_integration/` — no optional-backend contracts.
+
+- **Core suite with coverage:**
   ```bash
   hatch run test:test
   ```
-  Runs pytest with coverage, generates JSON/XML/HTML reports, and shows missing coverage.
+  Runs core tests with coverage and generates JSON/XML/HTML reports. Optional backend drivers are not installed.
 
 - **GitHub Actions test with coverage:**
   ```bash
@@ -45,7 +62,14 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```bash
   hatch run test:test-quick
   ```
-  Fast iteration testing without coverage collection.
+  Core tests only, without coverage collection or optional backend drivers.
+
+- **One optional-backend contract, targeted:**
+  ```bash
+  hatch run test_backend.oracle:test-target-quick tests/test_optional_backends/oracle
+  ```
+  Installs only the selected backend extra alongside the core test tools. Use
+  `test_backend.trino` or `test_backend.bigquery` for the other optional contracts.
 
 ### Targeted Testing (For debugging specific issues)
 
@@ -91,6 +115,157 @@ We use [Hatch](https://hatch.pypa.io/) to manage our development environment and
   ```
   Generates JSON test reports, JUnit XML, and all coverage formats.
 
+### Type checks
+
+```bash
+hatch run mypy:check
+hatch run mypy:check-src
+hatch run mypy:check-tests
+hatch run mypy:check-src-untyped
+hatch run mypy:check-tests-untyped
+```
+
+The four targeted commands accept extra mypy flags without replacing their
+targets. Test checks still follow source imports and can also report source
+errors. The `-untyped` variants include `--check-untyped-defs`.
+Test shortcuts use `--explicit-package-bases` to distinguish nested `conftest`
+modules in the test tree.
+
+The Pytest workflow's core job runs `hatch run mypy_github:check` before pytest.
+Any mypy error fails that job. This environment inherits the local mypy tools,
+features and scripts, but uses the existing CI sibling checkouts under `temp/`.
+Both environments use `requirements-hatch.txt` through `UV_CONSTRAINT`; local
+`mypy:check` continues to use sibling repositories beside this checkout.
+
+The workflow retains its code/configuration path filters. Documentation-only
+PRs do not trigger this job. It is deliberately not a required branch-protection
+check: GitHub would leave a path-filtered required check pending on those PRs.
+Do not require it without first providing a successful non-code PR path.
+
+### Consumer examples
+
+Follow the source installation in [README.md](README.md#installation), then run:
+
+```bash
+for recipe in examples/*/example.py; do
+  python "$recipe" || exit 1
+done
+```
+
+Each recipe checks the behavior it demonstrates. Compare its stdout with the
+expected output in its README and run the root README quick start separately.
+The [recipe index](examples/) lists requirements and verification conventions.
+
+## Live Database Testing
+
+Live database tests run against a real backend service (Docker Compose or an
+external tunnel-backed target) rather than an in-memory fixture. `python -m
+scripts.live_db` (the `live-db` Hatch script) is the explicit target runner.
+Every command requires `--target` — the runner never infers a target from
+ports, environment variables, or running processes.
+
+Running `pytest` directly against `tests/test_live_backends/` is not a
+supported development command. The runner is the only entry point: it starts
+the selected service, sets the live-db environment context, and passes the
+`tests/test_live_backends` path to pytest explicitly.
+
+Use `test_backend.<backend>` to opt into a backend driver. Available selections:
+`postgres`, `mysql`, `oracle`, `singlestoredb`, `mssql`, `trino`, `exasol`,
+`pyspark`, and `bigquery`. Native prerequisites apply only to the selected
+backend (for example, MySQL needs MySQL/MariaDB development libraries).
+Status commands can use the driver-free `test` environment. Run live tests
+one backend at a time; these isolated environments do not install the drivers
+needed for an aggregate `--all` run. Selected live runs still fail on connection
+errors rather than silently skipping them.
+
+Docker target (starts and stops one Compose-managed service per backend):
+
+```bash
+hatch run test:live-db status --target docker
+hatch run test_backend.postgres:live-db run --target docker postgres
+hatch run test_backend.mysql:live-db run --target docker mysql
+hatch run test_backend.oracle:live-db run --target docker oracle
+hatch run test_backend.singlestoredb:live-db run --target docker singlestoredb
+```
+
+External tunnel-backed target (checks tunnels; never starts or stops them):
+
+```bash
+hatch run test:live-db status --target mpnas
+hatch run test_backend.postgres:live-db test --target mpnas postgres
+```
+
+MSSQL is verified only through the `mpnas` forward; it has no Compose
+service or live-CI job:
+
+```bash
+brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+HOMEBREW_ACCEPT_EULA=Y brew install msodbcsql18
+hatch run test_backend.mssql:live-db test --target mpnas mssql
+```
+
+The target uses `127.0.0.1:21433`, SQL Server authentication from the
+local secret provider, ODBC Driver 18, encryption disabled, and server
+certificate trust enabled for the private forwarded instance.
+
+Trino is also verified only through `mpnas`, with no Compose service or
+live-CI job:
+
+```bash
+hatch run test_backend.trino:live-db test --target mpnas trino
+```
+
+The target uses plain HTTP at `127.0.0.1:28080`, the writable
+`postgres.public` catalog/schema, and coordinator profile `none`; data-source
+credentials stay inside the remote Trino catalog configuration. The committed
+upsert contract requires that catalog to be named `postgres` and sets the
+Trino 470 catalog session property `postgres.non_transactional_merge=true`
+itself. This enables the PostgreSQL connector's MERGE support and can partially
+apply if the operation fails, so the test confines it to a unique table with
+unconditional cleanup.
+
+Exasol is verified only through `mpnas`, with no privileged container,
+Compose service, or live-CI job:
+
+```bash
+hatch run test_backend.exasol:live-db test --target mpnas exasol
+```
+
+The target uses TLS at `127.0.0.1:28563`, pins the deployment certificate
+fingerprint in the PyExasol DSN, opens the existing `APP` schema, and resolves
+SQL authentication from the local secret provider. Exasol manages indexes
+automatically and its exceptional `ENFORCE/DROP ... INDEX ON` controls are not
+the package's generic user-managed index contract, so `index_caps=None`
+remains intentional.
+
+PySpark remote verification uses Spark Connect through `mpnas`; it adds no
+repository Compose service or live-CI job:
+
+```bash
+hatch run test_backend.pyspark:live-db test --target mpnas pyspark
+```
+
+The target uses `sc://127.0.0.1:25002` with PySpark Connect 4.0.2 and
+coordinator profile `none`. The existing remote `spark:4.0.2-java21-python3`
+master container starts its Connect endpoint on remote loopback port `15002`;
+the local Spark launch agent forwards that endpoint to local `25002`.
+Classic `spark://127.0.0.1:27077` remains available for master RPC, but a
+one-way master forward cannot carry the executor-to-driver callbacks required
+by classic client mode. Spark Connect avoids those callbacks.
+
+The live contracts cover a remote query/list-tables smoke test and a
+create/rename/drop lifecycle. Core Spark's default catalog has no general
+MERGE/upsert implementation without a row-level table provider such as Delta
+or Iceberg, and it has no generic user-managed secondary indexes; the explicit
+`upsert_style=None` and `index_caps=None` decisions therefore remain unchanged.
+
+`status` never resolves or prints a credential. `check` resolves the
+selected backend's credential to perform a real authenticated connection
+check, but never prints it. An unavailable backend is reported with its
+backlog item and does not change the aggregate exit status. See
+`~/Library/LaunchAgents/TUNNELS.md` for tunnel setup and the `mpnas`
+target's local configuration file.
+
 ## Coverage Reports
 
 When you run tests with coverage, several output formats are generated:
@@ -128,9 +303,11 @@ Our GitHub Actions workflow automatically runs tests on pull requests and pushes
 
 Key points:
 - Tests are run on Ubuntu 24.04 with Python 3.12
-- The workflow is triggered on pull requests that modify `src/mountainash_data/**` files
-- Uses the `test_github` environment defined in `hatch.toml`
-- Automatically uploads coverage to Codecov
+- The workflow is triggered on pull requests that modify `src/mountainash_data/**`, `scripts/**`, `tests/**`, `hatch.toml`, `pytest.ini`, `pyproject.toml`, `.github/actions/**`, `.github/config/mountainash_dependencies.yml`, or `.github/workflows/**`
+- The core `test` job uses the `test_github` environment, which declares no optional-backend dependency
+- The `optional-backend` job runs one isolated `test_optional.<backend>` environment per backend (`oracle`, `trino`, `bigquery`), with no service container
+- `test_github_live` runs one service-backed selection through `scripts.live_db`, outside this pull-request workflow
+- The core job uploads coverage to Codecov with no flag; each optional-backend job uploads under the `optional-<backend>` flag
 
 To manually trigger the tests in GitHub Actions:
 1. Go to the "Actions" tab in the GitHub repository

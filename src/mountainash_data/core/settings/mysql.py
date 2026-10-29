@@ -1,6 +1,6 @@
 """MySQL backend settings.
 
-Spec: ``docs/superpowers/specs/2026-04-15-settings-audit/mysql.md``.
+Spec: ``mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/mysql.md``.
 Driver: https://mysqlclient.readthedocs.io/user_guide.html#functions-and-attributes
 Ibis: ``ibis.backends.mysql.do_connect(host='localhost', user=None, password=None,
        port=3306, autocommit=True, **kwargs)``
@@ -13,10 +13,10 @@ from enum import StrEnum
 from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from .adapters import mysql as _adapter
-from mountainash_settings.auth import PasswordAuth
-from .descriptor import BackendDescriptor, ParameterSpec
-from .profile import ConnectionProfile
+from mountainash_auth_client import PasswordAuthProfile
+from .adapters import mysql as _mysql
+from .descriptor import BackendSpec, ParameterSpec
+from .profile import BackendProfile
 from .registry import register
 
 
@@ -28,13 +28,13 @@ class MySQLSSLMode(StrEnum):
     VERIFY_IDENTITY = "VERIFY_IDENTITY"
 
 
-MYSQL_DESCRIPTOR = BackendDescriptor(
+MYSQL_SPEC = BackendSpec(
     name="mysql",
     provider_type=CONST_DB_PROVIDER_TYPE.MYSQL,
     default_port=3306,
     connection_string_scheme="mysql://",
     ibis_dialect="mysql",
-    auth_modes=[PasswordAuth],
+    supported_auth=(PasswordAuthProfile,),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=3306,
@@ -82,7 +82,7 @@ MYSQL_DESCRIPTOR = BackendDescriptor(
 )
 
 
-@register(MYSQL_DESCRIPTOR)
-class MySQLAuthSettings(ConnectionProfile):
-    __descriptor__ = MYSQL_DESCRIPTOR
-    __adapter__ = staticmethod(_adapter.build_driver_kwargs)
+@register
+class MySQLBackendProfile(BackendProfile):
+    __spec__ = MYSQL_SPEC
+    __adapters__ = {CONST_DB_PROVIDER_TYPE.MYSQL: _mysql.ssl_compose}
