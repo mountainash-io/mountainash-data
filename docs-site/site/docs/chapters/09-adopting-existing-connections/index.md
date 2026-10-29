@@ -8,7 +8,7 @@ date: 2026-10-29
 
 `IbisBackend` can wrap a connection that some other code already opened, instead of opening its own. Two class methods do this: `from_ibis_connection` adopts an Ibis backend object, and `from_raw_connection` adopts a native driver handle such as a `duckdb.DuckDBPyConnection`. The adopted backend shares the caller's session, so tables, temporary objects and an open transaction are visible to both sides. By default the caller keeps ownership: closing the wrapper leaves the connection open. This is the usual route when a framework, a test fixture or an application pool hands you a live connection and you want the package's operations on it.
 
-The anchor recipe is [`examples/connection_adoption`](https://github.com/mountainash-io/mountainash-data/tree/main/examples/connection_adoption). The examples below run on in-memory SQLite and DuckDB, and each block continues from the one before it.
+The anchor recipe is [`examples/connection_adoption`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/connection_adoption). The examples below run on in-memory SQLite and DuckDB, and each block continues from the one before it.
 
 ## Connection ownership
 

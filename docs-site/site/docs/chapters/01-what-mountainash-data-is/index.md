@@ -8,7 +8,7 @@ date: 2026-10-29
 
 `mountainash-data` gives Python code one typed handle, `IbisBackend`, for connecting to relational databases, inspecting their physical metadata and managing their tables. The same class serves 20 database dialects, from in-process SQLite and DuckDB to PostgreSQL, Snowflake, BigQuery and Trino. Ibis supplies the backend-native table expressions; this package adds connection profiles, namespace handling, dialect-specific writes, index management and explicit transaction scopes, all behind a backend-neutral `Backend` protocol.
 
-## What the package does and does not do
+## What the package does
 
 <!-- concept:1 -->
 The package targets SQL databases: systems that store data in named tables of typed columns, answer SQL, and expose their own metadata about which tables and columns exist. Every dialect speaks a slightly different SQL. Upsert syntax, `ALTER TABLE` forms, index DDL, identifier quoting and transaction behaviour all vary, and so does the way each one names its schemas and catalogs. `mountainash-data` absorbs those differences so that calling code uses one set of methods whatever engine sits underneath.

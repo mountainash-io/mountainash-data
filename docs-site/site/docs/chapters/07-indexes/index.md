@@ -8,7 +8,7 @@ date: 2026-10-29
 
 `IbisBackend` manages conventional secondary indexes with five methods: `create_index`, `create_unique_index`, `drop_index`, `list_indexes` and `index_exists`. Ibis has no index API, so mountainash-data renders the `CREATE INDEX` and `DROP INDEX` statements and the catalog queries itself, using each dialect's declared index capability. The capability says whether the engine has secondary indexes at all, whether it supports partial indexes and index methods, and whether `DROP INDEX` needs the table name. The same calls therefore work across engines, and an option an engine cannot honour raises `ValueError` before any SQL is sent.
 
-The examples run on in-memory SQLite, with DuckDB for contrast, and each block continues from the one before it. The anchor recipe is [`examples/indexes`](https://github.com/mountainash-io/mountainash-data/tree/main/examples/indexes).
+The examples run on in-memory SQLite, with DuckDB for contrast, and each block continues from the one before it. The anchor recipe is [`examples/indexes`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/indexes).
 
 ## Creating indexes
 

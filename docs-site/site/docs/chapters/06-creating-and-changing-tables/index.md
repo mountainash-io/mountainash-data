@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Creating and changing tables
 
-`IbisBackend` creates, fills, empties, merges into, widens and renames tables with the same method calls on every dialect it supports. Creating tables and views, inserting and truncating go straight to Ibis. Upsert, `add_columns` and `rename_table` are built by mountainash-data itself: it renders dialect-specific SQL from the live connection, so one call produces `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` depending on the engine. The examples on this page run on in-memory DuckDB, with SQLite differences noted in the text, and each block continues from the one before it. The anchor recipe is [`examples/mutations`](https://github.com/mountainash-io/mountainash-data/tree/main/examples/mutations).
+`IbisBackend` creates, fills, empties, merges into, widens and renames tables with the same method calls on every dialect it supports. Creating tables and views, inserting and truncating go straight to Ibis. Upsert, `add_columns` and `rename_table` are built by mountainash-data itself: it renders dialect-specific SQL from the live connection, so one call produces `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` depending on the engine. The examples on this page run on in-memory DuckDB, with SQLite differences noted in the text, and each block continues from the one before it. The anchor recipe is [`examples/mutations`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/mutations).
 
 Which operations a given dialect supports is listed in [Supported databases and limits](../10-supported-databases-and-limits/index.md). Inside an explicit transaction scope every method on this page is a protected package call; see [Transactions](../08-transactions/index.md).
 
