@@ -1,0 +1,79 @@
+{
+  "id": "mountainash_data.backends.ibis._index",
+  "path": "src/mountainash_data/backends/ibis/_index.py",
+  "summary": "Generic-default index DDL: pure build_create_index_sql/build_drop_index_sql builders (dialect-specific USING placement, table-scoped vs schema-global DROP) and the create/drop/exists dispatchers driven by IndexCapability. Emulates IF [NOT] EXISTS with an introspection precheck where the engine lacks native guards, and compiles partial-index predicates.",
+  "role": "backend",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [
+    "build_create_index_sql",
+    "build_drop_index_sql"
+  ],
+  "key_classes": [],
+  "key_functions": [
+    "_generic_create_index",
+    "_generic_drop_index",
+    "_generic_index_exists",
+    "_check_create_index",
+    "_check_drop_index",
+    "_check_index_exists",
+    "_target_ref",
+    "_index_ref"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis._render",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.backends.ibis.operations"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend"
+  ],
+  "extension_points": [
+    "IndexCapability fields on DialectSpec control guards, scope, partial support and USING types"
+  ],
+  "lifecycle_notes": [
+    "Emulated idempotency has documented TOCTOU / privilege / auto-commit DDL failure modes; engine errors surface unchanged"
+  ],
+  "documentation_hooks": [
+    "Index capability matrix per dialect"
+  ],
+  "examples": [
+    "examples/indexes/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_index_ops.py",
+    "tests/test_unit/backends/ibis/test_index_render.py",
+    "tests/test_unit/backends/ibis/test_index_capability.py",
+    "tests/test_live_backends/test_index_ops_live.py"
+  ],
+  "risks": [
+    "Emulated IF NOT EXISTS / IF EXISTS is not race-free"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_index.py",
+      "detail": "_generic_create_index / _generic_drop_index"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "backend create_index/drop_index/index_exists dispatch here"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

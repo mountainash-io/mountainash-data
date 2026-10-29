@@ -1,53 +1,82 @@
 {
   "id": "mountainash_data.init",
   "path": "src/mountainash_data/__init__.py",
-  "summary": "Package root. Exports Backend protocol, IbisBackend, IcebergBackend (optional), and four inspection dataclasses. Defines the stable public import surface.",
+  "summary": "Package root. Re-exports the Backend protocol, IbisBackend, the inspection dataclasses (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo, IndexInfo), the Namespace value object and NamespaceLike alias, and __version__.",
   "role": "public-api",
   "visibility": "public",
   "stability": "stable",
-  "audiences": ["users", "maintainers", "extension-authors"],
+  "audiences": [
+    "users",
+    "maintainers",
+    "contributors",
+    "extension-authors",
+    "broader-hype"
+  ],
   "doc_priority": "essential",
   "confidence": "high",
   "public_api": [
     "__version__",
     "Backend",
+    "IbisBackend",
     "CatalogInfo",
-    "ColumnInfo",
     "NamespaceInfo",
     "TableInfo",
-    "IbisBackend",
-    "IcebergBackend"
+    "ColumnInfo",
+    "IndexInfo",
+    "Namespace",
+    "NamespaceLike"
   ],
   "key_classes": [
-    {"name": "Backend", "origin": "core.protocol", "kind": "protocol"},
-    {"name": "IbisBackend", "origin": "backends.ibis.backend", "kind": "class"},
-    {"name": "IcebergBackend", "origin": "backends.iceberg.backend", "kind": "class"}
+    "Backend",
+    "IbisBackend",
+    "Namespace"
   ],
   "key_functions": [],
   "dependencies": [
     "mountainash_data.core.protocol",
     "mountainash_data.core.inspection",
-    "mountainash_data.backends.ibis.backend",
-    "mountainash_data.backends.iceberg.backend"
+    "mountainash_data.core.namespace",
+    "mountainash_data.backends.ibis.backend"
   ],
   "dependents": [],
   "extension_points": [],
   "lifecycle_notes": [
-    "IcebergBackend is conditionally imported; set to None if pyiceberg is not installed"
+    "IcebergBackend was removed from __all__ when the Iceberg backend was retired; IbisBackend is the only concrete backend exported.",
+    "IndexInfo, Namespace and NamespaceLike were added to the root exports since the previous profile."
   ],
   "documentation_hooks": [
-    "Primary import target for all downstream consumers",
-    "Users should import from mountainash_data directly, not submodules"
+    "Import surface for the quick start: `from mountainash_data import IbisBackend`.",
+    "Map each root export to its owning module in the API reference."
   ],
-  "examples": [],
-  "tests": ["tests/test_unit/test_mountainash_data.py"],
-  "risks": [],
+  "examples": [
+    "README.md#quick-start"
+  ],
+  "tests": [
+    "tests/test_unit/test_mountainash_data.py",
+    "tests/test_unit/test_installed_contract.py"
+  ],
+  "risks": [
+    "Module docstring lists the inspection model without IndexInfo, Namespace or NamespaceLike, so it lags __all__."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/__init__.py", "detail": "__all__ defines 8 public symbols"},
-    {"kind": "test", "path": "tests/test_unit/test_mountainash_data.py", "detail": "Package-level import tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/__init__.py",
+      "detail": "__all__ lists ten names; no Iceberg export"
+    },
+    {
+      "kind": "example",
+      "path": "README.md",
+      "detail": "Quick start imports IbisBackend from the package root"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/test_mountainash_data.py",
+      "detail": "Root import tests for inspection dataclasses"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
   "manual": {
     "notes": "",
     "editorial_status": "",

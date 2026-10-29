@@ -1,0 +1,76 @@
+{
+  "id": "mountainash_data.backends.ibis._index_inspection",
+  "path": "src/mountainash_data/backends/ibis/_index_inspection.py",
+  "summary": "Index catalog inspection. _generic_list_indexes runs a dialect's ten-column catalog query and validates each row strictly into IndexInfo records (key and included columns, uniqueness, primary, validity, type, definition). Provides list-index SQL for sqlite, postgres, mysql, singlestore, mssql and oracle, and a DuckDB hook that combines duckdb_indexes() with index-backed constraints by parsing CREATE INDEX definitions with sqlglot.",
+  "role": "io",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [],
+  "key_functions": [
+    "_generic_list_indexes",
+    "sqlite_get_list_indexes_sql",
+    "postgres_get_list_indexes_sql",
+    "mysql_get_list_indexes_sql",
+    "singlestore_get_list_indexes_sql",
+    "mssql_get_list_indexes_sql",
+    "oracle_get_list_indexes_sql",
+    "duckdb_list_indexes_hook",
+    "duckdb_get_indexes_sql",
+    "duckdb_get_constraints_sql"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis._render",
+    "mountainash_data.core.inspection"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis.dialects"
+  ],
+  "extension_points": [
+    "DialectSpec.get_list_indexes_sql (ten-column contract) or list_indexes_hook"
+  ],
+  "lifecycle_notes": [
+    "Rows are read by position, not alias, because some engines upper-case aliases"
+  ],
+  "documentation_hooks": [
+    "The ten-column catalog contract for list_indexes implementations"
+  ],
+  "examples": [
+    "examples/indexes/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_index_ops.py",
+    "tests/test_unit/backends/ibis/test_index_render.py",
+    "tests/test_live_backends/test_index_ops_live.py"
+  ],
+  "risks": [
+    "Malformed catalog rows raise RuntimeError rather than degrading"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_index_inspection.py",
+      "detail": "_generic_list_indexes"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+      "detail": "registry wires list-index SQL and duckdb hook"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

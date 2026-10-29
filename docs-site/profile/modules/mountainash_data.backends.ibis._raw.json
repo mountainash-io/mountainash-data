@@ -1,0 +1,59 @@
+{
+  "id": "mountainash_data.backends.ibis._raw",
+  "path": "src/mountainash_data/backends/ibis/_raw.py",
+  "summary": "Shared transport for running one statement on a native driver handle. raw_execute() uses handle.execute when available, otherwise a cursor (closed afterwards), or a dialect raw_execute_hook; raw_fetch_scalar() returns the first column of the first row without re-executing.",
+  "role": "io",
+  "visibility": "private",
+  "stability": "stable",
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [],
+  "key_functions": [
+    "raw_execute",
+    "raw_fetch_scalar"
+  ],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.backends.ibis._transaction",
+    "mountainash_data.backends.ibis._adoption"
+  ],
+  "extension_points": [
+    "DialectSpec.raw_execute_hook replaces the write transport"
+  ],
+  "lifecycle_notes": [],
+  "documentation_hooks": [
+    "DBAPI .execute() is not uniform across drivers"
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_raw.py"
+  ],
+  "risks": [
+    "raw_fetch_scalar ignores the hook argument; no dialect currently sets raw_execute_hook"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_raw.py",
+      "detail": "raw_execute / raw_fetch_scalar"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_raw.py",
+      "detail": "transport tests"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

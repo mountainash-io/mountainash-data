@@ -1,0 +1,87 @@
+{
+  "id": "mountainash_data.core.factories",
+  "path": "src/mountainash_data/core/factories/connection_factory.py",
+  "summary": "Combines a backend settings profile with an AuthProfile from mountainash_auth_client. build_driver_kwargs() and build_connection_string() check supported_auth and apply the registered auth adapter or URL applier. provider_for_dialect() and provider_for_scheme() map an Ibis dialect or URL scheme back to a CONST_DB_PROVIDER_TYPE, and apply_auth_adapter() applies auth without a profile.",
+  "role": "orchestration",
+  "visibility": "internal",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors"
+  ],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": [
+    "build_driver_kwargs",
+    "build_connection_string",
+    "apply_auth_adapter",
+    "provider_for_dialect",
+    "provider_for_scheme"
+  ],
+  "key_classes": [],
+  "key_functions": [
+    "build_driver_kwargs",
+    "build_connection_string",
+    "apply_auth_adapter",
+    "provider_for_dialect",
+    "provider_for_scheme"
+  ],
+  "dependencies": [
+    "mountainash_data.core.constants",
+    "mountainash_data.core.settings.profile",
+    "mountainash_data.core.settings.adapters",
+    "mountainash_data.core.settings.registry"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend"
+  ],
+  "extension_points": [
+    "_URL_APPLIERS maps (provider, auth type) to a URL builder for non-password URL auth (currently MotherDuck token).",
+    "Auth adapters are looked up with settings.adapters.registry.auth_adapter(provider, auth type)."
+  ],
+  "lifecycle_notes": [
+    "Shared ibis dialects (postgres for PostgreSQL/Redshift, duckdb for DuckDB/MotherDuck) resolve deterministically to the canonical provider whose name matches the dialect."
+  ],
+  "documentation_hooks": [
+    "Layering diagram: settings profile (config) + AuthProfile (credentials) -> driver kwargs or URL.",
+    "Which auth forms have a URL rendering and which raise NotImplementedError."
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/core/factories/test_connection_factory.py",
+    "tests/test_unit/core/factories/test_url_consistency.py",
+    "tests/test_unit/core/settings/test_supported_auth_consistency.py",
+    "tests/test_unit/backends/ibis/test_credential_urls.py"
+  ],
+  "risks": [
+    "build_connection_string supports only no-auth, password, and per-provider appliers; other auth types raise NotImplementedError for URL output.",
+    "The module ID is the factories package, but only ConnectionFactory exists; the CLAUDE.md mention of OperationsFactory and SettingsFactory does not match the source."
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/factories/connection_factory.py",
+      "detail": "build_driver_kwargs, build_connection_string, provider_for_dialect"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "IbisBackend uses the factory to build kwargs/URLs"
+    },
+    {
+      "kind": "doc",
+      "path": "CLAUDE.md",
+      "detail": "Lists ConnectionFactory/OperationsFactory/SettingsFactory; only connection_factory.py exists"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

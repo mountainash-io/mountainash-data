@@ -1,41 +1,147 @@
 {
   "id": "mountainash_data.backends.ibis.dialects",
   "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
-  "summary": "Data-driven dialect registry. DialectSpec (frozen dataclass) holds per-dialect config: ibis_backend_name, connection_mode, connection_string_scheme, connection_builder, and optional hook callables for index/upsert/rename. DIALECTS dict maps 23 dialect names to their specs. Private _build_* functions construct ibis connections per-dialect.",
+  "summary": "Data-driven dialect registry. Defines the DialectSpec dataclass plus the UpsertStyle, TransactionSupport, DropScope, IndexCapability and SessionOption types, one connection-builder function per dialect, per-dialect transaction probes (SQLite in_transaction, DuckDB txid_current comparison, psycopg transaction_status), the SQLite DELETE-based truncate hook, DuckDB adoption session options, and the DIALECTS mapping of 20 dialect keys (sqlite, duckdb, motherduck, postgres, mysql, mssql, oracle, snowflake, bigquery, redshift, trino, clickhouse, databricks, singlestoredb, exasol, impala, materialize, risingwave, druid, pyspark). IbisBackend reads every capability decision from this table.",
   "role": "orchestration",
-  "visibility": "internal",
-  "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
-  "doc_priority": "useful",
-  "confidence": "high",
-  "public_api": ["DialectSpec", "DIALECTS"],
-  "key_classes": [
-    {
-      "name": "DialectSpec",
-      "kind": "frozen-dataclass",
-      "fields": ["ibis_backend_name", "connection_mode", "connection_string_scheme", "connection_builder", "get_index_exists_sql", "get_list_indexes_sql", "upsert_hook", "create_index_hook", "drop_index_hook", "rename_table_hook", "extras"]
-    }
+  "visibility": "semi-public",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors",
+    "broader-hype"
   ],
-  "key_functions": [],
-  "dependencies": ["mountainash_data.backends.ibis.operations"],
-  "dependents": ["mountainash_data.backends.ibis.backend"],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": [
+    "DIALECTS",
+    "DialectSpec",
+    "UpsertStyle",
+    "TransactionSupport",
+    "DropScope",
+    "IndexCapability",
+    "SessionOption"
+  ],
+  "key_classes": [
+    "DialectSpec",
+    "IndexCapability",
+    "SessionOption",
+    "UpsertStyle",
+    "TransactionSupport",
+    "DropScope"
+  ],
+  "key_functions": [
+    "_connect_url",
+    "_credential_kwargs",
+    "_build_sqlite_connection",
+    "_build_duckdb_connection",
+    "_build_motherduck_connection",
+    "_build_postgres_connection",
+    "_build_mysql_connection",
+    "_build_mssql_connection",
+    "_build_oracle_connection",
+    "_build_snowflake_connection",
+    "_build_bigquery_connection",
+    "_build_redshift_connection",
+    "_build_trino_connection",
+    "_build_clickhouse_connection",
+    "_build_databricks_connection",
+    "_build_singlestoredb_connection",
+    "_build_exasol_connection",
+    "_build_impala_connection",
+    "_build_materialize_connection",
+    "_build_risingwave_connection",
+    "_build_druid_connection",
+    "_build_pyspark_connection",
+    "_sqlite_in_transaction_probe",
+    "_duckdb_in_transaction_probe",
+    "_postgres_in_transaction_probe",
+    "_postgres_precommit_probe",
+    "_postgres_begin",
+    "_sqlite_truncate_table"
+  ],
+  "dependencies": [
+    "mountainash_data.core._redact",
+    "mountainash_data.core.inspection",
+    "mountainash_data.backends.ibis._exasol_compat",
+    "mountainash_data.backends.ibis._oracle_compat",
+    "mountainash_data.backends.ibis._index_inspection",
+    "mountainash_data.backends.ibis.operations"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis._transaction",
+    "mountainash_data.backends.ibis._index",
+    "mountainash_data.backends.ibis.operations",
+    "mountainash_data.backends.ibis._adoption"
+  ],
   "extension_points": [
-    "Add a new entry to DIALECTS dict + a _build_* connection builder to support a new SQL engine"
+    "Add a dialect by adding a DIALECTS entry with a connection_builder and capability fields",
+    "Override generic operations per dialect via upsert_hook, add_columns_hook, rename_table_hook, truncate_table_hook, create_index_hook, drop_index_hook, list_indexes_hook",
+    "ibis_connection_adapter post-processes a built ibis connection (used by Exasol)",
+    "adoption_mutations declares session options to snapshot/restore on raw adoption",
+    "transaction_support, begin_statement, begin_hook, in_transaction_probe, precommit_probe, raw_execute_hook tune transaction behaviour"
   ],
   "lifecycle_notes": [
-    "23 dialects: sqlite, duckdb, motherduck, postgres, mysql, mssql, oracle, snowflake, bigquery, redshift, trino, clickhouse, databricks, singlestoredb, exasol, impala, materialize, risingwave, druid, pyspark"
+    "DIALECTS is built once at import time; DialectSpec is frozen",
+    "Connection builders pass credentials as driver kwargs, never URL userinfo, and route failures through connect_redacted so secrets are not echoed",
+    "operations and _index_inspection are imported at the bottom of the module (noqa E402) to break the operations <-> dialects import cycle"
   ],
   "documentation_hooks": [
-    "Extension authors add dialects here — each is a two-line DialectSpec + a builder function"
+    "Support matrix: per-dialect upsert style, index capability, transaction support and adoption verification",
+    "How to add a dialect",
+    "Why credentials are passed as kwargs rather than URL userinfo"
   ],
   "examples": [],
-  "tests": ["tests/test_unit/backends/ibis/test_dialect_spec.py"],
-  "risks": [],
-  "open_questions": [],
-  "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/dialects/_registry.py", "detail": "DIALECTS dict with 23 entries, DialectSpec dataclass"},
-    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_dialect_spec.py", "detail": "Dialect spec validation tests"}
+  "tests": [
+    "tests/test_unit/backends/ibis/test_dialect_spec.py",
+    "tests/test_unit/backends/ibis/test_upsert_style_registry.py",
+    "tests/test_unit/backends/ibis/test_index_capability.py",
+    "tests/test_unit/backends/ibis/test_pyspark_connection.py",
+    "tests/test_unit/backends/ibis/test_credential_urls.py",
+    "tests/test_unit/backends/ibis/test_transaction.py",
+    "tests/test_live_backends/test_write_ops_live.py"
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "risks": [
+    "No in-tree dialect sets upsert_hook, add_columns_hook, rename_table_hook, create_index_hook or drop_index_hook; these seams are untested by a real consumer",
+    "DialectSpec.connection_mode and extras are populated but never read by any source module",
+    "Oracle compat is applied inside _build_oracle_connection rather than via ibis_connection_adapter, so Oracle connections adopted via from_ibis_connection are not patched",
+    "Circular import with operations is resolved by a bottom-of-module import; reordering imports can break module load",
+    "databricks has connection_string_scheme='' which produces an empty-string key in the URL scheme reverse map",
+    "motherduck declares TransactionSupport.FULL without an in_transaction_probe; it is outside OWNERSHIP_DIALECTS so it uses plain BEGIN/COMMIT"
+  ],
+  "open_questions": [
+    "Should connection_mode and extras be removed or wired into dispatch?",
+    "Should Oracle patching move to ibis_connection_adapter so adopted connections receive it?"
+  ],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+      "detail": "DIALECTS mapping with 20 DialectSpec entries"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "IbisBackend imports DIALECTS, DialectSpec, TransactionSupport"
+    },
+    {
+      "kind": "config",
+      "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+      "detail": "raw_adoption_verified=True only on duckdb and motherduck"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_dialect_spec.py",
+      "detail": "registry shape tests"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

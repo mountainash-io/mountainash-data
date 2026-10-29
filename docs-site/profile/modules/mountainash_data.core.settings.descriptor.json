@@ -1,44 +1,83 @@
 {
   "id": "mountainash_data.core.settings.descriptor",
   "path": "src/mountainash_data/core/settings/descriptor.py",
-  "summary": "Defines BackendSpec (frozen dataclass extending ProfileSpec from mountainash_settings). Adds database-specific fields: default_port, connection_string_scheme, ibis_dialect, rides_on. Re-exports MISSING, Missing, ParameterSpec from upstream.",
+  "summary": "Defines BackendSpec, a frozen kw-only subclass of mountainash_settings.profiles.ProfileSpec that adds database metadata: default_port, connection_string_scheme, ibis_dialect, rides_on, a required non-empty supported_auth tuple, and resource-read fields. __post_init__ rejects an empty supported_auth and derives a default resource-read disposition, locator prefixes and projection phase (settings URL, connected identity for pyspark, override-only for databricks and URL-less backends). Also defines the DatabaseResourceReadDisposition and LocatorProjectionPhase enums and re-exports MISSING, Missing and ParameterSpec.",
   "role": "model",
   "visibility": "semi-public",
-  "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors"
+  ],
   "doc_priority": "useful",
   "confidence": "high",
-  "public_api": ["BackendSpec", "MISSING", "Missing", "ParameterSpec"],
-  "key_classes": [
-    {
-      "name": "BackendSpec",
-      "kind": "frozen-dataclass",
-      "extends": "ProfileSpec",
-      "fields": ["default_port", "connection_string_scheme", "ibis_dialect", "rides_on"]
-    }
+  "public_api": [
+    "BackendSpec",
+    "ParameterSpec",
+    "MISSING",
+    "Missing",
+    "DatabaseResourceReadDisposition",
+    "LocatorProjectionPhase"
   ],
-  "key_functions": [],
-  "dependencies": ["mountainash_settings.profiles"],
+  "key_classes": [
+    "BackendSpec",
+    "DatabaseResourceReadDisposition",
+    "LocatorProjectionPhase"
+  ],
+  "key_functions": [
+    "BackendSpec.__post_init__",
+    "__getattr__ (deprecated-name shim)"
+  ],
+  "dependencies": [],
   "dependents": [
+    "mountainash_data.core.settings",
     "mountainash_data.core.settings.registry",
     "mountainash_data.core.settings.backends"
   ],
-  "extension_points": [],
+  "extension_points": [
+    "Each backend declares one BackendSpec instance (name, provider_type, ibis_dialect, supported_auth, parameters) as its __spec__."
+  ],
   "lifecycle_notes": [
-    "BackendDescriptor is deprecated alias for BackendSpec"
+    "Frozen dataclass: derived resource-read defaults are written with object.__setattr__ in __post_init__.",
+    "Resource-read override dates are hard-coded to 2026-08-29.",
+    "BackendDescriptor and _Missing remain as deprecated module attributes."
   ],
   "documentation_hooks": [
-    "Extension authors define one BackendSpec per new backend"
+    "Anatomy of a BackendSpec: identity, Ibis routing (ibis_dialect, rides_on), auth matrix, parameter list",
+    "Credential-safe resource-read dispositions and when each applies"
   ],
   "examples": [],
-  "tests": ["tests/test_unit/core/settings/test_descriptor.py", "tests/test_unit/core/settings/test_descriptors_invariants.py"],
-  "risks": [],
-  "open_questions": [],
-  "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/descriptor.py", "detail": "BackendSpec extends ProfileSpec"},
-    {"kind": "test", "path": "tests/test_unit/core/settings/test_descriptor.py", "detail": "Descriptor construction tests"},
-    {"kind": "test", "path": "tests/test_unit/core/settings/test_descriptors_invariants.py", "detail": "Cross-backend invariant checks"}
+  "tests": [
+    "tests/test_unit/core/settings/test_descriptor.py",
+    "tests/test_unit/core/settings/test_descriptors_invariants.py",
+    "tests/test_unit/core/settings/test_supported_auth_consistency.py"
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "risks": [
+    "Resource-read disposition is special-cased by backend name (pyspark, databricks) inside the generic spec class rather than declared on those specs.",
+    "CLAUDE.md still calls this class BackendDescriptor subclassing ProfileDescriptor."
+  ],
+  "open_questions": [
+    "Which consumer reads the resource_read_* fields? No reader exists in this package's src; it appears to serve a downstream credential-safe read path."
+  ],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/settings/descriptor.py",
+      "detail": "@dataclass(frozen=True, kw_only=True) class BackendSpec(ProfileSpec)"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/core/settings/test_descriptors_invariants.py",
+      "detail": "invariants over registered specs"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

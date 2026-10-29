@@ -1,0 +1,84 @@
+{
+  "id": "mountainash_data.core.errors",
+  "path": "src/mountainash_data/core/errors.py",
+  "summary": "Shared exception types: TransactionError with subclasses TransactionUnsupportedError, TransactionPoisonedError and TransactionIntegrityError, plus BackendConnectionError for connection failures whose message has been stripped of credentials.",
+  "role": "model",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": [
+    "users",
+    "maintainers",
+    "backend-architecture",
+    "extension-authors"
+  ],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": [
+    "TransactionError",
+    "TransactionUnsupportedError",
+    "TransactionPoisonedError",
+    "TransactionIntegrityError",
+    "BackendConnectionError"
+  ],
+  "key_classes": [
+    "TransactionError",
+    "TransactionUnsupportedError",
+    "TransactionPoisonedError",
+    "TransactionIntegrityError",
+    "BackendConnectionError"
+  ],
+  "key_functions": [],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.core._redact",
+    "mountainash_data.backends.ibis._transaction"
+  ],
+  "extension_points": [
+    "Alternative Backend implementations should raise these types so callers can handle transaction failures uniformly."
+  ],
+  "lifecycle_notes": [
+    "TransactionPoisonedError: a caught nested failure aborted the unit; it is rolled back, never committed.",
+    "TransactionIntegrityError: native state was unknown on entry or not committable at exit; nothing is committed."
+  ],
+  "documentation_hooks": [
+    "Error-handling reference for transaction() and connect()."
+  ],
+  "examples": [
+    "README.md#transaction-ownership"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_transaction.py",
+    "tests/test_unit/backends/ibis/test_transaction_scope.py",
+    "tests/test_live_backends/test_transaction_live.py"
+  ],
+  "risks": [
+    "Not re-exported from the package root, so users must import them from mountainash_data.core.errors."
+  ],
+  "open_questions": [
+    "Should the transaction exceptions be exported from mountainash_data alongside Backend?"
+  ],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/errors.py",
+      "detail": "TransactionError hierarchy and BackendConnectionError"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/_transaction.py",
+      "detail": "Raises the transaction errors"
+    },
+    {
+      "kind": "test",
+      "path": "tests/helpers/transaction_cases.py",
+      "detail": "Shared transaction cases import the error types"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}
