@@ -16,7 +16,8 @@ skipped; a one-sided bootstrap cannot deploy an incomplete site.
 The source artifacts live together in this directory:
 
 - `profile/`: package profile and source provenance.
-- `learning-graph/`: canonical graph and FAQ artifacts.
+- `editorial-brief.md`, `chapter-plan.md`: the confirmed brief and approved chapter plan the book implements.
+- `learning-graph/`: canonical concept graph (internal; not published) and the legacy FAQ artifacts.
 - `site/`: MkDocs configuration, textbook Markdown, and refresh state.
 
 ## Local preview
@@ -31,18 +32,17 @@ uv run --no-project --with-requirements docs-site/requirements.txt \
 
 ## Refresh
 
-Refreshes are manual. Load `textbook-refresh` from the central
-`hiivmind-documentation-profile` tooling project and supply this repository's
+Refreshes are manual. Load `textbook-refresh` from the `mountainash-ibook-skills`
+tooling and supply this repository's
 absolute root as `source_repo`, starting with `mode: check`. For a separate
 profile update, supply `docs-site/profile/` as the profiler's explicit output.
 Do not regenerate content merely to publish it or advance source baselines on
 a directory move. Preserve the existing FAQ format; the marker-only FAQ
 exporter does not support it and must not overwrite its JSON.
 
-## Recorded build limitations
+## Published surfaces
 
-The previous README recorded two strict-build gaps: `learning-graph/index.md`
-links to a missing `learning-graph/course-description.md`, and five learning-graph
-pages (`concept-list.md`, `concept-taxonomy.md`, `faq.md`, `quality-metrics.md`,
-`taxonomy-distribution.md`) are not wired into the site navigation. These are
-historical findings, not a new build result from the README/examples alignment.
+The site publishes the chapters, FAQ, glossary, home, About, license and contact
+pages. The learning graph, its reports, the course description and the MicroSims
+index were retired from the published site in the 2026-10-29 replacement; the
+canonical graph stays internal under `learning-graph/`.

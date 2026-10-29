@@ -1,9 +1,7 @@
 # Contact
 
-- **Email**: [nathaniel.ramm@discretedatascience.com](mailto:nathaniel.ramm@discretedatascience.com)
-- **LinkedIn**: [linkedin.com/in/nathanielramm](https://www.linkedin.com/in/nathanielramm/)
-- **GitHub**: [github.com/mountainash-io/mountainash](https://github.com/mountainash-io/mountainash) — for bug reports, feature requests, and contributions
+Report bugs, request features and propose changes on GitHub at [github.com/mountainash-io/mountainash-data](https://github.com/mountainash-io/mountainash-data).
 
-Feedback on this manual is welcome. If something is unclear, missing, or wrong, please open an issue on GitHub or reach out directly.
+For other questions, email [nathaniel.ramm@discretedatascience.com](mailto:nathaniel.ramm@discretedatascience.com) or reach out on [LinkedIn](https://www.linkedin.com/in/nathanielramm/).
 
- — Nathaniel Ramm
+Feedback on this documentation is welcome. If something is unclear, missing or wrong, open an issue on GitHub.

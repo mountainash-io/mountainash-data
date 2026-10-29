@@ -1,99 +1,95 @@
 ---
 title: 'Mountainash Data'
-description: 'A unified Python interface for connecting to any database or lakehouse through typed settings, consistent metadata inspection, and fluent queries.'
+description: 'One typed Python handle for connecting to, inspecting and writing to relational databases across 20 Ibis dialects, from SQLite and DuckDB to PostgreSQL, Snowflake and BigQuery.'
 ---
 
-
-[← Back to Ecosystem](https://docs.mountainash.io/)
 # Mountainash Data
 
-A single, consistent way to connect to any supported database or lakehouse — import `IbisBackend` for SQL databases across every Ibis dialect, or `IcebergBackend` for Apache Iceberg catalogs.
+**One Python handle for connecting to, inspecting and writing to relational databases, from an in-memory DuckDB to PostgreSQL, Snowflake or BigQuery.**
 
-## Why a Guided Manual?
+Database code usually starts with one driver and a few SQL strings. Then the tests move to SQLite or DuckDB while production runs on PostgreSQL. A second warehouse arrives with its own connection arguments and its own way of handling credentials. The upsert that worked on one engine needs `ON CONFLICT` here, `ON DUPLICATE KEY` there and `MERGE` somewhere else, and nobody is sure which code path owns the transaction.
 
-Most library documentation tells you *what* the API does. This manual explains *why* the library is designed the way it is — why there is a Backend protocol, why settings classes auto-register, why inspection returns frozen dataclasses — so that when you need to extend it or debug a connection, you understand the system rather than just the surface.
+`mountainash-data` puts all of that behind one class, `IbisBackend`. You choose a database by dialect name, URL or typed connection profile, pass credentials separately when you connect, and then use the same methods everywhere: list and inspect tables, read them as Ibis expressions, create and insert, upsert, add columns, manage indexes and group the work in a transaction. Where a database cannot do something, the call fails with a clear error instead of running something different.
 
-## What's Inside
+## Who it's for
 
-- [**Chapters**](chapters/index.md) — 9 chapters covering everything from foundation concepts through advanced integration patterns
+<div class="grid cards" markdown>
 
-## Who This Is For
+-   **Python developers working with databases**
 
-Python developers and data engineers who work with multiple database backends and want a single library instead of per-database boilerplate. Whether you are connecting to DuckDB locally, PostgreSQL in staging, or Snowflake in production, this manual will get you productive quickly. See the [About](about.md) page for prerequisites and a full reading guide.
+    ---
+
+    Write data-loading and inspection code once and run it on SQLite or DuckDB in tests and on a server database in production. Install only the driver extras you need; a missing driver raises an `ImportError` that names the extra to add.
+
+    [Install and connect](chapters/02-installing-and-connecting/index.md)
+
+-   **Teams running several databases**
+
+    ---
+
+    Describe each database as a typed connection profile, one of 20 such as `PostgreSQLBackendProfile` or `SnowflakeBackendProfile`, and supply passwords, tokens or service accounts as a separate auth profile at connect time. Configuration files and secret stores stay with `mountainash-settings`.
+
+    [Configure connection profiles](chapters/03-connection-profiles-and-authentication/index.md)
+
+-   **Engineers building pipelines and loaders**
+
+    ---
+
+    Load idempotently with `upsert()`, evolve a table with `add_columns()` and manage indexes through the same calls on every dialect that supports them. Wrap the work in `transaction()` scopes, or join a transaction your own code already opened.
+
+    [Create and change tables](chapters/06-creating-and-changing-tables/index.md)
+
+-   **Architects and extension authors**
+
+    ---
+
+    See how one class serves 20 dialects by declaring each database's capabilities as data, then add a dialect, a settings backend or an entirely new kind of store behind the same `Backend` protocol.
+
+    [How one backend serves 20 dialects](chapters/11-how-one-backend-serves-20-dialects/index.md)
+
+</div>
+
+## See it work
+
+Save this as `load_sales.py`. The function never mentions a database engine; the last two lines run it once on DuckDB and once on SQLite.
+
+```python
+from mountainash_data import IbisBackend
 
 
+def load_sales(backend: IbisBackend) -> None:
+    with backend:
+        backend.create_table("sales", [
+            {"id": 1, "region": "north", "total": 120},
+            {"id": 2, "region": "south", "total": 95},
+        ])
+        backend.create_index("sales", "id", index_name="ux_sales_id", unique=True)
+        backend.upsert(
+            "sales",
+            [
+                {"id": 1, "region": "north", "total": 140},
+                {"id": 3, "region": "west", "total": 80},
+            ],
+            conflict_columns="id",
+        )
+        backend.add_columns("sales", {"note": "string"})
+        sales = backend.table("sales")
+        print(backend.dialect, sales.columns, backend.run_expr(sales.total.sum()))
 
-# Package Overview
 
-Mountainash-data is a unified Python library for connecting to any supported database or lakehouse. It wraps every Ibis dialect — DuckDB, PostgreSQL, Snowflake, BigQuery, Trino, ClickHouse, and more — behind a single `IbisBackend` class, and provides `IcebergBackend` for Apache Iceberg catalog access. Typed settings classes handle connection configuration and authentication, while a runtime-checkable `Backend` protocol provides a uniform interface for inspecting metadata and running queries.
+load_sales(IbisBackend(dialect="duckdb", database=":memory:"))
+# → duckdb ('id', 'region', 'total', 'note') 315
+load_sales(IbisBackend("sqlite://"))
+# → sqlite ('id', 'region', 'total', 'note') 315
+```
 
-## Target Audience
+Run it with the `sqlite` and `duckdb` extras installed (see [Installing and connecting](chapters/02-installing-and-connecting/index.md#choosing-extras)). On both engines the upsert updated row 1 and inserted row 3, and the `note` column was added, with the index, upsert and schema-change SQL rendered for each dialect by the package. Pointing the function at a server database means changing the line that builds the backend: the package's live-database test suite runs the same public `upsert()` call against PostgreSQL, MySQL, SingleStoreDB, SQL Server and Trino. Not every dialect supports every call (Snowflake, for example, has no index operations), and [Supported databases and limits](chapters/10-supported-databases-and-limits/index.md#support-matrix) lists what each of the 20 dialects supports.
 
-Python developers and data engineers who need to connect to multiple database backends (PostgreSQL, Snowflake, BigQuery, DuckDB, etc.) and Apache Iceberg catalogs through a single, consistent API with typed configuration.
+## Where to go next
 
-## Who This Is For
+- Start with [What mountainash-data is](chapters/01-what-mountainash-data-is/index.md) for the package's layers and where Ibis fits, then [Installing and connecting](chapters/02-installing-and-connecting/index.md). Both assume intermediate Python and basic SQL; Ibis experience helps but isn't required.
+- The [chapter list](chapters/index.md) shows everything the documentation covers, and the [FAQ](faq.md) and [glossary](glossary.md) answer common questions and define terms.
+- [About](about.md) explains why the package exists and the design ideas behind it, and has the license and the link to the code repository.
 
-Python developers and data engineers who need to connect to multiple database backends — PostgreSQL, Snowflake, BigQuery, DuckDB, and others — and Apache Iceberg catalogs through a single, consistent API with typed configuration. You might be building data pipelines that need to run against different backends in dev versus production, or you might be a platform engineer who wants one library for every warehouse in the organisation.
-
-## What You Should Already Know
-
-You should be comfortable with:
-
-- Python at an intermediate level — protocols, dataclasses, and decorators in particular
-- Basic SQL and database concepts: schemas, tables, catalogs
-- At least one Python database client library (e.g. `psycopg2`, `snowflake-connector-python`, `duckdb`)
-- General ideas around connection pooling and credential management
-
-## What You'll Get Out of This
-
-After working through this manual, you will know how to:
-
-- Connect to any supported database with a typed settings object and start querying immediately
-- Switch between dev, staging, and production backends by swapping a single settings object — no code changes
-- Inspect catalogs, namespaces, tables, and columns through a uniform metadata API that works the same across every backend
-- Configure authentication for real-world setups: OAuth2, IAM, service accounts, certificates
-- Extend the library with new database backends by implementing the Backend protocol and registering settings classes
-- Use IcebergBackend to connect to Apache Iceberg catalogs (REST, Hive, Glue) alongside your SQL backends
-
-## Prerequisites
-
-- Intermediate Python (protocols, dataclasses, decorators)
-- Basic SQL and database concepts (schemas, tables, catalogs)
-- Familiarity with at least one database client library
-- Understanding of connection pooling and credential management
-
-## What This Manual Covers
-
-1. **Foundation Concepts** — Core abstractions and design decisions underpinning the library
-2. **Backend Protocol** — Runtime-checkable structural protocol defining the universal backend contract
-3. **Inspection Model** — CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo metadata dataclasses
-4. **Ibis Backend** — IbisBackend class for 20+ SQL databases with fluent queries and DDL/DML
-5. **Dialect System** — DialectSpec registry for backend-specific connection and operation routing
-6. **Settings and Configuration** — Per-backend AuthSettings with auto-registration via @register decorator
-7. **Adapters and Auth** — Credential transformation pipeline for OAuth, JWT, cloud-native auth, SSL
-8. **Iceberg Backend** — IcebergBackend for Apache Iceberg catalog access (REST, Hive, Glue)
-9. **Advanced Integration** — Combining backends, extending the library, and production deployment patterns
-
-## What This Manual Does Not Cover
-
-- Database administration and performance tuning
-- SQL query optimization
-- Data warehouse modeling
-- ETL/ELT pipeline orchestration
-- Cloud provider account management
-
-## Key Capabilities
-
-**Every Ibis dialect through one interface** — IbisBackend provides a unified connection, inspection, and query interface across every SQL and analytical engine Ibis supports: DuckDB, PostgreSQL, Snowflake, BigQuery, Trino, ClickHouse, MySQL, Oracle, SQL Server, Databricks, and more. When Ibis adds a new backend, mountainash-data inherits it.
-
-**Native Iceberg lakehouse support** — IcebergBackend connects to Apache Iceberg catalogs (REST, Hive, Glue, SQL) so the same code that validates and transforms data can store and query it in a production lakehouse. Tables, metadata inspection, and operations all work through the Backend protocol.
-
-**Typed connection settings for every backend** — Each database dialect has typed settings classes with auto-derived connection parameters. Authentication spans the full spectrum: password, token, OAuth2, IAM, service accounts, and certificates. Settings compose with mountainash-settings for config file loading and secrets resolution.
-
-**A protocol that any data store can implement** — The Backend protocol defines connect, close, inspect, and query operations. Any data store that implements this protocol participates in the mountainash ecosystem — expressions, rules, and validation all work against it automatically.
-
-**Development to production without rewrites** — Develop pipelines against DuckDB on your laptop, point at Snowflake in staging, and BigQuery in production. The expressions compile through Ibis to each backend's native dialect. The backend is a deployment config, not a code change.
-
-## Context
-
-Mountainash-data provides a unified Python API for connecting to any supported database or lakehouse. The Backend protocol defines the universal contract, IbisBackend covers 20+ SQL databases through Ibis, and IcebergBackend handles Apache Iceberg catalogs. Typed settings classes with auto-registration enable consistent, validated configuration across all providers.
+!!! note "Development baseline"
+    This documentation describes the `mountainash-data` 0.1.0 development baseline, which requires Python 3.12 or later and Ibis 12 or later. Until its dependencies are published, install it from development checkouts alongside `mountainash-settings` and `mountainash-auth-client`, as described in [Installing and connecting](chapters/02-installing-and-connecting/index.md).

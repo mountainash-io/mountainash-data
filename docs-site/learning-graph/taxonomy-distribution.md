@@ -2,36 +2,42 @@
 
 ## Overview
 
-- **Total Concepts**: 100
-- **Number of Taxonomies**: 9
-- **Average Concepts per Taxonomy**: 11.1
+- **Total Concepts**: 139
+- **Number of Taxonomies**: 12
+- **Average Concepts per Taxonomy**: 11.6
 
 ## Distribution Summary
 
 | Category | TaxonomyID | Count | Percentage | Status |
 |----------|-----------|-------|------------|--------|
-| Settings & Configuration | SETT | 18 | 18.0% | ✅ |
-| Ibis Backend | IBIS | 16 | 16.0% | ✅ |
-| Iceberg Backend | ICE | 14 | 14.0% | ✅ |
-| Foundation Concepts | FOUND | 10 | 10.0% | ✅ |
-| Dialect System | DIAL | 10 | 10.0% | ✅ |
-| Adapters & Auth | ADAPT | 10 | 10.0% | ✅ |
-| Backend Protocol | PROTO | 8 | 8.0% | ✅ |
-| Inspection Model | INSP | 8 | 8.0% | ✅ |
-| Advanced Features | ADV | 6 | 6.0% | ✅ |
+| Settings and Configuration | SETT | 21 | 15.1% | ✅ |
+| Dialect System and Dispatch | DIAL | 18 | 12.9% | ✅ |
+| Inspection Model | INSP | 15 | 10.8% | ✅ |
+| Tables, Mutations and Indexes | WRITE | 13 | 9.4% | ✅ |
+| Authentication and Adapters | AUTH | 13 | 9.4% | ✅ |
+| Transactions and Connection Adoption | TXN | 13 | 9.4% | ✅ |
+| Foundation Concepts | FOUND | 10 | 7.2% | ✅ |
+| Ibis Backend Usage | IBIS | 9 | 6.5% | ✅ |
+| Backend Protocol | PROTO | 8 | 5.8% | ✅ |
+| Installing and Connecting | CONN | 7 | 5.0% | ✅ |
+| Extending and Contributing | EXT | 7 | 5.0% | ✅ |
+| Capabilities and Limits | LIMIT | 5 | 3.6% | ✅ |
 
 ## Visual Distribution
 
 ```
-Settings & Configuration █████████  18 ( 18.0%)
-Ibis Backend             ████████  16 ( 16.0%)
-Iceberg Backend          ███████  14 ( 14.0%)
-Foundation Concepts      █████  10 ( 10.0%)
-Dialect System           █████  10 ( 10.0%)
-Adapters & Auth          █████  10 ( 10.0%)
-Backend Protocol         ████   8 (  8.0%)
-Inspection Model         ████   8 (  8.0%)
-Advanced Features        ███   6 (  6.0%)
+Settings and Configuratio ███████  21 ( 15.1%)
+Dialect System and Dispat ██████  18 ( 12.9%)
+Inspection Model          █████  15 ( 10.8%)
+Tables, Mutations and Ind ████  13 (  9.4%)
+Authentication and Adapte ████  13 (  9.4%)
+Transactions and Connecti ████  13 (  9.4%)
+Foundation Concepts       ███  10 (  7.2%)
+Ibis Backend Usage        ███   9 (  6.5%)
+Backend Protocol          ██   8 (  5.8%)
+Installing and Connecting ██   7 (  5.0%)
+Extending and Contributin ██   7 (  5.0%)
+Capabilities and Limits   █   5 (  3.6%)
 ```
 
 ## Balance Analysis
@@ -42,39 +48,80 @@ All categories are under the 30% threshold. Good balance!
 
 ## Category Details
 
-### Settings & Configuration (SETT)
+### Settings and Configuration (SETT)
 
-**Count**: 18 concepts (18.0%)
+**Count**: 21 concepts (15.1%)
 
 **Concepts**:
 
-- 67. ConnectionProfile Base
-- 68. To Driver Kwargs Method
+- 67. BackendProfile Class
+- 68. build_driver_kwargs Function
 - 69. BackendSpec Class
 - 70. ParameterSpec Class
 - 71. Parameter Tiers
-- 72. DATABASES REGISTRY
+- 72. DATABASES_REGISTRY
 - 73. Register Decorator
 - 74. Auto Registration
-- 75. SQLiteAuthSettings
-- 76. DuckDBAuthSettings
-- 77. PostgreSQLAuthSettings
-- 78. BigQueryAuthSettings
-- 79. SnowflakeAuthSettings
-- 80. RedshiftAuthSettings
-- 81. ClickhouseAuthSettings
-- *...and 3 more*
+- 75. SQLiteBackendProfile
+- 76. DuckDBBackendProfile
+- 77. PostgreSQLBackendProfile
+- 78. BigQueryBackendProfile
+- 79. SnowflakeBackendProfile
+- 80. RedshiftBackendProfile
+- 81. ClickHouseBackendProfile
+- *...and 6 more*
 
-### Ibis Backend (IBIS)
+### Dialect System and Dispatch (DIAL)
 
-**Count**: 16 concepts (16.0%)
+**Count**: 18 concepts (12.9%)
 
 **Concepts**:
 
-- 19. IbisBackend Class
-- 20. Ibis Connection
-- 21. Fluent Query API
-- 22. Raw SQL Queries
+- 57. DialectSpec Overview
+- 58. Dialect Registry
+- 59. Dialect Name Key
+- 60. Connection Builder
+- 61. Operation Hooks
+- 62. Per Dialect Configuration
+- 63. SQLite Dialect
+- 64. DuckDB Dialect
+- 65. PostgreSQL Dialect
+- 66. Snowflake Dialect
+- 118. IndexCapability Descriptor
+- 121. UpsertStyle Descriptor
+- 122. Generic-Default Operations
+- 123. Hook Dispatch Order
+- 124. sqlglot Rendering
+- *...and 3 more*
+
+### Inspection Model (INSP)
+
+**Count**: 15 concepts (10.8%)
+
+**Concepts**:
+
+- 30. List Tables Ibis
+- 31. Table Inspection Ibis
+- 32. Namespace Inspection Ibis
+- 33. Catalog Inspection Ibis
+- 49. CatalogInfo Dataclass
+- 50. NamespaceInfo Dataclass
+- 51. TableInfo Dataclass
+- 52. ColumnInfo Dataclass
+- 53. Frozen Metadata Model
+- 54. Backend Agnostic Metadata
+- 55. Driver Metadata Conversion
+- 56. Unified Inspection API
+- 110. Namespace Value Object
+- 111. NamespaceLike Alias
+- 113. IndexInfo Dataclass
+
+### Tables, Mutations and Indexes (WRITE)
+
+**Count**: 13 concepts (9.4%)
+
+**Concepts**:
+
 - 23. DDL Operations
 - 24. Create Table
 - 25. DML Operations
@@ -82,36 +129,56 @@ All categories are under the 30% threshold. Good balance!
 - 27. Upsert Data
 - 28. Truncate Table
 - 29. Create View
-- 30. List Tables Ibis
-- 31. Table Inspection Ibis
-- 32. Namespace Inspection Ibis
-- 33. Catalog Inspection Ibis
-- *...and 1 more*
+- 114. List Indexes
+- 115. Create Index
+- 116. Drop Index
+- 117. Index Exists
+- 119. Add Columns
+- 120. Rename Table
 
-### Iceberg Backend (ICE)
+### Authentication and Adapters (AUTH)
 
-**Count**: 14 concepts (14.0%)
+**Count**: 13 concepts (9.4%)
 
 **Concepts**:
 
-- 35. IcebergBackend Class
-- 36. Apache Iceberg Overview
-- 37. Iceberg Connection Base
-- 38. REST Catalog Type
-- 39. Hive Catalog Type
-- 40. Glue Catalog Type
-- 41. SQL Catalog Type
-- 42. Catalog Type Registry
-- 43. Iceberg Operations
-- 44. List Tables Iceberg
-- 45. Table Inspection Iceberg
-- 46. Namespace Inspection Iceberg
-- 47. Catalog Inspection Iceberg
-- 48. PyIceberg Library
+- 85. Adapter Pipeline
+- 86. Credential Transformation
+- 87. OAuth Adapter
+- 88. JWT Adapter
+- 89. Cloud Native Auth
+- 90. SSL Bundle Adapter
+- 91. NoAuthProfile
+- 92. PasswordAuthProfile
+- 93. TokenAuthProfile
+- 94. IAMAuthProfile
+- 105. AuthProfile Types
+- 109. Supported Auth Validation
+- 148. Auth Adapter Registry
+
+### Transactions and Connection Adoption (TXN)
+
+**Count**: 13 concepts (9.4%)
+
+**Concepts**:
+
+- 125. Transaction Scope
+- 126. Transaction Ownership
+- 127. Flat Nested Scopes
+- 128. in_transaction Predicate
+- 129. native_transaction_open Probe
+- 131. Protected Package Calls
+- 132. Raw Driver Connection
+- 133. Transaction Errors
+- 134. Connection Adoption
+- 135. from_ibis_connection
+- 136. from_raw_connection
+- 137. Session Option Preservation
+- 138. Connection Ownership Flag
 
 ### Foundation Concepts (FOUND)
 
-**Count**: 10 concepts (10.0%)
+**Count**: 10 concepts (7.2%)
 
 **Concepts**:
 
@@ -126,43 +193,25 @@ All categories are under the 30% threshold. Good balance!
 - 9. Registry Pattern
 - 10. Ibis Library
 
-### Dialect System (DIAL)
+### Ibis Backend Usage (IBIS)
 
-**Count**: 10 concepts (10.0%)
-
-**Concepts**:
-
-- 57. DialectSpec Overview
-- 58. Dialect Registry
-- 59. Dialect Name Key
-- 60. Connection Builder
-- 61. Operation Hooks
-- 62. Per Dialect Configuration
-- 63. SQLite Dialect
-- 64. DuckDB Dialect
-- 65. PostgreSQL Dialect
-- 66. Snowflake Dialect
-
-### Adapters & Auth (ADAPT)
-
-**Count**: 10 concepts (10.0%)
+**Count**: 9 concepts (6.5%)
 
 **Concepts**:
 
-- 85. Adapter Pipeline
-- 86. Credential Transformation
-- 87. OAuth Adapter
-- 88. JWT Adapter
-- 89. Cloud Native Auth
-- 90. SSL Bundle Adapter
-- 91. NoAuth Settings
-- 92. PasswordAuth Settings
-- 93. TokenAuth Settings
-- 94. IAMAuth Settings
+- 19. IbisBackend Class
+- 20. Ibis Connection
+- 21. Fluent Query API
+- 22. Raw SQL Queries
+- 34. Context Manager Ibis
+- 139. run_expr Execution
+- 140. to_sql Compilation
+- 141. table Expression Access
+- 142. Bridge To mountainash Relations
 
 ### Backend Protocol (PROTO)
 
-**Count**: 8 concepts (8.0%)
+**Count**: 8 concepts (5.8%)
 
 **Concepts**:
 
@@ -175,37 +224,49 @@ All categories are under the 30% threshold. Good balance!
 - 17. Inspect Namespace Method
 - 18. Inspect Catalog Method
 
-### Inspection Model (INSP)
+### Installing and Connecting (CONN)
 
-**Count**: 8 concepts (8.0%)
-
-**Concepts**:
-
-- 49. CatalogInfo Dataclass
-- 50. NamespaceInfo Dataclass
-- 51. TableInfo Dataclass
-- 52. ColumnInfo Dataclass
-- 53. Frozen Metadata Model
-- 54. Backend Agnostic Metadata
-- 55. Driver Metadata Conversion
-- 56. Unified Inspection API
-
-### Advanced Features (ADV)
-
-**Count**: 6 concepts (6.0%)
+**Count**: 7 concepts (5.0%)
 
 **Concepts**:
 
-- 95. Cross Backend Queries
+- 101. Installation Extras
+- 102. Missing Driver ImportError
+- 103. Connection URL Construction
+- 104. SettingsParameters Construction
+- 106. Connect-Time Auth Composition
+- 143. Credential Redaction
+- 144. BackendConnectionError
+
+### Extending and Contributing (EXT)
+
+**Count**: 7 concepts (5.0%)
+
+**Concepts**:
+
+- 149. Protocol Conformance Testing
+- 150. Adding A Dialect
+- 151. Adding A Settings Backend
+- 152. Implementing A Backend
+- 153. Test Tiers
+- 154. Live Database Harness
+- 155. Backend Name Registry
+
+### Capabilities and Limits (LIMIT)
+
+**Count**: 5 concepts (3.6%)
+
+**Concepts**:
+
 - 96. Backend Capability Matrix
 - 97. DDL Index Support
-- 98. Memory Intensive Upsert
-- 99. REST Catalog Cursors
 - 100. Unimplemented Operations
+- 112. Catalog-Qualified Namespace Limits
+- 156. Memtable Rollback Caveat
 
 ## Recommendations
 
-- ✅ **Excellent balance**: Categories are evenly distributed (spread: 12.0%)
+- ✅ **Excellent balance**: Categories are evenly distributed (spread: 11.5%)
 - ✅ **MISC category minimal**: Good categorization specificity
 
 ### Educational Use Recommendations
@@ -218,4 +279,4 @@ All categories are under the 30% threshold. Good balance!
 
 ---
 
-*Report generated by learning-graph-reports/taxonomy_distribution.py*
+*Report generated by ibook graph taxonomy-report*
