@@ -177,3 +177,13 @@ An editorial change, recorded separately from the mechanical reconciliation in `
 | 154 | Live Database Harness | — | 15-contributing-and-testing |
 | 155 | Backend Name Registry | — | 14-extending-mountainash-data |
 | 156 | Memtable Rollback Caveat | — | 08-transactions |
+
+## Source mapping corrections during chapter writing
+
+The generic builders live in `backends/ibis/operations.py` (`_generic_add_columns`, `_generic_rename_table`, `_generic_upsert`). `_render.py` holds only shared rendering helpers.
+
+| ID | Concept | From | To |
+|---|---|---|---|
+| 119 | Add Columns | `mountainash_data.backends.ibis._render` | `mountainash_data.backends.ibis.operations` |
+| 120 | Rename Table | `mountainash_data.backends.ibis._render` | `mountainash_data.backends.ibis.operations` |
+| 122 | Generic-Default Operations | `mountainash_data.backends.ibis._render` | `mountainash_data.backends.ibis.operations` |

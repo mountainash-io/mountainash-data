@@ -1240,8 +1240,8 @@
       "label": "Add Columns",
       "group": "WRITE",
       "cis": 1,
-      "source_module": "mountainash_data.backends.ibis._render",
-      "source_path": "src/mountainash_data/backends/ibis/_render.py",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
       "chapter": "06-creating-and-changing-tables"
@@ -1251,8 +1251,8 @@
       "label": "Rename Table",
       "group": "WRITE",
       "cis": 1,
-      "source_module": "mountainash_data.backends.ibis._render",
-      "source_path": "src/mountainash_data/backends/ibis/_render.py",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
       "chapter": "06-creating-and-changing-tables"
@@ -1273,8 +1273,8 @@
       "label": "Generic-Default Operations",
       "group": "DIAL",
       "cis": 13,
-      "source_module": "mountainash_data.backends.ibis._render",
-      "source_path": "src/mountainash_data/backends/ibis/_render.py",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
       "chapter": "11-how-one-backend-serves-20-dialects"
