@@ -106,10 +106,9 @@ src/mountainash_data/
 - **python-run-radon.yml**: Complexity analysis and code quality metrics
 
 ### Release Process
-- **build-and-release-package.yml** / **publish-mountainash.yml**: Shared release-chain workflow. PRs build and verify a candidate; merges create GitHub (pre-)releases and `mountainash-wheels` PRs. PyPI publication is manual only: `workflow_dispatch` with `publish=true` on `main`, approved in the protected `pypi` environment (Trusted Publishing)
+- **build-and-release-package.yml**: Shared release-chain workflow. PRs build and verify a candidate; merging a PR performs no release action (no tag, no GitHub release, no wheels-repository PR). PyPI publication is manual only: `workflow_dispatch` with `publish=true` on `main`, approved in the protected `pypi` environment (Trusted Publishing)
   - Supports production, RC, and beta releases
   - Generates SBOMs (Software Bill of Materials)
-  - Creates releases in GitHub and mountainash-wheels repository
 - **main-release-branch-validation.yml**: Validates release branches
 - **main-release-build-dependencies.yml**: Manages build dependencies
 

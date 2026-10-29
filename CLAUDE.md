@@ -167,7 +167,7 @@ No driver, dataframe library, NumPy or Arrow is a base requirement; they arrive 
 - **python-verify-live-db.yml**: Live-database runs (postgres, mysql, …) via Docker targets
 
 ### Release Process
-- **build-and-release-package.yml** / **publish-mountainash.yml**: Shared release-chain workflow. PRs build and verify a candidate; merges create GitHub (pre-)releases and `mountainash-wheels` PRs. PyPI publication is manual only: `workflow_dispatch` with `publish=true` on `main`, approved in the protected `pypi` environment (Trusted Publishing)
+- **build-and-release-package.yml**: Shared release-chain workflow. PRs build and verify a candidate; merging a PR performs no release action (no tag, no GitHub release, no wheels-repository PR). PyPI publication is manual only: `workflow_dispatch` with `publish=true` on `main`, approved in the protected `pypi` environment (Trusted Publishing)
   - Supports production, RC, and beta releases
   - Generates SBOMs (Software Bill of Materials)
 - **main-release-branch-validation.yml** / **main-release-build-dependencies.yml**: PRs to `main` must come from `release/*` or `hotfix/*` and pass a build-dependency check
