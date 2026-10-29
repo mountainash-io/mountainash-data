@@ -1,0 +1,58 @@
+{
+  "id": "mountainash_data.backends.iceberg.connection",
+  "path": "src/mountainash_data/backends/iceberg/connection.py",
+  "summary": "IcebergConnectionBase is an abstract base extending BaseDBConnection. Provides lifecycle (connect/disconnect/close), table loading with schema cache, inspection (list_namespaces/tables, inspect_table/namespace/catalog), mutation delegation wrappers, and DataFrame accessors (ibis/polars/native). Subclassed by catalog-specific implementations.",
+  "role": "backend",
+  "visibility": "semi-public",
+  "stability": "evolving",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": ["IcebergConnectionBase"],
+  "key_classes": [
+    {
+      "name": "IcebergConnectionBase",
+      "kind": "abc",
+      "extends": "BaseDBConnection",
+      "abstract_properties": ["catalog_backend"],
+      "methods": [
+        "connect", "connect_default", "disconnect", "close", "is_connected",
+        "table", "load_table", "get_schema", "clear_schema_cache",
+        "list_namespaces", "list_tables", "inspect_table", "inspect_namespace", "inspect_catalog",
+        "table_exists", "view_exists",
+        "create_table", "drop_table", "insert", "upsert", "truncate",
+        "create_view", "drop_view", "rename_table",
+        "table_as_ibis_dataframe", "table_as_polars_dataframe", "table_as_native_dataframe",
+        "run_sql", "retry_operation"
+      ]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.core.connection",
+    "mountainash_data.core.constants",
+    "mountainash_data.core.inspection",
+    "mountainash_data.backends.iceberg.inspect",
+    "mountainash_data.backends.iceberg.operations"
+  ],
+  "dependents": [
+    "mountainash_data.backends.iceberg.backend",
+    "mountainash_data.backends.iceberg.catalogs.rest"
+  ],
+  "extension_points": [
+    "Subclass and implement catalog_backend property for new catalog types"
+  ],
+  "lifecycle_notes": [],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [
+    "run_sql raises NotImplementedError — Iceberg does not support SQL passthrough"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/iceberg/connection.py", "detail": "IcebergConnectionBase ABC with ~30 methods"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
