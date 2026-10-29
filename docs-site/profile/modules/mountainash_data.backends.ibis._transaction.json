@@ -1,0 +1,92 @@
+{
+  "id": "mountainash_data.backends.ibis._transaction",
+  "path": "src/mountainash_data/backends/ibis/_transaction.py",
+  "summary": "Reentrant, cross-dialect unit-of-work machinery behind IbisBackend.transaction(). Keeps a module-level registry keyed on id(raw_handle) under a lock; the outermost scope decides ownership and nested scopes join flatly (no savepoints). On ownership dialects (sqlite, duckdb, postgres) entry probes native state to begin-and-own or join a caller's open transaction without completing it, and exit verifies commit eligibility. Caught failures poison the scope. Exposes is_active(), protection_required() and mark_poisoned() for the protection layer.",
+  "role": "orchestration",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture"
+  ],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [
+    "_TxState"
+  ],
+  "key_functions": [
+    "run_transaction",
+    "is_active",
+    "protection_required",
+    "mark_poisoned",
+    "_join",
+    "_observe_entry",
+    "_finish_selected",
+    "_vanished",
+    "_rollback_owned_best_effort"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis._raw",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.core._warn",
+    "mountainash_data.core.errors"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis._protected"
+  ],
+  "extension_points": [
+    "Dialects participate through DialectSpec transaction fields (begin_statement, begin_hook, in_transaction_probe, precommit_probe, raw_execute_hook); OWNERSHIP_DIALECTS selects the ownership path"
+  ],
+  "lifecycle_notes": [
+    "Never toggles the driver's autocommit flag",
+    "Registers after BEGIN so a failed BEGIN leaves no stale entry",
+    "An ambiguous COMMIT failure is never retried; on_commit_failure discards owned connections",
+    "TransactionSupport.NONE raises TransactionUnsupportedError unless required=False, which warns once and no-ops"
+  ],
+  "documentation_hooks": [
+    "Ownership vs join semantics",
+    "Poisoning and TransactionPoisonedError / TransactionIntegrityError outcomes",
+    "Why a native COMMIT through a raw escape hatch raises at scope exit"
+  ],
+  "examples": [
+    "examples/transactions/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_transaction.py",
+    "tests/test_unit/backends/ibis/test_transaction_scope.py",
+    "tests/test_live_backends/test_transaction_live.py",
+    "tests/helpers/transaction_cases.py"
+  ],
+  "risks": [
+    "Registry provides sequential reentrancy only, not cross-thread arbitration on one raw connection",
+    "Keyed on id(raw_handle): a freed handle's id could be reused, though entries are popped in finally"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_transaction.py",
+      "detail": "OWNERSHIP_DIALECTS = {sqlite, duckdb, postgres}"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "backend imports run_transaction, is_active, OWNERSHIP_DIALECTS"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_transaction.py",
+      "detail": "registry and ownership unit tests"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

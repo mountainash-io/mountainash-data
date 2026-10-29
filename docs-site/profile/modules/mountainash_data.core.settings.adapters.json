@@ -1,39 +1,125 @@
 {
   "id": "mountainash_data.core.settings.adapters",
-  "path": "src/mountainash_data/core/settings/adapters/",
-  "summary": "Per-backend adapter functions that translate ConnectionProfile + AuthSpec into driver-specific kwargs. 9 adapters: bigquery, databricks, mssql, mysql, pyiceberg_rest, pyspark, redshift, snowflake, trino. Each exports a build_driver_kwargs() function assigned to the backend's __adapter__ class var.",
-  "role": "io",
+  "path": "src/mountainash_data/core/settings/adapters",
+  "summary": "Per-backend functions that shape driver kwargs. adapters/registry.py holds _AUTH_ADAPTERS, a (provider_type, AuthProfile class) \u2192 function table, and auth_adapter(), which resolves the most specific registered auth class along the MRO and raises TypeError for an ambiguous multiple-inheritance match. Auth adapters cover Trino (password/JWT/Kerberos), Snowflake (password/token/OAuth2/certificate), BigQuery (service account), Databricks, MSSQL (password/Windows/Azure AD), Redshift (password/IAM), MotherDuck (token), and a shared user/password adapter for ten SQL backends. Config-shaping adapters (mssql.host_fold, mysql.ssl_compose, snowflake.session_params) are attached to profiles through __adapters__.",
+  "role": "integration",
   "visibility": "internal",
-  "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture"],
-  "doc_priority": "internal-note",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors"
+  ],
+  "doc_priority": "useful",
   "confidence": "high",
   "public_api": [],
   "key_classes": [],
   "key_functions": [
-    {"name": "build_driver_kwargs", "signature": "(profile: *AuthSettings) -> dict[str, Any]", "note": "One per adapter file"}
+    "registry.auth_adapter",
+    "sql.userpass",
+    "trino.password",
+    "trino.jwt",
+    "trino.kerberos",
+    "snowflake.oauth2",
+    "snowflake.certificate",
+    "bigquery.service_account",
+    "mssql.azure_ad",
+    "redshift.iam",
+    "mssql.host_fold",
+    "mysql.ssl_compose",
+    "snowflake.session_params"
   ],
   "dependencies": [
-    "mountainash_settings.auth",
-    "mountainash_data.core.settings.backends"
+    "mountainash_data.core.constants"
   ],
   "dependents": [
-    "mountainash_data.core.settings.profile"
+    "mountainash_data.core.settings.backends",
+    "mountainash_data.core.factories"
   ],
   "extension_points": [
-    "Add a new adapter file and set __adapter__ on the backend's settings class"
+    "Add an auth path by adding a (provider_type, AuthProfile class) entry to _AUTH_ADAPTERS.",
+    "Add config shaping by writing a (profile, base) \u2192 dict function and declaring it in a profile's __adapters__."
   ],
-  "lifecycle_notes": [],
-  "documentation_hooks": [],
+  "lifecycle_notes": [
+    "Trino and BigQuery adapters import their driver packages lazily inside the function.",
+    "BigQuery service-account INFO parsing redacts the secret in error messages and suppresses exception chaining."
+  ],
+  "documentation_hooks": [
+    "Auth matrix: which AuthProfile types map to which driver kwargs per backend",
+    "Writing an auth adapter"
+  ],
   "examples": [],
-  "tests": [],
-  "risks": [],
+  "tests": [
+    "tests/test_unit/core/settings/adapters/test_auth_adapters.py",
+    "tests/test_unit/core/settings/adapters/test_registry.py",
+    "tests/test_unit/core/settings/test_config_shaping.py",
+    "tests/test_optional_backends/bigquery/test_auth_adapter.py",
+    "tests/test_optional_backends/trino/test_auth_adapter.py"
+  ],
+  "risks": [
+    "snowflake.oauth2 sends only ACCESS_TOKEN and ignores CLIENT_ID/SECRET/SCOPE (comment marks it 'smell #1').",
+    "Adapter functions in mssql.py/snowflake.py lack type annotations, unlike the other adapter files.",
+    "supported_auth on each spec and the _AUTH_ADAPTERS table must agree; consistency is enforced only by test_supported_auth_consistency.py."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/adapters/bigquery.py", "detail": "build_driver_kwargs for BigQuery with ServiceAccountAuth handling"},
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/adapters/snowflake.py", "detail": "build_driver_kwargs for Snowflake"},
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/adapters/mssql.py", "detail": "build_driver_kwargs for MSSQL"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/settings/adapters/registry.py",
+      "detail": "_AUTH_ADAPTERS table and auth_adapter MRO resolution"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/bigquery.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/databricks.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/motherduck.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/mssql.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/mysql.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/redshift.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/snowflake.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/sql.py",
+      "detail": "adapter module"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/adapters/trino.py",
+      "detail": "adapter module"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

@@ -1,41 +1,67 @@
 {
   "id": "mountainash_data.core.registry",
   "path": "src/mountainash_data/core/registry.py",
-  "summary": "Service-locator registry for backend factories. Provides register(), get(), and names() functions against a module-level dict. Placeholder for Phase 4 — not yet wired to IbisBackend/IcebergBackend.",
+  "summary": "Process-global name-to-factory registry for Backend implementations: register(name, factory), get(name, **config) and names(). get() raises KeyError listing the available names.",
   "role": "orchestration",
   "visibility": "semi-public",
-  "stability": "evolving",
-  "audiences": ["maintainers", "backend-architecture"],
+  "stability": "unknown",
+  "audiences": [
+    "maintainers",
+    "backend-architecture",
+    "extension-authors"
+  ],
   "doc_priority": "useful",
   "confidence": "medium",
-  "public_api": ["register", "get", "names"],
+  "public_api": [
+    "register",
+    "get",
+    "names"
+  ],
   "key_classes": [],
   "key_functions": [
-    {"name": "register", "signature": "(name: str, factory: Callable[..., Backend]) -> None"},
-    {"name": "get", "signature": "(name: str, **config: Any) -> Backend"},
-    {"name": "names", "signature": "() -> list[str]"}
+    "register",
+    "get",
+    "names"
   ],
-  "dependencies": ["mountainash_data.core.protocol"],
+  "dependencies": [
+    "mountainash_data.core.protocol"
+  ],
   "dependents": [],
   "extension_points": [
-    "register() allows adding custom backend factories at runtime"
+    "A third-party Backend registers a factory with register(name, factory) so callers can construct it by name."
   ],
   "lifecycle_notes": [
-    "File header states it is a placeholder for Phase 4; final implementation pending"
+    "The registry starts empty: IbisBackend does not register itself, so get('ibis') raises KeyError unless a caller registers it."
   ],
-  "documentation_hooks": [],
+  "documentation_hooks": [
+    "Extension guide: registering a non-Ibis backend by name."
+  ],
   "examples": [],
   "tests": [],
   "risks": [
-    "Currently a stub — no backends are auto-registered into this registry"
+    "No source module imports it and no test exercises it, so its behaviour is unverified and it has no consumer in this package.",
+    "Not exported from the package root, so it is reachable only via mountainash_data.core.registry."
   ],
   "open_questions": [
-    "When will IbisBackend and IcebergBackend be wired into this registry?"
+    "Is core.registry intended public extension infrastructure (then it needs tests and IbisBackend registration) or a leftover from the multi-backend design that could be retired?"
   ],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/registry.py", "detail": "3 public functions, _REGISTRY dict"},
-    {"kind": "doc", "path": "src/mountainash_data/core/registry.py", "detail": "Docstring says 'placeholder for Phase 4'"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/registry.py",
+      "detail": "Module-level _REGISTRY dict with register/get/names"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/__init__.py",
+      "detail": "Not re-exported; grep finds no importer in src or tests"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

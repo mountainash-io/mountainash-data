@@ -1,0 +1,57 @@
+{
+  "id": "mountainash_data.backends.ibis._exasol_compat",
+  "path": "src/mountainash_data/backends/ibis/_exasol_compat.py",
+  "summary": "Exasol compatibility shim. Ibis 12's Exasol backend only exposes the private _safe_raw_sql context manager, so patch_exasol_connection adds a raw_sql method over it, letting the generic rename, add_columns and MERGE paths run on Exasol.",
+  "role": "integration",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [],
+  "key_functions": [
+    "patch_exasol_connection"
+  ],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.backends.ibis.dialects"
+  ],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "Applied through DialectSpec.ibis_connection_adapter; idempotent"
+  ],
+  "documentation_hooks": [
+    "Known Ibis gaps worked around per dialect"
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_exasol_compat.py"
+  ],
+  "risks": [
+    "Depends on Ibis private _safe_raw_sql; may break on Ibis upgrades"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_exasol_compat.py",
+      "detail": "patch_exasol_connection"
+    },
+    {
+      "kind": "config",
+      "path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+      "detail": "exasol ibis_connection_adapter=patch_exasol_connection"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

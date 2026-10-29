@@ -1,44 +1,81 @@
 {
   "id": "mountainash_data.core.inspection",
   "path": "src/mountainash_data/core/inspection.py",
-  "summary": "Four frozen dataclasses (ColumnInfo, TableInfo, NamespaceInfo, CatalogInfo) forming the shared physical metadata model. Used by both Ibis and Iceberg backends.",
+  "summary": "Frozen dataclasses for backend-neutral physical metadata: ColumnInfo, TableInfo (location: Namespace, column_names, qualified_name), NamespaceInfo (location: Namespace, name derived from the last path segment), CatalogInfo and IndexInfo.",
   "role": "model",
   "visibility": "public",
   "stability": "stable",
-  "audiences": ["users", "maintainers", "backend-architecture"],
+  "audiences": [
+    "users",
+    "maintainers",
+    "backend-architecture",
+    "extension-authors"
+  ],
   "doc_priority": "essential",
   "confidence": "high",
-  "public_api": ["ColumnInfo", "TableInfo", "NamespaceInfo", "CatalogInfo"],
+  "public_api": [
+    "ColumnInfo",
+    "TableInfo",
+    "NamespaceInfo",
+    "CatalogInfo",
+    "IndexInfo"
+  ],
   "key_classes": [
-    {"name": "ColumnInfo", "kind": "frozen-dataclass", "fields": ["name", "type_name", "nullable", "description", "metadata"]},
-    {"name": "TableInfo", "kind": "frozen-dataclass", "fields": ["name", "columns", "namespace", "catalog", "description", "metadata"], "properties": ["column_names", "qualified_name"]},
-    {"name": "NamespaceInfo", "kind": "frozen-dataclass", "fields": ["name", "tables", "catalog", "metadata"]},
-    {"name": "CatalogInfo", "kind": "frozen-dataclass", "fields": ["name", "namespaces", "metadata"]}
+    "ColumnInfo",
+    "TableInfo",
+    "NamespaceInfo",
+    "CatalogInfo",
+    "IndexInfo"
   ],
   "key_functions": [],
-  "dependencies": [],
+  "dependencies": [
+    "mountainash_data.core.namespace"
+  ],
   "dependents": [
+    "mountainash_data.init",
     "mountainash_data.core.protocol",
     "mountainash_data.backends.ibis.backend",
     "mountainash_data.backends.ibis.inspect",
-    "mountainash_data.backends.iceberg.connection",
-    "mountainash_data.backends.iceberg.inspect"
+    "mountainash_data.backends.ibis._index_inspection",
+    "mountainash_data.backends.ibis.dialects"
   ],
-  "extension_points": [],
-  "lifecycle_notes": [],
+  "extension_points": [
+    "Backends populate the free-form metadata mapping on each dataclass with backend-specific details."
+  ],
+  "lifecycle_notes": [
+    "TableInfo and NamespaceInfo carry a Namespace location instead of separate namespace/catalog strings; NamespaceInfo.name is a derived property."
+  ],
   "documentation_hooks": [
-    "Users receive these from inspect_table/inspect_namespace/inspect_catalog",
-    "Immutable; safe to cache or store"
+    "Inspection chapter: shape of each dataclass and how qualified_name is composed.",
+    "IndexInfo fields (unique, is_primary, index_type, included_columns, is_valid, definition) for index introspection."
   ],
   "examples": [],
-  "tests": ["tests/test_unit/core/test_inspection.py"],
-  "risks": [],
+  "tests": [
+    "tests/test_unit/core/test_inspection.py",
+    "tests/test_unit/backends/ibis/test_inspect.py",
+    "tests/test_unit/test_mountainash_data.py"
+  ],
+  "risks": [
+    "Field changes on these frozen dataclasses break consumers that construct or destructure them; the namespace/catalog fields were already replaced by location."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/inspection.py", "detail": "4 frozen dataclasses"},
-    {"kind": "import", "path": "src/mountainash_data/__init__.py", "detail": "All four re-exported at package root"},
-    {"kind": "test", "path": "tests/test_unit/core/test_inspection.py", "detail": "Dataclass construction and property tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/inspection.py",
+      "detail": "Five @dataclass(frozen=True) classes"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/__init__.py",
+      "detail": "All five re-exported at package root"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

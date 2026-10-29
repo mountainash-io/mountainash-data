@@ -1,46 +1,80 @@
 {
   "id": "mountainash_data.core.settings.registry",
   "path": "src/mountainash_data/core/settings/registry.py",
-  "summary": "Central settings registry. DATABASES_REGISTRY is a mountainash_settings.profiles.Registry instance (spec_type=BackendSpec, profile_type=ConnectionProfile). Provides @register decorator, get_descriptor(), get_settings_class(), and backwards-compatible REGISTRY dict view.",
+  "summary": "Creates DATABASES_REGISTRY, a mountainash_settings.profiles.Registry typed to BackendSpec and BackendProfile, and exposes the register decorator plus get_descriptor(name) and get_settings_class(name). REGISTRY is a read-only Mapping view over registered specs kept for backwards compatibility. _snapshot_for_tests and _reset_for_tests are test seams for registry isolation.",
   "role": "orchestration",
   "visibility": "semi-public",
   "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors"
+  ],
   "doc_priority": "useful",
   "confidence": "high",
-  "public_api": ["DATABASES_REGISTRY", "REGISTRY", "get_descriptor", "get_settings_class", "register", "_snapshot_for_tests", "_reset_for_tests"],
+  "public_api": [
+    "DATABASES_REGISTRY",
+    "REGISTRY",
+    "register",
+    "get_descriptor",
+    "get_settings_class"
+  ],
   "key_classes": [
-    {"name": "_RegistryDictView", "kind": "mapping", "purpose": "Backwards-compatible read-only dict view"}
+    "_RegistryDictView"
   ],
   "key_functions": [
-    {"name": "get_descriptor", "signature": "(name: str) -> BackendSpec"},
-    {"name": "get_settings_class", "signature": "(name: str) -> type[ConnectionProfile]"},
-    {"name": "register", "signature": "decorator from DATABASES_REGISTRY.decorator()"}
+    "register",
+    "get_descriptor",
+    "get_settings_class",
+    "_snapshot_for_tests",
+    "_reset_for_tests"
   ],
   "dependencies": [
-    "mountainash_settings.profiles",
     "mountainash_data.core.settings.descriptor",
     "mountainash_data.core.settings.profile"
   ],
   "dependents": [
     "mountainash_data.core.settings",
-    "mountainash_data.core.settings.backends"
+    "mountainash_data.core.settings.backends",
+    "mountainash_data.core.factories"
   ],
   "extension_points": [
-    "@register decorator — new backends self-register on import"
+    "@register on a BackendProfile subclass whose __spec__ is a BackendSpec adds a backend to the registry."
   ],
   "lifecycle_notes": [
-    "Test isolation via _snapshot_for_tests / _reset_for_tests"
+    "REGISTRY is read-only; mutations go through @register.",
+    "core.factories iterates REGISTRY to map an Ibis dialect to a provider type."
   ],
-  "documentation_hooks": [],
+  "documentation_hooks": [
+    "How a backend becomes discoverable: @register \u2192 DATABASES_REGISTRY \u2192 get_settings_class/get_descriptor"
+  ],
   "examples": [],
-  "tests": ["tests/test_unit/core/settings/test_registry.py"],
-  "risks": [],
+  "tests": [
+    "tests/test_unit/core/settings/test_registry.py",
+    "tests/test_unit/core/settings/test_descriptors_invariants.py"
+  ],
+  "risks": [
+    "_reset_for_tests calls a private Registry method from mountainash_settings; it couples to that package's internals."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/registry.py", "detail": "DATABASES_REGISTRY instance + register decorator"},
-    {"kind": "test", "path": "tests/test_unit/core/settings/test_registry.py", "detail": "Registry population and lookup tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/settings/registry.py",
+      "detail": "DATABASES_REGISTRY = Registry('databases', spec_type=BackendSpec, profile_type=BackendProfile)"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/core/factories/connection_factory.py",
+      "detail": "_iter_specs reads REGISTRY.values()"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

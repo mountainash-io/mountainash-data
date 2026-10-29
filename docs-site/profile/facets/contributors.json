@@ -1,72 +1,85 @@
 {
   "audience": "contributors",
-  "summary": "mountainash-data is designed for extensibility. Contributing a new database dialect, Iceberg catalog type, or backend settings class follows clear registration patterns with existing implementations as templates. The codebase uses consistent test structures and build tooling to make onboarding smooth.",
-  "use_cases": [
-    {
-      "title": "Your first contribution: adding a new Ibis dialect",
-      "story": "You want to add support for CockroachDB. You create a DialectSpec entry in the dialects module with a connection builder function, add a settings file with @register in the backends settings directory, write a test file following the existing per-backend pattern, and submit a PR. The existing PostgreSQL dialect serves as a close reference."
-    },
-    {
-      "title": "Adding a new Iceberg catalog type",
-      "story": "Your team uses a custom Iceberg catalog. You subclass IcebergConnectionBase, implement the required connection lifecycle methods using RestConnection as a reference, register your class in the catalog registry, add corresponding settings, and write tests. The delegation chain is well-defined so you know exactly which methods to implement."
-    },
-    {
-      "title": "Improving an existing backend's adapter",
-      "story": "You notice that the Snowflake adapter could handle key-pair auth more cleanly. You update the adapter file in the adapters directory, adjust the corresponding settings class if needed, and run the existing test suite to ensure nothing regresses. Adapters are isolated files, so the change surface is small."
-    },
-    {
-      "title": "Setting up the development environment",
-      "story": "You clone the repo, run hatch to create the development environment, and use the preconfigured test, ruff, and mypy environments to validate your changes. The pyproject.toml and hatch.toml define everything you need — no hidden setup steps."
-    }
-  ],
+  "summary": "Contributors add dialects, settings backends, auth adapters and generic operations. Each change has a fixed home: a DIALECTS entry, a per-backend settings module plus adapter rows, or a renderer in _render/_index, with matching unit tests and optional live-backend tests.",
   "concepts": [
     {
-      "name": "Adding a new Ibis dialect",
-      "description": "Create a DialectSpec entry in the DIALECTS dictionary with a connection builder function. Add optional hook callables for dialect-specific operations (indexing, upserts, renames). Then create a settings file in the backends settings directory with a @register decorator. Existing dialects serve as complete templates for each step.",
+      "name": "Adding an Ibis dialect",
       "module_ids": [
         "mountainash_data.backends.ibis.dialects",
         "mountainash_data.backends.ibis.operations",
-        "mountainash_data.core.settings.backends"
+        "mountainash_data.backends.ibis.backend"
+      ],
+      "recommended_docs": [
+        "contributor guide: new dialect"
+      ],
+      "evidence": [
+        "src/mountainash_data/backends/ibis/dialects/_registry.py"
       ]
     },
     {
-      "name": "Adding a new Iceberg catalog",
-      "description": "Subclass IcebergConnectionBase and implement the connection lifecycle methods. Register your class in the catalog registry so IcebergBackend can discover it by catalog type string. The RestConnection implementation is a well-documented reference for what each method should do.",
+      "name": "Adding a settings backend and auth adapters",
       "module_ids": [
-        "mountainash_data.backends.iceberg.backend",
-        "mountainash_data.backends.iceberg.connection",
-        "mountainash_data.backends.iceberg.catalogs"
-      ]
-    },
-    {
-      "name": "Settings registration pattern",
-      "description": "Define a BackendSpec descriptor with your backend's metadata, create a ConnectionProfile subclass with typed fields for all connection parameters, and apply the @register decorator. The registry picks up your backend automatically on import. The to_driver_kwargs() and to_connection_string() methods bridge from typed settings to driver-native parameters.",
-      "module_ids": [
-        "mountainash_data.core.settings.descriptor",
+        "mountainash_data.core.settings.backends",
+        "mountainash_data.core.settings.adapters",
         "mountainash_data.core.settings.profile",
-        "mountainash_data.core.settings.registry"
+        "mountainash_data.core.settings.descriptor",
+        "mountainash_data.core.settings.registry",
+        "mountainash_data.core.settings"
+      ],
+      "recommended_docs": [
+        "contributor guide: new settings backend"
+      ],
+      "evidence": [
+        "src/mountainash_data/core/settings/adapters/registry.py"
       ]
     },
     {
-      "name": "Test patterns",
-      "description": "Each backend has a dedicated test file following a consistent structure: connection tests, settings validation, inspection tests, and operation tests. Shared fixtures and parametrized invariant tests ensure cross-backend consistency. New backends should follow this same pattern for review efficiency and long-term maintainability.",
-      "module_ids": ["mountainash_data.core.settings.backends"]
+      "name": "Extending generic operations",
+      "module_ids": [
+        "mountainash_data.backends.ibis._render",
+        "mountainash_data.backends.ibis._index",
+        "mountainash_data.backends.ibis._transaction"
+      ],
+      "recommended_docs": [
+        "contributor guide: generic ops"
+      ],
+      "evidence": [
+        "src/mountainash_data/backends/ibis/_render.py"
+      ]
     },
     {
-      "name": "Build and development",
-      "description": "The project uses hatch for environment management with preconfigured environments for testing, linting (ruff), type checking (mypy), and complexity analysis (radon). pyproject.toml and hatch.toml define all build and development configuration.",
-      "module_ids": []
+      "name": "Package surface and conventions",
+      "module_ids": [
+        "mountainash_data.init",
+        "mountainash_data.core.protocol",
+        "mountainash_data.core.constants",
+        "mountainash_data.core._warn",
+        "mountainash_data.core._redact",
+        "mountainash_data.core.factories"
+      ],
+      "recommended_docs": [
+        "conventions"
+      ],
+      "evidence": [
+        "src/mountainash_data/__init__.py",
+        "CLAUDE.md"
+      ]
     }
   ],
   "featured_modules": [
     "mountainash_data.backends.ibis.dialects",
     "mountainash_data.core.settings.backends",
-    "mountainash_data.backends.iceberg.catalogs"
+    "mountainash_data.core.settings.adapters",
+    "mountainash_data.backends.ibis._render"
   ],
-  "hidden_or_internal_modules": [
-    "mountainash_data.core.constants",
-    "mountainash_data.core.settings.auth",
-    "mountainash_data.core.settings.adapters"
+  "hidden_or_internal_modules": [],
+  "documentation_plan": [
+    "Step-by-step new-dialect recipe with test checklist",
+    "New settings backend recipe (spec, profile, adapters, __init__ import)",
+    "Test layout: unit, optional backends, live backends (tests/config/live-db.toml)",
+    "Tooling: hatch envs, ruff, mypy gate"
   ],
-  "open_questions": []
+  "open_questions": [
+    "CLAUDE.md package-structure and settings sections are stale; update before contributor docs cite it?"
+  ]
 }

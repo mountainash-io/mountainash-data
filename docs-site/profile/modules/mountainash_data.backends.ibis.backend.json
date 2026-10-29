@@ -1,62 +1,192 @@
 {
   "id": "mountainash_data.backends.ibis.backend",
   "path": "src/mountainash_data/backends/ibis/backend.py",
-  "summary": "IbisBackend is the primary entry point for all Ibis-backed relational databases. Accepts settings, URL, or dialect+kwargs. Provides fluent connect/close, DDL (create/drop table/view/index), DML (insert/upsert/truncate), query (table/run_sql/run_expr/to_sql), and inspection (list_tables/inspect_table). IbisConnection wraps the raw ibis backend object.",
+  "summary": "Defines IbisBackend, the package's single entry point for Ibis-supported databases, and IbisConnection, the live-connection wrapper. IbisBackend is constructed from a SettingsParameters object, a connection URL, or a dialect name plus driver kwargs; connect() composes an optional auth profile at connect time. It exposes inspection (list/inspect tables, namespaces, catalogs, indexes), fluent DDL/DML (create/drop table and view, insert, truncate, rename, upsert, add_columns, index ops), query helpers (table, run_sql, run_expr, to_sql), connection adoption (from_ibis_connection, from_raw_connection with optional session-option preservation), and explicit transaction scopes (transaction, in_transaction, native_transaction_open, raw_driver_connection). Operations dispatch to a per-dialect hook when one is registered, otherwise to the generic sqlglot-rendered implementation driven by the DialectSpec.",
   "role": "backend",
   "visibility": "public",
-  "stability": "stable",
-  "audiences": ["users", "maintainers", "backend-architecture"],
+  "stability": "evolving",
+  "audiences": [
+    "users",
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors",
+    "broader-hype"
+  ],
   "doc_priority": "essential",
   "confidence": "high",
-  "public_api": ["IbisBackend", "IbisConnection"],
+  "public_api": [
+    "IbisBackend",
+    "IbisConnection",
+    "IbisBackend.connect",
+    "IbisBackend.close",
+    "IbisBackend.from_ibis_connection",
+    "IbisBackend.from_raw_connection",
+    "IbisBackend.transaction",
+    "IbisBackend.in_transaction",
+    "IbisBackend.native_transaction_open",
+    "IbisBackend.supports_transactions",
+    "IbisBackend.raw_driver_connection",
+    "IbisBackend.ibis_connection",
+    "IbisBackend.get_connection",
+    "IbisBackend.list_tables",
+    "IbisBackend.list_namespaces",
+    "IbisBackend.list_catalogs",
+    "IbisBackend.inspect_table",
+    "IbisBackend.inspect_namespace",
+    "IbisBackend.inspect_catalog",
+    "IbisBackend.list_indexes",
+    "IbisBackend.table",
+    "IbisBackend.table_exists",
+    "IbisBackend.run_sql",
+    "IbisBackend.run_expr",
+    "IbisBackend.to_sql",
+    "IbisBackend.create_table",
+    "IbisBackend.drop_table",
+    "IbisBackend.create_view",
+    "IbisBackend.drop_view",
+    "IbisBackend.insert",
+    "IbisBackend.truncate",
+    "IbisBackend.rename_table",
+    "IbisBackend.upsert",
+    "IbisBackend.add_columns",
+    "IbisBackend.create_index",
+    "IbisBackend.create_unique_index",
+    "IbisBackend.drop_index",
+    "IbisBackend.index_exists"
+  ],
   "key_classes": [
-    {
-      "name": "IbisBackend",
-      "kind": "class",
-      "attribute": "name = 'ibis'",
-      "methods": [
-        "connect", "close", "__enter__", "__exit__",
-        "list_tables", "list_namespaces", "inspect_table", "inspect_namespace", "inspect_catalog",
-        "table", "table_exists", "run_sql", "run_expr", "to_sql",
-        "create_table", "drop_table", "create_view", "drop_view",
-        "insert", "truncate", "rename_table", "upsert",
-        "create_index", "drop_index", "create_unique_index",
-        "list_indexes", "index_exists",
-        "ibis_connection", "get_connection"
-      ]
-    },
-    {
-      "name": "IbisConnection",
-      "kind": "class",
-      "methods": ["list_namespaces", "list_tables", "inspect_table", "inspect_namespace", "inspect_catalog", "close"]
-    }
+    "IbisBackend",
+    "IbisConnection"
   ],
-  "key_functions": [],
+  "key_functions": [
+    "_import_ibis_backend",
+    "_split_url",
+    "_render_ibis_database",
+    "_render_ibis_namespace_single",
+    "_build_scheme_to_dialect"
+  ],
   "dependencies": [
-    "mountainash_data.backends.ibis.dialects._registry",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.backends.ibis._protected",
+    "mountainash_data.backends.ibis._transaction",
+    "mountainash_data.backends.ibis._sqlite_compat",
+    "mountainash_data.backends.ibis._adoption",
+    "mountainash_data.backends.ibis.operations",
+    "mountainash_data.backends.ibis._index",
+    "mountainash_data.backends.ibis._index_inspection",
+    "mountainash_data.backends.ibis.inspect",
     "mountainash_data.core.inspection",
-    "mountainash_data.backends.ibis.inspect"
+    "mountainash_data.core.factories",
+    "mountainash_data.core.namespace",
+    "mountainash_data.core._redact"
   ],
-  "dependents": ["mountainash_data.init"],
+  "dependents": [
+    "mountainash_data.init"
+  ],
   "extension_points": [
-    "New dialects added via _registry.DIALECTS; IbisBackend dispatches automatically"
+    "New dialects are added as DialectSpec entries in dialects/_registry.py; IbisBackend dispatches through spec fields without per-dialect subclasses",
+    "Per-dialect hook fields on DialectSpec (upsert_hook, add_columns_hook, rename_table_hook, truncate_table_hook, create_index_hook, drop_index_hook, list_indexes_hook) override the generic implementations",
+    "from_ibis_connection / from_raw_connection let callers hand in their own live connection (owns_connection=False by default)"
   ],
   "lifecycle_notes": [
-    "Fluent API: most mutating methods return self for chaining"
+    "connect() is idempotent and returns self; auth profile is applied at connect time, not construction",
+    "Context-manager use connects on __enter__ and closes on __exit__",
+    "close() raises RuntimeError inside an open transaction() scope on the same native handle; an adopted connection is released but not disconnected",
+    "After an ambiguous COMMIT failure on an owned connection the connection is discarded so it is not reused",
+    "Mutating operations return self for chaining; terminal operations return data"
   ],
   "documentation_hooks": [
-    "Primary user-facing class for relational database access",
-    "Three construction paths: settings object, URL string, or dialect + kwargs"
+    "Three construction paths: SettingsParameters, URL string, dialect= keyword",
+    "Missing driver extras raise ImportError naming pip install 'mountainash-data[<dialect>]'",
+    "Namespace rendering: native ops accept catalog-qualified single-level namespaces; manual-SQL ops (upsert, add_columns, index ops) reject catalog qualification",
+    "transaction() ownership semantics on sqlite/duckdb/postgres: begin+own when idle, join without completing when a caller transaction is open",
+    "in_transaction() vs native_transaction_open(): package scope registration vs driver state",
+    "URL credentials are stripped from the URL and passed as a PasswordAuthProfile; errors never echo the URL"
   ],
-  "examples": [],
-  "tests": ["tests/test_unit/backends/ibis/test_backend.py"],
-  "risks": [],
-  "open_questions": [],
+  "examples": [
+    "README.md",
+    "examples/connections/example.py",
+    "examples/inspection/example.py",
+    "examples/mutations/example.py",
+    "examples/indexes/example.py",
+    "examples/transactions/example.py",
+    "examples/connection_adoption/example.py",
+    "examples/local_tables/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_backend.py",
+    "tests/test_unit/backends/ibis/test_backend_adopt.py",
+    "tests/test_unit/backends/ibis/test_backend_auth.py",
+    "tests/test_unit/backends/ibis/test_missing_extra.py",
+    "tests/test_unit/backends/ibis/test_credential_urls.py",
+    "tests/test_unit/backends/ibis/test_namespace_hierarchy.py",
+    "tests/test_unit/backends/ibis/test_transaction_scope.py",
+    "tests/test_unit/backends/ibis/test_sqlite_nat_binding.py",
+    "tests/test_unit/core/test_protocol.py",
+    "tests/test_unit/core/test_namespace.py",
+    "tests/test_integration/test_end_to_end_workflows.py",
+    "tests/test_live_backends/test_live_smoke.py",
+    "tests/test_live_backends/test_write_ops_live.py",
+    "tests/test_live_backends/test_transaction_live.py"
+  ],
+  "risks": [
+    "IbisConnection.list_namespaces/list_tables/list_catalogs print the error to stdout and return [] outside a transaction scope, which can mask connection or permission failures",
+    "IbisConnection docstrings still refer to core.protocol.Connection, which no longer exists (only Backend is defined in core/protocol.py)",
+    "to_sql() does not run inside the _protected() wrapper (compile only, no database work), unlike the other operations",
+    "Transaction ownership semantics apply only to OWNERSHIP_DIALECTS (sqlite, duckdb, postgres); other transactional dialects keep plain BEGIN/COMMIT/ROLLBACK behaviour",
+    "from_raw_connection is gated on DialectSpec.raw_adoption_verified, currently True only for duckdb and motherduck"
+  ],
+  "open_questions": [
+    "Should the stdout print fallbacks in IbisConnection list_* methods become logging or warnings?"
+  ],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/backend.py", "detail": "IbisBackend and IbisConnection classes"},
-    {"kind": "import", "path": "src/mountainash_data/__init__.py", "detail": "IbisBackend re-exported at package root"},
-    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_backend.py", "detail": "Backend construction and connection tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "IbisBackend / IbisConnection classes"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/__init__.py",
+      "detail": "IbisBackend re-exported at the package root"
+    },
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "_import_ibis_backend translates ModuleNotFoundError into ImportError naming the mountainash-data[<dialect>] extra"
+    },
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "from_raw_connection snapshots/restores adoption_mutations in a finally block when preserve_session=True"
+    },
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "transaction() delegates to _transaction.run_transaction with spec probes and on_commit_failure=_discard_connection"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_missing_extra.py",
+      "detail": "missing-extra ImportError behaviour"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_transaction_scope.py",
+      "detail": "scope ownership/join behaviour"
+    },
+    {
+      "kind": "doc",
+      "path": "README.md",
+      "detail": "Quick start and transaction semantics document IbisBackend usage"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

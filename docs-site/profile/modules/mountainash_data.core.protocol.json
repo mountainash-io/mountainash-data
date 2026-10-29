@@ -1,47 +1,84 @@
 {
   "id": "mountainash_data.core.protocol",
   "path": "src/mountainash_data/core/protocol.py",
-  "summary": "Defines the Backend runtime-checkable protocol: the structural contract every backend must satisfy (connect, close, list_tables, list_namespaces, inspect_table, inspect_namespace, inspect_catalog).",
+  "summary": "Defines the runtime-checkable Backend Protocol: name, connect/close and context-manager lifecycle, list_tables/list_namespaces/list_catalogs, inspect_table/inspect_namespace/inspect_catalog, raw_driver_connection(), supports_transactions, transaction(required=...), native_transaction_open() and in_transaction(). Implementations satisfy it structurally, without inheritance.",
   "role": "protocol",
   "visibility": "public",
-  "stability": "stable",
-  "audiences": ["users", "maintainers", "backend-architecture", "extension-authors"],
+  "stability": "evolving",
+  "audiences": [
+    "users",
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors",
+    "broader-hype"
+  ],
   "doc_priority": "essential",
   "confidence": "high",
-  "public_api": ["Backend"],
+  "public_api": [
+    "Backend"
+  ],
   "key_classes": [
-    {
-      "name": "Backend",
-      "kind": "protocol",
-      "methods": ["connect", "close", "__enter__", "__exit__", "list_tables", "list_namespaces", "inspect_table", "inspect_namespace", "inspect_catalog"],
-      "attributes": ["name"]
-    }
+    "Backend"
   ],
   "key_functions": [],
-  "dependencies": ["mountainash_data.core.inspection"],
+  "dependencies": [
+    "mountainash_data.core.inspection",
+    "mountainash_data.core.namespace"
+  ],
   "dependents": [
     "mountainash_data.init",
-    "mountainash_data.core.registry",
-    "mountainash_data.backends.ibis.backend",
-    "mountainash_data.backends.iceberg.backend"
+    "mountainash_data.core.registry"
   ],
   "extension_points": [
-    "Any class satisfying this protocol can serve as a backend without subclassing"
+    "Any class that implements every Backend member satisfies isinstance(obj, Backend); tests/test_unit/core/test_protocol.py uses a non-Ibis _StubBackend to keep the protocol backend-agnostic."
   ],
-  "lifecycle_notes": [],
+  "lifecycle_notes": [
+    "connect() and close() return self, so construction, connection and use can be chained or used as a context manager.",
+    "transaction() is a reentrant, flat unit of work: the outermost scope owns COMMIT/ROLLBACK unless it joins a caller-opened native transaction; nested scopes join and there are no savepoints.",
+    "in_transaction() is total: it returns False and never raises for unsupported, unconnected or closed backends.",
+    "raw_driver_connection() raises rather than returning None when no driver handle is available."
+  ],
   "documentation_hooks": [
-    "Central contract for backend authors",
-    "Structural typing means no import needed at implementation site"
+    "Contract chapter: list every member and its guarantees.",
+    "Transaction ownership semantics: owner vs. joiner, poisoned units, required=False no-op with a one-time warning.",
+    "Difference between in_transaction() (package scope registered) and native_transaction_open() (driver state)."
   ],
-  "examples": [],
-  "tests": ["tests/test_unit/core/test_protocol.py"],
-  "risks": [],
+  "examples": [
+    "README.md#transaction-ownership"
+  ],
+  "tests": [
+    "tests/test_unit/core/test_protocol.py",
+    "tests/test_unit/backends/ibis/test_backend.py",
+    "tests/test_unit/backends/ibis/test_transaction.py",
+    "tests/test_unit/backends/ibis/test_transaction_scope.py"
+  ],
+  "risks": [
+    "Every member added to a runtime_checkable Protocol is a breaking change for third-party implementations; the transaction members and raw_driver_connection were added after the original lifecycle and inspection contract."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/protocol.py", "detail": "@t.runtime_checkable Protocol class Backend"},
-    {"kind": "import", "path": "src/mountainash_data/__init__.py", "detail": "Re-exported as top-level symbol"},
-    {"kind": "test", "path": "tests/test_unit/core/test_protocol.py", "detail": "Protocol conformance tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/protocol.py",
+      "detail": "@t.runtime_checkable class Backend(t.Protocol) including in_transaction()"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/core/test_protocol.py",
+      "detail": "_StubBackend genericity guard and in_transaction cases"
+    },
+    {
+      "kind": "doc",
+      "path": "README.md",
+      "detail": "Transaction ownership section"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

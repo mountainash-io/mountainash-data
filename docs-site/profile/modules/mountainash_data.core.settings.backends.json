@@ -1,79 +1,260 @@
 {
   "id": "mountainash_data.core.settings.backends",
-  "path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
-  "summary": "20 per-backend settings modules following identical pattern: define a SPEC (BackendSpec) with parameters, define an *AuthSettings class (extending ConnectionProfile) with __spec__ = SPEC, and self-register via @register. Backends: sqlite, duckdb, motherduck, postgresql, mysql, mssql, snowflake, bigquery, redshift, trino, clickhouse, databricks, singlestoredb, exasol, impala, materialize, risingwave, druid, pyspark, pyiceberg_rest.",
+  "path": "src/mountainash_data/core/settings",
+  "summary": "Twenty per-backend settings modules (bigquery, clickhouse, databricks, druid, duckdb, exasol, impala, materialize, motherduck, mssql, mysql, oracle, postgresql, pyspark, redshift, risingwave, singlestoredb, snowflake, sqlite, trino). Each declares a <NAME>_SPEC BackendSpec with provider_type, ibis_dialect, optional default_port and connection_string_scheme, supported_auth, and a ParameterSpec list mapping uppercase fields to driver keys, plus a @register-decorated *BackendProfile subclass. Some add field validators (BigQuery project id, DuckDB memory limit, Redshift region and role ARN), backend-specific enums, __adapters__ config shaping (MSSQL, MySQL, Snowflake) or a to_url_parts override (MotherDuck). MotherDuck rides on duckdb and Redshift rides on postgres; PySpark and Databricks have no URL scheme.",
   "role": "backend",
   "visibility": "public",
-  "stability": "stable",
-  "audiences": ["users", "maintainers", "extension-authors"],
+  "stability": "evolving",
+  "audiences": [
+    "users",
+    "maintainers",
+    "contributors",
+    "backend-architecture",
+    "extension-authors",
+    "broader-hype"
+  ],
   "doc_priority": "essential",
   "confidence": "high",
   "public_api": [
-    "SQLiteAuthSettings", "DuckDBAuthSettings", "MotherDuckAuthSettings",
-    "PostgreSQLAuthSettings", "MySQLAuthSettings", "MSSQLAuthSettings",
-    "SnowflakeAuthSettings", "BigQueryAuthSettings", "RedshiftAuthSettings",
-    "TrinoAuthSettings", "ClickHouseAuthSettings", "DatabricksAuthSettings",
-    "SingleStoreDBAuthSettings", "ExasolAuthSettings", "ImpalaAuthSettings",
-    "MaterializeAuthSettings", "RisingWaveAuthSettings", "DruidAuthSettings",
-    "PySparkAuthSettings", "PyIcebergRestAuthSettings"
+    "SQLiteBackendProfile",
+    "DuckDBBackendProfile",
+    "MotherDuckBackendProfile",
+    "PostgreSQLBackendProfile",
+    "ClickHouseBackendProfile",
+    "DatabricksBackendProfile",
+    "MySQLBackendProfile",
+    "SingleStoreDBBackendProfile",
+    "MSSQLBackendProfile",
+    "OracleBackendProfile",
+    "SnowflakeBackendProfile",
+    "BigQueryBackendProfile",
+    "RedshiftBackendProfile",
+    "PySparkBackendProfile",
+    "TrinoBackendProfile",
+    "ExasolBackendProfile",
+    "ImpalaBackendProfile",
+    "MaterializeBackendProfile",
+    "RisingWaveBackendProfile",
+    "DruidBackendProfile",
+    "BIGQUERY_SPEC",
+    "CLICKHOUSE_SPEC",
+    "DATABRICKS_SPEC",
+    "DRUID_SPEC",
+    "DUCKDB_SPEC",
+    "EXASOL_SPEC",
+    "IMPALA_SPEC",
+    "MATERIALIZE_SPEC",
+    "MOTHERDUCK_SPEC",
+    "MSSQL_SPEC",
+    "MYSQL_SPEC",
+    "ORACLE_SPEC",
+    "POSTGRESQL_SPEC",
+    "PYSPARK_SPEC",
+    "REDSHIFT_SPEC",
+    "RISINGWAVE_SPEC",
+    "SINGLESTOREDB_SPEC",
+    "SNOWFLAKE_SPEC",
+    "SQLITE_SPEC",
+    "TRINO_SPEC"
   ],
   "key_classes": [
-    {"name": "*AuthSettings", "kind": "pydantic-model", "extends": "ConnectionProfile", "pattern": "One per backend, each with __spec__ class var pointing to its BackendSpec"}
+    "SQLiteBackendProfile",
+    "DuckDBBackendProfile",
+    "MotherDuckBackendProfile",
+    "PostgreSQLBackendProfile",
+    "ClickHouseBackendProfile",
+    "DatabricksBackendProfile",
+    "MySQLBackendProfile",
+    "SingleStoreDBBackendProfile",
+    "MSSQLBackendProfile",
+    "OracleBackendProfile",
+    "SnowflakeBackendProfile",
+    "BigQueryBackendProfile",
+    "RedshiftBackendProfile",
+    "PySparkBackendProfile",
+    "TrinoBackendProfile",
+    "ExasolBackendProfile",
+    "ImpalaBackendProfile",
+    "MaterializeBackendProfile",
+    "RisingWaveBackendProfile",
+    "DruidBackendProfile",
+    "PostgresSSLMode",
+    "MSSQLDriver",
+    "MSSQLEncryption",
+    "MySQLSSLMode",
+    "RedshiftSSLMode",
+    "SnowflakeAuthenticator",
+    "PySparkMode",
+    "ImpalaAuthMechanism",
+    "SingleStoreDriver"
   ],
-  "key_functions": [],
+  "key_functions": [
+    "BigQueryBackendProfile._pid",
+    "DuckDBBackendProfile._mem_limit",
+    "RedshiftBackendProfile._region",
+    "RedshiftBackendProfile._role_arn",
+    "MotherDuckBackendProfile.to_url_parts"
+  ],
   "dependencies": [
+    "mountainash_data.core.constants",
     "mountainash_data.core.settings.descriptor",
     "mountainash_data.core.settings.profile",
     "mountainash_data.core.settings.registry",
-    "mountainash_settings.auth"
+    "mountainash_data.core.settings.adapters"
   ],
   "dependents": [
-    "mountainash_data.core.settings",
-    "mountainash_data.core.settings.adapters",
-    "mountainash_data.backends.ibis.dialects"
+    "mountainash_data.core.settings"
   ],
   "extension_points": [
-    "Copy any existing backend file as template; define SPEC + class + @register"
+    "Copy an existing backend module: declare a BackendSpec and a @register BackendProfile, add the import to core/settings/__init__.py, and add any auth adapters to adapters/registry.py."
   ],
   "lifecycle_notes": [
-    "Each file auto-registers on import; settings/__init__.py imports all of them"
+    "Per-backend module docstrings cite settings-audit specs under mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/.",
+    "Parameters carry a tier ('core' or 'advanced'), optional transform and secret flags."
   ],
   "documentation_hooks": [
-    "Users instantiate these with auth specs to configure connections",
-    "Each SPEC lists accepted auth_modes and parameter definitions"
+    "Per-backend reference pages: core vs advanced parameters, default port, supported auth",
+    "Backend coverage matrix (20 backends, Ibis dialect, URL scheme, rides_on)"
   ],
-  "examples": [],
+  "examples": [
+    "examples/connections/example.py"
+  ],
   "tests": [
-    "tests/test_unit/core/settings/backends/test_sqlite.py",
-    "tests/test_unit/core/settings/backends/test_duckdb.py",
-    "tests/test_unit/core/settings/backends/test_postgresql.py",
-    "tests/test_unit/core/settings/backends/test_snowflake.py",
     "tests/test_unit/core/settings/backends/test_bigquery.py",
-    "tests/test_unit/core/settings/backends/test_mssql.py",
-    "tests/test_unit/core/settings/backends/test_mysql.py",
-    "tests/test_unit/core/settings/backends/test_trino.py",
-    "tests/test_unit/core/settings/backends/test_redshift.py",
     "tests/test_unit/core/settings/backends/test_clickhouse.py",
     "tests/test_unit/core/settings/backends/test_databricks.py",
+    "tests/test_unit/core/settings/backends/test_druid.py",
+    "tests/test_unit/core/settings/backends/test_duckdb.py",
     "tests/test_unit/core/settings/backends/test_exasol.py",
     "tests/test_unit/core/settings/backends/test_impala.py",
     "tests/test_unit/core/settings/backends/test_materialize.py",
-    "tests/test_unit/core/settings/backends/test_risingwave.py",
-    "tests/test_unit/core/settings/backends/test_druid.py",
-    "tests/test_unit/core/settings/backends/test_singlestoredb.py",
     "tests/test_unit/core/settings/backends/test_motherduck.py",
+    "tests/test_unit/core/settings/backends/test_mssql.py",
+    "tests/test_unit/core/settings/backends/test_mysql.py",
+    "tests/test_unit/core/settings/backends/test_oracle.py",
+    "tests/test_unit/core/settings/backends/test_postgresql.py",
     "tests/test_unit/core/settings/backends/test_pyspark.py",
-    "tests/test_unit/core/settings/backends/test_pyiceberg_rest.py",
-    "tests/test_unit/databases/settings/test_settings_parametrized.py"
+    "tests/test_unit/core/settings/backends/test_redshift.py",
+    "tests/test_unit/core/settings/backends/test_risingwave.py",
+    "tests/test_unit/core/settings/backends/test_singlestoredb.py",
+    "tests/test_unit/core/settings/backends/test_snowflake.py",
+    "tests/test_unit/core/settings/backends/test_sqlite.py",
+    "tests/test_unit/core/settings/backends/test_trino.py",
+    "tests/test_unit/databases/settings/test_settings_parametrized.py",
+    "tests/test_unit/core/settings/test_config_shaping.py"
   ],
-  "risks": [],
+  "risks": [
+    "Module path is a directory shared with the other core.settings modules; the twenty files are grouped by convention (one *BackendProfile per file), not by a sub-package.",
+    "CLAUDE.md and its usage example still name these classes *AuthSettings (SQLiteAuthSettings, PostgreSQLAuthSettings) with an auth= field; the code uses *BackendProfile with auth supplied separately."
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/postgresql.py", "detail": "POSTGRESQL_SPEC + @register class PostgreSQLAuthSettings(ConnectionProfile)"},
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/sqlite.py", "detail": "SQLITE_SPEC + @register class SQLiteAuthSettings(ConnectionProfile)"},
-    {"kind": "symbol", "path": "src/mountainash_data/core/settings/duckdb.py", "detail": "DUCKDB_SPEC + @register class DuckDBAuthSettings(ConnectionProfile)"},
-    {"kind": "test", "path": "tests/test_unit/core/settings/backends/", "detail": "20 per-backend test files"}
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/bigquery.py",
+      "detail": "bigquery BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/clickhouse.py",
+      "detail": "clickhouse BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/databricks.py",
+      "detail": "databricks BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/druid.py",
+      "detail": "druid BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/duckdb.py",
+      "detail": "duckdb BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/exasol.py",
+      "detail": "exasol BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/impala.py",
+      "detail": "impala BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/materialize.py",
+      "detail": "materialize BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/motherduck.py",
+      "detail": "motherduck BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/mssql.py",
+      "detail": "mssql BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/mysql.py",
+      "detail": "mysql BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/oracle.py",
+      "detail": "oracle BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/postgresql.py",
+      "detail": "postgresql BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/pyspark.py",
+      "detail": "pyspark BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/redshift.py",
+      "detail": "redshift BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/risingwave.py",
+      "detail": "risingwave BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/singlestoredb.py",
+      "detail": "singlestoredb BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/snowflake.py",
+      "detail": "snowflake BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/sqlite.py",
+      "detail": "sqlite BackendSpec + @register profile"
+    },
+    {
+      "kind": "file",
+      "path": "src/mountainash_data/core/settings/trino.py",
+      "detail": "trino BackendSpec + @register profile"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

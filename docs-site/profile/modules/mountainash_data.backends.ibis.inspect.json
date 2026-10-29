@@ -1,31 +1,62 @@
 {
   "id": "mountainash_data.backends.ibis.inspect",
   "path": "src/mountainash_data/backends/ibis/inspect.py",
-  "summary": "Converter from ibis Table objects to the core TableInfo dataclass. Single function: table_to_info().",
+  "summary": "Single helper table_to_info() that converts an Ibis table's schema into the shared TableInfo/ColumnInfo inspection model, carrying the Namespace location.",
   "role": "io",
   "visibility": "internal",
   "stability": "stable",
-  "audiences": ["maintainers", "backend-architecture"],
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
   "doc_priority": "reference-only",
   "confidence": "high",
-  "public_api": ["table_to_info"],
+  "public_api": [
+    "table_to_info"
+  ],
   "key_classes": [],
   "key_functions": [
-    {"name": "table_to_info", "signature": "(ibis_table, *, name: str, namespace: str | None, catalog: str | None) -> TableInfo"}
+    "table_to_info"
   ],
-  "dependencies": ["mountainash_data.core.inspection"],
-  "dependents": ["mountainash_data.backends.ibis.backend"],
+  "dependencies": [
+    "mountainash_data.core.inspection",
+    "mountainash_data.core.namespace"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend"
+  ],
   "extension_points": [],
-  "lifecycle_notes": [],
-  "documentation_hooks": [],
+  "lifecycle_notes": [
+    "Imported lazily inside IbisConnection.inspect_table"
+  ],
+  "documentation_hooks": [
+    "Mapping from Ibis dtypes to ColumnInfo.type_name (str(dtype)) and nullable"
+  ],
   "examples": [],
-  "tests": ["tests/test_unit/backends/ibis/test_inspect.py"],
-  "risks": [],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_inspect.py"
+  ],
+  "risks": [
+    "type_name is str(ibis dtype), so it reflects Ibis type names rather than engine-native type names"
+  ],
   "open_questions": [],
   "evidence": [
-    {"kind": "symbol", "path": "src/mountainash_data/backends/ibis/inspect.py", "detail": "table_to_info function"},
-    {"kind": "test", "path": "tests/test_unit/backends/ibis/test_inspect.py", "detail": "Conversion tests"}
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/inspect.py",
+      "detail": "table_to_info"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "lazy import inside IbisConnection.inspect_table"
+    }
   ],
-  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
-  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
 }

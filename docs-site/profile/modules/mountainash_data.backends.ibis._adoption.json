@@ -1,0 +1,68 @@
+{
+  "id": "mountainash_data.backends.ibis._adoption",
+  "path": "src/mountainash_data/backends/ibis/_adoption.py",
+  "summary": "Session-option snapshot, restore and apply helpers used when adopting an existing connection. snapshot_options reads each declared SessionOption (warning when one cannot be read), restore_options replays captured values, and apply_options applies caller-declared end-state values, warning once for undeclared names.",
+  "role": "orchestration",
+  "visibility": "private",
+  "stability": "evolving",
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [],
+  "key_functions": [
+    "snapshot_options",
+    "restore_options",
+    "apply_options"
+  ],
+  "dependencies": [
+    "mountainash_data.backends.ibis._raw",
+    "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.core._warn"
+  ],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend"
+  ],
+  "extension_points": [
+    "Session options are declared per dialect in DialectSpec.adoption_mutations"
+  ],
+  "lifecycle_notes": [
+    "Used by from_raw_connection(preserve_session=True) and from_ibis_connection(apply_session_options=...)"
+  ],
+  "documentation_hooks": [
+    "Which DuckDB session options Ibis mutates on adoption (python_enable_replacements, TimeZone)"
+  ],
+  "examples": [
+    "examples/connection_adoption/example.py"
+  ],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_adoption.py",
+    "tests/test_unit/backends/ibis/test_backend_adopt.py"
+  ],
+  "risks": [
+    "Only DuckDB/MotherDuck declare adoption_mutations; other dialects adopt with no session preservation"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_adoption.py",
+      "detail": "snapshot/restore/apply helpers"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/backends/ibis/backend.py",
+      "detail": "from_raw_connection and from_ibis_connection call these helpers"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

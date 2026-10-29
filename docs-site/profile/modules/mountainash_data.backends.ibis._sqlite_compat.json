@@ -1,0 +1,58 @@
+{
+  "id": "mountainash_data.backends.ibis._sqlite_compat",
+  "path": "src/mountainash_data/backends/ibis/_sqlite_compat.py",
+  "summary": "SQLite compatibility shim: ensure_sqlite_nat_adapter registers a process-global sqlite3 adapter that binds pandas NaT as NULL, because Ibis's SQLite memtable path round-trips through pandas and sqlite3 cannot bind NaTType (DEBT-13). Called before create_table, insert and upsert source staging.",
+  "role": "integration",
+  "visibility": "private",
+  "stability": "stable",
+  "audiences": [
+    "maintainers",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [],
+  "key_functions": [
+    "ensure_sqlite_nat_adapter"
+  ],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis._render"
+  ],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "Idempotent; silently skipped when pandas is not importable"
+  ],
+  "documentation_hooks": [
+    "Null temporal values on SQLite writes"
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/backends/ibis/test_sqlite_nat_binding.py"
+  ],
+  "risks": [
+    "Registers a process-global sqlite3 adapter, affecting other sqlite3 users in the same process"
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/backends/ibis/_sqlite_compat.py",
+      "detail": "ensure_sqlite_nat_adapter"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_sqlite_nat_binding.py",
+      "detail": "NaT binding regression"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}

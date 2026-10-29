@@ -1,0 +1,77 @@
+{
+  "id": "mountainash_data.core.namespace",
+  "path": "src/mountainash_data/core/namespace.py",
+  "summary": "Frozen Namespace value object for table locations: path (tuple of schema levels) and an explicit catalog, both defaulting to the connection's current location. Provides is_default, dotted and Namespace.coerce() for None, str, tuple or Namespace input; NamespaceLike is the accepted union type.",
+  "role": "model",
+  "visibility": "public",
+  "stability": "stable",
+  "audiences": [
+    "users",
+    "maintainers",
+    "backend-architecture",
+    "extension-authors"
+  ],
+  "doc_priority": "essential",
+  "confidence": "high",
+  "public_api": [
+    "Namespace",
+    "NamespaceLike"
+  ],
+  "key_classes": [
+    "Namespace"
+  ],
+  "key_functions": [
+    "Namespace.coerce"
+  ],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.init",
+    "mountainash_data.core.protocol",
+    "mountainash_data.core.inspection",
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis.inspect"
+  ],
+  "extension_points": [
+    "Each backend renders a Namespace to its native qualified form; rendering is deliberately kept out of this module."
+  ],
+  "lifecycle_notes": [
+    "Empty path segments are rejected in __post_init__ with ValueError.",
+    "A bare string coerces to a one-level path and a tuple to a multi-level path; the catalog is never inferred from tuple position."
+  ],
+  "documentation_hooks": [
+    "Explain path vs. catalog and why the catalog is always explicit.",
+    "Show the accepted NamespaceLike forms on list_tables/inspect_table."
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/core/test_namespace.py",
+    "tests/test_unit/backends/ibis/test_namespace_hierarchy.py",
+    "tests/test_unit/core/test_inspection.py"
+  ],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/namespace.py",
+      "detail": "@dataclass(frozen=True) class Namespace with coerce()"
+    },
+    {
+      "kind": "import",
+      "path": "src/mountainash_data/core/__init__.py",
+      "detail": "Re-exported by mountainash_data.core and the package root"
+    },
+    {
+      "kind": "test",
+      "path": "tests/test_unit/backends/ibis/test_namespace_hierarchy.py",
+      "detail": "Multi-level namespace behaviour across dialects"
+    }
+  ],
+  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}
