@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Contributing and testing
 
-The mountainash-data repository holds the package source, its tests, runnable examples, a harness for testing against real database servers, and the source of this book. Contributions go through pull requests against `develop`, and Hatch environments run the tests and checks. The branching rules, review process and coding standards are in [CONTRIBUTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/CONTRIBUTING.md). The full command reference, coverage reports and CI behaviour are in [TESTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/TESTING.md).
+The mountainash-data repository holds the package source, its tests, runnable examples, a harness for testing against real database servers, and the source of this book. The package is developed as part of the mountainash ecosystem ([What mountainash-data is](../01-mountainash-data-in-the-ecosystem/index.md)), so its development and test environments install mountainash-settings, mountainash-auth-client and mountainash from sibling checkouts. Contributions go through pull requests against `develop`, and Hatch environments run the tests and checks. The branching rules, review process and coding standards are in [CONTRIBUTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/CONTRIBUTING.md), and the full command reference, coverage reports and CI behaviour are in [TESTING.md](https://github.com/mountainash-io/mountainash-data/blob/develop/TESTING.md).
 
 ## Repository layout
 

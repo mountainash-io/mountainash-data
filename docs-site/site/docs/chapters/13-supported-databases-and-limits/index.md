@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Supported databases and limits
 
-`IbisBackend` registers 20 dialects. Connecting, inspecting, creating and dropping tables, inserting, reading and running queries delegate to Ibis on every one of them, so they work wherever the Ibis backend supports them. The operations the package renders itself (upsert, indexes and transaction scopes) depend on what each dialect declares it can do, and an operation a dialect does not declare fails with a clear exception before any SQL is sent.
+`IbisBackend` registers 20 dialects. Connecting, inspecting, creating and dropping tables, inserting, reading and running queries delegate to Ibis, so they work wherever the Ibis backend supports them; upsert, indexes and transaction scopes depend on what each dialect declares, and an operation a dialect does not declare fails with a clear exception before any SQL is sent. These limits also bound what the ecosystem can push to each database: a mountainash relation over a table compiles through the same Ibis backend ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)), and writing its results back uses the operations listed here.
 
 A registered dialect or an installable extra does not guarantee every operation. The capability depends on the engine and, for services such as Trino, on the configured connector. The package's own recipes exercise local SQLite and DuckDB; they do not qualify hosted services, every operation on every dialect, or a public-release Python matrix.
 

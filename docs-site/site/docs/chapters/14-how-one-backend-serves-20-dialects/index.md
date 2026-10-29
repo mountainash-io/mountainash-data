@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # How one backend serves 20 dialects
 
-`IbisBackend` is a single class that connects to, inspects and writes to 20 different database engines. It contains no per-database subclasses. Everything that differs between engines (how to open a connection, which upsert statement to emit, whether partial indexes exist, how to begin a transaction) is declared as data in one frozen record per dialect, and `IbisBackend` reads that record whenever it has to make an engine-specific decision. Operations that need hand-written SQL are rendered generically through [sqlglot](https://sqlglot.com/) off the live connection's own compiler, so one implementation covers every dialect that declares the capability.
+`IbisBackend` is a single class that connects to, inspects and writes to 20 different database engines, and the dialects it serves are the databases that mountainash relations can reach through `backend.table(...)` ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)). It contains no per-database subclasses. Everything that differs between engines (how to open a connection, which upsert statement to emit, whether partial indexes exist, how to begin a transaction) is declared as data in one frozen record per dialect, which `IbisBackend` reads whenever it makes an engine-specific decision. Operations that need hand-written SQL are rendered generically through [sqlglot](https://sqlglot.com/) off the live connection's own compiler, so one implementation covers every dialect that declares the capability.
 
 ## DialectSpec and the DIALECTS registry
 

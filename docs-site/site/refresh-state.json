@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "mountainash-data",
   "baseline": {
-    "source_commit": "2d0782b507141baecd5a120ac0547c7e8af11662",
+    "source_commit": "6526a1baadb359df2e1dcc41c9f9b89b16a23a78",
     "refresh_date": "2026-10-29",
     "tool_versions": {
       "chapter-content-generator": "0.09",
@@ -13,121 +13,142 @@
     }
   },
   "chapter_state": {
-    "01-what-mountainash-data-is": {
-      "content_hash": "sha256:dd5e234be84d185839838d470898ffc0e121f841237a2a24c95e5e921c2bc3c8",
-      "word_count": 1967,
+    "01-mountainash-data-in-the-ecosystem": {
+      "content_hash": "sha256:17e65ecb6685071c04c125bdde143079f869e0c0d6df7ba62912db127b508a67",
+      "word_count": 2467,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
     "02-installing-and-connecting": {
-      "content_hash": "sha256:5936f23b950018fa5a0c35715dfc55023284d7f62ee38f2eaa27a23acde14eda",
-      "word_count": 1808,
+      "content_hash": "sha256:80d7394a8300dafe2a7b53070bba2a8bc68a6c148370653ed1194e08156843f4",
+      "word_count": 1835,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
     "03-connection-profiles-and-authentication": {
-      "content_hash": "sha256:5550a78cab9f651bb19e14ae0e914b9893d7be5e44e72f6d02b6a2d62ee89d14",
-      "word_count": 2720,
+      "content_hash": "sha256:9a24d946b1a0948535fbe9d7821e1a21f7fdf5a4f737b6757eac6e6d80133ce2",
+      "word_count": 2748,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "04-inspecting-databases": {
-      "content_hash": "sha256:fbf5378edaa9bf67c69fe3eb19cd2529a1c43fdd6eddaf755f2cbe800adcf26b",
-      "word_count": 2139,
+    "04-configuring-connections-with-mountainash-settings": {
+      "content_hash": "sha256:59213ca443d00eaf120b73548e1c85cb38de3b54ab9dbef53e5279ce0d192d18",
+      "word_count": 2049,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "05-reading-tables-and-running-queries": {
-      "content_hash": "sha256:ac1fa15795fc3d811b2c1e0e65e8efce797418d5c87fd6de90dc3f89ffb23c2e",
-      "word_count": 1019,
+    "05-inspecting-databases": {
+      "content_hash": "sha256:c9cc4eae2108e339ebf9ab0c7bd99c65d565cfca8c75f30949b92ad938a4a082",
+      "word_count": 2158,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "06-creating-and-changing-tables": {
-      "content_hash": "sha256:87c81bcd5c66d04f504665cc8609dfb27e03944c440df854156e83f77186a0a8",
-      "word_count": 2775,
+    "06-reading-tables-and-running-queries": {
+      "content_hash": "sha256:03a06a143db0dd8e718700095ef4e84563c643bfdd36625b2c2e363654cb5924",
+      "word_count": 881,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "07-indexes": {
-      "content_hash": "sha256:1bea5a7dc103ccbb6e4e834d86980fe3734a7cf6ee35e23a5afa8a123e0f96b6",
-      "word_count": 1387,
+    "07-running-mountainash-expressions-against-databases": {
+      "content_hash": "sha256:e58785d1c9c80f63b209fe833d8b53e64b793515857fa52ed171d2b5fbd59de4",
+      "word_count": 2525,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "08-transactions": {
-      "content_hash": "sha256:2927193376f3209d7b9b91bda5db5e0e60ddefb83704b596b876877593b008d5",
-      "word_count": 2851,
+    "08-creating-and-changing-tables": {
+      "content_hash": "sha256:69c82de73a48ca7665059be2d68c2232bb6f0b82b0ef13913bd0849202256612",
+      "word_count": 2807,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "09-adopting-existing-connections": {
-      "content_hash": "sha256:7c09674320d4ae312fb799a5737d5c50c17a0c872e99660fe86c97291bf775a1",
-      "word_count": 1146,
+    "09-indexes": {
+      "content_hash": "sha256:ddebbab11276868d3f994aa4924fd9793284ee5f61c9e1870c25124eea624b77",
+      "word_count": 1417,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "10-supported-databases-and-limits": {
-      "content_hash": "sha256:5145aefae8c11009cd84f48c680e88bc6ed919de9c66b39a47d1419c12c7c760",
-      "word_count": 1945,
+    "10-transactions": {
+      "content_hash": "sha256:47c13ddd00cf652d654bf2cc1d387d04f6aabefa34db888fe08c3accfe8e1ae3",
+      "word_count": 2847,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "11-how-one-backend-serves-20-dialects": {
-      "content_hash": "sha256:a0cc180bac998e201b4c5b54700f8d1f353dd57a7053ddaea316ab7df8d51dfe",
-      "word_count": 4346,
+    "11-adopting-existing-connections": {
+      "content_hash": "sha256:796abc1e20dafc76f92b015af3fbdc572f972045ee595fb982f36f16af9a8e3d",
+      "word_count": 1636,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "12-from-settings-to-driver-arguments": {
-      "content_hash": "sha256:b970ee2e7ea7e4b6c2a5f6d9a75e212ab66b4e713dd3eb88b8a86cf308c47246",
-      "word_count": 2558,
+    "12-an-end-to-end-pipeline": {
+      "content_hash": "sha256:b37e99255d77a73336f9a021b7e937506147e00de5b2956f809efcc18f1aab6e",
+      "word_count": 1983,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "13-transaction-and-adoption-internals": {
-      "content_hash": "sha256:8a032180cb8b7bbed3a1a0532cdd95bbb967e3bcd691d0e13450c2721088720d",
-      "word_count": 2250,
+    "13-supported-databases-and-limits": {
+      "content_hash": "sha256:1fe381adac5d80eafa35abc46d3af38a95478013309b8809c8ba8aef8747e00e",
+      "word_count": 1970,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "14-extending-mountainash-data": {
-      "content_hash": "sha256:292a920d9ef1e048259b3e066cfa659f856cfe720f69bb7e8a0b2219f2748ab3",
-      "word_count": 2349,
+    "14-how-one-backend-serves-20-dialects": {
+      "content_hash": "sha256:fbfdafc14ae31b9026bdad739c51558d045e984c0366b73fc49576a7524b8b1f",
+      "word_count": 4362,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     },
-    "15-contributing-and-testing": {
-      "content_hash": "sha256:9022f1c69c1edca652b8bf187802944962f6689223470c40dcac22b85f8fabbb",
-      "word_count": 1030,
+    "15-from-settings-to-driver-arguments": {
+      "content_hash": "sha256:0213bd5b00863195ebb4be04b14bb5c3af3193da38a548d993d6c56e1cc7b3b7",
+      "word_count": 2576,
+      "has_concept_markers": true,
+      "last_generated": "2026-10-29",
+      "generator_version": "0.09"
+    },
+    "16-transaction-and-adoption-internals": {
+      "content_hash": "sha256:a4e0856fc8440653d61590361c8c3f9af75c1897e33ea7f33ba6e5d5efcc1902",
+      "word_count": 2274,
+      "has_concept_markers": true,
+      "last_generated": "2026-10-29",
+      "generator_version": "0.09"
+    },
+    "17-extending-mountainash-data": {
+      "content_hash": "sha256:a767d23a34de44a28bdba7bc69f48889902620c9cc56261c41fa6ac58fb75a33",
+      "word_count": 2379,
+      "has_concept_markers": true,
+      "last_generated": "2026-10-29",
+      "generator_version": "0.09"
+    },
+    "18-contributing-and-testing": {
+      "content_hash": "sha256:d8f8b0c53263a3acdeccfb4372eb0b8332406cc4bad5982127b00ba12893c588",
+      "word_count": 1058,
       "has_concept_markers": true,
       "last_generated": "2026-10-29",
       "generator_version": "0.09"
     }
   },
   "learning_graph_state": {
-    "concept_count": 139,
-    "edge_count": 228,
-    "enriched_count": 125,
-    "content_hash": "sha256:7a50634631941bc2ceb8e0bbb2a5396f888c11e0c0c628f294f0c628532803c1"
+    "concept_count": 151,
+    "edge_count": 249,
+    "enriched_count": 127,
+    "content_hash": "sha256:99cd4f7f7a5c2407b63285dacbb29fdf0ca48972eef0478581cf2cabec59b49e"
   },
   "faq_state": {
-    "question_count": 63,
-    "content_hash": "sha256:df79987136c71c3010d9718d04ae15be4f018e3f44fc4075c1e11fd1381d1f64",
+    "question_count": 72,
+    "content_hash": "sha256:aa0aedeae6c522315c7cb52887ba8852a14d540e8fc58d78823032e900a50048",
     "path": "docs-site/site/docs/faq.md",
     "legacy_artifacts_untouched": [
       "docs-site/learning-graph/faq.md",
@@ -177,71 +198,147 @@
       "learning_graph_nodes_updated": 139,
       "tokens_used": null,
       "basis": "docs-site/editorial-brief.md (confirmed 2026-10-29), docs-site/chapter-plan.md (approved 2026-10-29)"
+    },
+    {
+      "date": "2026-10-29",
+      "from_commit": "2d0782b507141baecd5a120ac0547c7e8af11662",
+      "to_commit": "6526a1baadb359df2e1dcc41c9f9b89b16a23a78",
+      "operation": "editorial-revision",
+      "basis": "editorial-brief.md revision 2 and chapter-plan.md revision 2 (ecosystem positioning), approved 2026-10-29",
+      "chapters_updated": [
+        "01-mountainash-data-in-the-ecosystem",
+        "02-installing-and-connecting",
+        "03-connection-profiles-and-authentication",
+        "04-configuring-connections-with-mountainash-settings",
+        "05-inspecting-databases",
+        "06-reading-tables-and-running-queries",
+        "07-running-mountainash-expressions-against-databases",
+        "08-creating-and-changing-tables",
+        "09-indexes",
+        "10-transactions",
+        "11-adopting-existing-connections",
+        "12-an-end-to-end-pipeline",
+        "13-supported-databases-and-limits",
+        "14-how-one-backend-serves-20-dialects",
+        "15-from-settings-to-driver-arguments",
+        "16-transaction-and-adoption-internals",
+        "17-extending-mountainash-data",
+        "18-contributing-and-testing"
+      ],
+      "chapters_added": [
+        "04-configuring-connections-with-mountainash-settings",
+        "07-running-mountainash-expressions-against-databases",
+        "12-an-end-to-end-pipeline"
+      ],
+      "chapters_renamed": {
+        "01-what-mountainash-data-is": "01-mountainash-data-in-the-ecosystem",
+        "04..15": "renumbered 05..18 (see chapter-plan revision 2)"
+      },
+      "sections_regenerated": null,
+      "faq_questions_updated": 72,
+      "landing_pages_updated": [
+        "index.md",
+        "about.md"
+      ],
+      "learning_graph_nodes_updated": 13,
+      "tokens_used": null
     }
   ],
   "landing_state": {
     "index.md": {
-      "content_hash": "sha256:b678205b0e0a988112a84dce4e36867d96f67ccff6e84fb8c82f78bac0c58c7a",
+      "content_hash": "sha256:65a27643d88b80e472859247a110bc929da94366647f50552ffeab7e80442e58",
       "inputs": {
         "README.md": "sha256:91a41e7dc3aac468a2b7937503381dd6e0c34d3c6a7716dd7c016e1a8e41bc3d",
-        "docs-site/editorial-brief.md": "sha256:31ffae9a82d3568a21aecb9063b9ba6943500346f9fb7c94457dda652afa18ed",
+        "docs-site/editorial-brief.md": "sha256:d1f19b43a4cf1a464bbf2357267bbbb5d72db2434f391bf5a053411dd3c0b7b5",
+        "docs-site/chapter-plan.md": "sha256:29ae0515b03c774304bd5a6d2ac090876114c092a5a6ace869d75caedd51edea",
         "docs-site/profile/facets/backend-architecture.json": "sha256:f2c49c09a794b756122a876af3b2ba4d4874b3c2af885a59412f523a561ec3a5",
         "docs-site/profile/facets/broader-hype.json": "sha256:b61deb61c5857880747968fbb10379e08ead6bbb8d4c3d3e687dd81cc8b03542",
         "docs-site/profile/facets/contributors.json": "sha256:121fb5c1a5065cf3ba941495ab7dc405cf24a840a27c0e33373f8d8f2962c654",
         "docs-site/profile/facets/extension-authors.json": "sha256:5ba05609e8a91956fdb6673e08ab2201f7d58a02d2de20363a4a915d6c9cf59e",
         "docs-site/profile/facets/maintainers.json": "sha256:5897a9007b2a48edfe753d3c520377952a80e03aa235be309b2d90d89f1529d8",
         "docs-site/profile/facets/users.json": "sha256:8469ae1868de594209f254bb293a8d75dc0b56eb24e6177c9b44f3d6939b3551",
-        "examples/mutations/example.py": "sha256:111c1784e13c37e6bc46a2281d7ac43146984b403f9f2b2aff241d1b3783354f",
-        "examples/connections/example.py": "sha256:3c3fb5d699f8d0221e217ebdfedd84cfd24d8ff3d96ba8d25c6cbf4940414e85",
-        "tests/test_live_backends/test_write_ops_live.py": "sha256:77513aac67be79780e0e1a89a11b819999b6f71e343f88b72fb1ffb56f26c9c0",
-        "src/mountainash_data/core/settings/__init__.py": "sha256:7a71783a3d913782db5bbfd4f7795951e715d7e1dba6e1bf4187080ba781b2ec",
-        "src/mountainash_data/backends/ibis/backend.py": "sha256:02dc9cbb697ca9a445ecae4974143e466a728082511842304714e70978468bd8",
-        "src/mountainash_data/__version__.py": "sha256:a3f7f6d5937bec359685bd111481c5ae644f3079f53325bd50490b812a9d2177",
-        "docs-site/site/docs/chapters/01-what-mountainash-data-is/index.md": "sha256:dd5e234be84d185839838d470898ffc0e121f841237a2a24c95e5e921c2bc3c8",
-        "docs-site/site/docs/chapters/02-installing-and-connecting/index.md": "sha256:5936f23b950018fa5a0c35715dfc55023284d7f62ee38f2eaa27a23acde14eda",
-        "docs-site/site/docs/chapters/03-connection-profiles-and-authentication/index.md": "sha256:5550a78cab9f651bb19e14ae0e914b9893d7be5e44e72f6d02b6a2d62ee89d14",
-        "docs-site/site/docs/chapters/06-creating-and-changing-tables/index.md": "sha256:87c81bcd5c66d04f504665cc8609dfb27e03944c440df854156e83f77186a0a8",
-        "docs-site/site/docs/chapters/10-supported-databases-and-limits/index.md": "sha256:5145aefae8c11009cd84f48c680e88bc6ed919de9c66b39a47d1419c12c7c760",
-        "docs-site/site/docs/chapters/11-how-one-backend-serves-20-dialects/index.md": "sha256:a0cc180bac998e201b4c5b54700f8d1f353dd57a7053ddaea316ab7df8d51dfe"
+        "docs-site/site/docs/chapters/01-mountainash-data-in-the-ecosystem/index.md": "sha256:17e65ecb6685071c04c125bdde143079f869e0c0d6df7ba62912db127b508a67",
+        "docs-site/site/docs/chapters/02-installing-and-connecting/index.md": "sha256:80d7394a8300dafe2a7b53070bba2a8bc68a6c148370653ed1194e08156843f4",
+        "docs-site/site/docs/chapters/03-connection-profiles-and-authentication/index.md": "sha256:9a24d946b1a0948535fbe9d7821e1a21f7fdf5a4f737b6757eac6e6d80133ce2",
+        "docs-site/site/docs/chapters/04-configuring-connections-with-mountainash-settings/index.md": "sha256:59213ca443d00eaf120b73548e1c85cb38de3b54ab9dbef53e5279ce0d192d18",
+        "docs-site/site/docs/chapters/05-inspecting-databases/index.md": "sha256:c9cc4eae2108e339ebf9ab0c7bd99c65d565cfca8c75f30949b92ad938a4a082",
+        "docs-site/site/docs/chapters/06-reading-tables-and-running-queries/index.md": "sha256:03a06a143db0dd8e718700095ef4e84563c643bfdd36625b2c2e363654cb5924",
+        "docs-site/site/docs/chapters/07-running-mountainash-expressions-against-databases/index.md": "sha256:e58785d1c9c80f63b209fe833d8b53e64b793515857fa52ed171d2b5fbd59de4",
+        "docs-site/site/docs/chapters/08-creating-and-changing-tables/index.md": "sha256:69c82de73a48ca7665059be2d68c2232bb6f0b82b0ef13913bd0849202256612",
+        "docs-site/site/docs/chapters/09-indexes/index.md": "sha256:ddebbab11276868d3f994aa4924fd9793284ee5f61c9e1870c25124eea624b77",
+        "docs-site/site/docs/chapters/10-transactions/index.md": "sha256:47c13ddd00cf652d654bf2cc1d387d04f6aabefa34db888fe08c3accfe8e1ae3",
+        "docs-site/site/docs/chapters/11-adopting-existing-connections/index.md": "sha256:796abc1e20dafc76f92b015af3fbdc572f972045ee595fb982f36f16af9a8e3d",
+        "docs-site/site/docs/chapters/12-an-end-to-end-pipeline/index.md": "sha256:b37e99255d77a73336f9a021b7e937506147e00de5b2956f809efcc18f1aab6e",
+        "docs-site/site/docs/chapters/13-supported-databases-and-limits/index.md": "sha256:1fe381adac5d80eafa35abc46d3af38a95478013309b8809c8ba8aef8747e00e",
+        "docs-site/site/docs/chapters/14-how-one-backend-serves-20-dialects/index.md": "sha256:fbfdafc14ae31b9026bdad739c51558d045e984c0366b73fc49576a7524b8b1f",
+        "docs-site/site/docs/chapters/15-from-settings-to-driver-arguments/index.md": "sha256:0213bd5b00863195ebb4be04b14bb5c3af3193da38a548d993d6c56e1cc7b3b7",
+        "docs-site/site/docs/chapters/16-transaction-and-adoption-internals/index.md": "sha256:a4e0856fc8440653d61590361c8c3f9af75c1897e33ea7f33ba6e5d5efcc1902",
+        "docs-site/site/docs/chapters/17-extending-mountainash-data/index.md": "sha256:a767d23a34de44a28bdba7bc69f48889902620c9cc56261c41fa6ac58fb75a33",
+        "docs-site/site/docs/chapters/18-contributing-and-testing/index.md": "sha256:d8f8b0c53263a3acdeccfb4372eb0b8332406cc4bad5982127b00ba12893c588"
       },
       "public_symbols": [
         "IbisBackend",
+        "SettingsParameters",
+        "DuckDBBackendProfile",
+        "ma.relation",
+        "ma.col",
         "create_table",
-        "create_index",
-        "upsert",
+        "create_unique_index",
         "add_columns",
-        "table",
-        "run_expr",
-        "dialect"
+        "upsert",
+        "transaction",
+        "PasswordAuthProfile"
       ],
       "last_generated": "2026-10-29"
     },
     "about.md": {
-      "content_hash": "sha256:d68d7454853c8ec3b630a4f2d94028951a2a28a6d35f3f56573d197a1d1515c6",
+      "content_hash": "sha256:af58b3e740f6a28c17373796df4e1f9f3238137c63bf61c41645e6b81a0250e7",
       "inputs": {
         "README.md": "sha256:91a41e7dc3aac468a2b7937503381dd6e0c34d3c6a7716dd7c016e1a8e41bc3d",
-        "LICENSE": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-        "NOTICE": "sha256:450ea5944b2888120646a19c844b34c45ecb2cb653af29e87bfb8aa1f0cbe62c",
-        "docs-site/site/mkdocs.yml": "sha256:19a7a2d995a7802f54899d6fe04e85621468147f1f024ee45a5c6a6fd41bb718",
-        "src/mountainash_data/backends/ibis/backend.py": "sha256:02dc9cbb697ca9a445ecae4974143e466a728082511842304714e70978468bd8",
+        "docs-site/editorial-brief.md": "sha256:d1f19b43a4cf1a464bbf2357267bbbb5d72db2434f391bf5a053411dd3c0b7b5",
+        "docs-site/chapter-plan.md": "sha256:29ae0515b03c774304bd5a6d2ac090876114c092a5a6ace869d75caedd51edea",
         "docs-site/profile/facets/backend-architecture.json": "sha256:f2c49c09a794b756122a876af3b2ba4d4874b3c2af885a59412f523a561ec3a5",
         "docs-site/profile/facets/broader-hype.json": "sha256:b61deb61c5857880747968fbb10379e08ead6bbb8d4c3d3e687dd81cc8b03542",
         "docs-site/profile/facets/contributors.json": "sha256:121fb5c1a5065cf3ba941495ab7dc405cf24a840a27c0e33373f8d8f2962c654",
         "docs-site/profile/facets/extension-authors.json": "sha256:5ba05609e8a91956fdb6673e08ab2201f7d58a02d2de20363a4a915d6c9cf59e",
         "docs-site/profile/facets/maintainers.json": "sha256:5897a9007b2a48edfe753d3c520377952a80e03aa235be309b2d90d89f1529d8",
         "docs-site/profile/facets/users.json": "sha256:8469ae1868de594209f254bb293a8d75dc0b56eb24e6177c9b44f3d6939b3551",
-        "docs-site/site/docs/chapters/02-installing-and-connecting/index.md": "sha256:5936f23b950018fa5a0c35715dfc55023284d7f62ee38f2eaa27a23acde14eda",
-        "docs-site/site/docs/chapters/03-connection-profiles-and-authentication/index.md": "sha256:5550a78cab9f651bb19e14ae0e914b9893d7be5e44e72f6d02b6a2d62ee89d14",
-        "docs-site/site/docs/chapters/05-reading-tables-and-running-queries/index.md": "sha256:ac1fa15795fc3d811b2c1e0e65e8efce797418d5c87fd6de90dc3f89ffb23c2e",
-        "docs-site/site/docs/chapters/08-transactions/index.md": "sha256:2927193376f3209d7b9b91bda5db5e0e60ddefb83704b596b876877593b008d5",
-        "docs-site/site/docs/chapters/09-adopting-existing-connections/index.md": "sha256:7c09674320d4ae312fb799a5737d5c50c17a0c872e99660fe86c97291bf775a1",
-        "docs-site/site/docs/chapters/10-supported-databases-and-limits/index.md": "sha256:5145aefae8c11009cd84f48c680e88bc6ed919de9c66b39a47d1419c12c7c760",
-        "docs-site/site/docs/chapters/11-how-one-backend-serves-20-dialects/index.md": "sha256:a0cc180bac998e201b4c5b54700f8d1f353dd57a7053ddaea316ab7df8d51dfe"
+        "docs-site/site/docs/chapters/01-mountainash-data-in-the-ecosystem/index.md": "sha256:17e65ecb6685071c04c125bdde143079f869e0c0d6df7ba62912db127b508a67",
+        "docs-site/site/docs/chapters/02-installing-and-connecting/index.md": "sha256:80d7394a8300dafe2a7b53070bba2a8bc68a6c148370653ed1194e08156843f4",
+        "docs-site/site/docs/chapters/03-connection-profiles-and-authentication/index.md": "sha256:9a24d946b1a0948535fbe9d7821e1a21f7fdf5a4f737b6757eac6e6d80133ce2",
+        "docs-site/site/docs/chapters/04-configuring-connections-with-mountainash-settings/index.md": "sha256:59213ca443d00eaf120b73548e1c85cb38de3b54ab9dbef53e5279ce0d192d18",
+        "docs-site/site/docs/chapters/05-inspecting-databases/index.md": "sha256:c9cc4eae2108e339ebf9ab0c7bd99c65d565cfca8c75f30949b92ad938a4a082",
+        "docs-site/site/docs/chapters/06-reading-tables-and-running-queries/index.md": "sha256:03a06a143db0dd8e718700095ef4e84563c643bfdd36625b2c2e363654cb5924",
+        "docs-site/site/docs/chapters/07-running-mountainash-expressions-against-databases/index.md": "sha256:e58785d1c9c80f63b209fe833d8b53e64b793515857fa52ed171d2b5fbd59de4",
+        "docs-site/site/docs/chapters/08-creating-and-changing-tables/index.md": "sha256:69c82de73a48ca7665059be2d68c2232bb6f0b82b0ef13913bd0849202256612",
+        "docs-site/site/docs/chapters/09-indexes/index.md": "sha256:ddebbab11276868d3f994aa4924fd9793284ee5f61c9e1870c25124eea624b77",
+        "docs-site/site/docs/chapters/10-transactions/index.md": "sha256:47c13ddd00cf652d654bf2cc1d387d04f6aabefa34db888fe08c3accfe8e1ae3",
+        "docs-site/site/docs/chapters/11-adopting-existing-connections/index.md": "sha256:796abc1e20dafc76f92b015af3fbdc572f972045ee595fb982f36f16af9a8e3d",
+        "docs-site/site/docs/chapters/12-an-end-to-end-pipeline/index.md": "sha256:b37e99255d77a73336f9a021b7e937506147e00de5b2956f809efcc18f1aab6e",
+        "docs-site/site/docs/chapters/13-supported-databases-and-limits/index.md": "sha256:1fe381adac5d80eafa35abc46d3af38a95478013309b8809c8ba8aef8747e00e",
+        "docs-site/site/docs/chapters/14-how-one-backend-serves-20-dialects/index.md": "sha256:fbfdafc14ae31b9026bdad739c51558d045e984c0366b73fc49576a7524b8b1f",
+        "docs-site/site/docs/chapters/15-from-settings-to-driver-arguments/index.md": "sha256:0213bd5b00863195ebb4be04b14bb5c3af3193da38a548d993d6c56e1cc7b3b7",
+        "docs-site/site/docs/chapters/16-transaction-and-adoption-internals/index.md": "sha256:a4e0856fc8440653d61590361c8c3f9af75c1897e33ea7f33ba6e5d5efcc1902",
+        "docs-site/site/docs/chapters/17-extending-mountainash-data/index.md": "sha256:a767d23a34de44a28bdba7bc69f48889902620c9cc56261c41fa6ac58fb75a33",
+        "docs-site/site/docs/chapters/18-contributing-and-testing/index.md": "sha256:d8f8b0c53263a3acdeccfb4372eb0b8332406cc4bad5982127b00ba12893c588",
+        "LICENSE": "sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+        "NOTICE": "sha256:450ea5944b2888120646a19c844b34c45ecb2cb653af29e87bfb8aa1f0cbe62c"
       },
       "external_inputs": [
-        "mountainash-central/01.principles/mountainash-data/ (design principles; outside this repository)"
+        "git e01f180:docs-site/profile/README.md (retired vision README)",
+        "mountainash-central/01.principles/mountainash-data/a.architecture/physical-logical-boundary.md (private; not linked from the site)"
       ],
-      "public_symbols": [],
+      "public_symbols": [
+        "IbisBackend",
+        "from_ibis_connection",
+        "from_raw_connection",
+        "in_transaction",
+        "native_transaction_open",
+        "upsert",
+        "add_columns",
+        "create_index",
+        "TableInfo"
+      ],
       "last_generated": "2026-10-29"
     }
   }

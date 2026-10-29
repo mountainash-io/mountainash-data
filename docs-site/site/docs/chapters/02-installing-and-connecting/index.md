@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Installing and connecting
 
-`IbisBackend` opens a connection to any of the package's 20 dialects from a dialect name plus driver keyword arguments, or from a connection URL. The base package installs no database driver; each dialect has a matching extra that pulls in the Ibis backend and its driver. Once constructed, a backend connects with `connect()`, releases its connection with `close()`, and can do both as a context manager. Typed settings profiles are a third way to construct a backend, covered in [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md).
+`IbisBackend` is the connection the rest of the mountainash ecosystem works through: configuration loaded with mountainash-settings becomes one ([Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md)), and mountainash relations compile against the tables it returns ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)). It connects to any of the package's 20 dialects from a dialect name plus driver keyword arguments, from a connection URL, or from a typed settings profile as described in [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md). The base package installs no database driver; each dialect has a matching extra that pulls in the Ibis backend and its driver. A backend connects with `connect()`, releases its connection with `close()`, and can do both as a context manager.
 
 ## Choosing extras
 

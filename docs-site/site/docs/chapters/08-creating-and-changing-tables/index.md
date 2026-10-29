@@ -6,7 +6,9 @@ date: 2026-10-29
 
 # Creating and changing tables
 
-`IbisBackend` creates, fills, empties, merges into, widens and renames tables with the same method calls on every dialect it supports. Creating tables and views, inserting and truncating go straight to Ibis. Upsert, `add_columns` and `rename_table` are built by mountainash-data itself: it renders dialect-specific SQL from the live connection, so one call produces `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` depending on the engine. The examples on this page run on in-memory DuckDB, with SQLite differences noted in the text, and each block continues from the one before it. The anchor recipe is [`examples/mutations`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/mutations).
+`IbisBackend` creates, fills, empties, merges into, widens and renames tables with the same method calls on every dialect it supports. In the ecosystem workflow this is how results computed with mountainash expressions ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)) are written back to a database, usually inside a transaction scope as in [An end-to-end pipeline](../12-an-end-to-end-pipeline/index.md). Creating tables and views, inserting and truncating go straight to Ibis; upsert, `add_columns` and `rename_table` are built by mountainash-data, which renders dialect-specific SQL from the live connection, so one call produces `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` depending on the engine.
+
+The examples on this page run on in-memory DuckDB, with SQLite differences noted in the text, and each block continues from the one before it. The anchor recipe is [`examples/mutations`](https://github.com/mountainash-io/mountainash-data/tree/develop/examples/mutations).
 
 Which operations a given dialect supports is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md). Inside an explicit transaction scope every method on this page is a protected package call; see [Transactions](../10-transactions/index.md).
 

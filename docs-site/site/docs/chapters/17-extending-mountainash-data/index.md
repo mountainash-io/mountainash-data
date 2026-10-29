@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Extending mountainash-data
 
-mountainash-data has three extension points. A store that Ibis does not reach gets its own class that satisfies the `Backend` protocol. A relational engine that Ibis does reach becomes a new dialect of `IbisBackend`, declared as data rather than as a new class. A new way of configuring a connection becomes a settings backend: a `BackendSpec` plus a registered `BackendProfile` subclass. The first and third can live in your own code; adding a dialect is a change to this repository.
+mountainash-data has three extension points. A store that Ibis does not reach gets its own class that satisfies the `Backend` protocol. A relational engine that Ibis does reach becomes a new dialect of `IbisBackend`, declared as data rather than as a new class, and its tables are then reachable from mountainash relations like any other dialect's ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)). A new way of configuring a connection becomes a settings backend: a `BackendSpec` plus a registered `BackendProfile` subclass, which mountainash-settings sources populate like the built-in profiles ([Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md)). The first and third can live in your own code; adding a dialect is a change to this repository.
 
 Modules whose names start with an underscore, such as the dialect registry module and the transaction machinery, are private. Their contents can change between releases without notice, so extensions outside this repository should depend only on the public imports used below.
 

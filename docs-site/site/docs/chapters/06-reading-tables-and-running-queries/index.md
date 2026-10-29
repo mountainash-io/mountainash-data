@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Reading tables and running queries
 
-Reading goes through Ibis. `IbisBackend.table()` returns a backend-native Ibis table expression; you build queries on it with the [Ibis expression API](https://ibis-project.org/reference/expression-tables), then execute them through Ibis or through the backend's `run_expr()`. `to_sql()` shows the SQL a query compiles to, and `run_sql()` turns a SQL string into a table expression. The same table can be handed to the separate `mountainash` package as a relation.
+Reading goes through Ibis. `IbisBackend.table()` returns a backend-native Ibis table expression; you build queries on it with the [Ibis expression API](https://ibis-project.org/reference/expression-tables), then execute them through Ibis or through the backend's `run_expr()`. `to_sql()` shows the SQL a query compiles to, and `run_sql()` turns a SQL string into a table expression. The same table can be handed to the separate `mountainash` package as a relation ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)).
 
 The examples use an in-memory DuckDB or SQLite backend; see [Installing and connecting](../02-installing-and-connecting/index.md) for connection options.
 
@@ -132,34 +132,6 @@ Table
 [{'id': 1, 'total': 120, 'doubled': 240}]
 ```
 
-## Bridging to mountainash relations
+## Running mountainash expressions on these tables
 
-<!-- concept:142 -->
-The [`mountainash`](https://github.com/mountainash-io/mountainash) package provides one semantic layer for tabular work: relations and expressions are built without binding to an engine, then lowered to the source's backend when a result is requested. It is a separate install; `mountainash-data` does not depend on it. The bridge is pull-side: there is no conversion method on the backend. You pass the Ibis table from `table()` to `mountainash.relation()`, and the relation compiles against that Ibis table and runs on the same database connection.
-
-```python
-import mountainash as ma
-
-from mountainash_data import IbisBackend
-
-with IbisBackend(dialect="duckdb", database=":memory:") as backend:
-    backend.create_table("sales", [
-        {"id": 1, "region": "north", "total": 120},
-        {"id": 2, "region": "south", "total": 95},
-    ])
-    rel = ma.relation(backend.table("sales"))
-    print(rel.filter(ma.col("total") > 100).to_polars())
-```
-
-```text
-shape: (1, 3)
-┌─────┬────────┬───────┐
-│ id  ┆ region ┆ total │
-│ --- ┆ ---    ┆ ---   │
-│ i64 ┆ str    ┆ i64   │
-╞═════╪════════╪═══════╡
-│ 1   ┆ north  ┆ 120   │
-└─────┴────────┴───────┘
-```
-
-Keep the backend open until the relation has produced its result: the relation holds the Ibis table, and the Ibis table holds the connection. Each relation runs on the connection its table came from. The package does not plan automatic joins between tables from different database connections, as the project README states.
+The Ibis table from `table()` is also the handoff to the separate [`mountainash`](https://github.com/mountainash-io/mountainash) package: `mountainash.relation(backend.table(name))` gives a relation whose expressions compile to SQL on the same connection, and which can join database tables with Polars frames and Python data in one plan. [Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md) covers the handoff, write-once expressions, cross-source joins, and conforming and validating database tables.

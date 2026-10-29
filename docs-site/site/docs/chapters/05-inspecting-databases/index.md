@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Inspecting databases
 
-Inspection answers "what is in this database?" without reading any rows. A connected backend lists its catalogs, namespaces and tables, and describes a table's columns, a namespace's tables or a whole catalog as frozen dataclasses. The results have the same shape on every dialect, so code that walks a SQLite file also walks a PostgreSQL schema or a Snowflake database.
+Inspection answers "what is in this database?" without reading any rows. A connected backend lists its catalogs, namespaces and tables, and describes a table's columns, a namespace's tables or a whole catalog as frozen dataclasses with the same shape on every dialect. This is physical metadata that mountainash relations do not own: a relation describes a computation over a table ([Running mountainash expressions against databases](../07-running-mountainash-expressions-against-databases/index.md)), while inspection describes the tables, namespaces and catalogs as they exist in the database.
 
 All examples use an in-memory DuckDB or SQLite backend, as set up in [Installing and connecting](../02-installing-and-connecting/index.md).
 

@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Connection profiles and authentication
 
-A connection profile is a typed, validated description of how to reach one database: host, port, database name, SSL mode and the other options that database's driver accepts. Each of the 20 supported backends has a `*BackendProfile` class, such as `PostgreSQLBackendProfile`, `SnowflakeBackendProfile` or `SQLiteBackendProfile`, in `mountainash_data.core.settings`. Profiles hold configuration only. Credentials live in separate auth profiles (`PasswordAuthProfile`, `TokenAuthProfile`, `IAMAuthProfile` and others) and are handed to `IbisBackend.connect()`, which combines the two into driver arguments at the moment it connects.
+A connection profile is a typed, validated description of how to reach one database: host, port, database name, SSL mode and the other options that database's driver accepts. Each of the 20 supported backends has a `*BackendProfile` class in `mountainash_data.core.settings`, such as `PostgreSQLBackendProfile`, `SnowflakeBackendProfile` or `SQLiteBackendProfile`, and these are the objects that mountainash-settings sources (configuration files, environment variables and secret stores) populate, as shown in [Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md). Profiles hold configuration only. Credentials live in separate auth profiles from mountainash-auth-client (`PasswordAuthProfile`, `TokenAuthProfile`, `IAMAuthProfile` and others), which `IbisBackend.connect()` combines with the profile into driver arguments at the moment it connects.
 
 <!-- concept:67 -->
 ## BackendProfile and SettingsParameters
@@ -63,7 +63,7 @@ except ValidationError as exc:
 Value error, Invalid AWS region: sydney
 ```
 
-`IbisBackend` accepts the `SettingsParameters` object, not a profile instance; passing anything other than `SettingsParameters` or a string raises `TypeError`. Keyword arguments given next to the parameters, as in `IbisBackend(params, connect_timeout=5)`, override the driver arguments the profile produces. How values are loaded from files, environments and secret stores, and how a secret store's lifetime is managed, is documented in [`mountainash-settings`](https://docs.mountainash.io/mountainash-settings/).
+`IbisBackend` accepts the `SettingsParameters` object, not a profile instance; passing anything other than `SettingsParameters` or a string raises `TypeError`. Keyword arguments given next to the parameters, as in `IbisBackend(params, connect_timeout=5)`, override the driver arguments the profile produces. Loading values from configuration files, environment variables and secret stores is shown in [Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md); how a secret store's lifetime is managed is documented in [`mountainash-settings`](https://docs.mountainash.io/mountainash-settings/).
 
 <!-- concept:69 -->
 ## BackendSpec, ParameterSpec and parameter tiers

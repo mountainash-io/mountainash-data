@@ -1,6 +1,6 @@
 ---
 title: Glossary
-description: Definitions of the package types, functions and database terms used in this book, with links to where each is explained.
+description: Definitions of the package types, functions, database and mountainash ecosystem terms used in this book, with links to where each is explained.
 ---
 
 # Glossary
@@ -131,6 +131,12 @@ A private module that works around a defect in one Ibis backend, for SQLite (bin
 
 See [Compatibility shims](chapters/14-how-one-backend-serves-20-dialects/index.md#compatibility-shims).
 
+### Config file sources
+
+The configuration files a `mountainash-settings` class reads, listed in `config_files=[...]`: YAML, TOML, JSON and dotenv files, recognised by extension. Across formats the priority is fixed (YAML, then TOML, then JSON) and files of one format merge in list order; environment variables and values passed in code override them all.
+
+See [Configuration file sources](chapters/04-configuring-connections-with-mountainash-settings/index.md#configuration-file-sources).
+
 ### `conflict_columns`
 
 The match key of an `upsert()` call: one column name or a list. How a match is found depends on the dialect's upsert family; on `ON CONFLICT` dialects a unique index or primary key on exactly these columns is required.
@@ -221,6 +227,12 @@ The step that turns an auth profile's fields (`USERNAME`, `TOKEN`, `ACCESS_TOKEN
 
 See [The auth adapter registry](chapters/15-from-settings-to-driver-arguments/index.md#the-auth-adapter-registry).
 
+### Cross-source join
+
+A join between relations whose data lives in different places, such as a database table and a Polars frame, a list of dicts, or a table on another connection. `mountainash` plans it and moves data between engines; this package supplies the table and the connection and takes no part in the planning.
+
+See [Joining database tables with local data](chapters/07-running-mountainash-expressions-against-databases/index.md#joining-database-tables-with-local-data).
+
 ## D
 
 ### `DATABASES_REGISTRY`
@@ -284,6 +296,12 @@ The enum that says how a dialect names an index in `DROP INDEX`. `SCHEMA_GLOBAL`
 See [Capability descriptors](chapters/14-how-one-backend-serves-20-dialects/index.md#capability-descriptors).
 
 ## E
+
+### `env_prefix`
+
+The `mountainash-settings` argument naming the prefix under which environment variables and dotenv entries fill a profile's fields: with `env_prefix="REPORTS_DB_"`, `REPORTS_DB_DATABASE` sets `DATABASE`. Prefixed environment variables override configuration files. Always set one, so ambient variables such as `USERNAME` cannot fill fields by accident.
+
+See [Environment prefix overrides](chapters/04-configuring-connections-with-mountainash-settings/index.md#environment-prefix-overrides).
 
 ### Extra
 
@@ -459,11 +477,35 @@ An Ibis in-memory table (`ibis.memtable(...)`), which package writes create from
 
 See [The memtable rollback caveat](chapters/10-transactions/index.md#the-memtable-rollback-caveat).
 
+### Memtable import
+
+How `mountainash` brings local data into a database for a cross-source join: it exports the frame or list of dicts as Arrow and wraps it as an Ibis memtable, which Ibis registers on the connection when the query runs. The join compiles to one SQL statement; no table is created in your schema, and the generated name changes each run.
+
+See [How local data reaches the database](chapters/07-running-mountainash-expressions-against-databases/index.md#how-local-data-reaches-the-database).
+
 ### Missing-driver `ImportError`
 
 The error `connect()` raises when a dialect's driver module is not installed, with the extra to install appended to the message. Constructing `IbisBackend` imports no driver, so it appears only at connect time.
 
 See [Missing-driver errors](chapters/02-installing-and-connecting/index.md#missing-driver-errors).
+
+### mountainash relation
+
+A `Relation` from the `mountainash` package: a lazy, engine-neutral plan built from a source with `ma.relation(...)` and run by a terminal such as `to_polars()`. Over `backend.table(...)` it compiles to SQL for that table's dialect and runs on the backend's connection; this package never creates or returns one.
+
+See [A mountainash relation over a backend table](chapters/07-running-mountainash-expressions-against-databases/index.md#a-mountainash-relation-over-a-backend-table).
+
+### mountainash-settings
+
+The ecosystem package that owns typed settings: the settings base the backend profiles build on, configuration file and environment loading, secret stores and `SettingsParameters` recipes. Every `*BackendProfile` is a `mountainash-settings` class.
+
+See [Configuring connections with mountainash-settings](chapters/04-configuring-connections-with-mountainash-settings/index.md).
+
+### `mountainash[ibis]`
+
+The Ibis extra of the `mountainash` package. It depends on `mountainash-data` for SQL transactions and owned copies, and borrows a relation's Ibis connection through `IbisBackend.from_ibis_connection(..., owns_connection=False)`. The dependency runs one way: this package never imports `mountainash`.
+
+See [How mountainash borrows a connection](chapters/11-adopting-existing-connections/index.md#how-mountainash-borrows-a-connection).
 
 ## N
 
@@ -528,6 +570,12 @@ See [Adapter families](chapters/15-from-settings-to-driver-arguments/index.md#ad
 A callable on `DialectSpec` that replaces the generic implementation of one operation for one dialect, such as `truncate_table_hook` on SQLite or `list_indexes_hook` on DuckDB. A set hook takes precedence over the capability check and the generic default.
 
 See [Operation hooks and dispatch order](chapters/14-how-one-backend-serves-20-dialects/index.md#operation-hooks-and-dispatch-order).
+
+### Owned copy
+
+A temporary `ma_owned_*` table that `mountainash[ibis]` creates on a connection, for example behind `Relation.snapshot()` or when a plan's inputs must be materialised on a target connection. It is created through this package's public API inside an owned transaction, survives the source being dropped, and is refused while the caller has a transaction open.
+
+See [How mountainash borrows a connection](chapters/11-adopting-existing-connections/index.md#how-mountainash-borrows-a-connection).
 
 ### Owned transaction
 
@@ -601,7 +649,7 @@ See [ConnectionFactory](chapters/15-from-settings-to-driver-arguments/index.md#c
 
 The way a table reaches the separate `mountainash` package: pass the Ibis table from `table()` to `mountainash.relation()`. The backend has no conversion method, and the relation runs on the same connection.
 
-See [Bridging to mountainash relations](chapters/06-reading-tables-and-running-queries/index.md#bridging-to-mountainash-relations).
+See [A mountainash relation over a backend table](chapters/07-running-mountainash-expressions-against-databases/index.md#a-mountainash-relation-over-a-backend-table).
 
 ### Pydantic
 
@@ -679,6 +727,12 @@ The process-wide record of open `transaction()` scopes, keyed by the identity of
 
 See [The per-raw-handle scope registry](chapters/16-transaction-and-adoption-internals/index.md#the-per-raw-handle-scope-registry).
 
+### Secret reference
+
+A settings value of the form `secret:record.field`, which `mountainash-settings` resolves from the secret store selected with `secret_store=` while the profile is built. The configuration file holds the reference rather than the secret; a reference with no store selected raises `SecretCapabilityError`.
+
+See [Secret references](chapters/04-configuring-connections-with-mountainash-settings/index.md#secret-references).
+
 ### `SecretStr`
 
 The pydantic type used for secret fields in auth profiles; it prints as asterisks. Auth adapters unwrap it with `get_secret_value()` only when building driver arguments.
@@ -709,11 +763,23 @@ The `mountainash-settings` object that names a profile class and supplies field 
 
 See [BackendProfile and SettingsParameters](chapters/03-connection-profiles-and-authentication/index.md#backendprofile-and-settingsparameters).
 
+### SettingsParameters recipe
+
+A `SettingsParameters` object used as the portable description of a connection: the profile class and its source selectors (configuration files, environment prefix, secrets directory), plus any values passed in code. Without a bound secret store it is picklable and its printed form omits values and the store, so it can be sent to a worker, which resolves it and opens its own connection.
+
+See [Settings recipes across workers](chapters/04-configuring-connections-with-mountainash-settings/index.md#settings-recipes-across-workers).
+
 ### Simple identifier
 
 A name made of letters, digits, `_` and `$` that does not start with a digit. Operations the package renders itself (upsert, `add_columns`, `rename_table`, index methods) require table, column, index and namespace names of this form and raise `ValueError` for dotted or quoted names.
 
 See [Creating indexes](chapters/09-indexes/index.md#creating-indexes).
+
+### Snapshot
+
+`Relation.snapshot()` in `mountainash`: it evaluates a relation into an owned copy and returns a relation over that copy. For a relation over an `IbisBackend` table, the copy is a temporary table on the same connection.
+
+See [How mountainash borrows a connection](chapters/11-adopting-existing-connections/index.md#how-mountainash-borrows-a-connection).
 
 ### sqlglot
 
@@ -844,3 +910,11 @@ See [Upsert](chapters/08-creating-and-changing-tables/index.md#upsert).
 The enum on `DialectSpec` that selects which SQL family the generic upsert renders: `ON_CONFLICT`, `MERGE` or `ON_DUPLICATE_KEY`. A `None` style makes `upsert()` raise `NotImplementedError`.
 
 See [Capability descriptors](chapters/14-how-one-backend-serves-20-dialects/index.md#capability-descriptors).
+
+## W
+
+### Write once, run anywhere
+
+The `mountainash` property that an expression or relation pipeline is not bound to an engine when it is built. The engine follows the relation's source at the terminal, so the same `ma.col("total").gt(90)` filters a Polars frame locally and compiles to SQL for a table from `backend.table(...)`.
+
+See [Write once, run anywhere](chapters/07-running-mountainash-expressions-against-databases/index.md#write-once-run-anywhere).

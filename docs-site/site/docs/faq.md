@@ -1,6 +1,6 @@
 ---
 title: FAQ
-description: Short answers to common questions about installing, connecting, inspecting, writing, transactions, dialect limits and extending mountainash-data.
+description: Short answers to common questions about using mountainash-data with the mountainash ecosystem, installing, connecting, inspecting, writing, transactions, dialect limits and extending mountainash-data.
 ---
 
 # Frequently asked questions
@@ -9,7 +9,7 @@ description: Short answers to common questions about installing, connecting, ins
 
 ### What is mountainash-data?
 
-`mountainash-data` gives Python code one typed handle, `IbisBackend`, for connecting to relational databases, inspecting their physical metadata and managing their tables. The same class serves 20 dialects, from in-process SQLite and DuckDB to PostgreSQL, Snowflake, BigQuery and Trino. Ibis supplies the table expressions; the package adds connection profiles, namespace handling, dialect-specific writes, index management and explicit transaction scopes behind a backend-neutral `Backend` protocol. See [What the package does](chapters/01-mountainash-data-in-the-ecosystem/index.md#what-the-package-does).
+`mountainash-data` is the physical data layer of the mountainash ecosystem. It turns `mountainash-settings` configuration and `mountainash-auth-client` credentials into live database connections through one class, `IbisBackend`, which serves 20 dialects from in-process SQLite and DuckDB to PostgreSQL, Snowflake, BigQuery and Trino. It hands tables to `mountainash` expressions and relations, and writes results back with upsert, `add_columns()` and index management inside transaction scopes. Inspection returns the same typed catalog, namespace, table, column and index records on every engine, behind a backend-neutral `Backend` protocol. See [What the package does](chapters/01-mountainash-data-in-the-ecosystem/index.md#what-the-package-does).
 
 A minimal session:
 
@@ -40,7 +40,49 @@ Each driver has its own connection arguments, metadata queries, upsert syntax, i
 
 ### What does mountainash-data not do?
 
-It does not build query expressions (that is Ibis), define relation semantics across engines (the `mountainash` package), load configuration files or resolve secrets (`mountainash-settings`), or run auth flows such as OAuth token exchange (`mountainash-auth-client`). It also does not plan automatic joins between tables on different database connections. See [What the package does](chapters/01-mountainash-data-in-the-ecosystem/index.md#what-the-package-does).
+It does not build query expressions (that is Ibis), define expressions, relations or the semantics of combining sources (the `mountainash` package, which also plans joins between database tables, local data and other connections), load configuration files or resolve secrets (`mountainash-settings`), or run auth flows such as OAuth token exchange (`mountainash-auth-client`). See [The mountainash ecosystem layers](chapters/01-mountainash-data-in-the-ecosystem/index.md#the-mountainash-ecosystem-layers).
+
+## Using it with the mountainash ecosystem
+
+### Why use mountainash-data instead of just Ibis?
+
+If you only need a connection and Ibis expressions, Ibis on its own is enough. mountainash-data is for code that works in the mountainash ecosystem. It builds connections from `mountainash-settings` configuration (files, environment overrides, secret references) with credentials from `mountainash-auth-client` applied at `connect()`. Its tables go to `mountainash`, whose expressions run unchanged on local frames and database tables and join both in one plan. On the write side it adds an upsert rendered as `ON CONFLICT`, `MERGE` or `ON DUPLICATE KEY` per dialect and validated before any SQL runs, `add_columns()`, index management, `transaction()` scopes that own or join a transaction, connection adoption, and a typed physical metadata model. Ibis 12 has its own `upsert`, `rename_table` and `truncate_table`; the package's value is the integration and these portable physical operations, not a thinner wrapper. See [What it adds beyond Ibis](chapters/01-mountainash-data-in-the-ecosystem/index.md#what-it-adds-beyond-ibis).
+
+### Which package owns what?
+
+`mountainash-settings` owns configuration loading, secret stores and `SettingsParameters` recipes. `mountainash-auth-client` owns credential types and auth flows. `mountainash-data` owns connections, physical metadata, native table access, physical writes and transaction scopes. `mountainash` owns expressions, relations, schemas, contracts and cross-source semantics. `mountainash-data` never imports `mountainash`; the application makes the handoff. See [The mountainash ecosystem layers](chapters/01-mountainash-data-in-the-ecosystem/index.md#the-mountainash-ecosystem-layers).
+
+### How do configuration files, environment variables and secrets become a connection?
+
+Build a `SettingsParameters` recipe naming a backend profile class, with `config_files=[...]` (YAML, TOML, JSON or dotenv) and an `env_prefix=`, and pass it to `IbisBackend`. Prefixed environment variables override the files, and a value written as `secret:record.field` is resolved from the secret store selected with `secret_store=`. Credentials usually live in a separate auth profile, loaded the same way and passed to `connect(auth_profile=...)`. Always set a prefix, so ambient variables such as `USERNAME` do not fill fields by accident. See [Configuration file sources](chapters/04-configuring-connections-with-mountainash-settings/index.md#configuration-file-sources), [Environment prefix overrides](chapters/04-configuring-connections-with-mountainash-settings/index.md#environment-prefix-overrides) and [Secret references](chapters/04-configuring-connections-with-mountainash-settings/index.md#secret-references).
+
+### How do I give a worker process its database connection?
+
+Send it the `SettingsParameters` recipe, not a connection or a resolved profile, and construct `IbisBackend(params)` in the worker. A recipe without a bound secret store is picklable and its printed form holds no credentials; the worker reads the sources itself and opens its own connection. Resolve configuration file paths to absolute paths before sending them. See [Settings recipes across workers](chapters/04-configuring-connections-with-mountainash-settings/index.md#settings-recipes-across-workers).
+
+### How do I use a database table with mountainash?
+
+Pass the Ibis table from `backend.table(...)` to `mountainash.relation()`. The handoff is pull-side: there is no conversion method on the backend, and `mountainash-data` does not depend on `mountainash`. The relation compiles against the table and runs on the same connection, so keep the backend open until it has produced its result. See [A mountainash relation over a backend table](chapters/07-running-mountainash-expressions-against-databases/index.md#a-mountainash-relation-over-a-backend-table).
+
+### Does the same expression run on local data and on a database table?
+
+Yes. A `mountainash` expression such as `ma.col("total").gt(90)` is not bound to an engine when you build it; the engine follows the relation's source. Over a Polars frame or a list of dicts it runs locally, and over `backend.table(...)` it compiles to SQL for that table's dialect and runs in the database. One function therefore serves local tests and production tables. `mountainash` documents dialect-specific coverage for DuckDB, SQLite and the Ibis Polars backend so far. See [Write once, run anywhere](chapters/07-running-mountainash-expressions-against-databases/index.md#write-once-run-anywhere).
+
+### Can I join a database table with a Polars frame or Python data?
+
+Yes, by joining their relations: `ma.relation(backend.table("sales")).join(ma.relation(managers_df), on="region")`, and the same with a list of dicts. `mountainash` plans the join, not this package. With the database table on the left, the local data is exported as Arrow, registered on the connection as an Ibis memtable, and the join runs in the database as one SQL statement; no table is created in your schema. With local data on the left, the database side is read into Polars unless you pass `execute_on="right"`. Tables on two different connections also join. See [Joining database tables with local data](chapters/07-running-mountainash-expressions-against-databases/index.md#joining-database-tables-with-local-data) and [How local data reaches the database](chapters/07-running-mountainash-expressions-against-databases/index.md#how-local-data-reaches-the-database).
+
+### Can I conform or validate a database table with a mountainash schema or contract?
+
+Yes. `Relation.conform(schema)` over a backend table adds casts and column rules to the table's SQL, and a data contract's `validate_datacontract()` or a `ValidationRunner` with `RowRule` checks evaluates the relation and reports passes, per-check summaries and failing rows. The same rule object validates a database table and a local frame. See [Conforming and validating database tables](chapters/07-running-mountainash-expressions-against-databases/index.md#conforming-and-validating-database-tables).
+
+### How do I write mountainash results back to the database?
+
+Evaluate the relation with a terminal such as `to_polars()` and pass the frame to the backend's write methods inside one `backend.transaction()`: `add_columns()` widens the target with any new columns, and `upsert(..., conflict_columns=...)` updates matching keys and inserts the rest. A failure inside the scope rolls back both on SQLite, DuckDB and PostgreSQL. See [Writing expression results back](chapters/12-an-end-to-end-pipeline/index.md#writing-expression-results-back) and [The pipeline end to end](chapters/12-an-end-to-end-pipeline/index.md#the-pipeline-end-to-end).
+
+### How does mountainash[ibis] use this package?
+
+The `mountainash[ibis]` extra depends on `mountainash-data` for SQL transactions and owned copies, such as the temporary tables behind `Relation.snapshot()`. It borrows a relation's Ibis connection with `IbisBackend.from_ibis_connection(..., owns_connection=False)`, refuses to proceed if a transaction is already open, and creates the copy inside an owned `transaction()`. It uses only the public API, and base Polars work in `mountainash` does not import this package. See [How mountainash borrows a connection](chapters/11-adopting-existing-connections/index.md#how-mountainash-borrows-a-connection).
 
 ## Installing
 
@@ -159,10 +201,6 @@ They return the same result. `run_expr()` goes through the backend, so inside a 
 ### Can I run raw SQL?
 
 `run_sql(query)` wraps a `SELECT` as an Ibis table expression that you can execute, filter or join; it does not return rows itself, and `dialect=` lets Ibis transpile SQL written for another engine. Statements such as DDL or `UPDATE` belong in the package's write methods or on the raw driver handle from `raw_driver_connection()`. See [run_sql](chapters/06-reading-tables-and-running-queries/index.md#run_sql).
-
-### How do I use a table with the mountainash package?
-
-Pass the Ibis table from `backend.table(...)` to `mountainash.relation()`. The bridge is pull-side: there is no conversion method on the backend, and `mountainash-data` does not depend on `mountainash`. Keep the backend open until the relation has produced its result, because the relation runs on the table's connection. See [Bridging to mountainash relations](chapters/06-reading-tables-and-running-queries/index.md#bridging-to-mountainash-relations).
 
 ## Writing data
 
