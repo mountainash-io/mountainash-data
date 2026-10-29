@@ -24,6 +24,7 @@ features = ["sqlite", "duckdb", "polars"]
 dependencies = [
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
+    "mountainash_transport @ {root:uri}/../mountainash-transport",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 
 ]
@@ -86,6 +87,7 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_transport @ {root:uri}/temp/mountainash-transport",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 ]
 [envs.test_github.scripts]
@@ -114,6 +116,7 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_transport @ {root:uri}/temp/mountainash-transport",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 ]
 [envs.test_github_live.scripts]
@@ -138,6 +141,7 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/temp/mountainash-settings",
     "mountainash @              {root:uri}/temp/mountainash",
+    "mountainash_transport @ {root:uri}/temp/mountainash-transport",
     "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
 ]
 
@@ -184,6 +188,7 @@ dependencies = [
 
     "mountainash_settings @     {root:uri}/../mountainash-settings",
     "mountainash @              {root:uri}/../mountainash",
+    "mountainash_transport @ {root:uri}/../mountainash-transport",
     "mountainash_auth_client @  {root:uri}/../mountainash-auth-client",
 
 
@@ -401,6 +406,7 @@ dependencies = [
     "pytest-check==2.5.3",
     "mountainash_settings @     {env:HATCH_SIBLINGS}/mountainash-settings",
     "mountainash @              {env:HATCH_SIBLINGS}/mountainash",
+    "mountainash_transport @ {env:HATCH_SIBLINGS}/mountainash-transport",
     "mountainash_auth_client @  {env:HATCH_SIBLINGS}/mountainash-auth-client",
 ]
 [envs.mypy.scripts]

@@ -2,6 +2,7 @@
 # HATCH_SIBLINGS is a file URI: ../ locally, temp/ in CI.
 mountainash-settings @ ${HATCH_SIBLINGS}/mountainash-settings
 mountainash-auth-client @ ${HATCH_SIBLINGS}/mountainash-auth-client
+mountainash-transport @ ${HATCH_SIBLINGS}/mountainash-transport
 mountainash @ ${HATCH_SIBLINGS}/mountainash
 # Shared analytical dependency set exercised during release preparation.
 ibis-framework==12.0.0
