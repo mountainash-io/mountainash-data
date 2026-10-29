@@ -1,0 +1,8 @@
+# Sibling packages the release build installs from source. Runtime dependencies
+# only: the `mountainash` umbrella is a test-time convenience and is not shipped
+# as a dependency of mountainash-data, so release builds must not resolve it.
+dependencies:
+  - name: mountainash-settings
+    org-name: mountainash-io
+  - name: mountainash-auth-client
+    org-name: mountainash-io

@@ -70,7 +70,7 @@ jobs:
         id: deps
         uses: ./.github/actions/load-dependencies
         with:
-          config-path: .github/config/mountainash_dependencies.yml
+          config-path: .github/config/mountainash_release_dependencies.yml
 
       - name: Checkout Dependencies
         uses: ./.github/actions/checkout-dependencies
