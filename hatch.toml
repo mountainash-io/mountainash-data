@@ -33,18 +33,18 @@ dependencies = [
 # Env: build_github
 #================
 [envs.build_github]
+python = "3.12"
 installer = "uv"
+# Hatch installs the project before syncing environment dependencies.
 dependencies = [
     "cyclonedx-bom==4.5.0",
 
-    "mountainash_settings @     {root:uri}/temp/mountainash-settings",
-    "mountainash @              {root:uri}/temp/mountainash",
-    "mountainash_auth_client @  {root:uri}/temp/mountainash-auth-client",
-
+    "mountainash_settings @    {root:uri}/temp/mountainash-settings",
+    "mountainash_auth_client @ {root:uri}/temp/mountainash-auth-client",
 ]
 [envs.build_github.scripts]
-sbom-all = "cyclonedx-py environment > ./sbom-full.xml"
-sbom-direct = "cyclonedx-py requirements > ./sbom-direct.xml"
+sbom-all = "cyclonedx-py environment > ./sbom-full.json"
+sbom-direct = "cyclonedx-py requirements > ./sbom-direct.json"
 export-requirements = "hatch dep show requirements > ./requirements.txt"
 
 #================
