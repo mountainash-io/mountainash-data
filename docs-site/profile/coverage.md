@@ -1,8 +1,16 @@
 # Coverage Report — mountainash-data
 
-**Source hash:** 17d9ed3ae77f05bc1eea90f14294f732fb26ea5e (`develop`)
-**Previous hash:** 4c077666ebc560f82e9bbd7ef419bdfde2c5f62f
-**Behavior:** full refresh
+**Source hash:** 2d0782b507141baecd5a120ac0547c7e8af11662 (`docs/textbook-rebuild`)
+**Previous hash:** 17d9ed3ae77f05bc1eea90f14294f732fb26ea5e
+**Behavior:** incremental (no source changes)
+
+## Incremental refresh (2026-10-29)
+
+No file under `src/mountainash_data` changed between `17d9ed3` and `2d0782b`; the intervening commits touched only `CLAUDE.md` and this profile. All 30 module records stay as written at `17d9ed3` (their `source_hash`), and their facts still hold at `2d0782b`. Nothing is stale or orphaned.
+
+The two low-confidence review flags below (`core.registry`, `core.constants`) are **resolved for documentation purposes**. The owner chose to fix them in code, tracked as DEBT-25 in `mountainash-central/04.planning/mountainash-data/a.backlog/unwired-core-registry-and-constants.md`. Until then, docs treat both modules as internal/unwired.
+
+## Full refresh at 17d9ed3
 
 ## Why full refresh
 
@@ -48,12 +56,12 @@ Source no longer exists at the target hash; records deleted so the manifest map 
 
 | Module | Confidence | Open question |
 |---|---|---|
-| `mountainash_data.core.registry` | medium | Public extension infrastructure (needs tests + IbisBackend registration) or leftover to retire? |
-| `mountainash_data.core.constants` | medium | 11 of 12 enums have no importer; remove or document as public constants? |
+| `mountainash_data.core.registry` | medium | Resolved → DEBT-25: retained per DEBT-6; tests and public-reach statement to follow. Docs: internal/unwired. |
+| `mountainash_data.core.constants` | medium | Resolved → DEBT-25: remove-vs-adopt per enum pending. Docs: only `CONST_DB_PROVIDER_TYPE` is load-bearing. |
 
 ## Documentation drift (source of truth disagrees with docs)
 
-- **CLAUDE.md** describes `BackendDescriptor`/`ProfileDescriptor`, `ConnectionProfile.to_driver_kwargs()`/`to_connection_string()`, `AuthSpec` subclasses, `*AuthSettings(..., auth=NoAuth())`, `OperationsFactory`, `SettingsFactory`, `DatabaseUtils` and per-dialect connection subclasses. Code: `BackendSpec`, `BackendProfile`, `*BackendProfile`, `*AuthProfile` (from `mountainash_auth_client`), `ConnectionFactory` only, and a single `IbisBackend`. Evidence: `core.settings`, `core.settings.descriptor`, `core.settings.profile`, `core.settings.backends`, `core.factories` records.
+- **CLAUDE.md** (fixed in #148) described `BackendDescriptor`/`ProfileDescriptor`, `ConnectionProfile.to_driver_kwargs()`/`to_connection_string()`, `AuthSpec` subclasses, `*AuthSettings(..., auth=NoAuth())`, `OperationsFactory`, `SettingsFactory`, `DatabaseUtils` and per-dialect connection subclasses. Code: `BackendSpec`, `BackendProfile`, `*BackendProfile`, `*AuthProfile` (from `mountainash_auth_client`), `ConnectionFactory` only, and a single `IbisBackend`. Evidence: `core.settings`, `core.settings.descriptor`, `core.settings.profile`, `core.settings.backends`, `core.factories` records.
 - **`src/mountainash_data/__init__.py`** docstring omits `IndexInfo`, `Namespace`, `NamespaceLike` from `__all__`.
 - **`IbisConnection` docstrings** reference `core.protocol.Connection`, which no longer exists.
 - **`core/constants.py`** header names a non-existent `databases/constants.py` path.
