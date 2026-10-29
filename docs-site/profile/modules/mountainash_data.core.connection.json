@@ -1,0 +1,52 @@
+{
+  "id": "mountainash_data.core.connection",
+  "path": "src/mountainash_data/core/connection.py",
+  "summary": "Abstract base class BaseDBConnection providing settings-based auth, SSH tunnelling, and lifecycle hooks. Extended by IcebergConnectionBase and legacy Ibis connection classes.",
+  "role": "protocol",
+  "visibility": "semi-public",
+  "stability": "evolving",
+  "audiences": ["maintainers", "backend-architecture", "extension-authors"],
+  "doc_priority": "useful",
+  "confidence": "high",
+  "public_api": ["BaseDBConnection"],
+  "key_classes": [
+    {
+      "name": "BaseDBConnection",
+      "kind": "abc",
+      "abstract_methods": ["connect", "disconnect", "is_connected"],
+      "abstract_properties": ["db_abstraction_layer", "provider_type", "db_backend_name", "settings_class"],
+      "concrete_methods": ["__init__", "init_ssh"]
+    }
+  ],
+  "key_functions": [],
+  "dependencies": [
+    "mountainash_data.core.constants",
+    "mountainash_settings"
+  ],
+  "dependents": [
+    "mountainash_data.backends.iceberg.connection"
+  ],
+  "extension_points": [
+    "Subclass and implement abstract methods/properties to add a new backend"
+  ],
+  "lifecycle_notes": [
+    "Predates the Backend protocol; Iceberg still inherits from it, Ibis new-style does not"
+  ],
+  "documentation_hooks": [
+    "Extension authors building new catalog backends should start here"
+  ],
+  "examples": [],
+  "tests": [],
+  "risks": [
+    "Dual contract surface: Backend protocol (structural) and BaseDBConnection (nominal) coexist"
+  ],
+  "open_questions": [
+    "Will legacy connection hierarchy be consolidated into the Backend protocol?"
+  ],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/core/connection.py", "detail": "ABC with abstract connect/disconnect/is_connected"},
+    {"kind": "import", "path": "src/mountainash_data/backends/iceberg/connection.py", "detail": "IcebergConnectionBase extends BaseDBConnection"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}

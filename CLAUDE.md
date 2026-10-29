@@ -25,6 +25,15 @@ not to a local `docs/superpowers/` directory.** (The superpowers skills default 
 `docs/superpowers/` path — override that default to the central location above.) Only source,
 tests, and this `CLAUDE.md` live in this repo's tree.
 
+## Central Repository — Principles & Backlog
+
+Durable architecture principles and the implementation backlog for this project live in the
+**mountainash-central** repo, not here.
+
+- **Principles:** [`../mountainash-central/01.principles/mountainash-data/README.md`](../mountainash-central/01.principles/mountainash-data/README.md) — see [`PRINCIPLES.md`](../mountainash-central/01.principles/mountainash-data/PRINCIPLES.md) for governance (statuses, category precedence).
+- **Backlog:** [`../mountainash-central/04.planning/mountainash-data/a.backlog/INDEX.md`](../mountainash-central/04.planning/mountainash-data/a.backlog/INDEX.md) — prioritized items; see that directory's `CHANGELOG.md` for update history.
+- **Specs & plans:** save new design specs/plans to `../mountainash-central/04.planning/mountainash-data/superpowers/{specs,plans}/`, not under `docs/superpowers/` in this repo.
+
 ## Architecture
 
 ### Core Components

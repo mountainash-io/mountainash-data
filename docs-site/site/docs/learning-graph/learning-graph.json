@@ -1,0 +1,1647 @@
+{
+  "metadata": {
+    "title": "Mountainash Data Concept Graph",
+    "description": "A concept dependency graph for the mountainash-data unified database and lakehouse connectivity library. 100 concepts across 9 categories covering backend protocol, Ibis, Iceberg, inspection model, dialects, settings, and adapters.",
+    "creator": "Nathaniel Ramm",
+    "date": "2026-06-03",
+    "version": "1.0",
+    "format": "Learning Graph JSON v1.0",
+    "schema": "https://raw.githubusercontent.com/dmccreary/learning-graphs/refs/heads/main/src/schema/learning-graph-schema.json",
+    "license": "CC BY-NC-SA 4.0 DEED",
+    "source_commit": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+    "profile_dir": "03.profile/mountainash-data"
+  },
+  "groups": {
+    "FOUND": {
+      "classifierName": "Foundation Concepts",
+      "color": "SteelBlue",
+      "font": {
+        "color": "white"
+      }
+    },
+    "PROTO": {
+      "classifierName": "Backend Protocol",
+      "color": "DarkSlateBlue",
+      "font": {
+        "color": "white"
+      }
+    },
+    "IBIS": {
+      "classifierName": "Ibis Backend",
+      "color": "DarkGreen",
+      "font": {
+        "color": "white"
+      }
+    },
+    "ICE": {
+      "classifierName": "Iceberg Backend",
+      "color": "LimeGreen",
+      "font": {
+        "color": "black"
+      }
+    },
+    "INSP": {
+      "classifierName": "Inspection Model",
+      "color": "Gold",
+      "font": {
+        "color": "black"
+      }
+    },
+    "DIAL": {
+      "classifierName": "Dialect System",
+      "color": "Teal",
+      "font": {
+        "color": "white"
+      }
+    },
+    "SETT": {
+      "classifierName": "Settings & Configuration",
+      "color": "MediumPurple",
+      "font": {
+        "color": "white"
+      }
+    },
+    "ADAPT": {
+      "classifierName": "Adapters & Auth",
+      "color": "Orange",
+      "font": {
+        "color": "black"
+      }
+    },
+    "ADV": {
+      "classifierName": "Advanced Features",
+      "color": "Crimson",
+      "font": {
+        "color": "white"
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": 1,
+      "label": "SQL Databases",
+      "group": "FOUND",
+      "shape": "box",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 2,
+      "label": "Database Schemas",
+      "group": "FOUND",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 3,
+      "label": "Database Catalogs",
+      "group": "FOUND",
+      "source_module": "mountainash_data.backends.iceberg.catalogs",
+      "source_path": "src/mountainash_data/backends/iceberg/catalogs/rest.py",
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 4,
+      "label": "Connection Management",
+      "group": "FOUND",
+      "source_module": "mountainash_data.backends.iceberg.connection",
+      "source_path": "src/mountainash_data/backends/iceberg/connection.py",
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 5,
+      "label": "Python Protocols",
+      "group": "FOUND",
+      "shape": "box",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 6,
+      "label": "Runtime Checkable Protocol",
+      "group": "FOUND",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 7,
+      "label": "Pydantic Models",
+      "group": "FOUND",
+      "shape": "box",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 8,
+      "label": "Decorators",
+      "group": "FOUND",
+      "shape": "box",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 9,
+      "label": "Registry Pattern",
+      "group": "FOUND",
+      "source_module": "mountainash_data.core.settings",
+      "source_path": "src/mountainash_data/core/settings/__init__.py",
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 10,
+      "label": "Ibis Library",
+      "group": "FOUND",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "01-foundation-concepts",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 11,
+      "label": "Backend Protocol Definition",
+      "group": "PROTO",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 12,
+      "label": "Connect Method",
+      "group": "PROTO",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 13,
+      "label": "Close Method",
+      "group": "PROTO",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 14,
+      "label": "List Tables Method",
+      "group": "PROTO",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 15,
+      "label": "Inspect Table Method",
+      "group": "PROTO",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 16,
+      "label": "List Namespaces Method",
+      "group": "PROTO",
+      "source_module": "mountainash_data.core.registry",
+      "source_path": "src/mountainash_data/core/registry.py",
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 17,
+      "label": "Inspect Namespace Method",
+      "group": "PROTO",
+      "source_module": "mountainash_data.core.registry",
+      "source_path": "src/mountainash_data/core/registry.py",
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 18,
+      "label": "Inspect Catalog Method",
+      "group": "PROTO",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "02-backend-protocol",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 19,
+      "label": "IbisBackend Class",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.ibis.backend",
+      "source_path": "src/mountainash_data/backends/ibis/backend.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 20,
+      "label": "Ibis Connection",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.ibis.backend",
+      "source_path": "src/mountainash_data/backends/ibis/backend.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 21,
+      "label": "Fluent Query API",
+      "group": "IBIS",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 22,
+      "label": "Raw SQL Queries",
+      "group": "IBIS",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 23,
+      "label": "DDL Operations",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 24,
+      "label": "Create Table",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.iceberg.operations",
+      "source_path": "src/mountainash_data/backends/iceberg/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 25,
+      "label": "DML Operations",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 26,
+      "label": "Insert Data",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.iceberg.operations",
+      "source_path": "src/mountainash_data/backends/iceberg/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 27,
+      "label": "Upsert Data",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.iceberg.operations",
+      "source_path": "src/mountainash_data/backends/iceberg/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 28,
+      "label": "Truncate Table",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.iceberg.operations",
+      "source_path": "src/mountainash_data/backends/iceberg/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 29,
+      "label": "Create View",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.iceberg.operations",
+      "source_path": "src/mountainash_data/backends/iceberg/operations.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 30,
+      "label": "List Tables Ibis",
+      "group": "IBIS",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 31,
+      "label": "Table Inspection Ibis",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 32,
+      "label": "Namespace Inspection Ibis",
+      "group": "IBIS",
+      "source_module": "mountainash_data.core.registry",
+      "source_path": "src/mountainash_data/core/registry.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 33,
+      "label": "Catalog Inspection Ibis",
+      "group": "IBIS",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 34,
+      "label": "Context Manager Ibis",
+      "group": "IBIS",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "04-ibis-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 35,
+      "label": "IcebergBackend Class",
+      "group": "ICE",
+      "source_module": "mountainash_data.backends.iceberg.backend",
+      "source_path": "src/mountainash_data/backends/iceberg/backend.py",
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 36,
+      "label": "Apache Iceberg Overview",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 37,
+      "label": "Iceberg Connection Base",
+      "group": "ICE",
+      "source_module": "mountainash_data.backends.iceberg.connection",
+      "source_path": "src/mountainash_data/backends/iceberg/connection.py",
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 38,
+      "label": "REST Catalog Type",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 39,
+      "label": "Hive Catalog Type",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 40,
+      "label": "Glue Catalog Type",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 41,
+      "label": "SQL Catalog Type",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 42,
+      "label": "Catalog Type Registry",
+      "group": "ICE",
+      "source_module": "mountainash_data.core.settings",
+      "source_path": "src/mountainash_data/core/settings/__init__.py",
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 43,
+      "label": "Iceberg Operations",
+      "group": "ICE",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 44,
+      "label": "List Tables Iceberg",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 45,
+      "label": "Table Inspection Iceberg",
+      "group": "ICE",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 46,
+      "label": "Namespace Inspection Iceberg",
+      "group": "ICE",
+      "source_module": "mountainash_data.core.registry",
+      "source_path": "src/mountainash_data/core/registry.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 47,
+      "label": "Catalog Inspection Iceberg",
+      "group": "ICE",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 48,
+      "label": "PyIceberg Library",
+      "group": "ICE",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "08-iceberg-backend",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 49,
+      "label": "CatalogInfo Dataclass",
+      "group": "INSP",
+      "source_module": "mountainash_data.core.inspection",
+      "source_path": "src/mountainash_data/core/inspection.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 50,
+      "label": "NamespaceInfo Dataclass",
+      "group": "INSP",
+      "source_module": "mountainash_data.core.inspection",
+      "source_path": "src/mountainash_data/core/inspection.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 51,
+      "label": "TableInfo Dataclass",
+      "group": "INSP",
+      "source_module": "mountainash_data.core.inspection",
+      "source_path": "src/mountainash_data/core/inspection.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 52,
+      "label": "ColumnInfo Dataclass",
+      "group": "INSP",
+      "source_module": "mountainash_data.core.inspection",
+      "source_path": "src/mountainash_data/core/inspection.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 53,
+      "label": "Frozen Metadata Model",
+      "group": "INSP",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 54,
+      "label": "Backend Agnostic Metadata",
+      "group": "INSP",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 55,
+      "label": "Driver Metadata Conversion",
+      "group": "INSP",
+      "source_module": "mountainash_data.init",
+      "source_path": "src/mountainash_data/__init__.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 56,
+      "label": "Unified Inspection API",
+      "group": "INSP",
+      "source_module": "mountainash_data.backends.ibis.inspect",
+      "source_path": "src/mountainash_data/backends/ibis/inspect.py",
+      "chapter": "03-inspection-model",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 57,
+      "label": "DialectSpec Overview",
+      "group": "DIAL",
+      "source_module": "mountainash_data.backends.ibis.dialects",
+      "source_path": "src/mountainash_data/backends/ibis/dialects/_registry.py",
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 58,
+      "label": "Dialect Registry",
+      "group": "DIAL",
+      "source_module": "mountainash_data.core.settings",
+      "source_path": "src/mountainash_data/core/settings/__init__.py",
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 59,
+      "label": "Dialect Name Key",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 60,
+      "label": "Connection Builder",
+      "group": "DIAL",
+      "source_module": "mountainash_data.backends.iceberg.connection",
+      "source_path": "src/mountainash_data/backends/iceberg/connection.py",
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 61,
+      "label": "Operation Hooks",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 62,
+      "label": "Per Dialect Configuration",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 63,
+      "label": "SQLite Dialect",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 64,
+      "label": "DuckDB Dialect",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 65,
+      "label": "PostgreSQL Dialect",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 66,
+      "label": "Snowflake Dialect",
+      "group": "DIAL",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "05-dialect-system",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 67,
+      "label": "ConnectionProfile Base",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings",
+      "source_path": "src/mountainash_data/core/settings/__init__.py",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 68,
+      "label": "To Driver Kwargs Method",
+      "group": "SETT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 69,
+      "label": "BackendSpec Class",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 70,
+      "label": "ParameterSpec Class",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.descriptor",
+      "source_path": "src/mountainash_data/core/settings/descriptor.py",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 71,
+      "label": "Parameter Tiers",
+      "group": "SETT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 72,
+      "label": "DATABASES REGISTRY",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings",
+      "source_path": "src/mountainash_data/core/settings/__init__.py",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 73,
+      "label": "Register Decorator",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.registry",
+      "source_path": "src/mountainash_data/core/registry.py",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 74,
+      "label": "Auto Registration",
+      "group": "SETT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 75,
+      "label": "SQLiteAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 76,
+      "label": "DuckDBAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 77,
+      "label": "PostgreSQLAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 78,
+      "label": "BigQueryAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 79,
+      "label": "SnowflakeAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 80,
+      "label": "RedshiftAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 81,
+      "label": "ClickhouseAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 82,
+      "label": "DatabricksAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 83,
+      "label": "MSSQLAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 84,
+      "label": "TrinoAuthSettings",
+      "group": "SETT",
+      "source_module": "mountainash_data.core.settings.backends",
+      "source_path": "src/mountainash_data/core/settings/*.py (20 per-backend files)",
+      "chapter": "06-settings-and-configuration",
+      "match_confidence": 1.0
+    },
+    {
+      "id": 85,
+      "label": "Adapter Pipeline",
+      "group": "ADAPT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 86,
+      "label": "Credential Transformation",
+      "group": "ADAPT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 87,
+      "label": "OAuth Adapter",
+      "group": "ADAPT",
+      "source_module": "mountainash_data.core.settings.auth",
+      "source_path": "src/mountainash_data/core/settings/auth/",
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 88,
+      "label": "JWT Adapter",
+      "group": "ADAPT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 89,
+      "label": "Cloud Native Auth",
+      "group": "ADAPT",
+      "source_module": "mountainash_data.core.settings.auth",
+      "source_path": "src/mountainash_data/core/settings/auth/",
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.6
+    },
+    {
+      "id": 90,
+      "label": "SSL Bundle Adapter",
+      "group": "ADAPT",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 91,
+      "label": "NoAuth Settings",
+      "group": "ADAPT",
+      "source_module": "mountainash_data.core.settings.auth",
+      "source_path": "src/mountainash_data/core/settings/auth/",
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 92,
+      "label": "PasswordAuth Settings",
+      "group": "ADAPT",
+      "source_module": "mountainash_data.core.settings.auth",
+      "source_path": "src/mountainash_data/core/settings/auth/",
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 93,
+      "label": "TokenAuth Settings",
+      "group": "ADAPT",
+      "source_module": "mountainash_data.core.settings.auth",
+      "source_path": "src/mountainash_data/core/settings/auth/",
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 94,
+      "label": "IAMAuth Settings",
+      "group": "ADAPT",
+      "source_module": "mountainash_data.core.settings.auth",
+      "source_path": "src/mountainash_data/core/settings/auth/",
+      "chapter": "07-adapters-and-auth",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 95,
+      "label": "Cross Backend Queries",
+      "group": "ADV",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 96,
+      "label": "Backend Capability Matrix",
+      "group": "ADV",
+      "source_module": "mountainash_data.core.protocol",
+      "source_path": "src/mountainash_data/core/protocol.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 97,
+      "label": "DDL Index Support",
+      "group": "ADV",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 98,
+      "label": "Memory Intensive Upsert",
+      "group": "ADV",
+      "source_module": "mountainash_data.backends.iceberg.operations",
+      "source_path": "src/mountainash_data/backends/iceberg/operations.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.7
+    },
+    {
+      "id": 99,
+      "label": "REST Catalog Cursors",
+      "group": "ADV",
+      "source_module": null,
+      "source_path": null,
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.0
+    },
+    {
+      "id": 100,
+      "label": "Unimplemented Operations",
+      "group": "ADV",
+      "source_module": "mountainash_data.backends.ibis.operations",
+      "source_path": "src/mountainash_data/backends/ibis/operations.py",
+      "chapter": "09-advanced-integration",
+      "match_confidence": 0.6
+    }
+  ],
+  "edges": [
+    {
+      "from": 2,
+      "to": 1
+    },
+    {
+      "from": 3,
+      "to": 2
+    },
+    {
+      "from": 4,
+      "to": 1
+    },
+    {
+      "from": 6,
+      "to": 5
+    },
+    {
+      "from": 9,
+      "to": 8
+    },
+    {
+      "from": 10,
+      "to": 1
+    },
+    {
+      "from": 11,
+      "to": 5
+    },
+    {
+      "from": 11,
+      "to": 6
+    },
+    {
+      "from": 12,
+      "to": 11
+    },
+    {
+      "from": 12,
+      "to": 4
+    },
+    {
+      "from": 13,
+      "to": 11
+    },
+    {
+      "from": 13,
+      "to": 4
+    },
+    {
+      "from": 14,
+      "to": 11
+    },
+    {
+      "from": 14,
+      "to": 2
+    },
+    {
+      "from": 15,
+      "to": 11
+    },
+    {
+      "from": 15,
+      "to": 2
+    },
+    {
+      "from": 16,
+      "to": 11
+    },
+    {
+      "from": 16,
+      "to": 2
+    },
+    {
+      "from": 17,
+      "to": 11
+    },
+    {
+      "from": 17,
+      "to": 2
+    },
+    {
+      "from": 18,
+      "to": 11
+    },
+    {
+      "from": 18,
+      "to": 3
+    },
+    {
+      "from": 19,
+      "to": 11
+    },
+    {
+      "from": 19,
+      "to": 10
+    },
+    {
+      "from": 20,
+      "to": 19
+    },
+    {
+      "from": 20,
+      "to": 12
+    },
+    {
+      "from": 20,
+      "to": 4
+    },
+    {
+      "from": 21,
+      "to": 20
+    },
+    {
+      "from": 21,
+      "to": 10
+    },
+    {
+      "from": 22,
+      "to": 20
+    },
+    {
+      "from": 22,
+      "to": 1
+    },
+    {
+      "from": 23,
+      "to": 20
+    },
+    {
+      "from": 23,
+      "to": 1
+    },
+    {
+      "from": 24,
+      "to": 23
+    },
+    {
+      "from": 25,
+      "to": 20
+    },
+    {
+      "from": 25,
+      "to": 1
+    },
+    {
+      "from": 26,
+      "to": 25
+    },
+    {
+      "from": 27,
+      "to": 25
+    },
+    {
+      "from": 27,
+      "to": 26
+    },
+    {
+      "from": 28,
+      "to": 25
+    },
+    {
+      "from": 29,
+      "to": 23
+    },
+    {
+      "from": 30,
+      "to": 19
+    },
+    {
+      "from": 30,
+      "to": 14
+    },
+    {
+      "from": 31,
+      "to": 19
+    },
+    {
+      "from": 31,
+      "to": 15
+    },
+    {
+      "from": 31,
+      "to": 55
+    },
+    {
+      "from": 32,
+      "to": 19
+    },
+    {
+      "from": 32,
+      "to": 17
+    },
+    {
+      "from": 32,
+      "to": 55
+    },
+    {
+      "from": 33,
+      "to": 19
+    },
+    {
+      "from": 33,
+      "to": 18
+    },
+    {
+      "from": 33,
+      "to": 55
+    },
+    {
+      "from": 34,
+      "to": 19
+    },
+    {
+      "from": 34,
+      "to": 13
+    },
+    {
+      "from": 35,
+      "to": 11
+    },
+    {
+      "from": 35,
+      "to": 48
+    },
+    {
+      "from": 36,
+      "to": 3
+    },
+    {
+      "from": 37,
+      "to": 35
+    },
+    {
+      "from": 37,
+      "to": 4
+    },
+    {
+      "from": 38,
+      "to": 42
+    },
+    {
+      "from": 38,
+      "to": 37
+    },
+    {
+      "from": 39,
+      "to": 42
+    },
+    {
+      "from": 39,
+      "to": 37
+    },
+    {
+      "from": 40,
+      "to": 42
+    },
+    {
+      "from": 40,
+      "to": 37
+    },
+    {
+      "from": 41,
+      "to": 42
+    },
+    {
+      "from": 41,
+      "to": 37
+    },
+    {
+      "from": 42,
+      "to": 9
+    },
+    {
+      "from": 42,
+      "to": 37
+    },
+    {
+      "from": 43,
+      "to": 35
+    },
+    {
+      "from": 44,
+      "to": 35
+    },
+    {
+      "from": 44,
+      "to": 14
+    },
+    {
+      "from": 45,
+      "to": 35
+    },
+    {
+      "from": 45,
+      "to": 15
+    },
+    {
+      "from": 45,
+      "to": 55
+    },
+    {
+      "from": 46,
+      "to": 35
+    },
+    {
+      "from": 46,
+      "to": 17
+    },
+    {
+      "from": 46,
+      "to": 55
+    },
+    {
+      "from": 47,
+      "to": 35
+    },
+    {
+      "from": 47,
+      "to": 18
+    },
+    {
+      "from": 47,
+      "to": 55
+    },
+    {
+      "from": 48,
+      "to": 36
+    },
+    {
+      "from": 49,
+      "to": 7
+    },
+    {
+      "from": 49,
+      "to": 3
+    },
+    {
+      "from": 50,
+      "to": 7
+    },
+    {
+      "from": 50,
+      "to": 2
+    },
+    {
+      "from": 51,
+      "to": 7
+    },
+    {
+      "from": 51,
+      "to": 2
+    },
+    {
+      "from": 52,
+      "to": 7
+    },
+    {
+      "from": 53,
+      "to": 7
+    },
+    {
+      "from": 53,
+      "to": 49
+    },
+    {
+      "from": 53,
+      "to": 50
+    },
+    {
+      "from": 53,
+      "to": 51
+    },
+    {
+      "from": 53,
+      "to": 52
+    },
+    {
+      "from": 54,
+      "to": 53
+    },
+    {
+      "from": 54,
+      "to": 11
+    },
+    {
+      "from": 55,
+      "to": 54
+    },
+    {
+      "from": 56,
+      "to": 54
+    },
+    {
+      "from": 56,
+      "to": 14
+    },
+    {
+      "from": 56,
+      "to": 15
+    },
+    {
+      "from": 56,
+      "to": 16
+    },
+    {
+      "from": 56,
+      "to": 17
+    },
+    {
+      "from": 56,
+      "to": 18
+    },
+    {
+      "from": 57,
+      "to": 9
+    },
+    {
+      "from": 57,
+      "to": 10
+    },
+    {
+      "from": 58,
+      "to": 57
+    },
+    {
+      "from": 58,
+      "to": 9
+    },
+    {
+      "from": 59,
+      "to": 57
+    },
+    {
+      "from": 60,
+      "to": 57
+    },
+    {
+      "from": 60,
+      "to": 4
+    },
+    {
+      "from": 61,
+      "to": 57
+    },
+    {
+      "from": 62,
+      "to": 57
+    },
+    {
+      "from": 62,
+      "to": 58
+    },
+    {
+      "from": 63,
+      "to": 62
+    },
+    {
+      "from": 64,
+      "to": 62
+    },
+    {
+      "from": 65,
+      "to": 62
+    },
+    {
+      "from": 66,
+      "to": 62
+    },
+    {
+      "from": 67,
+      "to": 7
+    },
+    {
+      "from": 68,
+      "to": 67
+    },
+    {
+      "from": 69,
+      "to": 7
+    },
+    {
+      "from": 70,
+      "to": 69
+    },
+    {
+      "from": 71,
+      "to": 70
+    },
+    {
+      "from": 72,
+      "to": 9
+    },
+    {
+      "from": 73,
+      "to": 72
+    },
+    {
+      "from": 73,
+      "to": 8
+    },
+    {
+      "from": 74,
+      "to": 73
+    },
+    {
+      "from": 74,
+      "to": 67
+    },
+    {
+      "from": 75,
+      "to": 74
+    },
+    {
+      "from": 75,
+      "to": 63
+    },
+    {
+      "from": 76,
+      "to": 74
+    },
+    {
+      "from": 76,
+      "to": 64
+    },
+    {
+      "from": 77,
+      "to": 74
+    },
+    {
+      "from": 77,
+      "to": 65
+    },
+    {
+      "from": 78,
+      "to": 74
+    },
+    {
+      "from": 79,
+      "to": 74
+    },
+    {
+      "from": 79,
+      "to": 66
+    },
+    {
+      "from": 80,
+      "to": 74
+    },
+    {
+      "from": 81,
+      "to": 74
+    },
+    {
+      "from": 82,
+      "to": 74
+    },
+    {
+      "from": 83,
+      "to": 74
+    },
+    {
+      "from": 84,
+      "to": 74
+    },
+    {
+      "from": 85,
+      "to": 67
+    },
+    {
+      "from": 85,
+      "to": 86
+    },
+    {
+      "from": 86,
+      "to": 67
+    },
+    {
+      "from": 87,
+      "to": 86
+    },
+    {
+      "from": 88,
+      "to": 86
+    },
+    {
+      "from": 89,
+      "to": 86
+    },
+    {
+      "from": 90,
+      "to": 86
+    },
+    {
+      "from": 91,
+      "to": 67
+    },
+    {
+      "from": 92,
+      "to": 67
+    },
+    {
+      "from": 93,
+      "to": 67
+    },
+    {
+      "from": 94,
+      "to": 67
+    },
+    {
+      "from": 94,
+      "to": 89
+    },
+    {
+      "from": 95,
+      "to": 19
+    },
+    {
+      "from": 95,
+      "to": 35
+    },
+    {
+      "from": 96,
+      "to": 19
+    },
+    {
+      "from": 96,
+      "to": 35
+    },
+    {
+      "from": 96,
+      "to": 23
+    },
+    {
+      "from": 96,
+      "to": 25
+    },
+    {
+      "from": 97,
+      "to": 23
+    },
+    {
+      "from": 97,
+      "to": 96
+    },
+    {
+      "from": 98,
+      "to": 27
+    },
+    {
+      "from": 98,
+      "to": 35
+    },
+    {
+      "from": 99,
+      "to": 38
+    },
+    {
+      "from": 100,
+      "to": 96
+    }
+  ]
+}

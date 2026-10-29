@@ -1,0 +1,32 @@
+{
+  "id": "mountainash_data.backends.iceberg.inspect",
+  "path": "src/mountainash_data/backends/iceberg/inspect.py",
+  "summary": "Converters from pyiceberg objects to core inspection model: table_to_info(), namespace_to_info(), catalog_to_info().",
+  "role": "io",
+  "visibility": "internal",
+  "stability": "stable",
+  "audiences": ["maintainers", "backend-architecture"],
+  "doc_priority": "reference-only",
+  "confidence": "high",
+  "public_api": ["table_to_info", "namespace_to_info", "catalog_to_info"],
+  "key_classes": [],
+  "key_functions": [
+    {"name": "table_to_info", "signature": "pyiceberg Table -> TableInfo"},
+    {"name": "namespace_to_info", "signature": "table names -> NamespaceInfo"},
+    {"name": "catalog_to_info", "signature": "namespace infos -> CatalogInfo"}
+  ],
+  "dependencies": ["mountainash_data.core.inspection"],
+  "dependents": ["mountainash_data.backends.iceberg.connection"],
+  "extension_points": [],
+  "lifecycle_notes": [],
+  "documentation_hooks": [],
+  "examples": [],
+  "tests": [],
+  "risks": [],
+  "open_questions": [],
+  "evidence": [
+    {"kind": "symbol", "path": "src/mountainash_data/backends/iceberg/inspect.py", "detail": "3 converter functions"}
+  ],
+  "source_hash": "4c077666ebc560f82e9bbd7ef419bdfde2c5f62f",
+  "manual": {"notes": "", "editorial_status": "", "owner": "", "manual_summary": ""}
+}
