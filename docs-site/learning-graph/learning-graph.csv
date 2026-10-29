@@ -21,37 +21,23 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 20,Ibis Connection,19|12|4,IBIS
 21,Fluent Query API,20|10,IBIS
 22,Raw SQL Queries,20|1,IBIS
-23,DDL Operations,20|1,IBIS
-24,Create Table,23,IBIS
-25,DML Operations,20|1,IBIS
-26,Insert Data,25,IBIS
-27,Upsert Data,25|26,IBIS
-28,Truncate Table,25,IBIS
-29,Create View,23,IBIS
-30,List Tables Ibis,19|14,IBIS
-31,Table Inspection Ibis,19|15|55,IBIS
-32,Namespace Inspection Ibis,19|17|55,IBIS
-33,Catalog Inspection Ibis,19|18|55,IBIS
+23,DDL Operations,20|1,WRITE
+24,Create Table,23,WRITE
+25,DML Operations,20|1,WRITE
+26,Insert Data,25,WRITE
+27,Upsert Data,25|26|121,WRITE
+28,Truncate Table,25,WRITE
+29,Create View,23,WRITE
+30,List Tables Ibis,19|14|110,INSP
+31,Table Inspection Ibis,19|15|55,INSP
+32,Namespace Inspection Ibis,19|17|55,INSP
+33,Catalog Inspection Ibis,19|18|55,INSP
 34,Context Manager Ibis,19|13,IBIS
-35,IcebergBackend Class,11|48,ICE
-36,Apache Iceberg Overview,3,ICE
-37,Iceberg Connection Base,35|4,ICE
-38,REST Catalog Type,42|37,ICE
-39,Hive Catalog Type,42|37,ICE
-40,Glue Catalog Type,42|37,ICE
-41,SQL Catalog Type,42|37,ICE
-42,Catalog Type Registry,9|37,ICE
-43,Iceberg Operations,35,ICE
-44,List Tables Iceberg,35|14,ICE
-45,Table Inspection Iceberg,35|15|55,ICE
-46,Namespace Inspection Iceberg,35|17|55,ICE
-47,Catalog Inspection Iceberg,35|18|55,ICE
-48,PyIceberg Library,36,ICE
 49,CatalogInfo Dataclass,7|3,INSP
 50,NamespaceInfo Dataclass,7|2,INSP
 51,TableInfo Dataclass,7|2,INSP
 52,ColumnInfo Dataclass,7,INSP
-53,Frozen Metadata Model,7|49|50|51|52,INSP
+53,Frozen Metadata Model,7|49|50|51|52|113,INSP
 54,Backend Agnostic Metadata,53|11,INSP
 55,Driver Metadata Conversion,54,INSP
 56,Unified Inspection API,54|14|15|16|17|18,INSP
@@ -59,43 +45,96 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 58,Dialect Registry,57|9,DIAL
 59,Dialect Name Key,57,DIAL
 60,Connection Builder,57|4,DIAL
-61,Operation Hooks,57,DIAL
+61,Operation Hooks,57|122,DIAL
 62,Per Dialect Configuration,57|58,DIAL
-63,SQLite Dialect,62,DIAL
+63,SQLite Dialect,62|146,DIAL
 64,DuckDB Dialect,62,DIAL
 65,PostgreSQL Dialect,62,DIAL
 66,Snowflake Dialect,62,DIAL
-67,ConnectionProfile Base,7,SETT
-68,To Driver Kwargs Method,67,SETT
+67,BackendProfile Class,7,SETT
+68,build_driver_kwargs Function,67|105|107|85,SETT
 69,BackendSpec Class,7,SETT
 70,ParameterSpec Class,69,SETT
 71,Parameter Tiers,70,SETT
-72,DATABASES REGISTRY,9,SETT
+72,DATABASES_REGISTRY,9|69,SETT
 73,Register Decorator,72|8,SETT
 74,Auto Registration,73|67,SETT
-75,SQLiteAuthSettings,74|63,SETT
-76,DuckDBAuthSettings,74|64,SETT
-77,PostgreSQLAuthSettings,74|65,SETT
-78,BigQueryAuthSettings,74,SETT
-79,SnowflakeAuthSettings,74|66,SETT
-80,RedshiftAuthSettings,74,SETT
-81,ClickhouseAuthSettings,74,SETT
-82,DatabricksAuthSettings,74,SETT
-83,MSSQLAuthSettings,74,SETT
-84,TrinoAuthSettings,74,SETT
-85,Adapter Pipeline,67|86,ADAPT
-86,Credential Transformation,67,ADAPT
-87,OAuth Adapter,86,ADAPT
-88,JWT Adapter,86,ADAPT
-89,Cloud Native Auth,86,ADAPT
-90,SSL Bundle Adapter,86,ADAPT
-91,NoAuth Settings,67,ADAPT
-92,PasswordAuth Settings,67,ADAPT
-93,TokenAuth Settings,67,ADAPT
-94,IAMAuth Settings,67|89,ADAPT
-95,Cross Backend Queries,19|35,ADV
-96,Backend Capability Matrix,19|35|23|25,ADV
-97,DDL Index Support,23|96,ADV
-98,Memory Intensive Upsert,27|35,ADV
-99,REST Catalog Cursors,38,ADV
-100,Unimplemented Operations,96,ADV
+75,SQLiteBackendProfile,74|63,SETT
+76,DuckDBBackendProfile,74|64,SETT
+77,PostgreSQLBackendProfile,74|65,SETT
+78,BigQueryBackendProfile,74,SETT
+79,SnowflakeBackendProfile,74|66,SETT
+80,RedshiftBackendProfile,74|147,SETT
+81,ClickHouseBackendProfile,74,SETT
+82,DatabricksBackendProfile,74,SETT
+83,MSSQLBackendProfile,74,SETT
+84,TrinoBackendProfile,74,SETT
+85,Adapter Pipeline,67|86|148,AUTH
+86,Credential Transformation,105,AUTH
+87,OAuth Adapter,86,AUTH
+88,JWT Adapter,86,AUTH
+89,Cloud Native Auth,86,AUTH
+90,SSL Bundle Adapter,86,AUTH
+91,NoAuthProfile,105,AUTH
+92,PasswordAuthProfile,105,AUTH
+93,TokenAuthProfile,105,AUTH
+94,IAMAuthProfile,105|89,AUTH
+96,Backend Capability Matrix,19|57|23|25|118|121|130|145,LIMIT
+97,DDL Index Support,23|96|118,LIMIT
+100,Unimplemented Operations,96|123,LIMIT
+101,Installation Extras,10,CONN
+102,Missing Driver ImportError,101|60,CONN
+103,Connection URL Construction,19|69,CONN
+104,SettingsParameters Construction,19|67,CONN
+105,AuthProfile Types,7,AUTH
+106,Connect-Time Auth Composition,12|19|105|68,CONN
+107,ConnectionFactory,67|105,SETT
+108,build_connection_string Function,107|103,SETT
+109,Supported Auth Validation,69|105|107,AUTH
+110,Namespace Value Object,2|3,INSP
+111,NamespaceLike Alias,110,INSP
+112,Catalog-Qualified Namespace Limits,110|122,LIMIT
+113,IndexInfo Dataclass,7,INSP
+114,List Indexes,19|113|118,WRITE
+115,Create Index,23|118,WRITE
+116,Drop Index,23|118,WRITE
+117,Index Exists,114,WRITE
+118,IndexCapability Descriptor,57,DIAL
+119,Add Columns,23|122,WRITE
+120,Rename Table,23|122,WRITE
+121,UpsertStyle Descriptor,57,DIAL
+122,Generic-Default Operations,57|124,DIAL
+123,Hook Dispatch Order,61|122,DIAL
+124,sqlglot Rendering,10,DIAL
+125,Transaction Scope,19|11|130,TXN
+126,Transaction Ownership,125|129,TXN
+127,Flat Nested Scopes,125,TXN
+128,in_transaction Predicate,125,TXN
+129,native_transaction_open Probe,125|132,TXN
+130,TransactionSupport Descriptor,57,DIAL
+131,Protected Package Calls,125,TXN
+132,Raw Driver Connection,19|20,TXN
+133,Transaction Errors,125|131,TXN
+134,Connection Adoption,19|20|138,TXN
+135,from_ibis_connection,134,TXN
+136,from_raw_connection,134|132|137,TXN
+137,Session Option Preservation,57|132,TXN
+138,Connection Ownership Flag,20,TXN
+139,run_expr Execution,21,IBIS
+140,to_sql Compilation,21,IBIS
+141,table Expression Access,19|10,IBIS
+142,Bridge To mountainash Relations,141,IBIS
+143,Credential Redaction,107|108,CONN
+144,BackendConnectionError,12|143,CONN
+145,DropScope Descriptor,57,DIAL
+146,Dialect Compatibility Shims,60|10,DIAL
+147,Rides-On Backends,69|62,SETT
+148,Auth Adapter Registry,86|69,AUTH
+149,Protocol Conformance Testing,11|6,EXT
+150,Adding A Dialect,58|60|61|123|146,EXT
+151,Adding A Settings Backend,73|74|148|109,EXT
+152,Implementing A Backend,11|149|54,EXT
+153,Test Tiers,150|151,EXT
+154,Live Database Harness,153,EXT
+155,Backend Name Registry,11|9,EXT
+156,Memtable Rollback Caveat,125|24,LIMIT
