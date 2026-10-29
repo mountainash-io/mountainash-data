@@ -1,0 +1,287 @@
+# Mountainash Data: Frequently Asked Questions
+
+## General Architecture
+
+### What is mountainash-data and what problem does it solve?
+
+Mountainash-data is a unified Python connectivity library that provides a single API for accessing 20+ SQL databases and Apache Iceberg lakehouse catalogs. Instead of writing separate connection logic, query patterns, and metadata inspection code for each database provider, developers use one consistent interface regardless of the underlying engine.
+
+The core problem it solves is backend fragmentation. A typical data platform may use PostgreSQL for transactional workloads, Snowflake for analytics, DuckDB for local development, and Apache Iceberg for lakehouse storage. Without mountainash-data, each of these requires its own driver library, connection configuration pattern, metadata introspection approach, and credential handling. Mountainash-data abstracts these differences behind the Backend protocol, a runtime-checkable structural protocol that defines the universal contract all backends must satisfy. Two concrete implementations fulfill this protocol: IbisBackend for SQL databases (via the Ibis analytics library) and IcebergBackend for Apache Iceberg catalogs (via PyIceberg). Typed settings classes with auto-registration ensure that configuration for each provider is validated at instantiation time, not at query time.
+
+### How does mountainash-data differ from using database drivers directly?
+
+Using database drivers directly means each database has its own connection API, its own way of listing tables, its own metadata format, and its own credential handling. Mountainash-data wraps these differences behind a single Backend protocol with standardized methods like `connect()`, `close()`, `list_tables()`, `inspect_table()`, `list_namespaces()`, `inspect_namespace()`, and `inspect_catalog()`. This means your application code can switch between PostgreSQL, Snowflake, DuckDB, or any other supported backend without rewriting inspection or query logic.
+
+Beyond API consistency, mountainash-data adds typed settings validation via Pydantic-based AuthSettings classes, an adapter pipeline for credential transformation (OAuth, JWT, cloud-native auth, SSL), and a dialect system that routes backend-specific connection and operation details without polluting application code. The result is fewer lines of integration code, earlier detection of configuration errors, and a clean separation between business logic and backend-specific plumbing.
+
+### What databases and backends does mountainash-data support?
+
+Mountainash-data supports two categories of backends. The IbisBackend class covers 20+ SQL databases through the Ibis analytics library, including PostgreSQL, SQLite, DuckDB, Snowflake, BigQuery, Redshift, ClickHouse, Databricks, MSSQL, and Trino. Each of these has a dedicated AuthSettings class (e.g., PostgreSQLAuthSettings, SnowflakeAuthSettings, BigQueryAuthSettings) with typed, validated configuration fields specific to that provider.
+
+The IcebergBackend class covers Apache Iceberg lakehouse catalogs through the PyIceberg library, supporting REST, Hive, Glue, and SQL catalog types. Each catalog type is registered in the Catalog Type Registry and connects through a common Iceberg Connection Base. Together, these two backend types cover the vast majority of modern analytical data infrastructure, from traditional relational databases through cloud data warehouses to open table format lakehouses.
+
+### What are the prerequisites for using mountainash-data effectively?
+
+Developers should have intermediate Python skills, particularly with protocols, dataclasses, and decorators, since mountainash-data uses all three extensively. The Backend protocol is defined as a runtime-checkable Protocol class, the inspection model uses frozen dataclasses, and the settings registry uses the @register decorator for auto-discovery. Basic SQL knowledge is needed for understanding DDL and DML operations exposed through IbisBackend. Familiarity with at least one database client library helps in understanding what mountainash-data abstracts away. Understanding of connection pooling and credential management concepts is useful when working with the adapter pipeline and authentication settings.
+
+### What topics does mountainash-data intentionally exclude?
+
+Mountainash-data focuses on connectivity, metadata inspection, and basic data operations. It intentionally excludes database administration and performance tuning, SQL query optimization, data warehouse modeling, ETL/ELT pipeline orchestration, and cloud provider account management. These concerns sit above or beside the connectivity layer. For example, mountainash-data will connect you to Snowflake and let you create tables or inspect schemas, but it will not help you design a star schema, tune warehouse sizes, or orchestrate a multi-step data pipeline. Other mountainash packages or external tools handle those concerns.
+
+### How is the codebase organized into modules?
+
+The codebase is organized around eight major domains mapped to approximately 22 modules. The Backend Protocol module defines the universal contract. The IbisBackend module provides the SQL database implementation with fluent queries, DDL, and DML. The IcebergBackend module handles Apache Iceberg catalog access. The Inspection Model module contains the four metadata dataclasses (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo). The Dialect System module provides DialectSpec and the dialect registry. The Settings and Configuration module contains ConnectionProfile, BackendSpec, ParameterSpec, the DATABASES registry, and the @register decorator. The Adapters module handles credential transformation. Finally, advanced features cover cross-backend queries, capability matrices, and edge cases like memory-intensive upserts and REST catalog cursors.
+
+## Backend Protocol and Design
+
+### What is the Backend protocol and why is it runtime-checkable?
+
+The Backend protocol is a structural protocol class that defines the universal contract every backend must satisfy. It specifies required methods including `connect()`, `close()`, `list_tables()`, `inspect_table()`, `list_namespaces()`, `inspect_namespace()`, and `inspect_catalog()`. Being runtime-checkable means Python can verify at runtime whether an object satisfies the protocol using `isinstance()` checks, not just at type-checking time with mypy or pyright.
+
+This design choice matters because mountainash-data needs to accept backend instances from various sources (dependency injection, configuration-driven instantiation, plugin systems) and verify they conform to the expected interface without requiring class inheritance. A backend class does not need to inherit from Backend or explicitly declare that it implements the protocol. As long as it has all the required methods with compatible signatures, it satisfies the protocol. This is structural (duck) typing enforced at runtime, giving both flexibility and safety.
+
+### How do IbisBackend and IcebergBackend relate to the Backend protocol?
+
+Both IbisBackend and IcebergBackend are concrete implementations that satisfy the Backend protocol. IbisBackend handles connections to 20+ SQL databases through the Ibis analytics library, providing fluent query expressions, raw SQL execution, DDL operations (create table, create view), and DML operations (insert, upsert, truncate). IcebergBackend handles Apache Iceberg catalog access through the PyIceberg library, supporting REST, Hive, Glue, and SQL catalog types.
+
+Both classes implement all seven methods required by the Backend protocol, but their internal implementations differ substantially. IbisBackend delegates to Ibis connection objects and translates metadata through driver-specific conversion logic. IcebergBackend delegates to PyIceberg catalog objects and maps Iceberg-specific metadata into the same inspection model. From the caller's perspective, the interface is identical, and code written against the Backend protocol works with either backend type.
+
+### When should I use IbisBackend versus IcebergBackend?
+
+Use IbisBackend when connecting to traditional SQL databases or cloud data warehouses where you need to run SQL queries, create tables, insert data, or inspect relational schemas. This covers PostgreSQL, SQLite, DuckDB, Snowflake, BigQuery, Redshift, ClickHouse, Databricks, MSSQL, Trino, and others. IbisBackend provides both fluent Ibis expressions and raw SQL execution, plus DDL and DML operations.
+
+Use IcebergBackend when working with Apache Iceberg table format catalogs where your data is stored as Iceberg tables in object storage (S3, GCS, ADLS) and managed through a catalog service. Choose the catalog type based on your infrastructure: REST for generic catalog servers, Glue for AWS-native environments, Hive for Hadoop-era metadata stores, or SQL for lightweight catalog-in-a-database setups. The Backend Capability Matrix documents which operations each backend type supports, helping you make informed decisions about which backend fits your architecture.
+
+### What is the connect/close lifecycle and how does context management work?
+
+Every backend follows the same lifecycle: call `connect()` to establish a connection, perform operations, then call `close()` to release resources. IbisBackend supports Python's context manager protocol (`with` statement), which automatically calls `close()` when the block exits, even if an exception occurs. This is the recommended usage pattern because it guarantees resource cleanup.
+
+The `connect()` method accepts parameters derived from the backend's AuthSettings class, which are transformed into driver-specific keyword arguments via the `to_driver_kwargs()` method. The connection object is stored internally and used by all subsequent operations (queries, inspection, DDL, DML). Calling `close()` releases the underlying database connection and any associated resources like connection pool slots or file handles.
+
+### What operations are considered unimplemented and how does the library handle them?
+
+Not every backend supports every operation. The Backend Capability Matrix tracks which operations each backend type supports. When a backend does not support a particular operation (for example, DDL index support varies across databases, and some Iceberg catalog types do not support certain metadata operations), the library raises an appropriate exception rather than silently failing or returning incorrect results.
+
+The Unimplemented Operations concept covers these gaps explicitly. For instance, memory-intensive upsert behavior differs between IbisBackend and IcebergBackend, DDL index support depends on the underlying database engine, and REST catalog cursors are specific to REST-type Iceberg catalogs. Developers should consult the capability matrix before relying on advanced operations across multiple backends to avoid runtime surprises.
+
+## Inspection Model and Metadata
+
+### What are the four inspection dataclasses and how do they relate?
+
+The inspection model consists of four Pydantic-based frozen dataclasses arranged hierarchically: CatalogInfo, NamespaceInfo, TableInfo, and ColumnInfo. CatalogInfo represents a database catalog (the top-level container), containing metadata about the catalog itself and its child namespaces. NamespaceInfo represents a schema or namespace within a catalog, containing metadata about its child tables. TableInfo represents an individual table with its name, schema, and column definitions. ColumnInfo represents a single column with its name, data type, nullability, and other column-level metadata.
+
+These four classes form a tree structure: a catalog contains namespaces, namespaces contain tables, and tables contain columns. All four are frozen (immutable after creation), ensuring that inspection results cannot be accidentally modified after retrieval. This hierarchy is backend-agnostic, meaning the same dataclass instances are returned whether you inspect a PostgreSQL database, a Snowflake warehouse, or an Iceberg catalog.
+
+### What does "backend-agnostic metadata" mean in practice?
+
+Backend-agnostic metadata means that the inspection dataclasses (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo) use a normalized representation that does not leak backend-specific details. When you call `inspect_table()` on a PostgreSQL backend, you get a TableInfo with ColumnInfo instances that use standardized type names and properties. The same call on Snowflake or DuckDB returns TableInfo instances with the same structure and comparable type representations.
+
+This normalization happens through the Driver Metadata Conversion layer, which translates each database driver's native metadata format into the unified inspection model. PostgreSQL returns column types as `pg_catalog` types, Snowflake returns them as Snowflake-specific type strings, and Iceberg uses its own type system. The conversion layer maps all of these into the common ColumnInfo representation. This means application code that processes inspection results does not need backend-specific branches or type mappings.
+
+### How does the Unified Inspection API work across different backends?
+
+The Unified Inspection API is the set of Backend protocol methods dedicated to metadata retrieval: `inspect_catalog()`, `inspect_namespace()`, `inspect_table()`, `list_tables()`, and `list_namespaces()`. These methods are defined on the Backend protocol and implemented by both IbisBackend and IcebergBackend. Regardless of which backend you use, calling `list_tables()` returns a list of table identifiers, and calling `inspect_table()` returns a TableInfo dataclass with consistent structure.
+
+Internally, IbisBackend uses Ibis connection methods to retrieve metadata and converts it through Ibis-specific driver metadata conversion. IcebergBackend uses PyIceberg catalog methods and converts Iceberg metadata through its own conversion path. Both paths produce the same output types: the frozen inspection dataclasses. This design allows higher-level mountainash components to build catalog browsers, schema comparison tools, or documentation generators that work uniformly across all supported backends.
+
+### Why are the metadata dataclasses frozen?
+
+The inspection dataclasses are frozen (immutable) by design to enforce a clear separation between metadata retrieval and mutation. When you inspect a table, you get a snapshot of its schema at that moment. That snapshot should not be modified in place because it represents observed state, not desired state. If you want to change a table's schema, you use DDL operations (create table, alter table), not by mutating the inspection result.
+
+Freezing also makes the dataclasses hashable, which means they can be used as dictionary keys or stored in sets. This is useful for change detection (comparing two snapshots of the same table taken at different times), caching (storing inspection results keyed by table identity), and deduplication. The immutability guarantee also makes the dataclasses safe to share across threads without synchronization concerns.
+
+### How does driver metadata conversion handle type mapping differences?
+
+Each database driver returns column type information in its own format. PostgreSQL uses `pg_catalog` type OIDs and names, Snowflake uses uppercase type strings like `VARCHAR(16777216)`, BigQuery uses `STRING` and `INT64`, and Iceberg uses its own type system with `LongType()`, `StringType()`, and nested types. The driver metadata conversion layer maps all of these into a consistent ColumnInfo representation.
+
+The conversion is lossy by design. Some backend-specific type nuances (like PostgreSQL's distinction between `text` and `varchar`, or Snowflake's `VARIANT` type) may be normalized to a common representation. The goal is not perfect round-trip fidelity but rather a useful, comparable metadata representation that allows cross-backend schema comparison and catalog browsing. When backend-specific type details matter, developers can access the underlying driver directly.
+
+## Dialect System and Configuration
+
+### What is DialectSpec and what role does it play?
+
+DialectSpec is a specification class that encapsulates backend-specific connection and operation details for a particular database dialect. Each supported database (PostgreSQL, Snowflake, DuckDB, SQLite, etc.) has a DialectSpec registered in the Dialect Registry. The DialectSpec for a given dialect contains a Connection Builder that knows how to construct driver connections from settings, Operation Hooks that customize behavior for backend-specific edge cases, and Per-Dialect Configuration options.
+
+The dialect system exists because even though the Backend protocol provides a uniform API, the underlying mechanics of connecting to each database differ substantially. PostgreSQL uses libpq with host/port/database parameters, SQLite uses a file path, DuckDB can run in-memory or on-disk, and Snowflake requires account identifiers and warehouse names. DialectSpec captures these differences so that IbisBackend can delegate to the appropriate dialect without embedding database-specific logic in its own class.
+
+### How does the Dialect Registry work?
+
+The Dialect Registry is a centralized dictionary that maps dialect name keys to their corresponding DialectSpec instances. When IbisBackend needs to connect to a specific database type, it looks up the dialect name in the registry, retrieves the DialectSpec, and uses its Connection Builder and Operation Hooks to establish and manage the connection.
+
+The registry follows the same Registry Pattern used throughout mountainash-data: a module-level dictionary populated at import time. Each dialect module (e.g., SQLite, DuckDB, PostgreSQL, Snowflake) registers its DialectSpec when the module is imported. This means the set of available dialects is determined by which dialect modules are installed and imported, allowing the library to support new databases by adding new dialect modules without modifying existing code.
+
+### What is the difference between DialectSpec and AuthSettings?
+
+DialectSpec and AuthSettings serve complementary but distinct roles. DialectSpec describes how to connect to a particular type of database: what driver to use, how to construct connection arguments, and what operation-level hooks are needed. It is a per-dialect singleton that does not change between connections to the same type of database.
+
+AuthSettings (more precisely, the per-backend classes like PostgreSQLAuthSettings or SnowflakeAuthSettings) describe the specific credentials and connection parameters for a particular database instance: the hostname, port, username, password, database name, and any provider-specific fields. AuthSettings are per-connection instances that vary between environments (dev, staging, production) and users. The `to_driver_kwargs()` method on AuthSettings converts the typed settings into the keyword arguments that the DialectSpec's Connection Builder expects.
+
+### What is ConnectionProfile and how does to_driver_kwargs work?
+
+ConnectionProfile is the base class for all backend-specific authentication settings classes. It extends Pydantic's model infrastructure to provide validated, typed configuration fields. Each backend-specific AuthSettings class (PostgreSQLAuthSettings, SnowflakeAuthSettings, etc.) inherits from ConnectionProfile and defines the fields relevant to that backend: hostname, port, database, username, password, warehouse, account, project, and so on.
+
+The `to_driver_kwargs()` method is the bridge between typed settings and driver-level connection code. It transforms the validated Pydantic model into a plain dictionary of keyword arguments that the underlying database driver accepts. For PostgreSQL, this might produce `{"host": "localhost", "port": 5432, "database": "mydb", "user": "admin", "password": "secret"}`. For Snowflake, it would include account, warehouse, and role fields. This method handles field renaming, default injection, and adapter pipeline integration to produce driver-ready connection parameters.
+
+### What are BackendSpec and ParameterSpec used for?
+
+BackendSpec is a typed specification class that describes a backend's capabilities, required parameters, and metadata for registration and discovery purposes. It serves as the declarative description of what a backend needs and can do, separate from the runtime implementation. ParameterSpec describes individual parameters within a BackendSpec, including their name, type, whether they are required or optional, default values, and documentation strings.
+
+Parameter Tiers add a classification layer to ParameterSpec, grouping parameters by their role: connection parameters (host, port, database), authentication parameters (username, password, token), and provider-specific parameters (warehouse, project, account). This tiering helps UI tools generate connection forms, documentation generators produce organized parameter tables, and validation logic apply tier-appropriate rules (e.g., authentication parameters might be sourced from environment variables or secret managers rather than configuration files).
+
+### How does the DATABASES registry and @register decorator work together?
+
+The DATABASES registry is a module-level dictionary that serves as the central index of all known database backends and their settings classes. The @register decorator is the mechanism by which new AuthSettings classes add themselves to this registry at import time. When you define a new settings class and decorate it with @register, the decorator extracts the backend name and settings class, validates them, and inserts them into the DATABASES dictionary.
+
+This auto-registration pattern means that adding support for a new database requires only defining a new AuthSettings class with the @register decorator. No central configuration file needs to be updated, no factory function needs a new branch, and no import list needs to be extended. The registry is populated dynamically as modules are imported. Code that needs to discover available backends simply queries the DATABASES registry, getting back a dictionary of backend names to their settings classes, BackendSpec instances, and related metadata.
+
+### How do I create a new AuthSettings class for an unsupported database?
+
+To add support for a new database, you create a new AuthSettings class that inherits from ConnectionProfile, define the typed fields specific to that database's connection requirements, implement the `to_driver_kwargs()` method to produce driver-compatible keyword arguments, and decorate the class with @register to add it to the DATABASES registry.
+
+For example, if adding support for a hypothetical NewDB, you would define `NewDBAuthSettings(ConnectionProfile)` with fields like `host: str`, `port: int = 9999`, `database: str`, and `api_key: str`. The `to_driver_kwargs()` method would transform these into whatever dictionary the NewDB Python driver expects. The @register decorator would specify the backend name, dialect key, and any BackendSpec metadata. You would also need a corresponding DialectSpec if the connection mechanics differ from existing dialects, though many databases share enough similarity that an existing dialect can be reused or extended.
+
+## Adapters and Authentication
+
+### What is the adapter pipeline and how does credential transformation work?
+
+The adapter pipeline is a composable chain of functions that transform raw credentials from AuthSettings into the final form expected by database drivers. Credential transformation is the process of converting human-friendly or infrastructure-native credentials (OAuth tokens, JWT tokens, IAM roles, SSL certificate bundles) into the specific format each database driver requires.
+
+The pipeline runs during the `to_driver_kwargs()` call, after basic field mapping and before the connection is established. Each adapter in the pipeline receives the current credential dictionary and returns a modified version. For example, an OAuth adapter might exchange a refresh token for an access token, a JWT adapter might decode and validate a JWT before extracting connection claims, and an SSL Bundle adapter might resolve certificate file paths and configure TLS parameters. Adapters are composable: you can chain an IAM adapter with an SSL adapter to handle cloud-native authentication with encrypted connections.
+
+### What authentication types does mountainash-data support?
+
+Mountainash-data supports four base authentication patterns through dedicated settings classes: NoAuth for databases that require no credentials (typically local SQLite or in-memory DuckDB), PasswordAuth for traditional username/password authentication, TokenAuth for bearer token or API key authentication, and IAMAuth for cloud-native identity-based authentication.
+
+Beyond these base patterns, the adapter pipeline supports OAuth token exchange (for databases behind OAuth providers), JWT validation and claim extraction (for databases that accept JWT tokens as credentials), Cloud Native Auth (for AWS IAM, GCP service accounts, Azure AD), and SSL Bundle configuration (for databases requiring mutual TLS or custom certificate authorities). These adapters can be combined: a Snowflake connection might use OAuth for initial authentication, IAM for role assumption, and SSL for transport encryption, with each adapter handling its part of the credential chain.
+
+### How does the OAuth adapter work?
+
+The OAuth adapter handles OAuth 2.0 token exchange for databases that require OAuth-based authentication. When a database connection requires an OAuth access token, the adapter takes the OAuth configuration from the AuthSettings (client ID, client secret, refresh token, token endpoint) and performs the token exchange before the connection is established.
+
+The adapter handles token refresh automatically: if the current access token has expired, the adapter uses the refresh token to obtain a new access token before passing it to the driver. This means the application code does not need to manage token lifecycle manually. The adapter also handles the translation between OAuth token formats and the specific credential format each database driver expects. For example, Snowflake expects the token in a different parameter than Databricks, and the adapter maps the token to the correct driver parameter based on the dialect.
+
+### How does Cloud Native Auth work with AWS, GCP, and Azure?
+
+Cloud Native Auth adapters handle identity-based authentication for cloud-hosted databases where credentials are derived from the cloud provider's identity system rather than static passwords. For AWS, this means IAM role-based authentication where the adapter retrieves temporary credentials from the EC2 instance metadata service, ECS task role, or Lambda execution role. For GCP, it means service account authentication using application default credentials or explicit service account key files. For Azure, it means Azure AD token authentication via managed identity or service principal.
+
+The IAMAuth settings class captures the cloud provider and role/identity configuration. The Cloud Native Auth adapter translates these into the specific credential format each database driver expects. For example, connecting to Amazon Redshift with IAM auth requires generating temporary database credentials via the Redshift GetClusterCredentials API, while connecting to BigQuery with GCP auth requires a service account credentials object. The adapter abstracts these provider-specific flows behind a uniform interface.
+
+### What is the SSL Bundle adapter and when would I use it?
+
+The SSL Bundle adapter configures TLS/SSL transport encryption for database connections that require it. This includes scenarios where the database server uses a custom certificate authority (not in the system trust store), where mutual TLS (mTLS) is required (the client must present its own certificate), or where specific TLS versions or cipher suites must be configured.
+
+The adapter takes SSL configuration from the AuthSettings (CA certificate path, client certificate path, client key path, TLS version requirements) and transforms them into the SSL context or parameter format the database driver expects. Different drivers handle SSL differently: some accept file paths directly, others require an `ssl.SSLContext` object, and others use driver-specific parameter names. The SSL Bundle adapter normalizes these differences. You would use this adapter when connecting to databases in environments with strict security requirements, such as financial services, healthcare, or government deployments where all connections must be encrypted and mutually authenticated.
+
+### How do I implement a custom adapter for a new authentication scheme?
+
+A custom adapter is a function that receives a credential dictionary and returns a modified credential dictionary. The function signature follows the adapter pipeline convention, accepting the current kwargs dictionary and the AuthSettings instance, and returning the transformed kwargs. You register the adapter by including it in the adapter chain for the relevant AuthSettings class.
+
+For example, if your organization uses a proprietary vault service for credential retrieval, you would write an adapter function that takes the vault path and role from AuthSettings, calls the vault API to retrieve the actual database credentials, and injects them into the kwargs dictionary. The adapter would handle caching (to avoid vault calls on every connection), error handling (vault unavailable, credentials expired), and credential format translation (mapping vault response fields to driver parameter names). You then include this adapter in the pipeline for the relevant AuthSettings class, typically between the base credential mapping and the SSL adapter.
+
+## Ibis Backend Operations
+
+### How do I execute queries using the fluent Ibis API?
+
+After connecting through IbisBackend, you access an Ibis connection object that supports the full fluent query API. Ibis expressions are lazy: they build up a query plan without executing anything until you explicitly request results. You can chain operations like `.select()`, `.filter()`, `.group_by()`, `.aggregate()`, `.order_by()`, `.limit()`, and `.join()` to construct complex queries in Python without writing SQL strings.
+
+The fluent API provides type checking and IDE autocompletion, catches column name errors before the query reaches the database, and translates automatically into the SQL dialect of the connected backend. A query written against DuckDB in development can run against Snowflake in production without modification, as long as it uses standard Ibis operations. This is one of the key benefits of building on Ibis rather than raw SQL: the query is expressed once in Python and translated to the appropriate SQL dialect at execution time.
+
+### How do I execute raw SQL queries through IbisBackend?
+
+For cases where the fluent API is insufficient or you need backend-specific SQL features, IbisBackend supports raw SQL query execution. You pass a SQL string to the appropriate method, and it executes directly against the connected database, returning results in the same format as fluent queries.
+
+Raw SQL is useful for database-specific features not covered by Ibis (window functions with vendor extensions, recursive CTEs with backend-specific syntax, administrative commands), for migrating existing SQL queries into mountainash without rewriting them, and for performance-critical queries where you need full control over the generated SQL. However, raw SQL queries are not portable across backends: a PostgreSQL-specific query will fail on Snowflake. When portability matters, prefer the fluent Ibis API. When backend-specific features matter, use raw SQL with awareness of the portability tradeoff.
+
+### What DDL operations does IbisBackend support?
+
+IbisBackend supports two primary DDL (Data Definition Language) operations: Create Table and Create View. Create Table produces a new table in the connected database with a specified schema (column names and types). Create View creates a virtual table defined by a query expression. Both operations accept either Ibis expressions or explicit schema definitions.
+
+DDL Index Support varies across backends and is tracked in the Backend Capability Matrix. Some databases (PostgreSQL, for example) support creating indexes through DDL operations, while others (BigQuery, for example) handle indexing automatically or through separate administrative APIs. The library raises an appropriate error when a DDL operation is not supported by the current backend, rather than silently ignoring the request. This ensures developers know immediately when their code assumes capabilities that the connected backend does not provide.
+
+### What DML operations does IbisBackend support?
+
+IbisBackend supports four DML (Data Manipulation Language) operations: Insert Data, Upsert Data, Truncate Table, and standard query execution. Insert Data adds new rows to an existing table from various source formats (Python dictionaries, pandas DataFrames, Ibis expressions). Upsert Data performs an insert-or-update operation, matching on specified key columns and updating existing rows while inserting new ones.
+
+Truncate Table removes all rows from a table without dropping the table itself, which is faster than deleting all rows because it does not generate individual row-level log entries. Memory-Intensive Upsert is a known consideration: some upsert implementations require materializing the full dataset in memory before applying the operation, which can be problematic for large datasets. The Backend Capability Matrix documents which backends support each DML operation and any known limitations or performance considerations for each.
+
+### How does IbisBackend handle context management and resource cleanup?
+
+IbisBackend implements Python's context manager protocol, allowing it to be used with the `with` statement. When you enter the context (`with IbisBackend(...) as backend:`), the backend calls `connect()` to establish the database connection. When the block exits (whether normally or due to an exception), the backend calls `close()` to release the connection and any associated resources.
+
+This pattern is strongly recommended over manual `connect()`/`close()` calls because it guarantees cleanup even when exceptions occur. Without context management, an unhandled exception between `connect()` and `close()` would leak the connection, potentially exhausting the database's connection pool. The context manager also integrates with the adapter pipeline: any adapter-allocated resources (OAuth tokens, temporary credentials, SSL contexts) are cleaned up alongside the connection itself.
+
+## Iceberg Backend and Lakehouse
+
+### What is Apache Iceberg and why does mountainash-data support it?
+
+Apache Iceberg is an open table format for large analytic datasets. Unlike traditional database tables that are managed entirely by the database engine, Iceberg tables store data as files in object storage (S3, GCS, ADLS) with metadata tracked in a catalog. This separation of storage and compute allows multiple engines (Spark, Trino, Flink, DuckDB) to read and write the same tables without a shared database server.
+
+Mountainash-data supports Iceberg because modern data architectures increasingly combine traditional SQL databases with lakehouse storage. A single platform might use PostgreSQL for operational data, Snowflake for processed analytics, and Iceberg for raw data lake storage. By supporting both IbisBackend and IcebergBackend through the same Backend protocol, mountainash-data allows applications to inspect and query across these storage paradigms with a single API, rather than maintaining separate code paths for database and lakehouse access.
+
+### What Iceberg catalog types are supported and when should I use each?
+
+Mountainash-data supports four Iceberg catalog types through the Catalog Type Registry: REST, Hive, Glue, and SQL. REST catalogs connect to a catalog server that implements the Iceberg REST Catalog API, which is the most portable and vendor-neutral option. Hive catalogs connect to an Apache Hive Metastore, common in Hadoop-era environments. Glue catalogs use AWS Glue Data Catalog, which is the natural choice for AWS-native architectures. SQL catalogs store catalog metadata in a SQL database, useful for lightweight deployments.
+
+Choose REST when you want vendor independence or are using catalog servers like Tabular, Nessie, or Polaris. Choose Glue when running on AWS and already using Glue for ETL or other services. Choose Hive when integrating with existing Hadoop infrastructure. Choose SQL when you want a simple, self-contained catalog for development or small-scale deployments. The catalog type is specified in the IcebergBackend settings and determines which PyIceberg catalog implementation is instantiated.
+
+### How does the Catalog Type Registry work?
+
+The Catalog Type Registry follows the same Registry Pattern used by the DATABASES registry and the Dialect Registry. It is a centralized dictionary that maps catalog type names (REST, Hive, Glue, SQL) to their corresponding catalog implementation classes from the PyIceberg library. When IcebergBackend receives a connection request, it looks up the specified catalog type in the registry, instantiates the appropriate PyIceberg catalog class with the provided configuration, and stores it as the active connection.
+
+This registry-based approach means new catalog types can be added by registering them in the Catalog Type Registry without modifying IcebergBackend itself. If a new Iceberg catalog implementation emerges (for example, a future Azure-native catalog), support can be added by implementing the catalog adapter and registering it, following the same extension pattern used throughout mountainash-data.
+
+### What are REST Catalog Cursors and when do they matter?
+
+REST Catalog Cursors are a pagination mechanism specific to REST-type Iceberg catalogs. When a REST catalog contains many tables or namespaces, the catalog server may return results in pages rather than all at once. REST Catalog Cursors handle this pagination transparently, fetching additional pages as needed when listing tables or namespaces.
+
+This matters primarily for large-scale catalogs with thousands of tables or deeply nested namespace hierarchies. Without cursor support, a `list_tables()` call might return only the first page of results, giving an incomplete view of the catalog. The cursor implementation handles this automatically, but developers should be aware that listing operations on large REST catalogs may involve multiple network round-trips and take longer than equivalent operations on other catalog types. This is an inherent characteristic of REST-based pagination, not a limitation of mountainash-data.
+
+### How does IcebergBackend inspection compare to IbisBackend inspection?
+
+Both backends return the same inspection dataclasses (CatalogInfo, NamespaceInfo, TableInfo, ColumnInfo), but the underlying data sources differ. IbisBackend retrieves metadata from database system catalogs (information_schema, pg_catalog, etc.) through SQL queries, while IcebergBackend retrieves metadata from Iceberg catalog metadata (table snapshots, schema evolution history, partition specs) through the PyIceberg API.
+
+The ColumnInfo instances from Iceberg inspection may include additional type information specific to the Iceberg type system (nested types, map types, list types) that does not have a direct equivalent in traditional SQL databases. The driver metadata conversion layer normalizes these differences as much as possible, but some Iceberg-specific type information may be simplified in the common representation. For full Iceberg type fidelity, developers can access the PyIceberg table object directly through the backend's connection.
+
+### Can I perform cross-backend queries between Ibis and Iceberg?
+
+Cross-backend queries are an advanced feature that allows combining data from different backend types in a single operation. For example, you might join a PostgreSQL table (accessed via IbisBackend) with an Iceberg table (accessed via IcebergBackend). This capability depends on the underlying engines supporting federated queries or on materializing intermediate results.
+
+In practice, cross-backend queries typically work by reading data from one backend into an intermediate format (such as an Arrow table) and then loading it into another backend for the join operation. This approach has memory implications for large datasets and may not preserve all type information across the boundary. The Backend Capability Matrix documents which cross-backend query patterns are supported and what limitations apply. For production workloads with large-scale cross-backend joins, consider using a query engine like Trino or Spark that natively federates across both SQL databases and Iceberg tables.
+
+## Advanced Topics and Troubleshooting
+
+### What is the Backend Capability Matrix and how do I use it?
+
+The Backend Capability Matrix is a structured reference that documents which operations each backend supports. It covers DDL operations (create table, create view, create index), DML operations (insert, upsert, truncate), inspection operations (list tables, inspect table, list namespaces, inspect namespace, inspect catalog), and advanced features (cross-backend queries, cursor-based pagination).
+
+Use the capability matrix when writing code that must work across multiple backends. If your code uses upsert, check the matrix to confirm all target backends support it. If your code creates indexes, check whether the target backends support DDL index creation. The matrix also documents known limitations and performance characteristics: for example, memory-intensive upsert identifies backends where the upsert implementation requires materializing the full dataset in memory. Consulting the matrix before implementation prevents runtime surprises when deploying to new backends.
+
+### How does the Registry Pattern appear throughout mountainash-data?
+
+The Registry Pattern is a recurring design pattern in mountainash-data, appearing in at least three major subsystems. The DATABASES registry maps backend names to their AuthSettings classes and BackendSpec metadata. The Dialect Registry maps dialect name keys to DialectSpec instances. The Catalog Type Registry maps Iceberg catalog type names to their implementation classes.
+
+In all three cases, the pattern works the same way: a module-level dictionary is populated at import time by decorator-based registration (@register for DATABASES, similar mechanisms for dialects and catalog types). Consumer code queries the registry to discover available options, instantiate the appropriate class, or validate configuration values. This pattern provides loose coupling (the registry does not need to know about all implementations at compile time), extensibility (new implementations register themselves without modifying existing code), and discoverability (the registry provides a complete list of available options at runtime).
+
+### What should I know about memory-intensive upsert operations?
+
+Memory-intensive upsert is a known consideration for certain backend and dataset combinations. Some upsert implementations work by loading the full source dataset into memory, comparing it against the existing table contents (also loaded into memory), determining which rows to insert and which to update, and then applying the changes. For small to medium datasets, this is acceptable. For large datasets (millions of rows or gigabytes of data), this approach can exhaust available memory.
+
+The specific behavior depends on the backend. Some databases support native MERGE or UPSERT statements that handle the comparison server-side with minimal client memory usage. Others require the client library to perform the comparison, resulting in higher memory consumption. Check the Backend Capability Matrix for the specific backend you are using to understand its upsert implementation characteristics. For large-scale upserts on backends with client-side implementations, consider batching the operation into smaller chunks or using database-native bulk loading mechanisms outside of mountainash-data.
+
+### How do Parameter Tiers help with configuration management?
+
+Parameter Tiers classify the parameters in a ParameterSpec into categories based on their role and security sensitivity. Connection parameters (host, port, database name) identify the target database instance. Authentication parameters (username, password, token, API key) provide identity and access credentials. Provider-specific parameters (warehouse, project, account, role) configure provider-specific behavior.
+
+This classification serves multiple purposes. Configuration management tools can source parameters from different stores based on their tier: connection parameters from configuration files, authentication parameters from secret managers (AWS Secrets Manager, HashiCorp Vault, GCP Secret Manager), and provider-specific parameters from environment variables or deployment configuration. UI tools can generate connection forms with appropriate input types (password fields for auth parameters, dropdowns for provider-specific parameters). Documentation generators can organize parameter references by tier. Validation logic can apply tier-appropriate rules, such as requiring authentication parameters to be non-empty in production environments.
+
+### How do I troubleshoot connection failures across different backends?
+
+Connection failures typically fall into three categories: configuration errors (wrong host, port, or database name), authentication errors (invalid credentials or expired tokens), and network errors (firewall rules, DNS resolution, VPN requirements). The typed settings classes catch many configuration errors at instantiation time by validating field types and required fields, but they cannot catch all errors (a valid hostname that points to the wrong server, for example).
+
+Start by checking the AuthSettings class for the failing backend to confirm all required fields are populated with valid values. Next, verify that the `to_driver_kwargs()` output matches what the underlying driver expects by calling it directly and inspecting the result. Then test connectivity at the network level (can you reach the host and port?). For adapter-related failures (OAuth token exchange failures, IAM credential retrieval failures, SSL handshake failures), check the adapter pipeline stage by stage. The dialect system's Connection Builder is the final point where configuration becomes a connection attempt, so errors at this stage typically indicate driver-level issues.
+
+### What considerations apply when using mountainash-data in production?
+
+In production, pay attention to connection lifecycle management, credential security, and error handling. Always use context managers for connection lifecycle to prevent connection leaks. Source authentication parameters from secret managers rather than configuration files or environment variables to avoid credential exposure in logs or process listings. Implement retry logic around transient connection failures (network blips, token expiration, database restarts).
+
+Monitor the adapter pipeline for credential refresh failures, particularly for OAuth and cloud-native auth adapters where tokens expire and need renewal. Be aware of the Backend Capability Matrix limitations for your specific backends and handle Unimplemented Operations gracefully with appropriate fallback behavior or clear error messages. For cross-backend query scenarios, monitor memory usage carefully, especially when materializing intermediate results from large tables. Consider connection pooling at the application level if your usage pattern involves frequent connect/disconnect cycles.
