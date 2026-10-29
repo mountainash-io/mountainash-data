@@ -25,7 +25,7 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 24,Create Table,23,WRITE
 25,DML Operations,20|1,WRITE
 26,Insert Data,25,WRITE
-27,Upsert Data,25|26|121,WRITE
+27,Upsert Data,25|26,WRITE
 28,Truncate Table,25,WRITE
 29,Create View,23,WRITE
 30,List Tables Ibis,19|14|110,INSP
@@ -59,11 +59,11 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 72,DATABASES_REGISTRY,9|69,SETT
 73,Register Decorator,72|8,SETT
 74,Auto Registration,73|67,SETT
-75,SQLiteBackendProfile,74|63,SETT
-76,DuckDBBackendProfile,74|64,SETT
-77,PostgreSQLBackendProfile,74|65,SETT
+75,SQLiteBackendProfile,74,SETT
+76,DuckDBBackendProfile,74,SETT
+77,PostgreSQLBackendProfile,74,SETT
 78,BigQueryBackendProfile,74,SETT
-79,SnowflakeBackendProfile,74|66,SETT
+79,SnowflakeBackendProfile,74,SETT
 80,RedshiftBackendProfile,74|147,SETT
 81,ClickHouseBackendProfile,74,SETT
 82,DatabricksBackendProfile,74,SETT
@@ -78,35 +78,35 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 91,NoAuthProfile,105,AUTH
 92,PasswordAuthProfile,105,AUTH
 93,TokenAuthProfile,105,AUTH
-94,IAMAuthProfile,105|89,AUTH
-96,Backend Capability Matrix,19|57|23|25|118|121|130|145,LIMIT
-97,DDL Index Support,23|96|118,LIMIT
-100,Unimplemented Operations,96|123,LIMIT
+94,IAMAuthProfile,105,AUTH
+96,Backend Capability Matrix,19|23|25,LIMIT
+97,DDL Index Support,23|96,LIMIT
+100,Unimplemented Operations,96,LIMIT
 101,Installation Extras,10,CONN
-102,Missing Driver ImportError,101|60,CONN
-103,Connection URL Construction,19|69,CONN
+102,Missing Driver ImportError,101,CONN
+103,Connection URL Construction,19,CONN
 104,SettingsParameters Construction,19|67,CONN
 105,AuthProfile Types,7,AUTH
-106,Connect-Time Auth Composition,12|19|105|68,CONN
+106,Connect-Time Auth Composition,12|19|105,CONN
 107,ConnectionFactory,67|105,SETT
 108,build_connection_string Function,107|103,SETT
 109,Supported Auth Validation,69|105|107,AUTH
 110,Namespace Value Object,2|3,INSP
 111,NamespaceLike Alias,110,INSP
-112,Catalog-Qualified Namespace Limits,110|122,LIMIT
+112,Catalog-Qualified Namespace Limits,110,LIMIT
 113,IndexInfo Dataclass,7,INSP
-114,List Indexes,19|113|118,WRITE
-115,Create Index,23|118,WRITE
-116,Drop Index,23|118,WRITE
+114,List Indexes,19|113,WRITE
+115,Create Index,23,WRITE
+116,Drop Index,23,WRITE
 117,Index Exists,114,WRITE
 118,IndexCapability Descriptor,57,DIAL
-119,Add Columns,23|122,WRITE
-120,Rename Table,23|122,WRITE
+119,Add Columns,23,WRITE
+120,Rename Table,23,WRITE
 121,UpsertStyle Descriptor,57,DIAL
 122,Generic-Default Operations,57|124,DIAL
 123,Hook Dispatch Order,61|122,DIAL
 124,sqlglot Rendering,10,DIAL
-125,Transaction Scope,19|11|130,TXN
+125,Transaction Scope,19|11,TXN
 126,Transaction Ownership,125|129,TXN
 127,Flat Nested Scopes,125,TXN
 128,in_transaction Predicate,125,TXN
@@ -114,10 +114,10 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 130,TransactionSupport Descriptor,57,DIAL
 131,Protected Package Calls,125,TXN
 132,Raw Driver Connection,19|20,TXN
-133,Transaction Errors,125|131,TXN
+133,Transaction Errors,125,TXN
 134,Connection Adoption,19|20|138,TXN
 135,from_ibis_connection,134,TXN
-136,from_raw_connection,134|132|137,TXN
+136,from_raw_connection,134|132,TXN
 137,Session Option Preservation,57|132,TXN
 138,Connection Ownership Flag,20,TXN
 139,run_expr Execution,21,IBIS
@@ -125,10 +125,10 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 141,table Expression Access,19|10,IBIS
 142,Bridge To mountainash Relations,141,IBIS
 143,Credential Redaction,107|108,CONN
-144,BackendConnectionError,12|143,CONN
+144,BackendConnectionError,12,CONN
 145,DropScope Descriptor,57,DIAL
 146,Dialect Compatibility Shims,60|10,DIAL
-147,Rides-On Backends,69|62,SETT
+147,Rides-On Backends,69,SETT
 148,Auth Adapter Registry,86|69,AUTH
 149,Protocol Conformance Testing,11|6,EXT
 150,Adding A Dialect,58|60|61|123|146,EXT

@@ -4,10 +4,10 @@
 
 - **Total Concepts**: 139
 - **Foundational Concepts** (no prerequisites, other concepts depend on them): 4
-- **Terminal Nodes** (nothing depends on them, but have prerequisites): 55
+- **Terminal Nodes** (nothing depends on them, but have prerequisites): 68
 - **Orphaned Nodes** (completely disconnected, no edges): 0
 - **Concepts with Dependencies**: 135
-- **Average Dependencies per Concept**: 1.89
+- **Average Dependencies per Concept**: 1.69
 
 ## Graph Structure Validation
 
@@ -44,7 +44,7 @@ These concepts have no prerequisites:
 
 Terminal nodes are concepts that nothing else depends on but have prerequisites. They represent natural endpoints of learning paths — culminating or specialized concepts.
 
-- **Total Terminal Nodes**: 55 (39.6% of all concepts)
+- **Total Terminal Nodes**: 68 (48.9% of all concepts)
 - **Healthy Range**: 5-40% of total concepts
 
 Concepts at the end of learning paths:
@@ -60,17 +60,17 @@ Concepts at the end of learning paths:
 - **34**: Context Manager Ibis
 - **56**: Unified Inspection API
 - **59**: Dialect Name Key
+- **63**: SQLite Dialect
+- **64**: DuckDB Dialect
+- **65**: PostgreSQL Dialect
+- **66**: Snowflake Dialect
+- **68**: build_driver_kwargs Function
 - **71**: Parameter Tiers
 - **75**: SQLiteBackendProfile
 - **76**: DuckDBBackendProfile
 - **77**: PostgreSQLBackendProfile
-- **78**: BigQueryBackendProfile
-- **79**: SnowflakeBackendProfile
-- **80**: RedshiftBackendProfile
-- **81**: ClickHouseBackendProfile
-- **82**: DatabricksBackendProfile
 
-*...and 35 more*
+*...and 48 more*
 
 ## Orphaned Nodes Analysis
 
@@ -94,7 +94,7 @@ Top 10 concepts that are prerequisites for the most other concepts:
 |------|-----------|---------------|----------|
 | 1 | 19 | IbisBackend Class | 15 |
 | 2 | 11 | Backend Protocol Definition | 13 |
-| 3 | 57 | DialectSpec Overview | 12 |
+| 3 | 57 | DialectSpec Overview | 11 |
 | 4 | 74 | Auto Registration | 11 |
 | 5 | 7 | Pydantic Models | 9 |
 | 6 | 105 | AuthProfile Types | 9 |
@@ -108,17 +108,16 @@ Top 10 concepts that are prerequisites for the most other concepts:
 | Dependencies | Number of Concepts |
 |--------------|--------------------|
 | 0 | 4 |
-| 1 | 52 |
-| 2 | 62 |
-| 3 | 14 |
-| 4 | 3 |
+| 1 | 68 |
+| 2 | 51 |
+| 3 | 11 |
+| 4 | 2 |
 | 5 | 1 |
 | 6 | 2 |
-| 8 | 1 |
 
 ## Recommendations
 
-- ✅ **Terminal node percentage** (39.6%): Within healthy range (5-40%)
+- ℹ️ **High terminal node percentage** (48.9%): Consider if some terminal concepts should be prerequisites for advanced concepts
 - ✅ **DAG structure verified**: Graph supports valid learning progressions
 
 ---
