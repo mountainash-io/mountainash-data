@@ -85,7 +85,7 @@ print(raw.execute("SELECT count(*) FROM sales").fetchone())
 backend.close()
 ```
 
-The caller's rollback removed the row the package inserted. Owned and joined scopes are covered in [Transactions](../08-transactions/index.md).
+The caller's rollback removed the row the package inserted. Owned and joined scopes are covered in [Transactions](../10-transactions/index.md).
 
 Which constructor to use depends on what you hold:
 
@@ -162,4 +162,4 @@ except NotImplementedError as exc:
 #   and use IbisBackend.from_ibis_connection(...).
 ```
 
-The adoption status of each dialect is listed in [Supported databases and limits](../10-supported-databases-and-limits/index.md). How the snapshot and restore work, and why they run in a `finally`, is described in [Transaction and adoption internals](../13-transaction-and-adoption-internals/index.md).
+The adoption status of each dialect is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md). How the snapshot and restore work, and why they run in a `finally`, is described in [Transaction and adoption internals](../16-transaction-and-adoption-internals/index.md).

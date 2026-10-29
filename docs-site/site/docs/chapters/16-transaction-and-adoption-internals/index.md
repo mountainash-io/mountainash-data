@@ -6,12 +6,12 @@ date: 2026-10-29
 
 # Transaction and adoption internals
 
-Behind `IbisBackend.transaction()` sit three mechanisms: a guard around every package operation that stops Ibis from completing the caller's transaction, a process-wide record of open scopes keyed on the native driver connection, and an exit check that decides whether a scope may commit. Connection adoption adds a fourth: capturing the session settings Ibis overwrites when it wraps a caller's driver connection, and putting them back. The user-facing behaviour is described in [Transactions](../08-transactions/index.md) and [Adopting existing connections](../09-adopting-existing-connections/index.md); the dialect fields these mechanisms read are part of the `DialectSpec` data described in [How one backend serves 20 dialects](../11-how-one-backend-serves-20-dialects/index.md).
+Behind `IbisBackend.transaction()` sit three mechanisms: a guard around every package operation that stops Ibis from completing the caller's transaction, a process-wide record of open scopes keyed on the native driver connection, and an exit check that decides whether a scope may commit. Connection adoption adds a fourth: capturing the session settings Ibis overwrites when it wraps a caller's driver connection, and putting them back. The user-facing behaviour is described in [Transactions](../10-transactions/index.md) and [Adopting existing connections](../11-adopting-existing-connections/index.md); the dialect fields these mechanisms read are part of the `DialectSpec` data described in [How one backend serves 20 dialects](../14-how-one-backend-serves-20-dialects/index.md).
 
 <!-- concept:131 -->
 ## Protected package calls
 
-Ibis completes transactions on its own internal paths. Its SQLite backend runs writes through a `begin()` context that calls the driver's `commit()` on success and `rollback()` on error, and its PostgreSQL backend wraps internal work in psycopg's `connection.transaction()`. Inside a package scope, either would end the unit of work early. A protected call prevents that for the length of one package operation. The user-level effect is described under [Transaction scopes](../08-transactions/index.md#transaction-scopes).
+Ibis completes transactions on its own internal paths. Its SQLite backend runs writes through a `begin()` context that calls the driver's `commit()` on success and `rollback()` on error, and its PostgreSQL backend wraps internal work in psycopg's `connection.transaction()`. Inside a package scope, either would end the unit of work early. A protected call prevents that for the length of one package operation. The user-level effect is described under [Transaction scopes](../10-transactions/index.md#transaction-scopes).
 
 Names with a leading underscore are private and can change without notice. Every `IbisBackend` operation that reaches the database, and every inspection query on `IbisConnection`, runs inside `IbisConnection._protected()`, which delegates to `protected_call()` in `_protected.py`. On entry it:
 
@@ -93,7 +93,7 @@ sequenceDiagram
 
 ## The per-raw-handle scope registry
 
-Open scopes are recorded in a module-level dictionary, `_ACTIVE`, in `_transaction.py`, guarded by a `threading.Lock`. The key is `id(raw_handle)`, the identity of the native driver connection, not of the `IbisBackend` wrapper. Two backends wrapping one driver connection therefore share a scope, which is what makes the cross-wrapper behaviour in [Nested scopes are flat](../08-transactions/index.md#nested-scopes-are-flat) work:
+Open scopes are recorded in a module-level dictionary, `_ACTIVE`, in `_transaction.py`, guarded by a `threading.Lock`. The key is `id(raw_handle)`, the identity of the native driver connection, not of the `IbisBackend` wrapper. Two backends wrapping one driver connection therefore share a scope, which is what makes the cross-wrapper behaviour in [Nested scopes are flat](../10-transactions/index.md#nested-scopes-are-flat) work:
 
 ```python
 from mountainash_data import IbisBackend
@@ -117,7 +117,7 @@ Each entry is a `_TxState`:
 | `owns` | Whether the outermost scope began the native transaction and so completes it. |
 | `selected` | Whether this is an ownership dialect, which turns on protected calls and the exit eligibility check. |
 
-`run_transaction()` handles entry and exit. On entry it looks the handle up. If a scope is already registered, the call joins it flatly (`_join()`): it is refused if the unit is poisoned, increments `depth`, and poisons the unit if the body raises. Otherwise the call becomes the outermost scope. On an ownership dialect, `_observe_entry()` runs the dialect's `in_transaction_probe`. `False` means idle, so the scope owns the unit. `True` means a caller transaction is open, so the scope joins without owning. A missing probe, a probe that raises, or a `None` result raises `TransactionIntegrityError` before any statement runs. An owning scope then begins the transaction with the dialect's `begin_hook` if it has one, otherwise its `begin_statement`; PostgreSQL's hook avoids a redundant `BEGIN` when autocommit is off, as described under [Owned and joined transactions](../08-transactions/index.md#owned-and-joined-transactions). Only after that does the scope register itself, so a failed `BEGIN` leaves no stale entry.
+`run_transaction()` handles entry and exit. On entry it looks the handle up. If a scope is already registered, the call joins it flatly (`_join()`): it is refused if the unit is poisoned, increments `depth`, and poisons the unit if the body raises. Otherwise the call becomes the outermost scope. On an ownership dialect, `_observe_entry()` runs the dialect's `in_transaction_probe`. `False` means idle, so the scope owns the unit. `True` means a caller transaction is open, so the scope joins without owning. A missing probe, a probe that raises, or a `None` result raises `TransactionIntegrityError` before any statement runs. An owning scope then begins the transaction with the dialect's `begin_hook` if it has one, otherwise its `begin_statement`; PostgreSQL's hook avoids a redundant `BEGIN` when autocommit is off, as described under [Owned and joined transactions](../10-transactions/index.md#owned-and-joined-transactions). Only after that does the scope register itself, so a failed `BEGIN` leaves no stale entry.
 
 On exit from the outermost scope, the order is:
 
@@ -143,7 +143,7 @@ Three read paths use the registry. `is_active()` backs `in_transaction()` and th
 <!-- concept:137 -->
 ## Session-option snapshot and restore
 
-Ibis's `Backend.from_connection()` runs the backend's post-connect setup on the connection it is given. For DuckDB in Ibis 12.0.0, that sets the session `TimeZone` to `UTC` and `python_enable_replacements` to `false`. When the connection is the caller's own, those changes leak into the caller's session. The adoption API itself is covered in [Adopting existing connections](../09-adopting-existing-connections/index.md).
+Ibis's `Backend.from_connection()` runs the backend's post-connect setup on the connection it is given. For DuckDB in Ibis 12.0.0, that sets the session `TimeZone` to `UTC` and `python_enable_replacements` to `false`. When the connection is the caller's own, those changes leak into the caller's session. The adoption API itself is covered in [Adopting existing connections](../11-adopting-existing-connections/index.md).
 
 Each dialect declares the options Ibis changes as `DialectSpec.adoption_mutations`, a tuple of `SessionOption(name, read_sql, render_set)` records in `dialects/_registry.py`. `read_sql` returns the current value as a scalar; `render_set` turns a value into the statement that sets it. DuckDB and MotherDuck declare `python_enable_replacements` and `timezone`. Boolean values render as fixed tokens and string values are escaped as SQL literals through sqlglot, because `apply_session_options` values come from the caller. No other dialect declares any.
 
@@ -214,7 +214,7 @@ The code depends on Ibis behaviour that is not public API. Each coupling below w
 | Internal completion on SQLite and PostgreSQL | `_COMPLETING_IBIS_BACKENDS` and `_NonOwningDriver` in `_protected.py` | SQLite's `begin()` calls `con.commit()` / `con.rollback()`; PostgreSQL wraps work in `con.transaction()`. If Ibis completes through another route, the view no longer absorbs it. |
 | Backend `name` attribute | `protected_call()` | Identifies which Ibis backends need the swap. |
 | `from_connection()` running post-connect setup | `from_raw_connection()`; `_DUCKDB_ADOPTION` | The set of session options Ibis changes on DuckDB. A new mutation needs a new `SessionOption`. |
-| `_register_in_memory_tables()` and the backend's memtable record | `src/mountainash_data/backends/ibis/_render.py` (upsert staging) | Staging memtables explicitly before compiling raw SQL. The same record is what goes stale after a rollback, the [memtable rollback caveat](../08-transactions/index.md#the-memtable-rollback-caveat). |
+| `_register_in_memory_tables()` and the backend's memtable record | `src/mountainash_data/backends/ibis/_render.py` (upsert staging) | Staging memtables explicitly before compiling raw SQL. The same record is what goes stale after a rollback, the [memtable rollback caveat](../10-transactions/index.md#the-memtable-rollback-caveat). |
 | `_to_catalog_db_tuple()`, `_to_sqlglot_table()` and `begin()` | SQLite truncate hook in `dialects/_registry.py` | Resolving the table and running `DELETE` the way Ibis's own overwrite insert does; inside a scope its commit is absorbed by the protection view. |
 
-The live-database tier (`tests/test_live_backends/`) is the place these couplings are exercised against PostgreSQL; [Contributing and testing](../15-contributing-and-testing/index.md) describes how to run it.
+The live-database tier (`tests/test_live_backends/`) is the place these couplings are exercised against PostgreSQL; [Contributing and testing](../18-contributing-and-testing/index.md) describes how to run it.

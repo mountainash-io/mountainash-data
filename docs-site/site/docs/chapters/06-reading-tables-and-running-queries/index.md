@@ -13,7 +13,7 @@ The examples use an in-memory DuckDB or SQLite backend; see [Installing and conn
 ## table() and Ibis expressions
 
 <!-- concept:141 -->
-`table(name, *, namespace=None)` looks a table up on the live connection and returns an `ibis.Table`. Nothing is read at that point: the result is an expression bound to the backend, and every filter, aggregate or join you add builds a larger expression that runs on the database when you ask for results. `namespace=` takes any `NamespaceLike` and follows the same single-level rule as inspection (see [Namespace and NamespaceLike](../04-inspecting-databases/index.md#namespace-and-namespacelike)). A missing table raises the error Ibis raises for it.
+`table(name, *, namespace=None)` looks a table up on the live connection and returns an `ibis.Table`. Nothing is read at that point: the result is an expression bound to the backend, and every filter, aggregate or join you add builds a larger expression that runs on the database when you ask for results. `namespace=` takes any `NamespaceLike` and follows the same single-level rule as inspection (see [Namespace and NamespaceLike](../05-inspecting-databases/index.md#namespace-and-namespacelike)). A missing table raises the error Ibis raises for it.
 
 ```python
 from mountainash_data import IbisBackend
@@ -69,12 +69,12 @@ finally:
 2
 ```
 
-The write methods in the chain are covered in [Creating and changing tables](../06-creating-and-changing-tables/index.md).
+The write methods in the chain are covered in [Creating and changing tables](../08-creating-and-changing-tables/index.md).
 
 ## run_expr and to_sql
 
 <!-- concept:139 -->
-`run_expr(expr, *, params=None, limit="default", **kwargs)` executes an Ibis expression on the backend's connection and returns the result Ibis produces for that kind of expression: a Python scalar for a scalar expression and a pandas `DataFrame` for a table. `params` binds Ibis scalar parameters, and `limit` keeps Ibis's semantics, where `"default"` applies the Ibis default row limit (unlimited unless you set one). Calling `expr.execute()` gives the same result. The difference is that `run_expr()` goes through the backend. Inside a [`transaction()`](../08-transactions/index.md) scope on SQLite, DuckDB or PostgreSQL, a package call is protected: Ibis cannot commit the scope's transaction behind it, and a failure poisons the unit of work so that it rolls back. An expression executed directly bypasses that protection.
+`run_expr(expr, *, params=None, limit="default", **kwargs)` executes an Ibis expression on the backend's connection and returns the result Ibis produces for that kind of expression: a Python scalar for a scalar expression and a pandas `DataFrame` for a table. `params` binds Ibis scalar parameters, and `limit` keeps Ibis's semantics, where `"default"` applies the Ibis default row limit (unlimited unless you set one). Calling `expr.execute()` gives the same result. The difference is that `run_expr()` goes through the backend. Inside a [`transaction()`](../10-transactions/index.md) scope on SQLite, DuckDB or PostgreSQL, a package call is protected: Ibis cannot commit the scope's transaction behind it, and a failure poisons the unit of work so that it rolls back. An expression executed directly bypasses that protection.
 
 <!-- concept:140 -->
 `to_sql(expr, *, params=None, limit=None, pretty=False)` compiles an expression to the SQL string the connected dialect would run, without executing it. It is useful for logging, for review, and for checking what a portable expression becomes on a particular engine. `pretty=True` formats the output over several lines.
@@ -109,7 +109,7 @@ SELECT * FROM (SELECT "t0"."region", SUM("t0"."total") AS "total" FROM "sales" A
 ## run_sql
 
 <!-- concept:22 -->
-`run_sql(query, *, schema=None, dialect=None)` wraps a SQL `SELECT` as an Ibis table expression. It does not return rows: the query becomes a subquery that you can execute, filter or join like any other table. `schema` supplies the result schema when Ibis cannot infer it, and `dialect` names the SQL dialect the string is written in when it differs from the backend's, so Ibis can transpile it. Because the result is an expression, `run_sql()` is for queries that produce rows. Statements such as DDL or `UPDATE` belong in the package's write methods or on the [raw driver handle](../09-adopting-existing-connections/index.md).
+`run_sql(query, *, schema=None, dialect=None)` wraps a SQL `SELECT` as an Ibis table expression. It does not return rows: the query becomes a subquery that you can execute, filter or join like any other table. `schema` supplies the result schema when Ibis cannot infer it, and `dialect` names the SQL dialect the string is written in when it differs from the backend's, so Ibis can transpile it. Because the result is an expression, `run_sql()` is for queries that produce rows. Statements such as DDL or `UPDATE` belong in the package's write methods or on the [raw driver handle](../11-adopting-existing-connections/index.md).
 
 ```python
 from mountainash_data import IbisBackend

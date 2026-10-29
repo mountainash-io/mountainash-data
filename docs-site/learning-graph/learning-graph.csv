@@ -123,7 +123,7 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 139,run_expr Execution,21,IBIS
 140,to_sql Compilation,21,IBIS
 141,table Expression Access,19|10,IBIS
-142,Bridge To mountainash Relations,141,IBIS
+142,Bridge To mountainash Relations,141,ECO
 143,Credential Redaction,107|108,CONN
 144,BackendConnectionError,12,CONN
 145,DropScope Descriptor,57,DIAL
@@ -138,3 +138,15 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 154,Live Database Harness,153,EXT
 155,Backend Name Registry,11|9,EXT
 156,Memtable Rollback Caveat,125|24,LIMIT
+157,Mountainash Ecosystem Layers,10|11,ECO
+158,Value Beyond Ibis,157,ECO
+159,Configuration File Sources,104,ECO
+160,Environment Prefix Overrides,159,ECO
+161,Secret References,159|105,ECO
+162,Settings Recipes Across Workers,104|159,ECO
+164,Write Once Run Anywhere Expressions,142,ECO
+165,Joining Database Tables With Local Data,142|164,ECO
+166,Conforming And Validating Database Tables,164,ECO
+167,Writing Expression Results Back,142|27|125,ECO
+168,mountainash[ibis] Connection Borrowing,134|125,ECO
+169,End To End Pipeline,162|165|167,ECO

@@ -2,42 +2,44 @@
 
 ## Overview
 
-- **Total Concepts**: 139
-- **Number of Taxonomies**: 12
+- **Total Concepts**: 151
+- **Number of Taxonomies**: 13
 - **Average Concepts per Taxonomy**: 11.6
 
 ## Distribution Summary
 
 | Category | TaxonomyID | Count | Percentage | Status |
 |----------|-----------|-------|------------|--------|
-| Settings and Configuration | SETT | 21 | 15.1% | ✅ |
-| Dialect System and Dispatch | DIAL | 18 | 12.9% | ✅ |
-| Inspection Model | INSP | 15 | 10.8% | ✅ |
-| Tables, Mutations and Indexes | WRITE | 13 | 9.4% | ✅ |
-| Authentication and Adapters | AUTH | 13 | 9.4% | ✅ |
-| Transactions and Connection Adoption | TXN | 13 | 9.4% | ✅ |
-| Foundation Concepts | FOUND | 10 | 7.2% | ✅ |
-| Ibis Backend Usage | IBIS | 9 | 6.5% | ✅ |
-| Backend Protocol | PROTO | 8 | 5.8% | ✅ |
-| Installing and Connecting | CONN | 7 | 5.0% | ✅ |
-| Extending and Contributing | EXT | 7 | 5.0% | ✅ |
-| Capabilities and Limits | LIMIT | 5 | 3.6% | ✅ |
+| Settings and Configuration | SETT | 21 | 13.9% | ✅ |
+| Dialect System and Dispatch | DIAL | 18 | 11.9% | ✅ |
+| Inspection Model | INSP | 15 | 9.9% | ✅ |
+| Tables, Mutations and Indexes | WRITE | 13 | 8.6% | ✅ |
+| Authentication and Adapters | AUTH | 13 | 8.6% | ✅ |
+| Transactions and Connection Adoption | TXN | 13 | 8.6% | ✅ |
+| mountainash Ecosystem Integration | ECO | 13 | 8.6% | ✅ |
+| Foundation Concepts | FOUND | 10 | 6.6% | ✅ |
+| Backend Protocol | PROTO | 8 | 5.3% | ✅ |
+| Ibis Backend Usage | IBIS | 8 | 5.3% | ✅ |
+| Installing and Connecting | CONN | 7 | 4.6% | ✅ |
+| Extending and Contributing | EXT | 7 | 4.6% | ✅ |
+| Capabilities and Limits | LIMIT | 5 | 3.3% | ✅ |
 
 ## Visual Distribution
 
 ```
-Settings and Configuratio ███████  21 ( 15.1%)
-Dialect System and Dispat ██████  18 ( 12.9%)
-Inspection Model          █████  15 ( 10.8%)
-Tables, Mutations and Ind ████  13 (  9.4%)
-Authentication and Adapte ████  13 (  9.4%)
-Transactions and Connecti ████  13 (  9.4%)
-Foundation Concepts       ███  10 (  7.2%)
-Ibis Backend Usage        ███   9 (  6.5%)
-Backend Protocol          ██   8 (  5.8%)
-Installing and Connecting ██   7 (  5.0%)
-Extending and Contributin ██   7 (  5.0%)
-Capabilities and Limits   █   5 (  3.6%)
+Settings and Configuratio ██████  21 ( 13.9%)
+Dialect System and Dispat █████  18 ( 11.9%)
+Inspection Model          ████  15 (  9.9%)
+Tables, Mutations and Ind ████  13 (  8.6%)
+Authentication and Adapte ████  13 (  8.6%)
+Transactions and Connecti ████  13 (  8.6%)
+mountainash Ecosystem Int ████  13 (  8.6%)
+Foundation Concepts       ███  10 (  6.6%)
+Backend Protocol          ██   8 (  5.3%)
+Ibis Backend Usage        ██   8 (  5.3%)
+Installing and Connecting ██   7 (  4.6%)
+Extending and Contributin ██   7 (  4.6%)
+Capabilities and Limits   █   5 (  3.3%)
 ```
 
 ## Balance Analysis
@@ -50,7 +52,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Settings and Configuration (SETT)
 
-**Count**: 21 concepts (15.1%)
+**Count**: 21 concepts (13.9%)
 
 **Concepts**:
 
@@ -73,7 +75,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Dialect System and Dispatch (DIAL)
 
-**Count**: 18 concepts (12.9%)
+**Count**: 18 concepts (11.9%)
 
 **Concepts**:
 
@@ -96,7 +98,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Inspection Model (INSP)
 
-**Count**: 15 concepts (10.8%)
+**Count**: 15 concepts (9.9%)
 
 **Concepts**:
 
@@ -118,7 +120,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Tables, Mutations and Indexes (WRITE)
 
-**Count**: 13 concepts (9.4%)
+**Count**: 13 concepts (8.6%)
 
 **Concepts**:
 
@@ -138,7 +140,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Authentication and Adapters (AUTH)
 
-**Count**: 13 concepts (9.4%)
+**Count**: 13 concepts (8.6%)
 
 **Concepts**:
 
@@ -158,7 +160,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Transactions and Connection Adoption (TXN)
 
-**Count**: 13 concepts (9.4%)
+**Count**: 13 concepts (8.6%)
 
 **Concepts**:
 
@@ -176,9 +178,29 @@ All categories are under the 30% threshold. Good balance!
 - 137. Session Option Preservation
 - 138. Connection Ownership Flag
 
+### mountainash Ecosystem Integration (ECO)
+
+**Count**: 13 concepts (8.6%)
+
+**Concepts**:
+
+- 142. Bridge To mountainash Relations
+- 157. Mountainash Ecosystem Layers
+- 158. Value Beyond Ibis
+- 159. Configuration File Sources
+- 160. Environment Prefix Overrides
+- 161. Secret References
+- 162. Settings Recipes Across Workers
+- 164. Write Once Run Anywhere Expressions
+- 165. Joining Database Tables With Local Data
+- 166. Conforming And Validating Database Tables
+- 167. Writing Expression Results Back
+- 168. mountainash[ibis] Connection Borrowing
+- 169. End To End Pipeline
+
 ### Foundation Concepts (FOUND)
 
-**Count**: 10 concepts (7.2%)
+**Count**: 10 concepts (6.6%)
 
 **Concepts**:
 
@@ -193,25 +215,9 @@ All categories are under the 30% threshold. Good balance!
 - 9. Registry Pattern
 - 10. Ibis Library
 
-### Ibis Backend Usage (IBIS)
-
-**Count**: 9 concepts (6.5%)
-
-**Concepts**:
-
-- 19. IbisBackend Class
-- 20. Ibis Connection
-- 21. Fluent Query API
-- 22. Raw SQL Queries
-- 34. Context Manager Ibis
-- 139. run_expr Execution
-- 140. to_sql Compilation
-- 141. table Expression Access
-- 142. Bridge To mountainash Relations
-
 ### Backend Protocol (PROTO)
 
-**Count**: 8 concepts (5.8%)
+**Count**: 8 concepts (5.3%)
 
 **Concepts**:
 
@@ -224,9 +230,24 @@ All categories are under the 30% threshold. Good balance!
 - 17. Inspect Namespace Method
 - 18. Inspect Catalog Method
 
+### Ibis Backend Usage (IBIS)
+
+**Count**: 8 concepts (5.3%)
+
+**Concepts**:
+
+- 19. IbisBackend Class
+- 20. Ibis Connection
+- 21. Fluent Query API
+- 22. Raw SQL Queries
+- 34. Context Manager Ibis
+- 139. run_expr Execution
+- 140. to_sql Compilation
+- 141. table Expression Access
+
 ### Installing and Connecting (CONN)
 
-**Count**: 7 concepts (5.0%)
+**Count**: 7 concepts (4.6%)
 
 **Concepts**:
 
@@ -240,7 +261,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Extending and Contributing (EXT)
 
-**Count**: 7 concepts (5.0%)
+**Count**: 7 concepts (4.6%)
 
 **Concepts**:
 
@@ -254,7 +275,7 @@ All categories are under the 30% threshold. Good balance!
 
 ### Capabilities and Limits (LIMIT)
 
-**Count**: 5 concepts (3.6%)
+**Count**: 5 concepts (3.3%)
 
 **Concepts**:
 
@@ -266,7 +287,7 @@ All categories are under the 30% threshold. Good balance!
 
 ## Recommendations
 
-- ✅ **Excellent balance**: Categories are evenly distributed (spread: 11.5%)
+- ✅ **Excellent balance**: Categories are evenly distributed (spread: 10.6%)
 - ✅ **MISC category minimal**: Good categorization specificity
 
 ### Educational Use Recommendations

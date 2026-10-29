@@ -51,7 +51,7 @@ hatch run mypy:check                # type-check src/ and tests/
 hatch run radon:radon-cc            # cyclomatic complexity
 ```
 
-Each `test_backend.<backend>` environment adds exactly one backend extra to the core test tools, so a driver installed for one backend never hides a missing dependency in another. The recipes under `examples/` are checked separately by running each `example.py`, as TESTING.md describes. A change that adds a dialect or a settings backend also adds tests in the core tier; [Extending mountainash-data](../14-extending-mountainash-data/index.md) lists which ones.
+Each `test_backend.<backend>` environment adds exactly one backend extra to the core test tools, so a driver installed for one backend never hides a missing dependency in another. The recipes under `examples/` are checked separately by running each `example.py`, as TESTING.md describes. A change that adds a dialect or a settings backend also adds tests in the core tier; [Extending mountainash-data](../17-extending-mountainash-data/index.md) lists which ones.
 
 <!-- concept:154 -->
 ## The live-database harness

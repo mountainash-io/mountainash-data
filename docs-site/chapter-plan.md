@@ -1,6 +1,6 @@
 # Chapter plan: mountainash-data
 
-Status: approved — 2026-10-29. The repository owner approved the plan as proposed in the agent session: 15 chapters in four parts, indexes (ch 7) and contributing (ch 15) kept as separate chapters, and the 27 graph-edge drops listed below.
+Status: approved — 2026-10-29; **revision 2 approved 2026-10-29** (see the final section, which supersedes the structure and numbering below). The repository owner approved the plan as proposed in the agent session: 15 chapters in four parts, indexes (ch 7) and contributing (ch 15) kept as separate chapters, and the 27 graph-edge drops listed below.
 Implements: `docs-site/editorial-brief.md` (confirmed 2026-10-29).
 Basis: source `2d0782b`; profile `docs-site/profile` (validated at `2d0782b`, 30 modules, 6 facets); graph `docs-site/learning-graph/learning-graph.json` (139 concepts, reconciled 2026-10-29).
 
@@ -452,3 +452,39 @@ CIS measures how much depends on a concept, so leaf capabilities score low by co
 1. Indexes stay a separate chapter (ch 7). Approved 2026-10-29.
 2. Contributing stays a separate chapter (ch 15). Approved 2026-10-29.
 3. The graph edits above are approved. They are applied through a reviewed reconcile and logged in `docs-site/learning-graph/logs/chapter-remap-2026-10-29.md`.
+
+## Revision 2: ecosystem positioning (approved 2026-10-29)
+
+Implements brief revision 2. The repository owner approved this 18-chapter structure in the agent session on 2026-10-29. It supersedes the structure table above; the per-chapter entries above still apply to the carried-over chapters under their new numbers.
+
+| # | Part | Chapter |
+|---|---|---|
+| 1 | Overview | mountainash-data in the mountainash ecosystem (`01-mountainash-data-in-the-ecosystem`) |
+| 2 | Using the package | Installing and connecting (`02-installing-and-connecting`) |
+| 3 | Using the package | Connection profiles and authentication (`03-connection-profiles-and-authentication`) |
+| 4 | Using the package | Configuring connections with mountainash-settings (`04-configuring-connections-with-mountainash-settings`) |
+| 5 | Using the package | Inspecting databases (`05-inspecting-databases`) |
+| 6 | Using the package | Reading tables and running queries (`06-reading-tables-and-running-queries`) |
+| 7 | Using the package | Running mountainash expressions against databases (`07-running-mountainash-expressions-against-databases`) |
+| 8 | Using the package | Creating and changing tables (`08-creating-and-changing-tables`) |
+| 9 | Using the package | Indexes (`09-indexes`) |
+| 10 | Using the package | Transactions (`10-transactions`) |
+| 11 | Using the package | Adopting existing connections (`11-adopting-existing-connections`) |
+| 12 | Using the package | An end-to-end pipeline (`12-an-end-to-end-pipeline`) |
+| 13 | Using the package | Supported databases and limits (`13-supported-databases-and-limits`) |
+| 14 | Architecture and internals | How one backend serves 20 dialects (`14-how-one-backend-serves-20-dialects`) |
+| 15 | Architecture and internals | From settings to driver arguments (`15-from-settings-to-driver-arguments`) |
+| 16 | Architecture and internals | Transaction and adoption internals (`16-transaction-and-adoption-internals`) |
+| 17 | Extending | Extending mountainash-data (`17-extending-mountainash-data`) |
+| 18 | Extending | Contributing and testing (`18-contributing-and-testing`) |
+
+Changes:
+
+- **Ch 1** is rewritten as the ecosystem overview (new concepts 157 Mountainash Ecosystem Layers and 158 Value Beyond Ibis). It answers "why not just use Ibis?": config-driven connections from `mountainash-settings`, write-once/run-anywhere `mountainash` expressions that join database tables with local dataframes and Python data, portable writes back, and transaction ownership.
+- **Ch 4 (new): Configuring connections with mountainash-settings.** Concepts 159–162: config file sources, environment prefix overrides, secret references, and `SettingsParameters` recipes across workers.
+- **Ch 7 (new): Running mountainash expressions against databases.** Concepts 142 (moved from ch 6), 164–166: the relation handoff, write once and run anywhere, joining database tables with local data, and conform/validate on database tables.
+- **Ch 11** adds concept 168, `mountainash[ibis]` borrowing a connection through this package's public API.
+- **Ch 12 (new): An end-to-end pipeline.** Concepts 167 and 169: config file → connect → join database and local reference data → evaluate expressions → upsert results in a transaction.
+- **Every other user chapter's lead** states where the capability sits in the ecosystem workflow. Home, About, FAQ and glossary are updated to the ecosystem positioning.
+- **Graph:** new taxonomy `ECO`; one dropped edge (158 → 19, so the overview needs no class detail). Logged in `logs/chapter-remap-2026-10-29.md`.
+- **Renumbering:** chapters from 4 on are renumbered; every internal link was rewritten.

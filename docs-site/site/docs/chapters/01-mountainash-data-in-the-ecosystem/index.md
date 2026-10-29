@@ -45,11 +45,11 @@ What the package provides:
 | Area | Capability | Chapter |
 |---|---|---|
 | Connections | Dialect keyword arguments, URLs, typed settings profiles, separate auth profiles | [Installing and connecting](../02-installing-and-connecting/index.md), [Connection profiles and authentication](../03-connection-profiles-and-authentication/index.md) |
-| Physical metadata | Catalogs, namespaces, tables, columns and indexes as typed results | [Inspecting databases](../04-inspecting-databases/index.md) |
-| Tables and queries | Create, insert, read, drop; run Ibis expressions and SQL | [Reading tables and running queries](../05-reading-tables-and-running-queries/index.md), [Creating and changing tables](../06-creating-and-changing-tables/index.md) |
-| Mutations and indexes | Upsert, add columns, rename, truncate; create, list and drop indexes | [Creating and changing tables](../06-creating-and-changing-tables/index.md), [Indexes](../07-indexes/index.md) |
-| Transactions | Reentrant commit/rollback scopes that join a caller's open transaction | [Transactions](../08-transactions/index.md) |
-| Adoption | Wrap an existing Ibis or driver connection without taking ownership | [Adopting existing connections](../09-adopting-existing-connections/index.md) |
+| Physical metadata | Catalogs, namespaces, tables, columns and indexes as typed results | [Inspecting databases](../05-inspecting-databases/index.md) |
+| Tables and queries | Create, insert, read, drop; run Ibis expressions and SQL | [Reading tables and running queries](../06-reading-tables-and-running-queries/index.md), [Creating and changing tables](../08-creating-and-changing-tables/index.md) |
+| Mutations and indexes | Upsert, add columns, rename, truncate; create, list and drop indexes | [Creating and changing tables](../08-creating-and-changing-tables/index.md), [Indexes](../09-indexes/index.md) |
+| Transactions | Reentrant commit/rollback scopes that join a caller's open transaction | [Transactions](../10-transactions/index.md) |
+| Adoption | Wrap an existing Ibis or driver connection without taking ownership | [Adopting existing connections](../11-adopting-existing-connections/index.md) |
 
 What other packages own:
 
@@ -77,7 +77,7 @@ flowchart TB
   expr --> rel["mountainash.relation()"]
 ```
 
-`IbisBackend` is the only class most code touches. It reads per-dialect behaviour from a `DialectSpec` record rather than from a subclass per database ([How one backend serves 20 dialects](../11-how-one-backend-serves-20-dialects/index.md) explains the mechanism). Settings profiles and auth profiles arrive from the sides, and Ibis does the connecting and the expression compilation underneath.
+`IbisBackend` is the only class most code touches. It reads per-dialect behaviour from a `DialectSpec` record rather than from a subclass per database ([How one backend serves 20 dialects](../14-how-one-backend-serves-20-dialects/index.md) explains the mechanism). Settings profiles and auth profiles arrive from the sides, and Ibis does the connecting and the expression compilation underneath.
 
 ## Databases, schemas and catalogs as the package models them
 
@@ -85,7 +85,7 @@ flowchart TB
 A schema is a named container for tables inside a database. PostgreSQL calls it a schema, MySQL treats each database as one, BigQuery calls it a dataset and Trino calls it a schema inside a catalog. The package uses one neutral word for all of these: a **namespace**. Methods that take a table location accept a `namespace=` argument, which can be a plain string (`"sales"`), a tuple of path levels, or a `Namespace` value object. `Namespace.path` holds the levels between the catalog and the table, and `None` means "the connection's current default". Ibis operations support at most one namespace level; unsupported shapes raise `ValueError`.
 
 <!-- concept:3 -->
-A catalog sits one level above namespaces. DuckDB's catalogs are attached databases (`memory`, `system`, `temp` in the example above), Snowflake and Databricks use catalogs as top-level databases, and SQLite effectively has one. `Namespace.catalog` names a catalog explicitly and is never inferred from a tuple position, so `("analytics", "sales")` is always a two-level path, not a catalog plus a schema. The inspection methods follow the same three tiers: `list_catalogs()`, `list_namespaces(catalog=...)` and `list_tables(namespace=...)`, with `inspect_*` counterparts that return typed results. [Inspecting databases](../04-inspecting-databases/index.md) covers them in full.
+A catalog sits one level above namespaces. DuckDB's catalogs are attached databases (`memory`, `system`, `temp` in the example above), Snowflake and Databricks use catalogs as top-level databases, and SQLite effectively has one. `Namespace.catalog` names a catalog explicitly and is never inferred from a tuple position, so `("analytics", "sales")` is always a two-level path, not a catalog plus a schema. The inspection methods follow the same three tiers: `list_catalogs()`, `list_namespaces(catalog=...)` and `list_tables(namespace=...)`, with `inspect_*` counterparts that return typed results. [Inspecting databases](../05-inspecting-databases/index.md) covers them in full.
 
 <!-- concept:4 -->
 A connection is a live session with one database server or file. It holds driver state, an open transaction if there is one, and session settings such as the current schema. The package makes the connection's lifecycle explicit. Constructing `IbisBackend` only records configuration; `connect()` opens the session; `close()` releases it; and using the backend as a context manager does both. Credentials are supplied at `connect()` time rather than at construction, so a backend object holds no secrets until it connects. Ownership is also explicit: a connection the backend opened is closed by the backend, while one adopted from the caller with `from_ibis_connection()` or `from_raw_connection()` is left open for the caller to close.
@@ -149,7 +149,7 @@ True
 False
 ```
 
-`NotABackend` fails because it lacks most of the protocol's members. A class that defined every member with the wrong signatures would still pass `isinstance()`, so a conformance test should also call the members and check what they return. [Extending mountainash-data](../14-extending-mountainash-data/index.md) shows how to test a new implementation.
+`NotABackend` fails because it lacks most of the protocol's members. A class that defined every member with the wrong signatures would still pass `isinstance()`, so a conformance test should also call the members and check what they return. [Extending mountainash-data](../17-extending-mountainash-data/index.md) shows how to test a new implementation.
 
 <!-- concept:11 -->
 `Backend`, defined in `mountainash_data.core.protocol` and exported from the package root, is the contract every backend satisfies. Its members fall into four groups:
@@ -199,8 +199,8 @@ The chapters run from use to internals. Each part can be read on its own once th
 
 | Part | Chapters | For |
 |---|---|---|
-| Using the package | [2](../02-installing-and-connecting/index.md) to [10](../10-supported-databases-and-limits/index.md): connecting, profiles and auth, inspection, reading and querying, table changes, indexes, transactions, adoption, and the per-dialect support matrix | Anyone writing code against the package |
-| Architecture and internals | [11](../11-how-one-backend-serves-20-dialects/index.md) to [13](../13-transaction-and-adoption-internals/index.md): dialect dispatch, the settings-to-driver-arguments pipeline, and transaction and adoption internals | Readers who need to know how it works or maintain it |
-| Extending | [14](../14-extending-mountainash-data/index.md) and [15](../15-contributing-and-testing/index.md): adding dialects, settings backends and protocol implementations; repository layout and tests | Extension authors and contributors |
+| Using the package | [2](../02-installing-and-connecting/index.md) to [10](../13-supported-databases-and-limits/index.md): connecting, profiles and auth, inspection, reading and querying, table changes, indexes, transactions, adoption, and the per-dialect support matrix | Anyone writing code against the package |
+| Architecture and internals | [11](../14-how-one-backend-serves-20-dialects/index.md) to [13](../16-transaction-and-adoption-internals/index.md): dialect dispatch, the settings-to-driver-arguments pipeline, and transaction and adoption internals | Readers who need to know how it works or maintain it |
+| Extending | [14](../17-extending-mountainash-data/index.md) and [15](../18-contributing-and-testing/index.md): adding dialects, settings backends and protocol implementations; repository layout and tests | Extension authors and contributors |
 
 The FAQ and glossary appendices link back to the section where each topic is explained.

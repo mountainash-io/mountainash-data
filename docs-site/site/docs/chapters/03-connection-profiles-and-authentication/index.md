@@ -154,7 +154,7 @@ PostgreSQLBackendProfile
 Profile 'sqlite' is already registered in databases registry by mountainash_data.core.settings.sqlite.SQLiteBackendProfile
 ```
 
-Writing and registering a profile for a new backend, with its auth adapters, is covered in [Extending mountainash-data](../14-extending-mountainash-data/index.md).
+Writing and registering a profile for a new backend, with its auth adapters, is covered in [Extending mountainash-data](../17-extending-mountainash-data/index.md).
 
 <!-- concept:74 -->
 Registration is a side effect of import. Each backend's profile lives in its own module (`mountainash_data/core/settings/postgresql.py` and so on), and the `mountainash_data.core.settings` package imports all 20 modules. Importing `mountainash_data.core.settings`, or anything inside it, therefore registers every backend. `import mountainash_data` does so too, because `IbisBackend` depends on the settings package. Code never calls a registration function and never maintains a list of backends: a profile is available once its module has been imported. The same rule applies to a profile defined outside the package. Its module must be imported before its name is looked up.
@@ -192,7 +192,7 @@ redshift postgres postgres
 duckdb postgres
 ```
 
-The profile still decides what is sent: the MotherDuck and Redshift profiles have their own fields, URL schemes and auth adapters (a MotherDuck token, Redshift IAM credentials), and those shape the driver arguments before the underlying dialect connects. `rides_on` itself is metadata; nothing dispatches on it. The dialect registry also has its own `motherduck` and `redshift` entries, reached with `dialect="motherduck"` or `dialect="redshift"` (and, for MotherDuck, a `duckdb://md:` URL); see [Installing and connecting](../02-installing-and-connecting/index.md). Per-dialect operation support for these entries is listed in [Supported databases and limits](../10-supported-databases-and-limits/index.md).
+The profile still decides what is sent: the MotherDuck and Redshift profiles have their own fields, URL schemes and auth adapters (a MotherDuck token, Redshift IAM credentials), and those shape the driver arguments before the underlying dialect connects. `rides_on` itself is metadata; nothing dispatches on it. The dialect registry also has its own `motherduck` and `redshift` entries, reached with `dialect="motherduck"` or `dialect="redshift"` (and, for MotherDuck, a `duckdb://md:` URL); see [Installing and connecting](../02-installing-and-connecting/index.md). Per-dialect operation support for these entries is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md).
 
 ## Backend profile reference
 
@@ -308,6 +308,6 @@ flowchart LR
   kwargs --> ibis["Ibis connection"]
 ```
 
-On the settings path, the auth profile is checked against the spec's `supported_auth` first. Omitting `auth_profile` is the same as passing `NoAuthProfile()`, so a backend that does not list `NoAuthProfile` (Exasol, MySQL, Oracle, SQL Server, Redshift, Snowflake, MotherDuck) raises `ValueError` when connected without credentials (once its driver extra is installed, since the driver import comes first). A supported type is then applied by the auth adapter registered for that backend and auth type, which adds the credential arguments to the profile's emitted driver arguments. The result is a plain keyword dictionary passed to Ibis; the steps are traced in [From settings to driver arguments](../12-from-settings-to-driver-arguments/index.md).
+On the settings path, the auth profile is checked against the spec's `supported_auth` first. Omitting `auth_profile` is the same as passing `NoAuthProfile()`, so a backend that does not list `NoAuthProfile` (Exasol, MySQL, Oracle, SQL Server, Redshift, Snowflake, MotherDuck) raises `ValueError` when connected without credentials (once its driver extra is installed, since the driver import comes first). A supported type is then applied by the auth adapter registered for that backend and auth type, which adds the credential arguments to the profile's emitted driver arguments. The result is a plain keyword dictionary passed to Ibis; the steps are traced in [From settings to driver arguments](../15-from-settings-to-driver-arguments/index.md).
 
 The dialect-keyword and URL forms of `IbisBackend` accept `connect(auth_profile=...)` too, but they have no profile and so no `supported_auth` check. The auth profile goes straight to the adapter for the dialect (or for the URL scheme), and a combination with no adapter raises the `no auth adapter` `ValueError` shown above. `NoAuthProfile` on these paths adds nothing. In every form, credentials are applied only at connect time, and the backend's configuration before `connect()` holds no secrets.

@@ -37,7 +37,7 @@ Database code usually starts with one driver and a few SQL strings. Then the tes
 
     Load idempotently with `upsert()`, evolve a table with `add_columns()` and manage indexes through the same calls on every dialect that supports them. Wrap the work in `transaction()` scopes, or join a transaction your own code already opened.
 
-    [Create and change tables](chapters/06-creating-and-changing-tables/index.md)
+    [Create and change tables](chapters/08-creating-and-changing-tables/index.md)
 
 -   **Architects and extension authors**
 
@@ -45,7 +45,7 @@ Database code usually starts with one driver and a few SQL strings. Then the tes
 
     See how one class serves 20 dialects by declaring each database's capabilities as data, then add a dialect, a settings backend or an entirely new kind of store behind the same `Backend` protocol.
 
-    [How one backend serves 20 dialects](chapters/11-how-one-backend-serves-20-dialects/index.md)
+    [How one backend serves 20 dialects](chapters/14-how-one-backend-serves-20-dialects/index.md)
 
 </div>
 
@@ -83,11 +83,11 @@ load_sales(IbisBackend("sqlite://"))
 # → sqlite ('id', 'region', 'total', 'note') 315
 ```
 
-Run it with the `sqlite` and `duckdb` extras installed (see [Installing and connecting](chapters/02-installing-and-connecting/index.md#choosing-extras)). On both engines the upsert updated row 1 and inserted row 3, and the `note` column was added, with the index, upsert and schema-change SQL rendered for each dialect by the package. Pointing the function at a server database means changing the line that builds the backend: the package's live-database test suite runs the same public `upsert()` call against PostgreSQL, MySQL, SingleStoreDB, SQL Server and Trino. Not every dialect supports every call (Snowflake, for example, has no index operations), and [Supported databases and limits](chapters/10-supported-databases-and-limits/index.md#support-matrix) lists what each of the 20 dialects supports.
+Run it with the `sqlite` and `duckdb` extras installed (see [Installing and connecting](chapters/02-installing-and-connecting/index.md#choosing-extras)). On both engines the upsert updated row 1 and inserted row 3, and the `note` column was added, with the index, upsert and schema-change SQL rendered for each dialect by the package. Pointing the function at a server database means changing the line that builds the backend: the package's live-database test suite runs the same public `upsert()` call against PostgreSQL, MySQL, SingleStoreDB, SQL Server and Trino. Not every dialect supports every call (Snowflake, for example, has no index operations), and [Supported databases and limits](chapters/13-supported-databases-and-limits/index.md#support-matrix) lists what each of the 20 dialects supports.
 
 ## Where to go next
 
-- Start with [What mountainash-data is](chapters/01-what-mountainash-data-is/index.md) for the package's layers and where Ibis fits, then [Installing and connecting](chapters/02-installing-and-connecting/index.md). Both assume intermediate Python and basic SQL; Ibis experience helps but isn't required.
+- Start with [What mountainash-data is](chapters/01-mountainash-data-in-the-ecosystem/index.md) for the package's layers and where Ibis fits, then [Installing and connecting](chapters/02-installing-and-connecting/index.md). Both assume intermediate Python and basic SQL; Ibis experience helps but isn't required.
 - The [chapter list](chapters/index.md) shows everything the documentation covers, and the [FAQ](faq.md) and [glossary](glossary.md) answer common questions and define terms.
 - [About](about.md) explains why the package exists and the design ideas behind it, and has the license and the link to the code repository.
 
