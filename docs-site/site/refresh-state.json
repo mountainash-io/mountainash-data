@@ -242,11 +242,37 @@
       ],
       "learning_graph_nodes_updated": 13,
       "tokens_used": null
+    },
+    {
+      "date": "2026-10-31",
+      "from_commit": "6526a1baadb359df2e1dcc41c9f9b89b16a23a78",
+      "to_commit": "6526a1baadb359df2e1dcc41c9f9b89b16a23a78",
+      "operation": "editorial-revision",
+      "basis": "editorial-brief.md revision 2 and chapter-plan.md revision 2 (ecosystem positioning), approved 2026-10-29",
+      "chapters_updated": [],
+      "chapters_added": [
+        "04-configuring-connections-with-mountainash-settings",
+        "07-running-mountainash-expressions-against-databases",
+        "12-an-end-to-end-pipeline"
+      ],
+      "chapters_renamed": {
+        "01-what-mountainash-data-is": "01-mountainash-data-in-the-ecosystem",
+        "04..15": "renumbered 05..18 (see chapter-plan revision 2)"
+      },
+      "sections_regenerated": [],
+      "faq_questions_updated": 0,
+      "landing_pages_updated": [
+        "index.md",
+        "about.md"
+      ],
+      "learning_graph_nodes_updated": [],
+      "tokens_used": null,
+      "note": "Ecosystem consistency: experimental (not production-ready) notice on About and Back to Ecosystem link on Home. Source unchanged."
     }
   ],
   "landing_state": {
     "index.md": {
-      "content_hash": "sha256:65a27643d88b80e472859247a110bc929da94366647f50552ffeab7e80442e58",
+      "content_hash": "sha256:6c53c83e9f6a49f2a1e5f2570d0c781ed73dbeb4a5ec051159cb301cbd589c7b",
       "inputs": {
         "README.md": "sha256:91a41e7dc3aac468a2b7937503381dd6e0c34d3c6a7716dd7c016e1a8e41bc3d",
         "docs-site/editorial-brief.md": "sha256:d1f19b43a4cf1a464bbf2357267bbbb5d72db2434f391bf5a053411dd3c0b7b5",
@@ -292,7 +318,7 @@
       "last_generated": "2026-10-29"
     },
     "about.md": {
-      "content_hash": "sha256:af58b3e740f6a28c17373796df4e1f9f3238137c63bf61c41645e6b81a0250e7",
+      "content_hash": "sha256:e8908c02e02fe36a8a8f1eed3b9afb7ff4a4f89eaf92adde86a5b5f7a24c935d",
       "inputs": {
         "README.md": "sha256:91a41e7dc3aac468a2b7937503381dd6e0c34d3c6a7716dd7c016e1a8e41bc3d",
         "docs-site/editorial-brief.md": "sha256:d1f19b43a4cf1a464bbf2357267bbbb5d72db2434f391bf5a053411dd3c0b7b5",
