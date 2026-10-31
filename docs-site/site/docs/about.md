@@ -9,6 +9,9 @@ description: 'Why mountainash-data exists, the design ideas behind it, where it 
 
 **Ibis compiles your queries for each database. mountainash-data connects those databases to your configuration, your mountainash logic and the writes that land the results.**
 
+!!! warning "Experimental"
+    mountainash-data 0.1.0 is experimental and not yet ready for production use. Its APIs can change between versions, and it is not yet published on PyPI.
+
 ## Why it exists
 
 The mountainash ecosystem lets you write data logic once and run it anywhere. A `mountainash` expression, conformance schema or data contract is defined without naming an engine, and runs on a Polars frame in a test or a notebook. mountainash-data is what connects that logic to the world's databases. Every relation built over one of its tables compiles to that database's SQL, so the same logic runs on SQLite or DuckDB during development and on PostgreSQL, Snowflake or BigQuery in production.
