@@ -3,9 +3,14 @@ title: 'Mountainash Data'
 description: 'The physical data layer of the mountainash ecosystem: configuration-driven database connections, mountainash expressions over database tables, and portable writes back under transactions, across 20 Ibis dialects.'
 ---
 
+[← Back to Ecosystem](https://docs.mountainash.io/)
+
 # Mountainash Data
 
 **The physical data layer of the mountainash ecosystem: connections from configuration, database tables for mountainash expressions, and portable writes back, across 20 databases from in-memory DuckDB to PostgreSQL, Snowflake and BigQuery.**
+
+!!! warning "Experimental"
+    mountainash-data 0.1.0 is experimental and not yet ready for production use. Its APIs can change between versions, and it is not yet published on PyPI.
 
 [Ibis](https://ibis-project.org/) already connects Python to each of these engines and compiles queries for them, and a script that only needs a connection and a query can use Ibis on its own. A pipeline needs more around the query. Connection details differ between a laptop, staging and production, and belong in configuration files and environment variables rather than code. Passwords and tokens belong in a secret store. The business logic should run on a local dataframe in tests and on a warehouse table in production, and it often has to join that table with reference data held in Python. Then the results go back to the database, idempotently, as one unit that either lands or rolls back.
 
