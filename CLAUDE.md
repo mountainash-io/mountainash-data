@@ -146,6 +146,7 @@ Local envs resolve sibling packages (`mountainash-settings`, `mountainash`, `mou
 - **mountainash-settings** >=0.1.0,<0.2 and **mountainash-auth-client** >=0.1.0,<0.2
 - **ibis-framework** >=12.0.0 (core only, no backend extras)
 - **sqlglot** >=29.0.1,<30.18.0 — floor is CI's pinned version (`requirements-hatch.txt`); cap is a verified DuckDB memtable regression
+- **duckdb** <2 in the `duckdb`/`motherduck` extras — Ibis 12.0.0 calls `fetch_arrow_table`, removed in duckdb 2.0; the `fresh-resolution` CI job installs without pins to catch such drift
 
 No driver, dataframe library, NumPy or Arrow is a base requirement; they arrive through extras.
 
