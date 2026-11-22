@@ -54,7 +54,8 @@ from mountainash_data.core.factories.connection_factory import (
 )
 from mountainash_data.core.namespace import Namespace, NamespaceLike
 from mountainash_auth_client import PasswordAuthProfile
-from mountainash_data.core._redact import connect_redacted
+from mountainash_data.core._safe_errors import raise_safe, safe_detail, safe_location
+from mountainash_data.core.errors import BackendConnectionError
 
 
 def _split_url(url: str) -> SplitResult:
@@ -92,15 +93,21 @@ def _import_ibis_backend(spec: DialectSpec, dialect: str) -> t.Any:
     Spark Connect's grpc, authentication, network) propagate unchanged.
     """
     module = f"ibis.backends.{spec.ibis_backend_name}"
+    missing: ModuleNotFoundError | None = None
     try:
         return importlib.import_module(module)
     except ModuleNotFoundError as exc:
-        if exc.name == module:  # Ibis itself lacks the backend: not an extra
-            raise
-        raise ImportError(
-            f"{exc}\n\nInstall this backend with: "
+        missing = exc
+    if missing.name == module:  # Ibis itself lacks the backend: not an extra
+        raise_safe(ImportError(f"Ibis has no backend module for dialect {dialect!r}"), missing)
+    # Fresh error, no native text: the missing-module message is not shown.
+    raise_safe(
+        ImportError(
+            f"Missing driver for dialect {dialect!r}. Install this backend with: "
             f"pip install 'mountainash-data[{dialect}]'"
-        ) from exc
+        ),
+        missing,
+    )
 
 
 def _render_ibis_database(ns: Namespace) -> tuple[str, str] | str | None:
@@ -185,7 +192,7 @@ class IbisConnection:
             except Exception as e:
                 if protected:
                     raise  # inside a transaction a failed query is not "no namespaces"
-                print(f"Error listing namespaces: {e}")
+                print(f"Error listing namespaces: {safe_detail(e)}")
                 return []
 
     def list_catalogs(self) -> list[str]:
@@ -205,7 +212,7 @@ class IbisConnection:
             except Exception as e:
                 if protected:
                     raise
-                print(f"Error listing catalogs: {e}")
+                print(f"Error listing catalogs: {safe_detail(e)}")
             current = getattr(self._ibis_conn, "current_catalog", None)
         if current is not None:
             return [current]
@@ -222,7 +229,7 @@ class IbisConnection:
             except Exception as e:
                 if protected:
                     raise
-                print(f"Error listing tables: {e}")
+                print(f"Error listing tables: {safe_detail(e)}")
                 return []
 
     def inspect_table(self, name: str, namespace: NamespaceLike = None) -> TableInfo:
@@ -298,6 +305,11 @@ class IbisConnection:
 # ---------------------------------------------------------------------------
 # Scheme → dialect reverse lookup (built once from the DIALECTS registry)
 # ---------------------------------------------------------------------------
+def _plain_identifier(value: str) -> str:
+    """Echo ``value`` only when it is a plain identifier; anything else may hold credentials."""
+    return repr(value) if value.isidentifier() else "(input not shown)"
+
+
 def _build_scheme_to_dialect() -> dict[str, str]:
     """Build a map from URL scheme (e.g. 'sqlite', 'postgres') to dialect name."""
     result: dict[str, str] = {}
@@ -461,7 +473,7 @@ class IbisBackend:
     ) -> None:
         if dialect_name not in DIALECTS:
             raise KeyError(
-                f"Unknown ibis dialect {dialect_name!r}. "
+                f"Unknown ibis dialect {_plain_identifier(dialect_name)}. "
                 f"Available: {sorted(DIALECTS)}"
             )
         self.dialect = dialect_name
@@ -550,26 +562,41 @@ class IbisBackend:
             )
         # before auth resolution: some auth adapters (trino, bigquery) import the driver
         _import_ibis_backend(self._spec, self.dialect)
+        # One credential-safe boundary around the whole composition: settings
+        # kwargs, auth resolution, builder and driver connect (W8).
+        failure: Exception | None = None
+        try:
+            ibis_conn = self._compose_connection(auth_profile)
+        except BackendConnectionError:
+            raise  # already safe (raised by the factory)
+        except Exception as exc:  # noqa: BLE001 - re-raised below as a safe error
+            failure = exc
+        if failure is not None:
+            where = safe_location(self._url) if self._url is not None else self.dialect
+            raise_safe(
+                BackendConnectionError(
+                    f"{where}: connection failed ({safe_detail(failure)})"
+                ),
+                failure,
+            )
+        self._conn = IbisConnection(ibis_conn, self._spec)
+        return self
+
+
+    def _compose_connection(self, auth_profile: t.Any) -> t.Any:
         if self._profile is not None:                       # settings path
             cfg = build_driver_kwargs(self._profile, auth_profile)
             cfg.update(self._extra_config)
             self._config = cfg
-            ibis_conn = self._connect_via_builder()
-        elif self._url is not None:                         # URL path
+            return self._connect_via_builder()
+        if self._url is not None:                           # URL path
             config, clean_url = self._resolve_url_auth(self._url, auth_profile)
             config.update(self._url_config)                 # caller extras apply on top
             self._config = config
             import ibis
-            cfg = self._config
-            secrets = [v for k, v in cfg.items()
-                       if k in ("password", "token") and isinstance(v, str)]
-            ibis_conn = connect_redacted(lambda: ibis.connect(clean_url, **cfg), secrets)
-        else:                                               # direct-dialect path
-            self._config = self._resolve_dialect_auth(auth_profile)
-            ibis_conn = self._connect_via_builder()
-        self._conn = IbisConnection(ibis_conn, self._spec)
-        return self
-
+            return ibis.connect(clean_url, **config)
+        self._config = self._resolve_dialect_auth(auth_profile)  # direct-dialect path
+        return self._connect_via_builder()
 
     def _connect_via_builder(self) -> t.Any:
         # preserves the prior empty-list/tuple filtering before connection_builder

@@ -8,6 +8,7 @@ import ibis
 import pytest
 
 from mountainash_data.backends.ibis.backend import IbisBackend
+from mountainash_data.core.errors import BackendConnectionError
 
 
 @pytest.fixture
@@ -54,10 +55,9 @@ def test_dialect_connect_names_extra_and_keeps_cause(block_modules):
     with pytest.raises(ImportError) as info:
         IbisBackend(dialect="duckdb", database=":memory:").connect()
     assert _hint("duckdb") in str(info.value)
-    original = info.value.__cause__
-    assert isinstance(original, ModuleNotFoundError)
-    assert original.name == "duckdb"
-    assert str(original) in str(info.value)
+    # fresh error: no native text, no chain (W8)
+    assert info.value.__cause__ is None and info.value.__context__ is None
+    assert "No module named" not in str(info.value)
 
 
 def test_url_connect_names_alias_extra(block_modules):
@@ -81,31 +81,37 @@ def test_raw_adoption_names_extra(block_modules):
         with pytest.raises(ImportError) as info:
             IbisBackend.from_raw_connection(raw, dialect="duckdb")
         assert _hint("duckdb") in str(info.value)
-        assert isinstance(info.value.__cause__, ModuleNotFoundError)
+        assert info.value.__cause__ is None
     finally:
         raw.close()
 
 
-def test_native_library_failure_is_not_relabelled():
+def test_native_library_failure_is_reported_by_class_only():
     """psycopg without libpq raises a plain ImportError: no extra fixes that."""
     native = ImportError("no pq wrapper available")
-    with pytest.raises(ImportError) as info:
+    with pytest.raises(BackendConnectionError) as info:
         _failing_connect(native).connect()
-    assert info.value is native
+    assert "connection failed (ImportError)" in str(info.value)
+    assert "pq wrapper" not in str(info.value)
+    assert _hint("duckdb") not in str(info.value)
 
 
 def test_missing_module_while_connecting_is_not_relabelled():
     """A sub-dependency missing at connect time (e.g. Spark Connect's grpc under
-    a plain pyspark install) is not fixed by the backend extra; keep it as is."""
+    a plain pyspark install) is not fixed by the backend extra."""
     connect_dep = ImportError("Spark Connect requires grpcio")
     connect_dep.__cause__ = ModuleNotFoundError("No module named 'grpc'", name="grpc")
-    with pytest.raises(ImportError) as info:
+    with pytest.raises(BackendConnectionError) as info:
         _failing_connect(connect_dep).connect()
-    assert info.value is connect_dep
+    assert _hint("duckdb") not in str(info.value)
+    assert info.value.__cause__ is None
 
 
-def test_connection_errors_pass_through():
-    refused = OSError("connection refused")
-    with pytest.raises(OSError) as info:
+def test_connection_errors_keep_errno_only():
+    refused = ConnectionRefusedError(111, "Connection refused", "SENTINEL-host")
+    with pytest.raises(BackendConnectionError) as info:
         _failing_connect(refused).connect()
-    assert info.value is refused
+    assert "[Errno 111] Connection refused" in str(info.value)
+    assert isinstance(info.value.__cause__, ConnectionRefusedError)
+    assert info.value.__cause__.filename is None
+    assert "SENTINEL" not in str(info.value.__cause__)

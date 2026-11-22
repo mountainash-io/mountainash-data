@@ -4,7 +4,9 @@ import typing as t
 from urllib.parse import quote, urlencode
 
 from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile, TokenAuthProfile, AuthProfile
+from mountainash_data.core._safe_errors import raise_safe, safe_detail
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
+from mountainash_data.core.errors import BackendConnectionError
 from mountainash_data.core.settings.profile import UrlParts
 from mountainash_data.core.settings.adapters.registry import auth_adapter
 
@@ -15,6 +17,24 @@ def _iter_specs() -> t.Iterator[t.Any]:
     from mountainash_data.core.settings.registry import REGISTRY
     for v in REGISTRY.values():
         yield v.__spec__ if hasattr(v, "__spec__") else v
+
+
+def _safe_call(where: t.Any, fn: t.Callable[..., t.Any], *args: t.Any) -> t.Any:
+    """Call ``fn``; any failure becomes a credential-free BackendConnectionError (W8).
+
+    Adapters build credentials (key files, JSON, driver auth objects), so their
+    native errors can carry secrets: only the exception class / errno is shown.
+    """
+    where = getattr(where, "name", where)
+    failure: Exception | None = None
+    try:
+        return fn(*args)
+    except Exception as exc:  # noqa: BLE001 - re-raised below as a safe error
+        failure = exc
+    raise_safe(
+        BackendConnectionError(f"{where}: connection failed ({safe_detail(failure)})"),
+        failure,
+    )
 
 
 def provider_for_dialect(dialect: str) -> t.Any:
@@ -56,19 +76,19 @@ def apply_auth_adapter(provider_type: t.Any, base: dict, auth_profile: AuthProfi
     if fn is None:
         raise ValueError(f"{provider_type}: no auth adapter for {type(auth_profile).__name__}")
     base = dict(base)
-    return fn(auth_profile, base)
+    return _safe_call(provider_type, fn, auth_profile, base)
 
 
 def build_driver_kwargs(profile: t.Any, auth_profile: AuthProfile | None = None) -> dict:
     auth = _normalize_and_validate_auth(profile, auth_profile)
     target = profile.__spec__.provider_type
-    base = profile.emit(target)
+    base = _safe_call(target, profile.emit, target)
     if isinstance(auth, NoAuthProfile):
         return base
     fn = auth_adapter(target, type(auth))
     if fn is None:
         raise ValueError(f"{profile.profile_name}: no auth adapter for {type(auth).__name__}")
-    return fn(auth, base)
+    return _safe_call(target, fn, auth, base)
 
 
 # --- URL appliers (L3 for the URL target) ---------------------------------
@@ -114,12 +134,12 @@ _URL_APPLIERS: dict[t.Any, dict[type, t.Callable]] = {
 
 def build_connection_string(profile: t.Any, auth_profile: AuthProfile | None = None) -> str:
     auth = _normalize_and_validate_auth(profile, auth_profile)
-    parts = profile.to_url_parts()                       # L1
+    parts = _safe_call(profile.profile_name, profile.to_url_parts)  # L1
     if isinstance(auth, NoAuthProfile):
         return _url_noauth(parts)
     if isinstance(auth, PasswordAuthProfile):
-        return _url_password(parts, auth)                # L3
+        return _safe_call(profile.profile_name, _url_password, parts, auth)  # L3
     applier = _URL_APPLIERS.get(profile.__spec__.provider_type, {}).get(type(auth))
     if applier is None:
         raise NotImplementedError(f"{profile.profile_name}: no URL form for {type(auth).__name__}")
-    return applier(parts, auth)
+    return _safe_call(profile.profile_name, applier, parts, auth)

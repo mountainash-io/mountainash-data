@@ -10,6 +10,7 @@ from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile, TokenAut
 
 from mountainash_data.backends.ibis import backend as backend_mod
 from mountainash_data.backends.ibis.backend import _SCHEME_TO_DIALECT, IbisBackend
+from mountainash_data.core.errors import BackendConnectionError
 from mountainash_data.core.factories.connection_factory import (
     build_connection_string,
     provider_for_scheme,
@@ -83,8 +84,8 @@ def test_credential_path_every_scheme(recorder, scheme, monkeypatch):
     provider_for_scheme(scheme)  # resolves through the single scheme table
     try:
         be.connect()
-    except ValueError as exc:  # scheme without a password adapter fails closed
-        assert "no auth adapter" in str(exc)
+    except BackendConnectionError as exc:  # scheme without a password adapter fails closed
+        assert "connection failed (ValueError)" in str(exc)
         return
     (sent_url, sent_kwargs), = recorder
     assert "SENTINEL" not in sent_url

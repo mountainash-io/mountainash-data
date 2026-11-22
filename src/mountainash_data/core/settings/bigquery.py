@@ -69,7 +69,7 @@ class BigQueryBackendProfile(BackendProfile):
         dataset = getattr(self, "DATASET_ID", None)
         return UrlParts(
             scheme="bigquery",
-            host=self.PROJECT_ID,
+            host=getattr(self, "PROJECT_ID"),
             path="/" + quote(str(dataset), safe="") if dataset else None,
         )
 

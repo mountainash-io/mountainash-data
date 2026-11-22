@@ -88,4 +88,4 @@ class SnowflakeBackendProfile(BackendProfile):
             for k in ("WAREHOUSE", "ROLE")
             if (v := getattr(self, k, None))
         }
-        return UrlParts(scheme="snowflake", host=self.ACCOUNT, path=path, query=query)
+        return UrlParts(scheme="snowflake", host=getattr(self, "ACCOUNT"), path=path, query=query)

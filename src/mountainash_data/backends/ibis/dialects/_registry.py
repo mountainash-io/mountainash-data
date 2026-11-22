@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 import typing as t
 from urllib.parse import quote
 
-from mountainash_data.core._redact import connect_redacted
 from mountainash_data.core.inspection import IndexInfo
 from mountainash_data.backends.ibis._exasol_compat import patch_exasol_connection
 
@@ -132,27 +131,20 @@ class DialectSpec:
 # ---------------------------------------------------------------------------
 
 
-_SECRET_KWARGS = ("password", "token", "passwd", "access_token")
-
-
 def _connect_url(
     connection_string: str,
     kwargs: t.Mapping[str, t.Any] | None = None,
-    *,
-    secrets: t.Iterable[str] = (),
 ) -> t.Any:
-    """``ibis.connect`` with credential-free failures (F-4).
+    """``ibis.connect`` for builders.
 
-    ibis echoes the whole URL in its errors, and a caller-supplied
-    ``connection_string`` may carry ``user:pass@``; strip that from anything raised.
-    Driver kwargs travel as a mapping, not ``**kwargs``, so no driver option name
-    can ever collide with this function's own parameters.
+    Failures propagate unchanged: ``IbisBackend.connect`` is the single
+    credential-safe boundary (W8). Driver kwargs travel as a mapping, not
+    ``**kwargs``, so no driver option name can collide with this function's own
+    parameters.
     """
     import ibis
 
-    kwargs = dict(kwargs or {})
-    known = [*secrets, *(v for k, v in kwargs.items() if k in _SECRET_KWARGS and isinstance(v, str))]
-    return connect_redacted(lambda: ibis.connect(connection_string, **kwargs), known)
+    return ibis.connect(connection_string, **dict(kwargs or {}))
 
 
 def _credential_kwargs(user: t.Any, password: t.Any) -> dict[str, t.Any]:
@@ -229,7 +221,7 @@ def _build_motherduck_connection(**config: t.Any) -> t.Any:
         connection_string = f"duckdb://md:{database}"
 
     extra = {k: v for k, v in config.items() if k not in ("token", "database")}
-    return _connect_url(connection_string, extra, secrets=(token,) if token else ())
+    return _connect_url(connection_string, extra)
 
 
 def _build_postgres_connection(**config: t.Any) -> t.Any:

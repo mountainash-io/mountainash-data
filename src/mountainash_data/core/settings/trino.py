@@ -83,7 +83,7 @@ class TrinoBackendProfile(BackendProfile):
     def to_url_parts(self) -> UrlParts:
         # Ibis trino _from_url: trino://u:p@host:port/<catalog>[/<schema>]
         base = super().to_url_parts()
-        path = "/" + quote(str(self.CATALOG), safe="")
+        path = "/" + quote(str(getattr(self, "CATALOG")), safe="")
         if getattr(self, "SCHEMA", None):
-            path += "/" + quote(str(self.SCHEMA), safe="")
+            path += "/" + quote(str(getattr(self, "SCHEMA")), safe="")
         return replace(base, database=None, path=path)

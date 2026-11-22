@@ -1,5 +1,6 @@
 import pytest
 from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile
+from mountainash_data.core.errors import BackendConnectionError
 from mountainash_data.backends.ibis.backend import IbisBackend
 
 
@@ -24,6 +25,6 @@ def test_dialect_path_applies_password(monkeypatch):
 
 
 def test_url_and_explicit_auth_conflict_raises():
-    with pytest.raises(ValueError, match="both"):
+    with pytest.raises(BackendConnectionError, match=r"connection failed \(ValueError\)"):
         IbisBackend("duckdb://u:p@host/db").connect(
             auth_profile=PasswordAuthProfile(USERNAME="x", PASSWORD="y"))
