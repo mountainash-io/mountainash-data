@@ -1,7 +1,7 @@
 """ConnectionFactory: compose BackendProfile config + AuthProfile creds."""
 from __future__ import annotations
 import typing as t
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile, TokenAuthProfile, AuthProfile
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
@@ -31,12 +31,14 @@ def provider_for_dialect(dialect: str) -> t.Any:
 
 
 def provider_for_scheme(scheme: str) -> t.Any:
-    norm = scheme.rstrip(":/")
-    for spec in _iter_specs():
-        s = getattr(spec, "connection_string_scheme", None)
-        if s and s.rstrip(":/") == norm:
-            return spec.provider_type
-    raise KeyError(f"no provider_type for URL scheme {scheme!r}")
+    """Provider for a URL scheme: ``_SCHEME_TO_DIALECT`` (sole table) then the dialect's profile."""
+    # Lazy: backend.py imports this module at load time.
+    from mountainash_data.backends.ibis.backend import _SCHEME_TO_DIALECT
+
+    dialect = _SCHEME_TO_DIALECT.get(scheme.rstrip(":/").lower())
+    if dialect is None:
+        raise KeyError(f"no provider_type for URL scheme {scheme!r}")
+    return provider_for_dialect(dialect)
 
 
 def _normalize_and_validate_auth(profile: t.Any, auth_profile: AuthProfile | None) -> AuthProfile:
@@ -71,6 +73,14 @@ def build_driver_kwargs(profile: t.Any, auth_profile: AuthProfile | None = None)
 
 # --- URL appliers (L3 for the URL target) ---------------------------------
 
+def _url_tail(parts: UrlParts) -> str:
+    """``/path`` (or ``/database``) plus URL-encoded query, after the authority."""
+    tail = parts.path or (f"/{parts.database}" if parts.database is not None else "")
+    if parts.query:
+        tail += "?" + urlencode(parts.query)
+    return tail
+
+
 def _url_password(parts: UrlParts, auth: t.Any) -> str:
     if parts.host is None:
         raise NotImplementedError("password URL form requires a host authority")
@@ -78,21 +88,18 @@ def _url_password(parts: UrlParts, auth: t.Any) -> str:
     url = f"{parts.scheme}://{user}:{pw}@{parts.host}"
     if parts.port is not None:
         url += f":{parts.port}"
-    if parts.database is not None:
-        url += f"/{parts.database}"
-    return url
+    return url + _url_tail(parts)
 
 
 def _url_noauth(parts: UrlParts) -> str:
     if parts.host is None:
         # authority-less form (e.g. an in-process/file backend): scheme:database
-        return f"{parts.scheme}:{parts.database}" if parts.database is not None else f"{parts.scheme}:"
+        base = f"{parts.scheme}:{parts.database}" if parts.database is not None else f"{parts.scheme}:"
+        return base + (("?" + urlencode(parts.query)) if parts.query else "")
     url = f"{parts.scheme}://{parts.host}"
     if parts.port is not None:
         url += f":{parts.port}"
-    if parts.database is not None:
-        url += f"/{parts.database}"
-    return url
+    return url + _url_tail(parts)
 
 
 def _url_motherduck_token(parts: UrlParts, auth: t.Any) -> str:

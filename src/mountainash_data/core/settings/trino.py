@@ -8,12 +8,14 @@ Ibis: ``ibis.backends.trino.do_connect``
 from __future__ import annotations
 
 import typing as t
+from dataclasses import replace
+from urllib.parse import quote
 from pathlib import Path
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import JWTAuthProfile, KerberosAuthProfile, NoAuthProfile, PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import BackendProfile
+from .profile import BackendProfile, UrlParts
 from .registry import register
 
 
@@ -77,3 +79,11 @@ TRINO_SPEC = BackendSpec(
 @register
 class TrinoBackendProfile(BackendProfile):
     __spec__ = TRINO_SPEC
+
+    def to_url_parts(self) -> UrlParts:
+        # Ibis trino _from_url: trino://u:p@host:port/<catalog>[/<schema>]
+        base = super().to_url_parts()
+        path = "/" + quote(str(self.CATALOG), safe="")
+        if getattr(self, "SCHEMA", None):
+            path += "/" + quote(str(self.SCHEMA), safe="")
+        return replace(base, database=None, path=path)

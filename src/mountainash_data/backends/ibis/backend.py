@@ -304,6 +304,8 @@ def _build_scheme_to_dialect() -> dict[str, str]:
     for dialect_name, spec in DIALECTS.items():
         # connection_string_scheme is e.g. "postgres://", "duckdb://md:"
         scheme = spec.connection_string_scheme.split("://")[0].lower()
+        if not scheme:  # no URL form (e.g. databricks)
+            continue
         # First dialect wins — e.g. "postgres" maps to "postgres", not "redshift"
         if scheme not in result:
             result[scheme] = dialect_name
@@ -444,7 +446,7 @@ class IbisBackend:
         if isinstance(value, SettingsParameters):
             self._init_from_settings(value, config)
         elif isinstance(value, str):
-            if "://" in value:
+            if ":" in value:
                 self._init_from_url(value, config)
             else:
                 # Plain string — treat as dialect name
@@ -473,7 +475,15 @@ class IbisBackend:
     def _init_from_url(
         self, url: str, config: dict[str, t.Any]
     ) -> None:
-        scheme = _split_url(url).scheme.lower()
+        # URL iff the text before the first ':' is a supported scheme. Nothing
+        # about the input is echoed: it may carry credentials.
+        scheme = url.partition(":")[0].lower()
+        if scheme not in _SCHEME_TO_DIALECT:
+            raise ValueError(
+                "Unsupported connection string: expected a URL with one of the schemes "
+                f"{sorted(_SCHEME_TO_DIALECT)} (input not shown), or a dialect name"
+            )
+        _split_url(url)  # validate the authority without echoing it
 
         # Special case: MotherDuck URLs are "duckdb://md:..."
         resolved_dialect: str | None
@@ -482,10 +492,7 @@ class IbisBackend:
         else:
             resolved_dialect = _SCHEME_TO_DIALECT.get(scheme)
 
-        if resolved_dialect is None:
-            raise ValueError(
-                f"Cannot detect ibis dialect from URL scheme: {scheme!r}"
-            )
+        assert resolved_dialect is not None  # scheme membership checked above
 
         self.dialect = resolved_dialect
         self._spec = DIALECTS[resolved_dialect]

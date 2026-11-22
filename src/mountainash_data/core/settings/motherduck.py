@@ -22,7 +22,7 @@ __all__ = ["MotherDuckBackendProfile", "MOTHERDUCK_SPEC"]
 MOTHERDUCK_SPEC = BackendSpec(
     name="motherduck",
     provider_type=CONST_DB_PROVIDER_TYPE.MOTHERDUCK,
-    connection_string_scheme="duckdb://md:",  # md:<db>?motherduck_token=...
+    connection_string_scheme="duckdb://md:",  # duckdb://md:<db>?motherduck_token=...
     ibis_dialect="motherduck",
     rides_on="duckdb",
     supported_auth=(TokenAuthProfile,),
@@ -40,8 +40,10 @@ class MotherDuckBackendProfile(BackendProfile):
     __spec__ = MOTHERDUCK_SPEC
 
     def to_url_parts(self) -> UrlParts:
+        # Ibis accepts only duckdb://md:<db>; bare "md:<db>" is rejected.
+        # Authority-less form: "duckdb:" + "//md:<db>".
         return UrlParts(
-            scheme="md",
+            scheme="duckdb",
             host=None,
-            database=getattr(self, "DATABASE", None),
+            database=f"//md:{getattr(self, 'DATABASE', None) or ''}",
         )

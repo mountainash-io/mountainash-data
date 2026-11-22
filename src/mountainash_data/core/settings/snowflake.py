@@ -7,13 +7,14 @@ Driver: https://docs.snowflake.com/en/developer-guide/python-connector/python-co
 from __future__ import annotations
 
 import typing as t
+from urllib.parse import quote
 from enum import StrEnum
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import CertificateAuthProfile, OAuth2AuthProfile, PasswordAuthProfile, TokenAuthProfile
 from .adapters import snowflake as _snow
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import BackendProfile
+from .profile import BackendProfile, UrlParts
 from .registry import register
 
 
@@ -72,3 +73,19 @@ SNOWFLAKE_SPEC = BackendSpec(
 class SnowflakeBackendProfile(BackendProfile):
     __spec__ = SNOWFLAKE_SPEC
     __adapters__ = {CONST_DB_PROVIDER_TYPE.SNOWFLAKE: _snow.session_params}
+
+    def to_url_parts(self) -> UrlParts:
+        # Ibis snowflake _from_url: snowflake://u:p@<account>/<database>[/<schema>]?warehouse=..&role=..
+        db = getattr(self, "DATABASE", None)
+        schema = getattr(self, "SCHEMA", None)
+        path = None
+        if db:
+            path = "/" + quote(str(db), safe="")
+            if schema:
+                path += "/" + quote(str(schema), safe="")
+        query = {
+            k.lower(): str(v)
+            for k in ("WAREHOUSE", "ROLE")
+            if (v := getattr(self, k, None))
+        }
+        return UrlParts(scheme="snowflake", host=self.ACCOUNT, path=path, query=query)
