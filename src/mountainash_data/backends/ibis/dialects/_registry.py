@@ -181,7 +181,8 @@ def _build_sqlite_connection(**config: t.Any) -> t.Any:
 
     database = config.get("database", ":memory:")
     # ibis.sqlite.connect accepts file path or ':memory:' directly
-    return ibis.sqlite.connect(database)
+    kwargs = {k: v for k, v in config.items() if k == "type_map"}
+    return ibis.sqlite.connect(database, **kwargs)
 
 
 def _build_duckdb_connection(**config: t.Any) -> t.Any:
@@ -380,6 +381,12 @@ def _build_snowflake_connection(**config: t.Any) -> t.Any:
     return _connect_url(conn_str, kwargs)
 
 
+_BIGQUERY_CONNECT_KEYS = frozenset({
+    "project_id", "dataset_id", "credentials", "location", "application_name",
+    "partition_column", "auth_local_webserver", "auth_external_data", "auth_cache",
+})
+
+
 def _build_bigquery_connection(**config: t.Any) -> t.Any:
     """Build a BigQuery ibis connection.
 
@@ -389,16 +396,13 @@ def _build_bigquery_connection(**config: t.Any) -> t.Any:
     """
     import ibis.backends.bigquery as ir_backend
 
+    kwargs = {k: v for k, v in config.items() if k in _BIGQUERY_CONNECT_KEYS and v is not None}
     credentials_info = config.get("credentials_info", None)
-    dataset_id = config.get("dataset_id", "")
-    project_id = config.get("project_id", None)
-
-    if credentials_info:
+    if credentials_info and "credentials" not in kwargs:
         from google.oauth2 import service_account
-        credentials = service_account.Credentials.from_service_account_info(credentials_info)
-        return ir_backend.connect(dataset_id=dataset_id, credentials=credentials)
-    else:
-        return ir_backend.connect(project_id=project_id, dataset_id=dataset_id)
+        kwargs["credentials"] = service_account.Credentials.from_service_account_info(credentials_info)
+    kwargs.setdefault("dataset_id", "")
+    return ir_backend.connect(**kwargs)
 
 
 def _build_redshift_connection(**config: t.Any) -> t.Any:
