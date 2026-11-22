@@ -1,8 +1,17 @@
 # Coverage Report — mountainash-data
 
-**Source hash:** 2d0782b507141baecd5a120ac0547c7e8af11662 (`docs/textbook-rebuild`)
-**Previous hash:** 17d9ed3ae77f05bc1eea90f14294f732fb26ea5e
-**Behavior:** incremental (no source changes)
+**Source hash:** 092715ce8c80651363951f14bb8aa6f5db86a122 (`docs/post-bundle-refresh`)
+**Previous hash:** 2d0782b507141baecd5a120ac0547c7e8af11662
+**Behavior:** incremental (17 source files changed)
+
+## Incremental refresh (2026-11-22)
+
+17 files under `src/mountainash_data` changed between `2d0782b` and `092715c` (PRs #162 and #163). Module records re-stamped with the new `source_hash`: `backends.ibis.backend`, `backends.ibis.dialects`, `backends.ibis._adoption`, `core.errors`, `core.factories`, `core.settings.adapters`, `core.settings.backends`, `core.settings.descriptor`. Other records are unchanged.
+
+- **Removed:** `core._redact` (`redact_text`, `redacted_exception`, `connect_redacted`). **Added:** `core._safe_errors` (`safe_location`, `safe_detail`, `safe_cause`, `raise_safe`). Connect errors are now `BackendConnectionError` reading `{safe location|dialect}: connection failed (ExceptionType)`, with no driver text and the native chain cleared.
+- MotherDuck and Redshift profiles resolve to their own `DialectSpec` keys; Redshift IAM auth is removed, read-only is set through libpq options; `redshift://` and bare `md:` URLs are rejected, profiles emit `postgresql://` and `duckdb://md:<db>`.
+- BigQuery, Snowflake, Trino and Exasol profiles emit the URL forms Ibis parses; DuckDB/MotherDuck extras cap `duckdb<2` with a fresh-resolution CI job.
+- Facets updated to reference `core._safe_errors`.
 
 ## Incremental refresh (2026-10-29)
 
@@ -47,7 +56,7 @@ Source no longer exists at the target hash; records deleted so the manifest map 
 |---|---|---|
 | `mountainash_data.core.registry` | useful | No test and no importer; behaviour unverified |
 | `mountainash_data.backends.ibis._protected` | internal-note | Covered only indirectly via transaction-scope tests |
-| `mountainash_data.core._redact` | internal-note | Covered only indirectly via credential-URL tests |
+| `mountainash_data.core._safe_errors` | useful | Unit-tested directly (`test_safe_errors.py`) and via connect-path tests (`test_connect_safe_errors.py`) |
 | `mountainash_data.backends.ibis.dialects` | essential | `upsert_hook`, `add_columns_hook`, `rename_table_hook`, `create_index_hook`, `drop_index_hook` seams have no in-tree consumer |
 | `mountainash_data.backends.ibis.backend` | essential | `from_raw_connection` verified only for duckdb/motherduck |
 | `mountainash_data.backends.ibis.operations` | useful | MySQL upsert tested on MariaDB only (`VALUES()` deprecated on MySQL 8.0.20+) |

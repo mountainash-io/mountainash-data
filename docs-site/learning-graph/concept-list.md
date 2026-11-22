@@ -127,7 +127,7 @@ Internal concept inventory for the mountainash-data book (source `2d0782b`). Can
 140. to_sql Compilation
 141. table Expression Access
 142. Bridge To mountainash Relations
-143. Credential Redaction
+143. Safe Connection Errors
 144. BackendConnectionError
 145. DropScope Descriptor
 146. Dialect Compatibility Shims

@@ -1508,11 +1508,11 @@
     },
     {
       "id": 143,
-      "label": "Credential Redaction",
+      "label": "Safe Connection Errors",
       "group": "CONN",
       "cis": 1,
-      "source_module": "mountainash_data.core._redact",
-      "source_path": "src/mountainash_data/core/_redact.py",
+      "source_module": "mountainash_data.core._safe_errors",
+      "source_path": "src/mountainash_data/core/_safe_errors.py",
       "match_confidence": 1.0,
       "mapping_basis": "reviewed-2026-10-29",
       "chapter": "15-from-settings-to-driver-arguments"

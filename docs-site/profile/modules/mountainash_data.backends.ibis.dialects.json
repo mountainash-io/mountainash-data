@@ -62,7 +62,6 @@
     "_sqlite_truncate_table"
   ],
   "dependencies": [
-    "mountainash_data.core._redact",
     "mountainash_data.core.inspection",
     "mountainash_data.backends.ibis._exasol_compat",
     "mountainash_data.backends.ibis._oracle_compat",
@@ -85,8 +84,9 @@
   ],
   "lifecycle_notes": [
     "DIALECTS is built once at import time; DialectSpec is frozen",
-    "Connection builders pass credentials as driver kwargs, never URL userinfo, and route failures through connect_redacted so secrets are not echoed",
-    "operations and _index_inspection are imported at the bottom of the module (noqa E402) to break the operations <-> dialects import cycle"
+    "Connection builders pass credentials as driver kwargs, never URL userinfo, and let failures propagate unchanged; IbisBackend.connect is the single credential-safe boundary (W8)",
+    "operations and _index_inspection are imported at the bottom of the module (noqa E402) to break the operations <-> dialects import cycle",
+    "motherduck and redshift are riders with their own DialectSpec keys; builders forward only accepted driver kwargs (sqlite type_map, a BigQuery connect-key allow-list); Redshift read-only is set via libpq options."
   ],
   "documentation_hooks": [
     "Support matrix: per-dialect upsert style, index capability, transaction support and adoption verification",
@@ -137,7 +137,7 @@
       "detail": "registry shape tests"
     }
   ],
-  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
   "manual": {
     "notes": "",
     "editorial_status": "",

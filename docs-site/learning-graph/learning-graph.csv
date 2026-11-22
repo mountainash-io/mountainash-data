@@ -124,7 +124,7 @@ ConceptID,ConceptLabel,Dependencies,TaxonomyID
 140,to_sql Compilation,21,IBIS
 141,table Expression Access,19|10,IBIS
 142,Bridge To mountainash Relations,141,ECO
-143,Credential Redaction,107|108,CONN
+143,Safe Connection Errors,107|108,CONN
 144,BackendConnectionError,12,CONN
 145,DropScope Descriptor,57,DIAL
 146,Dialect Compatibility Shims,60|10,DIAL

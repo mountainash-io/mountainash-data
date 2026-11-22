@@ -119,7 +119,7 @@
     "mountainash_data.backends.ibis._transaction",
     "mountainash_data.backends.ibis._render",
     "mountainash_data.core.factories",
-    "mountainash_data.core._redact"
+    "mountainash_data.core._safe_errors"
   ],
   "documentation_plan": [
     "Lead with installation by dialect extra and the missing-driver ImportError",

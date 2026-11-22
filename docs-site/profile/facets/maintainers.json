@@ -1,6 +1,6 @@
 {
   "audience": "maintainers",
-  "summary": "Maintainers own a single Backend protocol, one data-driven Ibis implementation dispatched through the DialectSpec table, and a registry-driven settings layer built on mountainash-settings and mountainash-auth-client. Key invariants are transaction ownership and probe correctness, session-option preservation on raw adoption, credential redaction, and keeping spec/adapter tables consistent.",
+  "summary": "Maintainers own a single Backend protocol, one data-driven Ibis implementation dispatched through the DialectSpec table, and a registry-driven settings layer built on mountainash-settings and mountainash-auth-client. Key invariants are transaction ownership and probe correctness, session-option preservation on raw adoption, credential-safe connection errors (W8), and keeping spec/adapter tables consistent.",
   "concepts": [
     {
       "name": "Backend protocol as the single contract",
@@ -99,7 +99,7 @@
     {
       "name": "Cross-cutting helpers",
       "module_ids": [
-        "mountainash_data.core._redact",
+        "mountainash_data.core._safe_errors",
         "mountainash_data.core._warn",
         "mountainash_data.core.errors",
         "mountainash_data.core.constants"
@@ -108,7 +108,7 @@
         "maintainer notes"
       ],
       "evidence": [
-        "src/mountainash_data/core/_redact.py"
+        "src/mountainash_data/core/_safe_errors.py"
       ]
     },
     {
