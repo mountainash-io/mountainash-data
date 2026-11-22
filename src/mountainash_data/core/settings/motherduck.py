@@ -23,12 +23,12 @@ MOTHERDUCK_SPEC = BackendSpec(
     name="motherduck",
     provider_type=CONST_DB_PROVIDER_TYPE.MOTHERDUCK,
     connection_string_scheme="duckdb://md:",  # md:<db>?motherduck_token=...
-    ibis_dialect="duckdb",
+    ibis_dialect="motherduck",
     rides_on="duckdb",
     supported_auth=(TokenAuthProfile,),
     parameters=[
         ParameterSpec(name="DATABASE", type=t.Optional[str], tier="core",
-                      default=None),
+                      default=None, driver_key="database"),
         ParameterSpec(name="READ_ONLY", type=bool, tier="core", default=False,
                       driver_key="read_only"),
     ],

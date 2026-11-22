@@ -25,21 +25,9 @@ def provider_for_dialect(dialect: str) -> t.Any:
     ]
     if not matches:
         raise KeyError(f"no provider_type for ibis dialect {dialect!r}")
-    if len(matches) == 1:
-        return matches[0]
-    # Multiple providers share one ibis dialect (postgres: postgresql+redshift;
-    # duckdb: duckdb+motherduck). Resolve deterministically to the canonical base.
-    for pt in matches:                       # exact provider name == dialect wins
-        if pt.name.lower() == dialect:
-            return pt
-    corresponding = sorted(                  # else the name-corresponding match, deterministically
-        (pt for pt in matches
-         if pt.name.lower().startswith(dialect) or dialect.startswith(pt.name.lower())),
-        key=lambda p: p.name,
-    )
-    if corresponding:
-        return corresponding[0]
-    return sorted(matches, key=lambda p: p.name)[0]
+    # Built-in profiles map one-to-one to dialects; extra registered profiles may
+    # share a dialect, in which case the first-registered (built-in) wins.
+    return matches[0]
 
 
 def provider_for_scheme(scheme: str) -> t.Any:
