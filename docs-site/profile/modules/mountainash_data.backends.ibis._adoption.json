@@ -21,6 +21,7 @@
   "dependencies": [
     "mountainash_data.backends.ibis._raw",
     "mountainash_data.backends.ibis.dialects",
+    "mountainash_data.core._safe_errors",
     "mountainash_data.core._warn"
   ],
   "dependents": [
@@ -58,7 +59,7 @@
       "detail": "from_raw_connection and from_ibis_connection call these helpers"
     }
   ],
-  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
   "manual": {
     "notes": "",
     "editorial_status": "",

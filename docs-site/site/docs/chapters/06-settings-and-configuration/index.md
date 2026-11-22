@@ -247,7 +247,7 @@ class SnowflakeAuthSettings(BaseDBAuthSettings):
 <!-- concept:80 -->
 ## RedshiftAuthSettings
 
-**RedshiftAuthSettings** reuses the PostgreSQL connection model because Amazon Redshift speaks the PostgreSQL wire protocol. The connection builder for Redshift is literally a pass-through to the PostgreSQL builder. The settings class may add Redshift-specific fields for IAM authentication and cluster identifier configuration.
+**RedshiftAuthSettings** reuses the PostgreSQL connection model because Amazon Redshift speaks the PostgreSQL wire protocol. The connection builder for Redshift is literally a pass-through to the PostgreSQL builder. Redshift supports password authentication only (IAM is not supported), and the settings class may add Redshift-specific fields such as the cluster identifier.
 
 <!-- concept:81 -->
 ## ClickhouseAuthSettings

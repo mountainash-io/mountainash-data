@@ -79,7 +79,8 @@
     "mountainash_data.core.inspection",
     "mountainash_data.core.factories",
     "mountainash_data.core.namespace",
-    "mountainash_data.core._redact"
+    "mountainash_data.core._safe_errors",
+    "mountainash_data.core.errors"
   ],
   "dependents": [
     "mountainash_data.init"
@@ -94,7 +95,9 @@
     "Context-manager use connects on __enter__ and closes on __exit__",
     "close() raises RuntimeError inside an open transaction() scope on the same native handle; an adopted connection is released but not disconnected",
     "After an ambiguous COMMIT failure on an owned connection the connection is discarded so it is not reused",
-    "Mutating operations return self for chaining; terminal operations return data"
+    "Mutating operations return self for chaining; terminal operations return data",
+    "connect() is the single credential-safe boundary: any failure composing settings, auth or the driver connect becomes BackendConnectionError '{safe location|dialect}: connection failed (ExceptionType)' with no driver text and the native chain cleared; missing-driver ImportErrors are fresh messages naming mountainash-data[<dialect>].",
+    "URL detection is by scheme (text before the first ':' must be a supported scheme); redshift:// and bare md: are rejected, redshift profiles use postgresql:// and MotherDuck uses duckdb://md:<db>."
   ],
   "documentation_hooks": [
     "Three construction paths: SettingsParameters, URL string, dialect= keyword",
@@ -102,7 +105,7 @@
     "Namespace rendering: native ops accept catalog-qualified single-level namespaces; manual-SQL ops (upsert, add_columns, index ops) reject catalog qualification",
     "transaction() ownership semantics on sqlite/duckdb/postgres: begin+own when idle, join without completing when a caller transaction is open",
     "in_transaction() vs native_transaction_open(): package scope registration vs driver state",
-    "URL credentials are stripped from the URL and passed as a PasswordAuthProfile; errors never echo the URL"
+    "URL credentials are stripped from the URL and passed as a PasswordAuthProfile; errors never echo the URL or driver text (safe location only)"
   ],
   "examples": [
     "README.md",
@@ -182,7 +185,7 @@
       "detail": "Quick start and transaction semantics document IbisBackend usage"
     }
   ],
-  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
   "manual": {
     "notes": "",
     "editorial_status": "",

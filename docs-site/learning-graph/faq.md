@@ -164,7 +164,7 @@ The adapter handles token refresh automatically: if the current access token has
 
 Cloud Native Auth adapters handle identity-based authentication for cloud-hosted databases where credentials are derived from the cloud provider's identity system rather than static passwords. For AWS, this means IAM role-based authentication where the adapter retrieves temporary credentials from the EC2 instance metadata service, ECS task role, or Lambda execution role. For GCP, it means service account authentication using application default credentials or explicit service account key files. For Azure, it means Azure AD token authentication via managed identity or service principal.
 
-The IAMAuth settings class captures the cloud provider and role/identity configuration. The Cloud Native Auth adapter translates these into the specific credential format each database driver expects. For example, connecting to Amazon Redshift with IAM auth requires generating temporary database credentials via the Redshift GetClusterCredentials API, while connecting to BigQuery with GCP auth requires a service account credentials object. The adapter abstracts these provider-specific flows behind a uniform interface.
+The IAMAuth settings class captures the cloud provider and role/identity configuration. The Cloud Native Auth adapter translates these into the specific credential format each database driver expects. For example, connecting to BigQuery with GCP auth requires a service account credentials object. The adapter abstracts these provider-specific flows behind a uniform interface.
 
 ### What is the SSL Bundle adapter and when would I use it?
 

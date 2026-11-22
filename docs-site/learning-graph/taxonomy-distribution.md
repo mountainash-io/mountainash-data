@@ -256,7 +256,7 @@ All categories are under the 30% threshold. Good balance!
 - 103. Connection URL Construction
 - 104. SettingsParameters Construction
 - 106. Connect-Time Auth Composition
-- 143. Credential Redaction
+- 143. Safe Connection Errors
 - 144. BackendConnectionError
 
 ### Extending and Contributing (EXT)

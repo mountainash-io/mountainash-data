@@ -330,11 +330,11 @@ The progression is concepts (ch 1) → package use (ch 2–10) → internals (ch
 - **Purpose:** How BackendProfile config and AuthProfile credentials become driver kwargs and URLs.
 - **Audiences:** backend-architecture, maintainers, extension-authors, contributors
 - **Prerequisite chapters:** 2, 3
-- **Sections:** ConnectionFactory; The auth adapter registry; Credential transformation and adapter families (OAuth, JWT, cloud-native, SSL bundle); build_driver_kwargs; Supported-auth validation; build_connection_string; Credential redaction
+- **Sections:** ConnectionFactory; The auth adapter registry; Credential transformation and adapter families (OAuth, JWT, cloud-native, SSL bundle); build_driver_kwargs; Supported-auth validation; build_connection_string; Safe connection errors
 - **Why a chapter:** The internals behind chapter 3, kept apart so users never need them.
 - **Reuse (verify first):** None from old ch07 (its API is gone); CLAUDE.md settings section as a checked outline.
 - **Visuals:** Mermaid pipeline: profile.emit → adapter → kwargs.
-- **Sources:** `src/mountainash_data/core/_redact.py`, `src/mountainash_data/core/factories/connection_factory.py`, `src/mountainash_data/core/settings/adapters`
+- **Sources:** `src/mountainash_data/core/_safe_errors.py`, `src/mountainash_data/core/factories/connection_factory.py`, `src/mountainash_data/core/settings/adapters`
 
 | ID | Concept | CIS | Weight | Source module |
 |---|---|---|---|---|
@@ -349,7 +349,7 @@ The progression is concepts (ch 1) → package use (ch 2–10) → internals (ch
 | 90 | SSL Bundle Adapter | 1 | brief | core.settings.adapters |
 | 109 | Supported Auth Validation | 4 | brief | core.factories |
 | 108 | build_connection_string Function | 3 | brief | core.factories |
-| 143 | Credential Redaction | 2 | brief | core._redact |
+| 143 | Safe Connection Errors | 2 | brief | core._safe_errors |
 
 ### 13. Transaction and adoption internals
 
@@ -437,7 +437,7 @@ Prerequisites must come earlier in reading order. These dependencies encoded int
 | 97 DDL Index Support | 118 IndexCapability Descriptor | same |
 | 100 Unimplemented Operations | 123 Hook Dispatch Order | NotImplementedError is user-facing; dispatch order is architecture |
 | 112 Catalog-Qualified Namespace Limits | 122 Generic-Default Operations | namespace limits are user-facing; generic-default internals later |
-| 144 BackendConnectionError | 143 Credential Redaction | BackendConnectionError is user-facing; redaction internals later |
+| 144 BackendConnectionError | 143 Safe Connection Errors | BackendConnectionError is user-facing; safe-error internals later |
 
 After the edits, every one of the 139 concepts has exactly one primary chapter, and every remaining prerequisite appears earlier (checked mechanically).
 
