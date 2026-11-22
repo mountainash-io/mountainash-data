@@ -159,7 +159,14 @@ def test_unknown_dialect_echoes_plain_identifiers_only():
     assert S not in exception_surfaces(info.value)
 
 
-def test_listing_print_uses_safe_detail(capsys):
-    from mountainash_data.core._safe_errors import safe_detail
-
-    assert safe_detail(NativeError()) == "NativeError"
+@pytest.mark.parametrize(
+    ("method", "attr"),
+    [("list_namespaces", "list_databases"), ("list_catalogs", "list_catalogs"), ("list_tables", "list_tables")],
+)
+def test_listing_failure_prints_class_name_only(monkeypatch, capsys, method, attr):
+    with IbisBackend(dialect="duckdb", database=":memory:") as backend:
+        monkeypatch.setattr(backend.ibis_connection(), attr, _boom)
+        getattr(backend, method)()
+    out = capsys.readouterr()
+    assert "NativeError" in out.out
+    assert S not in out.out + out.err

@@ -50,7 +50,7 @@ def test_construction_needs_no_driver(block_modules):
     assert backend.dialect == "duckdb"
 
 
-def test_dialect_connect_names_extra_and_keeps_cause(block_modules):
+def test_dialect_connect_names_extra_and_clears_cause(block_modules):
     block_modules("duckdb", ibis_backend="duckdb")
     with pytest.raises(ImportError) as info:
         IbisBackend(dialect="duckdb", database=":memory:").connect()
