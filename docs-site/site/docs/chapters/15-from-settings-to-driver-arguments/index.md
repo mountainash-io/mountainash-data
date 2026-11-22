@@ -99,28 +99,22 @@ print(build_driver_kwargs(profile, PasswordAuthProfile(USERNAME="app", PASSWORD=
 
 The returned dict contains plain secrets. It is meant to be passed straight to a driver, not logged.
 
-On the settings path, the connection builder that receives these kwargs is chosen by the profile's `BackendSpec.ibis_dialect`, while the auth adapter is chosen by its `provider_type`. For most backends the two agree. For the rides-on backends they do not: `RedshiftBackendProfile` resolves to the `postgres` dialect entry and `MotherDuckBackendProfile` to `duckdb`, so the MotherDuck token reaches the plain DuckDB builder, which opens an in-memory database and passes `token` to DuckDB as a configuration option:
+On the settings path, the connection builder that receives these kwargs is chosen by the profile's `BackendSpec.ibis_dialect`, which is the profile's own `DIALECTS` key, while the auth adapter is chosen by its `provider_type`. The two agree for every built-in profile: `MotherDuckBackendProfile` resolves to the `motherduck` dialect, so its token reaches the MotherDuck builder, which puts it in the `duckdb://md:<database>?motherduck_token=...` URL, and `RedshiftBackendProfile` resolves to `redshift`:
 
 ```python
 from mountainash_data import IbisBackend
-from mountainash_data.core.settings import MotherDuckBackendProfile, TokenAuthProfile
+from mountainash_data.core.settings import MotherDuckBackendProfile
 from mountainash_settings import SettingsParameters
 
 params = SettingsParameters.create(settings_class=MotherDuckBackendProfile, DATABASE="analytics")
-backend = IbisBackend(params)
-print(backend.dialect)
-try:
-    backend.connect(auth_profile=TokenAuthProfile(TOKEN="tok-123"))
-except Exception as exc:
-    print(f"{type(exc).__name__}: {exc}")
+print(IbisBackend(params).dialect)
 ```
 
 ```text
-duckdb
-InvalidInputException: Invalid Input Error: The following options were not recognized: token
+motherduck
 ```
 
-No test builds an `IbisBackend` from MotherDuck or Redshift settings. Until the settings path honours these backends, connect to MotherDuck with `IbisBackend(dialect="motherduck", database=..., token=...)` or a `duckdb://md:` URL, which use the MotherDuck builder.
+Tests build `IbisBackend` from MotherDuck settings against a recorder in place of `ibis.connect` and assert that the token arrives in the `md:` URL; they are configuration-flow evidence, not a live MotherDuck connection.
 
 ## Adapter families
 
@@ -129,7 +123,7 @@ The registered adapters fall into four families by the shape of credential they 
 ```python
 from mountainash_data.core.factories.connection_factory import build_driver_kwargs
 from mountainash_data.core.settings import (
-    AzureADAuthProfile, IAMAuthProfile, MSSQLBackendProfile, MySQLBackendProfile,
+    AzureADAuthProfile, MSSQLBackendProfile, MySQLBackendProfile,
     OAuth2AuthProfile, PasswordAuthProfile, RedshiftBackendProfile, SnowflakeBackendProfile,
 )
 
@@ -138,8 +132,8 @@ oauth = OAuth2AuthProfile(ACCESS_TOKEN="eyJ-access", CLIENT_ID="app", CLIENT_SEC
 print(build_driver_kwargs(snowflake, oauth))
 
 redshift = RedshiftBackendProfile(HOST="wg.example", DATABASE="dev", REGION="ap-southeast-2")
-iam = IAMAuthProfile(ROLE_ARN="arn:aws:iam::123456789012:role/etl")
-print(build_driver_kwargs(redshift, iam))
+rs_auth = PasswordAuthProfile(USERNAME="etl", PASSWORD="pw")
+print(build_driver_kwargs(redshift, rs_auth))
 
 mssql = MSSQLBackendProfile(HOST="sql.example", DATABASE="app", INSTANCE_NAME="PROD")
 print(build_driver_kwargs(mssql, AzureADAuthProfile(MANAGED_IDENTITY=True)))
@@ -151,7 +145,7 @@ print(build_driver_kwargs(mysql, PasswordAuthProfile(USERNAME="app", PASSWORD="p
 
 ```text
 {'account': 'acme-xy123', 'session_parameters': {'QUERY_TAG': 'nightly'}, 'authenticator': 'oauth', 'token': 'eyJ-access'}
-{'host': 'wg.example', 'port': 5439, 'database': 'dev', 'sslmode': <RedshiftSSLMode.VERIFY_FULL: 'verify-full'>, 'readonly': False, 'iam': True, 'iam_role_arn': 'arn:aws:iam::123456789012:role/etl'}
+{'host': 'wg.example', 'port': 5439, 'database': 'dev', 'sslmode': <RedshiftSSLMode.VERIFY_FULL: 'verify-full'>, 'user': 'etl', 'password': 'pw'}
 {'host': 'sql.example\\PROD', 'port': 1433, 'database': 'app', 'driver': <MSSQLDriver.ODBC_18: 'ODBC Driver 18 for SQL Server'>, 'application_name': 'MountainAsh', 'encrypt': 'yes', 'authentication': 'ActiveDirectoryMsi'}
 {'host': 'mysql.example', 'port': 3306, 'charset': 'utf8mb4', 'collation': 'utf8mb4_unicode_ci', 'autocommit': True, 'ssl_mode': 'VERIFY_CA', 'ssl': {'ssl-cert': '/etc/ssl/client.pem', 'ssl-ca': '/etc/ssl/ca.pem'}, 'user': 'app', 'password': 'pw'}
 ```
@@ -163,9 +157,9 @@ The OAuth family is Snowflake's. Both `TokenAuthProfile` and `OAuth2AuthProfile`
 The JWT family is Trino's. Trino's driver takes authentication as an object, so the adapters construct one from the driver's own module: `JWTAuthProfile` becomes `auth=trino.auth.JWTAuthentication(token)`, `PasswordAuthProfile` becomes `user` plus `auth=BasicAuthentication(user, password)`, and `KerberosAuthProfile` becomes `auth=KerberosAuthentication(service_name=..., principal=...)` (`src/mountainash_data/core/settings/adapters/trino.py`). Because these adapters import `trino.auth`, they need the `trino` extra installed. That is why `IbisBackend.connect()` imports the dialect's Ibis backend before it resolves auth: a missing driver surfaces as the `ImportError` naming the extra, not as a failure inside an adapter. The Kerberos adapter does not pass `KEYTAB`, and these adapters are not run in this book because the Trino driver is not part of the local install.
 
 <!-- concept:89 -->
-Cloud-native adapters map a cloud identity rather than a database password. `IAMAuthProfile` on Redshift sets `iam=True` and copies `ROLE_ARN`, access keys, session token and AWS profile name to `iam_role_arn`, `aws_access_key_id` and related keys. `AzureADAuthProfile` on SQL Server sets `authentication="ActiveDirectoryMsi"` for a managed identity, or `ActiveDirectoryServicePrincipal` with `user_id`, `password` and `tenant_id` for a service principal; `WindowsAuthProfile` sets `trusted_connection="yes"` and an optional `DOMAIN\user`. `ServiceAccountAuthProfile` on BigQuery parses `INFO` (a JSON string) or reads `FILE` into a `google.oauth2` credentials object under `credentials`; an `INFO` that is not valid JSON raises a `ValueError` whose message omits the document.
+Cloud-native adapters map a cloud identity rather than a database password. Redshift has no such adapter: Ibis reaches it through psycopg, which has no IAM mechanism, so `IAMAuthProfile` is not accepted there. `AzureADAuthProfile` on SQL Server sets `authentication="ActiveDirectoryMsi"` for a managed identity, or `ActiveDirectoryServicePrincipal` with `user_id`, `password` and `tenant_id` for a service principal; `WindowsAuthProfile` sets `trusted_connection="yes"` and an optional `DOMAIN\user`. `ServiceAccountAuthProfile` on BigQuery parses `INFO` (a JSON string) or reads `FILE` into a `google.oauth2` credentials object under `credentials`; an `INFO` that is not valid JSON raises a `ValueError` whose message omits the document.
 
-Two of these do not currently reach a working connection through `IbisBackend`, and no test connects either one. The Redshift dialect connects through the PostgreSQL builder and Ibis's psycopg backend, and psycopg rejects options it does not know: `psycopg.conninfo.make_conninfo(iam=True)` raises `ProgrammingError: invalid connection option "iam"`, and the same applies to the `readonly` key the Redshift profile emits by default (shown in the output above). The BigQuery adapter emits `credentials`, but the BigQuery connection builder reads only `credentials_info`, `project_id` and `dataset_id` (`src/mountainash_data/backends/ibis/dialects/_registry.py`), so the service-account credentials are dropped and the builder falls back to application default credentials.
+The BigQuery builder passes `credentials` (and `project_id`, `dataset_id`, `location`, `application_name`, `partition_column` and the three `auth_*` options) to `ibis.bigquery.connect` in a single call; `credentials_info` supplied with `dialect=` is translated into `credentials` and keeps `project_id`. On Redshift, `CLUSTER_READ_ONLY=True` emits the libpq option `options="-c default_transaction_read_only=on"`, which psycopg accepts; a caller-supplied `options=` replaces it rather than merging. The server-side effect is not demonstrated offline.
 
 <!-- concept:90 -->
 The SSL bundle adapter is MySQL's configuration adapter, `mysql.ssl_compose`. The MySQL profile exposes `SSL_MODE`, `SSL_KEY`, `SSL_CERT`, `SSL_CA`, `SSL_CAPATH` and `SSL_CIPHER` as separate typed fields with no driver key of their own. The adapter emits `ssl_mode` as a string and bundles whichever file and cipher fields are set into a single `ssl` dict with the driver's hyphenated key names (`ssl-ca`, `ssl-cert`, and so on), omitting the dict entirely when none are set. It runs during `emit`, before any auth adapter, so it applies whatever credentials are supplied. SQL Server's `host_fold` does the equivalent for its TLS options, turning `ENCRYPTION`, `TRUST_SERVER_CERTIFICATE` and `MARS_ENABLED` into `encrypt`, `trust_server_certificate` and `mars_connection`.
@@ -232,25 +226,18 @@ except NotImplementedError as exc:
 postgresql://db.example:5432/app
 postgresql://app%40corp:p%2Fss%3Aw%40rd@db.example:5432/app
 sqlite:/data/app.db
-md:analytics?motherduck_token=md%20tok
+duckdb://md:analytics?motherduck_token=md%20tok
 NotImplementedError: snowflake: no URL form for TokenAuthProfile
 ```
 
-The URL carries only the skeleton fields; driver options such as `sslmode` are not included. It is also not guaranteed to be accepted by `IbisBackend`'s URL form, which requires `scheme://` and a scheme known to the dialect registry. A password URL for PostgreSQL round-trips (the URL path decodes the credentials back into a `PasswordAuthProfile`; `tests/test_unit/backends/ibis/test_credential_urls.py`), but the authority-less SQLite and MotherDuck forms are read as dialect names, and a Redshift URL fails:
+The URL carries only the skeleton fields; driver options such as `sslmode` are not included. Every scheme emitted is one `IbisBackend` accepts: Redshift emits `postgresql://`, MotherDuck `duckdb://md:<db>`, BigQuery `bigquery://<project>/<dataset>` and Snowflake `snowflake://<account>/<database>/<schema>?warehouse=...&role=...`. A URL built with a password round-trips (the URL path decodes the credentials back into a `PasswordAuthProfile`; `tests/test_unit/backends/ibis/test_url_roundtrip.py`). A URL-built Redshift backend is a plain `postgres` backend; Redshift-specific behaviour needs a settings profile or `dialect="redshift"`.
 
-```text
-redshift://etl:pw@wg.example:5439/dev
-ValueError: Cannot detect ibis dialect from URL scheme: 'redshift'
-```
-
-That output comes from passing `build_connection_string(RedshiftBackendProfile(...), PasswordAuthProfile(...))` to `IbisBackend`. For these backends, construct the `IbisBackend` from settings instead.
-
-## Credential redaction
+## Safe connection errors
 
 <!-- concept:143 -->
-Connection URLs can reach exception messages: Ibis echoes the whole connection string in errors such as "Don't know how to connect to ...", and drivers often include it too. Every `ibis.connect` call the package makes, on the URL path and in the URL-style connection builders, runs inside `connect_redacted` (`src/mountainash_data/core/_redact.py`). If the raised exception's text contains credentials, it is replaced: URL userinfo becomes `***@`, values of secret-looking query keys (`token`, `motherduck_token`, `access_token`, `password`, `pwd`, `secret`, `api_key` and similar) become `***`, and any explicitly supplied secret is removed in raw, percent-encoded and plus-encoded forms. The builders pass the values of `password`, `passwd`, `token` and `access_token` keyword arguments, and the MotherDuck token, as those explicit secrets. Builders that call a backend's own `connect()` directly (ClickHouse, Databricks, SingleStoreDB, Exasol, Impala, Materialize, RisingWave, Druid, BigQuery) are not wrapped, because they never build a URL. A builtin exception type is rebuilt as the same type, so `except ValueError` still works; a driver exception becomes `mountainash_data.core.errors.BackendConnectionError`. The replacement is raised without the original attached as its cause or context, so the credential-bearing text is not reachable through the traceback. An exception that carried no credentials propagates unchanged.
+Connection URLs can reach exception messages: Ibis echoes the whole connection string in errors such as "Don't know how to connect to ...", and drivers often include it too. `IbisBackend.connect()` therefore wraps the whole connect composition (settings kwargs, auth resolution, builder and `ibis.connect`) in one boundary and raises `BackendConnectionError` with a message built from parts known to be safe (`src/mountainash_data/core/_safe_errors.py`): `<location>: connection failed (<detail>)`. `safe_location` keeps a URL's scheme, host, port and path and drops user-info, query and fragment (a string that starts with a scheme but is not `scheme://` shows as `***`); `safe_detail` is the native exception's class name, or `[Errno N] strerror` for an `OSError` with an errno; `raise_safe` chains only a fresh errno-only `OSError` and always clears `__context__`. Nothing is matched or masked, so a short or unusual secret cannot be partly left behind. The public `build_driver_kwargs` and `build_connection_string` apply the same rule to adapter failures.
 
-Redaction is paired with keeping credentials out of URLs in the first place. On the URL path, `IbisBackend` strips `user:password@` from the URL before Ibis sees it and supplies the decoded values as driver keyword arguments. A URL that cannot be parsed fails with a message that contains none of the URL:
+On the URL path, `IbisBackend` also strips `user:password@` from the URL before Ibis sees it and supplies the decoded values as driver keyword arguments. A URL that cannot be parsed fails with a message that contains none of the URL:
 
 ```python
 from mountainash_data import IbisBackend
@@ -265,4 +252,4 @@ except ValueError as exc:
 ValueError: Invalid connection URL (value redacted): percent-encode credentials with urllib.parse.quote(value, safe='') or pass an auth profile
 ```
 
-The redaction is pattern-based. A secret inside a non-URL driver message, or under a query key outside the pattern list, is removed only if it was passed in as an explicit secret (profile record `core._redact`). The module is covered only indirectly, through the credential-URL tests (`coverage.md`).
+Unknown schemes and unknown dialect names never echo the input beyond a plain identifier. The module is covered by `tests/test_unit/core/test_safe_errors.py` (the rendering table, the safe list) and by the sentinel walk in `tests/test_unit/backends/ibis/test_connect_safe_errors.py`, which injects failures at each boundary and checks every surface of the raised error. Adoption paths (`from_raw_connection`, `from_ibis_connection`) receive no credentials and are not part of that claim.

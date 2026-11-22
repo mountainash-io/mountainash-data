@@ -6,7 +6,7 @@ date: 2026-10-29
 
 # Connection profiles and authentication
 
-A connection profile is a typed, validated description of how to reach one database: host, port, database name, SSL mode and the other options that database's driver accepts. Each of the 20 supported backends has a `*BackendProfile` class in `mountainash_data.core.settings`, such as `PostgreSQLBackendProfile`, `SnowflakeBackendProfile` or `SQLiteBackendProfile`, and these are the objects that mountainash-settings sources (configuration files, environment variables and secret stores) populate, as shown in [Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md). Profiles hold configuration only. Credentials live in separate auth profiles from mountainash-auth-client (`PasswordAuthProfile`, `TokenAuthProfile`, `IAMAuthProfile` and others), which `IbisBackend.connect()` combines with the profile into driver arguments at the moment it connects.
+A connection profile is a typed, validated description of how to reach one database: host, port, database name, SSL mode and the other options that database's driver accepts. Each of the 20 supported backends has a `*BackendProfile` class in `mountainash_data.core.settings`, such as `PostgreSQLBackendProfile`, `SnowflakeBackendProfile` or `SQLiteBackendProfile`, and these are the objects that mountainash-settings sources (configuration files, environment variables and secret stores) populate, as shown in [Configuring connections with mountainash-settings](../04-configuring-connections-with-mountainash-settings/index.md). Profiles hold configuration only. Credentials live in separate auth profiles from mountainash-auth-client (`PasswordAuthProfile`, `TokenAuthProfile` and others), which `IbisBackend.connect()` combines with the profile into driver arguments at the moment it connects.
 
 <!-- concept:67 -->
 ## BackendProfile and SettingsParameters
@@ -162,7 +162,7 @@ Registration is a side effect of import. Each backend's profile lives in its own
 <!-- concept:147 -->
 ## Rides-on backends
 
-Two backends have no Ibis backend of their own and connect through another one. MotherDuck rides on DuckDB, and Redshift rides on PostgreSQL. Their specs record this in `rides_on` and set `ibis_dialect` to the underlying dialect, so a settings-built backend resolves to that dialect:
+Two backends ride on another engine: MotherDuck on DuckDB, and Redshift on PostgreSQL. Their specs record this in `rides_on` (metadata) and set `ibis_dialect` to their own `DIALECTS` key, so a settings-built backend resolves to the `motherduck` or `redshift` entry:
 
 ```python
 from mountainash_settings import SettingsParameters
@@ -187,12 +187,12 @@ print(IbisBackend(md).dialect, IbisBackend(rs).dialect)
 ```
 
 ```text
-motherduck duckdb duckdb
-redshift postgres postgres
-duckdb postgres
+motherduck duckdb motherduck
+redshift postgres redshift
+motherduck redshift
 ```
 
-The profile still decides what is sent: the MotherDuck and Redshift profiles have their own fields, URL schemes and auth adapters (a MotherDuck token, Redshift IAM credentials), and those shape the driver arguments before the underlying dialect connects. `rides_on` itself is metadata; nothing dispatches on it. The dialect registry also has its own `motherduck` and `redshift` entries, reached with `dialect="motherduck"` or `dialect="redshift"` (and, for MotherDuck, a `duckdb://md:` URL); see [Installing and connecting](../02-installing-and-connecting/index.md). Per-dialect operation support for these entries is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md).
+The profile decides what is sent: the MotherDuck and Redshift profiles have their own fields, URL schemes and auth adapters (a MotherDuck token; Redshift password only, since psycopg has no IAM), and the MotherDuck builder turns the token into the `duckdb://md:<database>?motherduck_token=...` URL. `rides_on` itself is metadata; nothing dispatches on it. See [Installing and connecting](../02-installing-and-connecting/index.md). Per-dialect operation support for these entries is listed in [Supported databases and limits](../13-supported-databases-and-limits/index.md).
 
 ## Backend profile reference
 
@@ -218,22 +218,22 @@ All 20 profile classes are exported from `mountainash_data.core.settings`. The t
 | `exasol` | `ExasolBackendProfile` | `exasol` | 8563 | `exasol://` | `HOST` | Password |
 | `impala` | `ImpalaBackendProfile` | `impala` | 21050 | `impala://` | `HOST` | Password, NoAuth |
 | `materialize` | `MaterializeBackendProfile` | `materialize` | 6875 | `materialize://` | `HOST` | Password, NoAuth |
-| `motherduck` | `MotherDuckBackendProfile` | `duckdb` (rides on `duckdb`) | none | `duckdb://md:` | none | Token |
+| `motherduck` | `MotherDuckBackendProfile` | `motherduck` (rides on `duckdb`) | none | `duckdb://md:` | none | Token |
 | `mssql` | `MSSQLBackendProfile` | `mssql` | 1433 | `mssql://` | `HOST` | Password, Windows, AzureAD |
 | `mysql` | `MySQLBackendProfile` | `mysql` | 3306 | `mysql://` | `HOST` | Password |
 | `oracle` | `OracleBackendProfile` | `oracle` | 1521 | `oracle://` | `HOST` | Password |
 | `postgresql` | `PostgreSQLBackendProfile` | `postgres` | 5432 | `postgresql://` | `HOST` | Password, NoAuth |
 | `pyspark` | `PySparkBackendProfile` | `pyspark` | none | none | none | NoAuth |
-| `redshift` | `RedshiftBackendProfile` | `postgres` (rides on `postgres`) | 5439 | `redshift://` | `HOST`, `DATABASE`, `REGION` | Password, IAM |
+| `redshift` | `RedshiftBackendProfile` | `redshift` (rides on `postgres`) | 5439 | `postgresql://` | `HOST`, `DATABASE`, `REGION` | Password |
 | `risingwave` | `RisingWaveBackendProfile` | `risingwave` | 5432 | `risingwave://` | `HOST` | Password, NoAuth |
 | `singlestoredb` | `SingleStoreDBBackendProfile` | `singlestoredb` | 3306 | `singlestoredb://` | `HOST` | Password, NoAuth |
 | `snowflake` | `SnowflakeBackendProfile` | `snowflake` | none | `snowflake://` | `ACCOUNT` | Password, OAuth2, Certificate, Token |
 | `sqlite` | `SQLiteBackendProfile` | `sqlite` | none | `sqlite://` | none | NoAuth |
 | `trino` | `TrinoBackendProfile` | `trino` | 8080 | `trino://` | `HOST`, `CATALOG` | Password, JWT, Kerberos, NoAuth |
 
-A few profiles do more than map fields to driver keys. BigQuery validates the project ID, DuckDB the memory-limit format, and Redshift the AWS region and role ARN. The MSSQL, MySQL and Snowflake profiles reshape the driver arguments with profile adapters, for example appending a SQL Server instance name to the host, or moving Snowflake's time zone and query tag into session parameters. MotherDuck overrides `to_url_parts()` to produce its `md:` form. Several profiles define enums for constrained fields, such as `PostgresSSLMode` and `SnowflakeAuthenticator`. The complete field list for any profile is in its spec, `get_descriptor(name).parameters`.
+A few profiles do more than map fields to driver keys. BigQuery validates the project ID, DuckDB the memory-limit format, and Redshift the AWS region and role ARN. The MSSQL, MySQL and Snowflake profiles reshape the driver arguments with profile adapters, for example appending a SQL Server instance name to the host, or moving Snowflake's time zone and query tag into session parameters. Several profiles override `to_url_parts()` to match the URL form Ibis parses: MotherDuck produces `duckdb://md:<db>`, BigQuery `bigquery://<project>/<dataset>`, Snowflake `snowflake://<account>/<database>/<schema>?warehouse=...&role=...`, Trino `trino://<host>/<catalog>/<schema>` and Exasol `exasol://<host>/<schema>`. Several profiles define enums for constrained fields, such as `PostgresSSLMode` and `SnowflakeAuthenticator`. The complete field list for any profile is in its spec, `get_descriptor(name).parameters`.
 
-The URL scheme column is the profile's own scheme. It is not always one that `IbisBackend` accepts as a URL: `redshift://` is not detected as a dialect, so Redshift connects through a profile or `dialect="redshift"`.
+The URL scheme column is the profile's own scheme, and every scheme listed is one `IbisBackend` accepts (Redshift uses `postgresql://`, which resolves to `postgres`; Redshift-specific behaviour needs a settings profile or `dialect="redshift"`).
 
 <!-- concept:105 -->
 ## Auth profiles
@@ -282,14 +282,13 @@ The package re-exports eleven concrete auth types. The table lists each type's f
 | `TokenAuthProfile` | `TOKEN` | databricks, motherduck, snowflake |
 | `JWTAuthProfile` | `TOKEN` | trino |
 | `OAuth2AuthProfile` | `CLIENT_ID`, `CLIENT_SECRET`, `ACCESS_TOKEN`, `REFRESH_TOKEN`, `SCOPE` | snowflake |
-| `IAMAuthProfile` | `ROLE_ARN`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `SESSION_TOKEN`, `PROFILE_NAME` | redshift |
 | `WindowsAuthProfile` | `USERNAME`, `DOMAIN` | mssql |
 | `AzureADAuthProfile` | `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET`, `MANAGED_IDENTITY`, `MSI_ENDPOINT` | mssql |
 | `KerberosAuthProfile` | `SERVICE_NAME`, `PRINCIPAL`, `KEYTAB` | trino |
 | `CertificateAuthProfile` | `PRIVATE_KEY`, `PRIVATE_KEY_PATH`, `PASSPHRASE` | snowflake |
 | `ServiceAccountAuthProfile` | `INFO`, `FILE` | bigquery |
 
-`NoAuthProfile` carries nothing and means "connect without package-supplied credentials". It is the right choice for file and in-process databases, and for servers that authenticate the process some other way. `PasswordAuthProfile` is the common case for SQL servers: for the flat user-and-password backends it becomes the driver's `user` and `password` arguments, while Snowflake, Databricks, Trino, SQL Server and Redshift have their own adapters for it. `TokenAuthProfile` holds one bearer secret, used as a MotherDuck token, a Databricks access token or a Snowflake token. `IAMAuthProfile` is Redshift's AWS identity route: every field is optional, so it can name a role ARN, explicit keys, a session token or a named AWS profile, and the adapter enables IAM authentication and passes only the fields that are set.
+`NoAuthProfile` carries nothing and means "connect without package-supplied credentials". It is the right choice for file and in-process databases, and for servers that authenticate the process some other way. `PasswordAuthProfile` is the common case for SQL servers: for the flat user-and-password backends it becomes the driver's `user` and `password` arguments, while Snowflake, Databricks, Trino, SQL Server and Redshift have their own adapters for it. `TokenAuthProfile` holds one bearer secret, used as a MotherDuck token, a Databricks access token or a Snowflake token. Redshift accepts password auth only: Ibis reaches it through psycopg, which has no IAM mechanism.
 
 <!-- concept:106 -->
 ## Connect-time composition

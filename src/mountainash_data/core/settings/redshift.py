@@ -14,7 +14,7 @@ from enum import StrEnum
 from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
-from mountainash_auth_client import IAMAuthProfile, PasswordAuthProfile
+from mountainash_auth_client import PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
 from .profile import BackendProfile
 from .registry import register
@@ -37,10 +37,10 @@ REDSHIFT_SPEC = BackendSpec(
     name="redshift",
     provider_type=CONST_DB_PROVIDER_TYPE.REDSHIFT,
     default_port=5439,
-    connection_string_scheme="redshift://",
-    ibis_dialect="postgres",
+    connection_string_scheme="postgresql://",  # ibis.connect rejects redshift://,
+    ibis_dialect="redshift",
     rides_on="postgres",
-    supported_auth=(PasswordAuthProfile, IAMAuthProfile),
+    supported_auth=(PasswordAuthProfile,),
     parameters=[
         ParameterSpec(name="HOST", type=str, tier="core", driver_key="host"),
         ParameterSpec(name="PORT", type=int, tier="core", default=5439,
@@ -61,7 +61,9 @@ REDSHIFT_SPEC = BackendSpec(
                       default=RedshiftSSLMode.VERIFY_FULL,
                       driver_key="sslmode"),
         ParameterSpec(name="CLUSTER_READ_ONLY", type=bool, tier="advanced",
-                      default=False, driver_key="readonly"),
+                      default=False,
+                      description="True emits libpq options "
+                                  "'-c default_transaction_read_only=on'."),
     ],
 )
 
@@ -69,6 +71,12 @@ REDSHIFT_SPEC = BackendSpec(
 @register
 class RedshiftBackendProfile(BackendProfile):
     __spec__ = REDSHIFT_SPEC
+
+    def emit(self, target=None, **kwargs):  # type: ignore[no-untyped-def]
+        out = super().emit(target, **kwargs) if target is not None else super().emit(**kwargs)
+        if self.CLUSTER_READ_ONLY:
+            out["options"] = "-c default_transaction_read_only=on"
+        return out
 
     @field_validator("REGION", check_fields=False)
     @classmethod

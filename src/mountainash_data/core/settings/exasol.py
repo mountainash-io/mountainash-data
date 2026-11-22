@@ -7,10 +7,13 @@ Ibis: ``ibis.exasol.connect(user, password, host, port, timezone,
 
 from __future__ import annotations
 
+from dataclasses import replace
+from urllib.parse import quote
+
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import PasswordAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import BackendProfile
+from .profile import BackendProfile, UrlParts
 from .registry import register
 
 
@@ -36,3 +39,9 @@ EXASOL_SPEC = BackendSpec(
 @register
 class ExasolBackendProfile(BackendProfile):
     __spec__ = EXASOL_SPEC
+
+    def to_url_parts(self) -> UrlParts:
+        # Ibis exasol _from_url: exasol://u:p@host:port/<schema>
+        base = super().to_url_parts()
+        schema = getattr(self, "SCHEMA", None)
+        return replace(base, database=None, path="/" + quote(str(schema), safe="") if schema else None)

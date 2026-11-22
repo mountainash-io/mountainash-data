@@ -1,10 +1,12 @@
 """ConnectionFactory: compose BackendProfile config + AuthProfile creds."""
 from __future__ import annotations
 import typing as t
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from mountainash_auth_client import NoAuthProfile, PasswordAuthProfile, TokenAuthProfile, AuthProfile
+from mountainash_data.core._safe_errors import raise_safe, safe_detail
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
+from mountainash_data.core.errors import BackendConnectionError
 from mountainash_data.core.settings.profile import UrlParts
 from mountainash_data.core.settings.adapters.registry import auth_adapter
 
@@ -17,6 +19,24 @@ def _iter_specs() -> t.Iterator[t.Any]:
         yield v.__spec__ if hasattr(v, "__spec__") else v
 
 
+def _safe_call(where: t.Any, fn: t.Callable[..., t.Any], *args: t.Any) -> t.Any:
+    """Call ``fn``; any failure becomes a credential-free BackendConnectionError (W8).
+
+    Adapters build credentials (key files, JSON, driver auth objects), so their
+    native errors can carry secrets: only the exception class / errno is shown.
+    """
+    where = getattr(where, "name", where)
+    failure: Exception | None = None
+    try:
+        return fn(*args)
+    except Exception as exc:  # noqa: BLE001 - re-raised below as a safe error
+        failure = exc
+    raise_safe(
+        BackendConnectionError(f"{where}: connection failed ({safe_detail(failure)})"),
+        failure,
+    )
+
+
 def provider_for_dialect(dialect: str) -> t.Any:
     matches = [
         spec.provider_type
@@ -25,30 +45,20 @@ def provider_for_dialect(dialect: str) -> t.Any:
     ]
     if not matches:
         raise KeyError(f"no provider_type for ibis dialect {dialect!r}")
-    if len(matches) == 1:
-        return matches[0]
-    # Multiple providers share one ibis dialect (postgres: postgresql+redshift;
-    # duckdb: duckdb+motherduck). Resolve deterministically to the canonical base.
-    for pt in matches:                       # exact provider name == dialect wins
-        if pt.name.lower() == dialect:
-            return pt
-    corresponding = sorted(                  # else the name-corresponding match, deterministically
-        (pt for pt in matches
-         if pt.name.lower().startswith(dialect) or dialect.startswith(pt.name.lower())),
-        key=lambda p: p.name,
-    )
-    if corresponding:
-        return corresponding[0]
-    return sorted(matches, key=lambda p: p.name)[0]
+    # Built-in profiles map one-to-one to dialects; extra registered profiles may
+    # share a dialect, in which case the first-registered (built-in) wins.
+    return matches[0]
 
 
 def provider_for_scheme(scheme: str) -> t.Any:
-    norm = scheme.rstrip(":/")
-    for spec in _iter_specs():
-        s = getattr(spec, "connection_string_scheme", None)
-        if s and s.rstrip(":/") == norm:
-            return spec.provider_type
-    raise KeyError(f"no provider_type for URL scheme {scheme!r}")
+    """Provider for a URL scheme: ``_SCHEME_TO_DIALECT`` (sole table) then the dialect's profile."""
+    # Lazy: backend.py imports this module at load time.
+    from mountainash_data.backends.ibis.backend import _SCHEME_TO_DIALECT
+
+    dialect = _SCHEME_TO_DIALECT.get(scheme.rstrip(":/").lower())
+    if dialect is None:
+        raise KeyError(f"no provider_type for URL scheme {scheme!r}")
+    return provider_for_dialect(dialect)
 
 
 def _normalize_and_validate_auth(profile: t.Any, auth_profile: AuthProfile | None) -> AuthProfile:
@@ -66,22 +76,30 @@ def apply_auth_adapter(provider_type: t.Any, base: dict, auth_profile: AuthProfi
     if fn is None:
         raise ValueError(f"{provider_type}: no auth adapter for {type(auth_profile).__name__}")
     base = dict(base)
-    return fn(auth_profile, base)
+    return _safe_call(provider_type, fn, auth_profile, base)
 
 
 def build_driver_kwargs(profile: t.Any, auth_profile: AuthProfile | None = None) -> dict:
     auth = _normalize_and_validate_auth(profile, auth_profile)
     target = profile.__spec__.provider_type
-    base = profile.emit(target)
+    base = _safe_call(target, profile.emit, target)
     if isinstance(auth, NoAuthProfile):
         return base
     fn = auth_adapter(target, type(auth))
     if fn is None:
         raise ValueError(f"{profile.profile_name}: no auth adapter for {type(auth).__name__}")
-    return fn(auth, base)
+    return _safe_call(target, fn, auth, base)
 
 
 # --- URL appliers (L3 for the URL target) ---------------------------------
+
+def _url_tail(parts: UrlParts) -> str:
+    """``/path`` (or ``/database``) plus URL-encoded query, after the authority."""
+    tail = parts.path or (f"/{parts.database}" if parts.database is not None else "")
+    if parts.query:
+        tail += "?" + urlencode(parts.query)
+    return tail
+
 
 def _url_password(parts: UrlParts, auth: t.Any) -> str:
     if parts.host is None:
@@ -90,21 +108,18 @@ def _url_password(parts: UrlParts, auth: t.Any) -> str:
     url = f"{parts.scheme}://{user}:{pw}@{parts.host}"
     if parts.port is not None:
         url += f":{parts.port}"
-    if parts.database is not None:
-        url += f"/{parts.database}"
-    return url
+    return url + _url_tail(parts)
 
 
 def _url_noauth(parts: UrlParts) -> str:
     if parts.host is None:
         # authority-less form (e.g. an in-process/file backend): scheme:database
-        return f"{parts.scheme}:{parts.database}" if parts.database is not None else f"{parts.scheme}:"
+        base = f"{parts.scheme}:{parts.database}" if parts.database is not None else f"{parts.scheme}:"
+        return base + (("?" + urlencode(parts.query)) if parts.query else "")
     url = f"{parts.scheme}://{parts.host}"
     if parts.port is not None:
         url += f":{parts.port}"
-    if parts.database is not None:
-        url += f"/{parts.database}"
-    return url
+    return url + _url_tail(parts)
 
 
 def _url_motherduck_token(parts: UrlParts, auth: t.Any) -> str:
@@ -119,12 +134,12 @@ _URL_APPLIERS: dict[t.Any, dict[type, t.Callable]] = {
 
 def build_connection_string(profile: t.Any, auth_profile: AuthProfile | None = None) -> str:
     auth = _normalize_and_validate_auth(profile, auth_profile)
-    parts = profile.to_url_parts()                       # L1
+    parts = _safe_call(profile.profile_name, profile.to_url_parts)  # L1
     if isinstance(auth, NoAuthProfile):
         return _url_noauth(parts)
     if isinstance(auth, PasswordAuthProfile):
-        return _url_password(parts, auth)                # L3
+        return _safe_call(profile.profile_name, _url_password, parts, auth)  # L3
     applier = _URL_APPLIERS.get(profile.__spec__.provider_type, {}).get(type(auth))
     if applier is None:
         raise NotImplementedError(f"{profile.profile_name}: no URL form for {type(auth).__name__}")
-    return applier(parts, auth)
+    return _safe_call(profile.profile_name, applier, parts, auth)

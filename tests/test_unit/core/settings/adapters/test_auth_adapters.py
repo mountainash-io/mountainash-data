@@ -1,11 +1,10 @@
 from mountainash_auth_client import (
     PasswordAuthProfile, TokenAuthProfile, OAuth2AuthProfile,
     CertificateAuthProfile, WindowsAuthProfile, AzureADAuthProfile,
-    IAMAuthProfile,
 )
 from mountainash_data.core.settings.adapters import (
     sql as _sql, snowflake as _snow, mssql as _mssql,
-    redshift as _rs, databricks as _dbx,
+    databricks as _dbx,
 )
 
 
@@ -50,11 +49,6 @@ def test_mssql_azure_ad_sp():
     assert _mssql.azure_ad(AzureADAuthProfile(CLIENT_ID="cid", CLIENT_SECRET="sec", TENANT_ID="t"), {}) == {
         "authentication": "ActiveDirectoryServicePrincipal", "user_id": "cid",
         "password": "sec", "tenant_id": "t"}
-
-
-def test_redshift_iam():
-    assert _rs.iam(IAMAuthProfile(ROLE_ARN="arn", ACCESS_KEY_ID="ak"), {}) == {
-        "iam": True, "iam_role_arn": "arn", "aws_access_key_id": "ak"}
 
 
 def test_databricks_token():
