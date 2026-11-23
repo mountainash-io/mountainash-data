@@ -24,7 +24,7 @@ def test_to_url_parts_standard():
 
 def test_motherduck_url_parts_authority_less():
     parts = MotherDuckBackendProfile(DATABASE="mydb").to_url_parts()
-    assert parts.scheme == "md" and parts.host is None and parts.database == "mydb"
+    assert parts.scheme == "duckdb" and parts.host is None and parts.database == "//md:mydb"
 
 
 def test_empty_supported_auth_invariant():

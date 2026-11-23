@@ -162,11 +162,6 @@ src/mountainash_data/
 - **TESTING.md**: Testing procedures and guidelines
 - **RELEASE.md**: Release process documentation
 
-### Requirements Documentation
-- **docs/adapter_requirements.md**: Data structure adapter requirements
-- **docs/hierarchy_builder_requirements.md**: Hierarchy builder specifications
-- **docs/hierachy_flattener_requirements.md**: Hierarchy flattener requirements
-
 ### Notebooks
 - **notebooks/**: Jupyter notebooks for exploration and examples
   - **db.ipynb**: Database connection examples

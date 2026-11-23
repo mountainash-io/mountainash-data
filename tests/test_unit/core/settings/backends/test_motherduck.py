@@ -17,8 +17,8 @@ class TestMotherDuckBackendProfile:
         s = MotherDuckBackendProfile()
         assert s.DATABASE is None
 
-    def test_to_url_parts_uses_md_scheme(self):
+    def test_to_url_parts_uses_duckdb_md_form(self):
         s = MotherDuckBackendProfile(DATABASE="mydb")
         parts = s.to_url_parts()
-        assert parts.scheme == "md"
-        assert parts.database == "mydb"
+        assert parts.scheme == "duckdb"
+        assert parts.database == "//md:mydb"

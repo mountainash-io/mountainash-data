@@ -70,6 +70,7 @@ DUCKDB_SPEC = BackendSpec(
             type=t.Optional[int],
             tier="advanced",
             default=None,
+            driver_key="threads",
             description="Number of threads to use. Passed to config dict (Phase 4).",
         ),
         ParameterSpec(
@@ -78,6 +79,7 @@ DUCKDB_SPEC = BackendSpec(
             tier="advanced",
             default=None,
             validator=_validate_memory_limit,
+            driver_key="memory_limit",
             description="Memory limit as string: '500MB', '1.5GB', '1024KiB', or '80%'.",
         ),
     ],

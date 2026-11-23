@@ -22,4 +22,4 @@ class TransactionIntegrityError(TransactionError):
 
 
 class BackendConnectionError(RuntimeError):
-    """A connection attempt failed; the message has been stripped of URL credentials."""
+    """A connection attempt failed; the message shows only a safe location and exception class."""

@@ -34,8 +34,9 @@ classifiers = [
 [project.optional-dependencies]
 # One extra per dialect, named as the dialect key, delegating to Ibis's extra.
 sqlite = ["ibis-framework[sqlite]>=12.0.0"]
-duckdb = ["ibis-framework[duckdb]>=12.0.0"]
-motherduck = ["ibis-framework[duckdb]>=12.0.0"]
+# Cap: Ibis 12.0.0 calls DuckDBPyConnection.fetch_arrow_table, removed in duckdb 2.0.
+duckdb = ["ibis-framework[duckdb]>=12.0.0", "duckdb<2"]
+motherduck = ["ibis-framework[duckdb]>=12.0.0", "duckdb<2"]
 polars = ["ibis-framework[polars]>=12.0.0"]
 # psycopg[binary] bundles libpq; Ibis's plain psycopg needs a system libpq.
 postgres = ["ibis-framework[postgres]>=12.0.0", "psycopg[binary]>=3.2.0"]

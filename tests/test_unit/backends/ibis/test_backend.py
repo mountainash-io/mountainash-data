@@ -52,7 +52,7 @@ def test_both_positional_and_dialect_raises():
 
 def test_unknown_url_scheme_raises():
     """URL with unrecognised scheme must raise ValueError."""
-    with pytest.raises(ValueError, match="Cannot detect ibis dialect"):
+    with pytest.raises(ValueError, match="Unsupported connection string"):
         IbisBackend("nosuch://localhost/db")
 
 

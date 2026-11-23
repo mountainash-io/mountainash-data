@@ -102,7 +102,7 @@ The dialect keys are Ibis's backend names, so PostgreSQL is `postgres`, not `pos
 
 ## IbisBackend from a URL
 
-A string containing `://` is treated as a connection URL. The backend detects the dialect from the URL scheme when it is constructed, and at connect time passes the URL to `ibis.connect()`:
+A string whose text before the first `:` is a known URL scheme is treated as a connection URL. The backend detects the dialect from the URL scheme when it is constructed, and at connect time passes the URL to `ibis.connect()`:
 
 ```python
 from urllib.parse import quote
@@ -115,7 +115,7 @@ for url in ("sqlite://", "duckdb://", "postgresql://db.example/app", "duckdb://m
 password = quote("pa/ss:word", safe="")
 print(IbisBackend(f"postgresql://app:{password}@db.example:5432/app").dialect)
 
-for url in ("postgresql://app:pa/ss@db.example/app", "redshift://cluster.example:5439/dev"):
+for url in ("postgresql://app:pa/ss@db.example/app", "redshift://cluster.example:5439/dev", "md:analytics"):
     try:
         IbisBackend(url)
     except ValueError as exc:
@@ -129,10 +129,11 @@ postgresql://db.example/app -> postgres
 duckdb://md:analytics -> motherduck
 postgres
 Invalid connection URL (value redacted): percent-encode credentials with urllib.parse.quote(value, safe='') or pass an auth profile
-Cannot detect ibis dialect from URL scheme: 'redshift'
+Unsupported connection string: expected a URL with one of the schemes ['bigquery', 'clickhouse', 'druid', 'duckdb', 'exasol', 'impala', 'materialize', 'mssql', 'mysql', 'oracle', 'postgres', 'postgresql', 'pyspark', 'risingwave', 'singlestoredb', 'snowflake', 'sqlite', 'trino'] (input not shown), or a dialect name
+Unsupported connection string: expected a URL with one of the schemes ['bigquery', 'clickhouse', 'druid', 'duckdb', 'exasol', 'impala', 'materialize', 'mssql', 'mysql', 'oracle', 'postgres', 'postgresql', 'pyspark', 'risingwave', 'singlestoredb', 'snowflake', 'sqlite', 'trino'] (input not shown), or a dialect name
 ```
 
-Scheme detection follows a few rules. `postgres://` and `postgresql://` both resolve to `postgres`. `duckdb://md:<database>` resolves to `motherduck`, and any other `duckdb://` URL to `duckdb`; `sqlite://` and `duckdb://` with no path open in-memory databases. Redshift has no URL scheme of its own (its dialect uses `postgres://`, which resolves to `postgres`), so connect to Redshift with `dialect="redshift"` or a settings profile. Databricks has no URL form at all. An unrecognised scheme raises `ValueError` at construction.
+Scheme detection follows a few rules. `postgres://` and `postgresql://` both resolve to `postgres`. `duckdb://md:<database>` resolves to `motherduck`, and any other `duckdb://` URL to `duckdb`; `sqlite://` and `duckdb://` with no path open in-memory databases. Authority-less forms such as `sqlite:app.db` and `duckdb:` are URLs too. `redshift://` and a bare `md:<database>` are rejected because `ibis.connect` does not accept them: a Redshift URL is `postgresql://` (it resolves to `postgres`), and Redshift-specific behaviour needs `dialect="redshift"` or a settings profile. Databricks has no URL form at all. A string with an unrecognised scheme raises `ValueError` at construction listing the supported schemes; the input is never echoed because it may carry credentials.
 
 Keyword arguments passed alongside a URL, as in `IbisBackend(url, connect_timeout=5)`, are applied on top of anything derived from the URL when the backend connects.
 

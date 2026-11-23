@@ -12,7 +12,7 @@ def test_postgres_password_url():
 
 
 def test_motherduck_token_url():
-    assert build_connection_string(MotherDuckBackendProfile(DATABASE="mydb"), TokenAuthProfile(TOKEN="T")) == "md:mydb?motherduck_token=T"
+    assert build_connection_string(MotherDuckBackendProfile(DATABASE="mydb"), TokenAuthProfile(TOKEN="T")) == "duckdb://md:mydb?motherduck_token=T"
 
 
 def test_snowflake_token_url_not_implemented():

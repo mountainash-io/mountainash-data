@@ -67,10 +67,31 @@ def test_apply_auth_adapter_non_profile():
     assert apply_auth_adapter(P.POSTGRESQL, {"host": "h"}, None) == {"host": "h"}
 
 
-def test_provider_for_dialect_collision_resolves_to_base():
-    # postgres + duckdb dialects are shared by rider providers; resolve canonically.
+def test_provider_for_dialect_is_one_to_one_for_builtins():
     assert provider_for_dialect("postgres") is P.POSTGRESQL
     assert provider_for_dialect("duckdb") is P.DUCKDB
+    assert provider_for_dialect("motherduck") is P.MOTHERDUCK
+    assert provider_for_dialect("redshift") is P.REDSHIFT
+
+
+def test_extra_profile_sharing_a_dialect_does_not_displace_builtin():
+    from mountainash_data.core.settings.descriptor import BackendSpec
+    from mountainash_data.core.settings.profile import BackendProfile
+    from mountainash_data.core.settings.registry import _reset_for_tests, _snapshot_for_tests, register
+
+    spec = BackendSpec(name="duckdb_ext_test", provider_type=P.MOTHERDUCK,
+                       ibis_dialect="duckdb", parameters=[],
+                       supported_auth=(NoAuthProfile,))
+
+    class _Ext(BackendProfile):
+        __spec__ = spec
+
+    snap = _snapshot_for_tests()
+    register(_Ext)
+    try:
+        assert provider_for_dialect("duckdb") is P.DUCKDB
+    finally:
+        _reset_for_tests(*snap)
 
 
 def test_url_password():

@@ -1,0 +1,61 @@
+{
+  "id": "mountainash_data.core._safe_errors",
+  "path": "src/mountainash_data/core/_safe_errors.py",
+  "summary": "Credential-safe error display (W8): errors show only parts built up as safe from the input. safe_location() keeps scheme, host, port and path of a URL (drops userinfo, query, fragment; a scheme without '//' becomes '***'; local paths pass through), safe_detail() shows '[Errno N] strerror' for OSError or just the exception class name, safe_cause() rebuilds an errno-only OSError or returns None, and raise_safe() raises with only that safe cause reachable and __context__ cleared. Stdlib only; must not import errors.py.",
+  "role": "orchestration",
+  "visibility": "private",
+  "stability": "stable",
+  "audiences": [
+    "maintainers",
+    "contributors",
+    "backend-architecture"
+  ],
+  "doc_priority": "internal-note",
+  "confidence": "high",
+  "public_api": [],
+  "key_classes": [],
+  "key_functions": [
+    "safe_location",
+    "safe_detail",
+    "safe_cause",
+    "raise_safe"
+  ],
+  "dependencies": [],
+  "dependents": [
+    "mountainash_data.backends.ibis.backend",
+    "mountainash_data.backends.ibis._adoption",
+    "mountainash_data.core.factories"
+  ],
+  "extension_points": [],
+  "lifecycle_notes": [
+    "Built up from the input rather than masked down: no driver text is ever shown, only the class name (or errno/strerror for OSError).",
+    "raise_safe clears __context__ explicitly because 'raise ... from' alone keeps the active exception there.",
+    "Behaviour mirrors the mountainash-auth-client helper; data-owned, no cross-package import."
+  ],
+  "documentation_hooks": [
+    "Security note: connection errors read '{safe location|dialect}: connection failed (ExceptionType)' and never echo credentials or driver text (W8)."
+  ],
+  "examples": [],
+  "tests": [
+    "tests/test_unit/core/test_safe_errors.py",
+    "tests/test_unit/backends/ibis/test_connect_safe_errors.py"
+  ],
+  "risks": [
+    "Duplicated from the auth-client helper by design; the two copies must be kept in step."
+  ],
+  "open_questions": [],
+  "evidence": [
+    {
+      "kind": "symbol",
+      "path": "src/mountainash_data/core/_safe_errors.py",
+      "detail": "safe_location/safe_detail/safe_cause/raise_safe"
+    }
+  ],
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
+  "manual": {
+    "notes": "",
+    "editorial_status": "",
+    "owner": "",
+    "manual_summary": ""
+  }
+}
