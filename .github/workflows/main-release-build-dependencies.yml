@@ -50,8 +50,8 @@ jobs:
 
       - name: Python Dependencies
         run: |
-          pip install hatchling==1.29.0
-          pip install hatch==1.16.5
+          pip install --only-binary :all: hatchling==1.29.0
+          pip install --only-binary :all: hatch==1.16.5
 
       # Checkout Mountain Ash Dependencies
       - name: Generate GitHub App token
