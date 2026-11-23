@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Hatch
-        run: pip install --only-binary :all: hatch==1.16.5
+        run: "pip install --only-binary :all: hatch==1.16.5"
 
       - name: Create virtual environment
         run: hatch env create ruff
