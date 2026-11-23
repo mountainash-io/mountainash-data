@@ -90,7 +90,7 @@ jobs:
           org-name: mountainash-io
 
       - name: Install Hatch
-        run: pip install hatch==1.16.5
+        run: pip install --only-binary :all: hatch==1.16.5
 
       - name: Run mypy
         run: hatch run mypy_github:check
