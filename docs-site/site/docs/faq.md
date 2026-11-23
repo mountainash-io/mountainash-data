@@ -102,7 +102,7 @@ There are three: a dialect name with driver keyword arguments (`IbisBackend(dial
 
 ### Why is my dialect name or URL scheme rejected?
 
-Dialect keys are Ibis backend names, so PostgreSQL is `dialect="postgres"`, not `"postgresql"`; an unknown key raises `KeyError` listing the valid ones. URLs accept both `postgres://` and `postgresql://`, and an unrecognised scheme raises `ValueError: Cannot detect ibis dialect from URL scheme`. Redshift has no URL scheme of its own, so connect with `dialect="redshift"` or a settings profile, and Databricks has no URL form at all. `duckdb://md:<database>` resolves to `motherduck`. See [IbisBackend from a URL](chapters/02-installing-and-connecting/index.md#ibisbackend-from-a-url).
+Dialect keys are Ibis backend names, so PostgreSQL is `dialect="postgres"`, not `"postgresql"`; an unknown key raises `KeyError` listing the valid ones. A string is read as a URL when the text before its first `:` is a known scheme (`postgres://`, `postgresql://`, `sqlite:x.db`, `duckdb:`, ...); a colon-bearing string with any other scheme, including `redshift://` and a bare `md:<database>`, raises `ValueError` listing the supported schemes without echoing the input. Redshift has no URL scheme Ibis accepts, so connect with `dialect="redshift"` or a settings profile (`postgresql://` URLs resolve to `postgres`), and Databricks has no URL form at all. `duckdb://md:<database>` resolves to `motherduck`. See [IbisBackend from a URL](chapters/02-installing-and-connecting/index.md#ibisbackend-from-a-url).
 
 ### How do I put a password with special characters in a URL?
 
@@ -118,7 +118,7 @@ Operations that need a live connection raise `RuntimeError` until `connect()` ha
 
 ### How do I connect to MotherDuck?
 
-Use `IbisBackend(dialect="motherduck", database=..., token=...)` or a `duckdb://md:<database>` URL, which use the MotherDuck connection builder. Building the backend from `MotherDuckBackendProfile` settings currently resolves to the plain DuckDB dialect, and connecting fails because DuckDB does not recognise the `token` option. See [The adapter pipeline and build_driver_kwargs](chapters/15-from-settings-to-driver-arguments/index.md#the-adapter-pipeline-and-build_driver_kwargs).
+Use a `MotherDuckBackendProfile` (the settings path resolves to the `motherduck` dialect and its builder, so the token reaches the `duckdb://md:<database>?motherduck_token=...` URL), `IbisBackend(dialect="motherduck", database=..., token=...)` or a `duckdb://md:<database>` URL. See [The adapter pipeline and build_driver_kwargs](chapters/15-from-settings-to-driver-arguments/index.md#the-adapter-pipeline-and-build_driver_kwargs).
 
 ## Settings profiles and authentication
 
@@ -164,7 +164,7 @@ No. On Snowflake, both `TokenAuthProfile` and `OAuth2AuthProfile` become `authen
 
 ### Do Redshift IAM and BigQuery service-account credentials work?
 
-Not through `IbisBackend` at this revision, and no test connects either one. The Redshift dialect connects through psycopg, which rejects the `iam` and `readonly` keys the Redshift adapter and profile emit. The BigQuery adapter emits `credentials`, but the BigQuery connection builder does not read that key, so it falls back to application default credentials. See [Adapter families](chapters/15-from-settings-to-driver-arguments/index.md#adapter-families).
+Redshift IAM is not supported: Ibis reaches Redshift through the psycopg PostgreSQL backend, and psycopg has no IAM authentication, so `IAMAuthProfile` is not accepted for Redshift (password auth only). Redshift read-only is: `CLUSTER_READ_ONLY=True` emits the libpq option `options="-c default_transaction_read_only=on"`. BigQuery service-account credentials reach `ibis.bigquery.connect` as `credentials` (together with `project_id`, `location` and the other accepted keys); only recorder-level tests exercise this, not a live BigQuery. See [Adapter families](chapters/15-from-settings-to-driver-arguments/index.md#adapter-families).
 
 ## Inspecting databases
 
@@ -314,11 +314,11 @@ The support matrix lists each dialect's upsert family, transaction support, inde
 
 ### Why did I get BackendConnectionError instead of the driver's error?
 
-The driver's error message contained credentials. The package replaces URL user-info, credential query parameters and the secrets you supplied with `***`. A built-in exception type such as `ValueError` keeps its type with a redacted message; a driver-specific exception becomes `BackendConnectionError`, without the original chained. Errors that carried no credentials propagate unchanged. See [BackendConnectionError](chapters/13-supported-databases-and-limits/index.md#backendconnectionerror).
+Connection errors never include the driver's message. `IbisBackend.connect()` raises `BackendConnectionError` shaped `<location>: connection failed (<detail>)`, where the location is built from the URL's scheme, host, port and path (user-info, query and fragment are left out; for settings and `dialect=` builds it is the dialect name) and the detail is the exception class name, or `[Errno N] strerror` for an `OSError` with an errno. Only an errno-bearing `OSError` is chained, as a fresh copy without its filename. See [BackendConnectionError](chapters/13-supported-databases-and-limits/index.md#backendconnectionerror).
 
 ### How do I troubleshoot a connection failure?
 
-Work through the layers in order. An `ImportError` means a missing extra. A pydantic `ValidationError` at construction means a bad profile value. A `ValueError` at `connect()` naming auth means the auth type does not fit the backend. To see exactly what the driver will receive, call `build_driver_kwargs(profile, auth_profile)`. Anything after that (network, credentials, native libraries) is the driver's own error, possibly redacted as `BackendConnectionError`. See [Connect-time composition](chapters/03-connection-profiles-and-authentication/index.md#connect-time-composition).
+Work through the layers in order. An `ImportError` means a missing extra. A pydantic `ValidationError` at construction means a bad profile value. `connect()` failures arrive as `BackendConnectionError` whose detail is the native exception class (for example `ValueError` for an auth type that does not fit the backend). To see exactly what the driver will receive, call `build_driver_kwargs(profile, auth_profile)`. Anything after that (network, credentials, native libraries) is the driver's own error, reduced to its class name or errno. See [Connect-time composition](chapters/03-connection-profiles-and-authentication/index.md#connect-time-composition).
 
 ## Extending and maintaining
 

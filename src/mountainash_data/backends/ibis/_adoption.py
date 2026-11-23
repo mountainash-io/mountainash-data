@@ -7,6 +7,7 @@ import warnings
 
 from mountainash_data.backends.ibis._raw import raw_execute, raw_fetch_scalar
 from mountainash_data.backends.ibis.dialects._registry import SessionOption
+from mountainash_data.core._safe_errors import safe_detail
 from mountainash_data.core._warn import warn_once
 
 
@@ -29,7 +30,7 @@ def snapshot_options(
         except Exception as exc:  # noqa: BLE001 — warn, don't fail adoption
             warnings.warn(
                 f"could not snapshot session option {opt.name!r}; it will not be "
-                f"restored ({exc!r})",
+                f"restored ({safe_detail(exc)})",
                 stacklevel=2,
             )
             continue

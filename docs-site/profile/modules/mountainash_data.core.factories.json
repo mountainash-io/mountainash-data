@@ -1,7 +1,7 @@
 {
   "id": "mountainash_data.core.factories",
   "path": "src/mountainash_data/core/factories/connection_factory.py",
-  "summary": "Combines a backend settings profile with an AuthProfile from mountainash_auth_client. build_driver_kwargs() and build_connection_string() check supported_auth and apply the registered auth adapter or URL applier. provider_for_dialect() and provider_for_scheme() map an Ibis dialect or URL scheme back to a CONST_DB_PROVIDER_TYPE, and apply_auth_adapter() applies auth without a profile.",
+  "summary": "Combines a backend settings profile with an AuthProfile from mountainash_auth_client. build_driver_kwargs() and build_connection_string() check supported_auth and apply the registered auth adapter or URL applier. provider_for_dialect() and provider_for_scheme() map an Ibis dialect or URL scheme back to a CONST_DB_PROVIDER_TYPE, and apply_auth_adapter() applies auth without a profile. Every profile.emit, adapter and URL-applier call runs inside _safe_call, which converts any failure to a BackendConnectionError showing only the profile/provider name and exception class. URL assembly honours per-profile path and query (BigQuery, Snowflake, Trino, Exasol forms).",
   "role": "orchestration",
   "visibility": "internal",
   "stability": "evolving",
@@ -32,7 +32,9 @@
     "mountainash_data.core.constants",
     "mountainash_data.core.settings.profile",
     "mountainash_data.core.settings.adapters",
-    "mountainash_data.core.settings.registry"
+    "mountainash_data.core.settings.registry",
+    "mountainash_data.core._safe_errors",
+    "mountainash_data.core.errors"
   ],
   "dependents": [
     "mountainash_data.backends.ibis.backend"
@@ -42,7 +44,7 @@
     "Auth adapters are looked up with settings.adapters.registry.auth_adapter(provider, auth type)."
   ],
   "lifecycle_notes": [
-    "Shared ibis dialects (postgres for PostgreSQL/Redshift, duckdb for DuckDB/MotherDuck) resolve deterministically to the canonical provider whose name matches the dialect."
+    "Built-in profiles map one-to-one to dialects; provider_for_dialect() returns the first-registered match and provider_for_scheme() resolves through the single _SCHEME_TO_DIALECT table in the Ibis backend (imported lazily)."
   ],
   "documentation_hooks": [
     "Layering diagram: settings profile (config) + AuthProfile (credentials) -> driver kwargs or URL.",
@@ -77,7 +79,7 @@
       "detail": "Lists ConnectionFactory/OperationsFactory/SettingsFactory; only connection_factory.py exists"
     }
   ],
-  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
   "manual": {
     "notes": "",
     "editorial_status": "",

@@ -52,7 +52,7 @@ Durable architecture principles and the implementation backlog for this project 
 
 4. **Settings** (`src/mountainash_data/core/settings/`)
    - Database-flavored layer over `mountainash_settings.profiles`.
-   - `BackendSpec` (subclass of `ProfileSpec`) adds `default_port`, `connection_string_scheme`, `ibis_dialect`, `rides_on`, `supported_auth` and `resource_read_*` metadata. `BackendDescriptor` survives only as a deprecated alias.
+   - `BackendSpec` (subclass of `ProfileSpec`) adds `default_port`, `connection_string_scheme`, `ibis_dialect` (the profile's own `DIALECTS` key), `rides_on`, `supported_auth` and `resource_read_*` metadata. `BackendDescriptor` survives only as a deprecated alias.
    - `BackendProfile` (subclass of `Profile`) is a pure config emitter with `to_url_parts()` → `UrlParts`; it has **no auth methods**.
    - 20 per-backend modules (`sqlite.py` … `trino.py`), each a `<NAME>_SPEC` plus a `@register`-decorated `*BackendProfile`. Importing `core.settings` imports all of them, which registers every backend.
    - `DATABASES_REGISTRY` with `get_descriptor()` / `get_settings_class()` / `register` in `registry.py`.
@@ -88,7 +88,7 @@ src/mountainash_data/
 │   ├── errors.py                # Transaction / connection exceptions
 │   ├── registry.py              # Backend name registry (unwired)
 │   ├── constants.py             # CONST_DB_PROVIDER_TYPE and friends
-│   ├── _redact.py               # Credential redaction for URLs / driver errors
+│   ├── _safe_errors.py          # W8 safe display: safe_location / safe_detail / raise_safe
 │   ├── _warn.py                 # warn_once helper
 │   ├── factories/
 │   │   └── connection_factory.py  # BackendProfile + AuthProfile → driver kwargs / URL
@@ -115,7 +115,7 @@ src/mountainash_data/
 ```
 
 ### Optional Dependencies (extras)
-One extra per registered dialect, named as the dialect key (`sqlite`, `duckdb`, `motherduck`, `postgres`, `redshift`, …), plus `polars` (dataframe input) and `all`. Each delegates to the matching `ibis-framework[...]` extra; `postgres`/`redshift`/`materialize` add `psycopg[binary]`. `IbisBackend.connect()` / `from_raw_connection()` translate a missing driver module into an `ImportError` naming `mountainash-data[<dialect>]`. Hatch test environments install `sqlite`, `duckdb`, `polars` via `features`.
+One extra per registered dialect, named as the dialect key (`sqlite`, `duckdb`, `motherduck`, `postgres`, `redshift`, …), plus `polars` (dataframe input) and `all`. Each delegates to the matching `ibis-framework[...]` extra; `postgres`/`redshift`/`materialize` add `psycopg[binary]`. `IbisBackend.connect()` / `from_raw_connection()` translate a missing driver module into an `ImportError` naming `mountainash-data[<dialect>]`. `IbisBackend.connect()` wraps the whole connect composition so failures raise `BackendConnectionError` (`<safe location or dialect>: connection failed (<class or errno>)`) via `core/_safe_errors.py`; driver text is never shown. Hatch test environments install `sqlite`, `duckdb`, `polars` via `features`.
 
 ## Build/Test/Lint Commands
 
@@ -146,6 +146,7 @@ Local envs resolve sibling packages (`mountainash-settings`, `mountainash`, `mou
 - **mountainash-settings** >=0.1.0,<0.2 and **mountainash-auth-client** >=0.1.0,<0.2
 - **ibis-framework** >=12.0.0 (core only, no backend extras)
 - **sqlglot** >=29.0.1,<30.18.0 — floor is CI's pinned version (`requirements-hatch.txt`); cap is a verified DuckDB memtable regression
+- **duckdb** <2 in the `duckdb`/`motherduck` extras — Ibis 12.0.0 calls `fetch_arrow_table`, removed in duckdb 2.0; the `fresh-resolution` CI job installs without pins to catch such drift
 
 No driver, dataframe library, NumPy or Arrow is a base requirement; they arrive through extras.
 

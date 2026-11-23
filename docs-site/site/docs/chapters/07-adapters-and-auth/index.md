@@ -16,7 +16,7 @@ This chapter explains the adapter pipeline — a composable mechanism for transf
 
 ## The Authentication Challenge
 
-Database connections in modern data engineering environments rarely use simple username/password pairs. Cloud data warehouses require OAuth tokens, JWT-signed credentials, IAM role assumption, or certificate-based mutual TLS. Each database driver expects credentials in a specific format: Snowflake wants an OAuth bearer token as a keyword argument, BigQuery expects a Google credentials object, and Redshift may require an IAM-generated temporary password.
+Database connections in modern data engineering environments rarely use simple username/password pairs. Cloud data warehouses require OAuth tokens, JWT-signed credentials, IAM role assumption, or certificate-based mutual TLS. Each database driver expects credentials in a specific format: Snowflake wants an OAuth bearer token as a keyword argument, BigQuery expects a Google credentials object, and Redshift takes password authentication only.
 
 The gap between how credentials are stored (in secrets managers, environment variables, or configuration files) and how drivers consume them requires a transformation layer. mountainash-data's adapter system fills this gap by providing composable transformations that convert stored credentials into driver-ready formats.
 
@@ -137,7 +137,7 @@ class JWTAdapter:
 
 The primary cloud-native auth patterns are:
 
-- **AWS IAM**: The application assumes an IAM role and receives temporary credentials (access key, secret key, session token) that Redshift or other AWS services accept.
+- **AWS IAM**: The application assumes an IAM role and receives temporary credentials (access key, secret key, session token) that AWS services accept (this package's Redshift support is password-only).
 - **Google ADC (Application Default Credentials)**: The application uses ambient credentials from the environment (service account, workload identity, or user credentials from `gcloud auth`) to authenticate to BigQuery.
 - **Azure Managed Identity**: The application receives tokens from Azure's identity platform without managing secrets.
 
@@ -152,7 +152,7 @@ Type: infographic
 **Library:** vis-network<br/>
 **Status:** Specified
 
-A three-panel infographic showing AWS, GCP, and Azure cloud-native authentication flows. Each panel shows: (1) the compute environment (EC2/ECS/Lambda, GKE/Cloud Run, Azure VM/AKS), (2) the IAM service (STS, IAM API, Azure AD), (3) the database service (Redshift, BigQuery, Azure SQL). Arrows show the credential flow: compute requests temporary credentials from IAM, then uses them to connect to the database. Each panel is interactive: clicking the compute node shows the configuration required, clicking the IAM node shows the token format, clicking the database shows the connection parameters. Learning objective: Evaluate which cloud-native auth pattern applies to each cloud provider (Bloom: Evaluate). Controls: click nodes for details, toggle between cloud providers. Colors: Orange for AWS, SteelBlue for GCP, MediumPurple for Azure.
+A three-panel infographic showing AWS, GCP, and Azure cloud-native authentication flows. Each panel shows: (1) the compute environment (EC2/ECS/Lambda, GKE/Cloud Run, Azure VM/AKS), (2) the IAM service (STS, IAM API, Azure AD), (3) the database service (e.g. BigQuery, Azure SQL). Arrows show the credential flow: compute requests temporary credentials from IAM, then uses them to connect to the database. Each panel is interactive: clicking the compute node shows the configuration required, clicking the IAM node shows the token format, clicking the database shows the connection parameters. Learning objective: Evaluate which cloud-native auth pattern applies to each cloud provider (Bloom: Evaluate). Controls: click nodes for details, toggle between cloud providers. Colors: Orange for AWS, SteelBlue for GCP, MediumPurple for Azure.
 </details>
 
 <!-- concept:90 -->

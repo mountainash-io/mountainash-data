@@ -110,7 +110,9 @@
   ],
   "lifecycle_notes": [
     "Per-backend module docstrings cite settings-audit specs under mountainash-central/04.planning/mountainash-data/superpowers/specs/2026-04-15-settings-audit/.",
-    "Parameters carry a tier ('core' or 'advanced'), optional transform and secret flags."
+    "Parameters carry a tier ('core' or 'advanced'), optional transform and secret flags.",
+    "ibis_dialect is the DIALECTS key: motherduck -> 'motherduck' and redshift -> 'redshift' (own DialectSpec). Profiles emit postgresql:// (Redshift) and duckdb://md:<db> (MotherDuck); redshift:// and bare md: are rejected. Redshift supports password auth only; CLUSTER_READ_ONLY emits libpq options '-c default_transaction_read_only=on'.",
+    "BigQuery, Snowflake, Trino and Exasol override to_url_parts() to produce the URL forms Ibis parses (bigquery://project[/dataset], snowflake://u:p@account/db[/schema]?warehouse&role, trino://.../catalog[/schema], exasol://.../schema)."
   ],
   "documentation_hooks": [
     "Per-backend reference pages: core vs advanced parameters, default port, supported auth",
@@ -250,7 +252,7 @@
       "detail": "trino BackendSpec + @register profile"
     }
   ],
-  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
   "manual": {
     "notes": "",
     "editorial_status": "",

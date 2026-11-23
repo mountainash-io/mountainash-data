@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import re
 import typing as t
+from urllib.parse import quote
 
 from pydantic import field_validator
 
 from ..constants import CONST_DB_PROVIDER_TYPE
 from mountainash_auth_client import NoAuthProfile, ServiceAccountAuthProfile
 from .descriptor import BackendSpec, ParameterSpec
-from .profile import BackendProfile
+from .profile import BackendProfile, UrlParts
 from .registry import register
 
 __all__ = ["BigQueryBackendProfile", "BIGQUERY_SPEC"]
@@ -62,6 +63,15 @@ BIGQUERY_SPEC = BackendSpec(
 @register
 class BigQueryBackendProfile(BackendProfile):
     __spec__ = BIGQUERY_SPEC
+
+    def to_url_parts(self) -> UrlParts:
+        # Ibis bigquery _from_url: bigquery://<project_id>[/<dataset_id>]
+        dataset = getattr(self, "DATASET_ID", None)
+        return UrlParts(
+            scheme="bigquery",
+            host=getattr(self, "PROJECT_ID"),
+            path="/" + quote(str(dataset), safe="") if dataset else None,
+        )
 
     @field_validator("PROJECT_ID", check_fields=False)
     @classmethod

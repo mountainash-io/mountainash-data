@@ -33,7 +33,7 @@ See [The auth adapter registry](chapters/15-from-settings-to-driver-arguments/in
 
 ### Auth profile
 
-A pydantic model holding one kind of credential, such as `PasswordAuthProfile`, `TokenAuthProfile` or `IAMAuthProfile`. Auth profiles are defined in `mountainash-auth-client`, re-exported from `mountainash_data.core.settings`, and passed to `connect(auth_profile=...)` separately from the backend profile.
+A pydantic model holding one kind of credential, such as `PasswordAuthProfile` or `TokenAuthProfile`. Auth profiles are defined in `mountainash-auth-client`, re-exported from `mountainash_data.core.settings`, and passed to `connect(auth_profile=...)` separately from the backend profile.
 
 See [Auth profiles](chapters/03-connection-profiles-and-authentication/index.md#auth-profiles).
 
@@ -59,7 +59,7 @@ See [The backend name registry](chapters/17-extending-mountainash-data/index.md#
 
 ### `BackendConnectionError`
 
-A `RuntimeError` subclass in `mountainash_data.core.errors`, raised when a driver-specific connection error carried credentials in its message. The message is redacted and the original exception is not chained.
+A `RuntimeError` subclass in `mountainash_data.core.errors`, raised when `IbisBackend.connect()` fails. The message is `<safe location or dialect>: connection failed (<exception class or errno detail>)`; the driver's message is never included.
 
 See [BackendConnectionError](chapters/13-supported-databases-and-limits/index.md#backendconnectionerror).
 
@@ -215,11 +215,11 @@ An `IbisBackend` method that stores an Ibis expression as a database view, compi
 
 See [Creating tables and views](chapters/08-creating-and-changing-tables/index.md#creating-tables-and-views).
 
-### Credential redaction
+### Safe error display
 
-Removing credentials from connection error messages: URL user information, secret-looking query parameters and explicitly supplied secret values are replaced with `***`. A redacted built-in exception keeps its type; a redacted driver exception becomes `BackendConnectionError`.
+Showing only parts of a location and native failure that are known to be safe, built up from the input rather than masked down from it (`core/_safe_errors.py`: `safe_location`, `safe_detail`, `safe_cause`, `raise_safe`). URL user-info, query and fragment are never shown; native exceptions are reduced to their class name, or `[Errno N] strerror` for an `OSError` with an errno.
 
-See [Credential redaction](chapters/15-from-settings-to-driver-arguments/index.md#credential-redaction).
+See [Safe connection errors](chapters/15-from-settings-to-driver-arguments/index.md#safe-connection-errors).
 
 ### Credential transformation
 
@@ -691,7 +691,7 @@ See [Renaming tables](chapters/08-creating-and-changing-tables/index.md#renaming
 
 ### Rides-on backend
 
-A settings backend with no Ibis backend of its own that connects through another: MotherDuck rides on DuckDB and Redshift on PostgreSQL. `BackendSpec.rides_on` records this as metadata, and `ibis_dialect` holds the underlying dialect.
+A settings backend with no Ibis backend of its own that connects through another: MotherDuck rides on DuckDB and Redshift on PostgreSQL. `BackendSpec.rides_on` records this as metadata; `ibis_dialect` is the profile's own `DIALECTS` key (`motherduck`, `redshift`).
 
 See [Rides-on backends](chapters/03-connection-profiles-and-authentication/index.md#rides-on-backends).
 

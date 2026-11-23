@@ -71,7 +71,7 @@
   "hidden_or_internal_modules": [
     "mountainash_data.backends.ibis._render",
     "mountainash_data.backends.ibis._transaction",
-    "mountainash_data.core._redact"
+    "mountainash_data.core._safe_errors"
   ],
   "documentation_plan": [
     "Protocol conformance checklist with the _StubBackend test as template",

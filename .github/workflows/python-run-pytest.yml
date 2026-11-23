@@ -90,7 +90,7 @@ jobs:
           org-name: mountainash-io
 
       - name: Install Hatch
-        run: pip install hatch==1.16.5
+        run: pip install --only-binary :all: hatch==1.16.5
 
       - name: Run mypy
         run: hatch run mypy_github:check
@@ -133,6 +133,70 @@ jobs:
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+
+  fresh-resolution:
+    # Resolves the duckdb extra from PyPI without uv.lock / requirements-hatch.txt,
+    # so upstream releases that break the declared ranges (e.g. duckdb 2) fail here.
+    name: Fresh dependency resolution (duckdb)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Set fallback branch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_FALLBACK_BRANCH: ${{ github.event.inputs.fallback_branch }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "FALLBACK_BRANCH=$DISPATCH_FALLBACK_BRANCH" >> "$GITHUB_ENV"
+          elif [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "FALLBACK_BRANCH=$BASE_REF" >> "$GITHUB_ENV"
+          else
+            echo "FALLBACK_BRANCH=develop" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+          check-latest: true
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: mountainash-io
+
+      - name: Load Dependencies
+        id: deps
+        uses: ./.github/actions/load-dependencies
+        with:
+          config-path: .github/config/mountainash_dependencies.yml
+
+      - name: Checkout Dependencies
+        uses: ./.github/actions/checkout-dependencies
+        with:
+          dependencies: ${{ steps.deps.outputs.dependencies }}
+          target-branch: ${{ github.head_ref }}
+          default-branch: ${{ env.FALLBACK_BRANCH }}
+          token: ${{ steps.app-token.outputs.token }}
+          org-name: mountainash-io
+
+      - name: Install without lockfile
+        run: |
+          python -m venv .fresh
+          .fresh/bin/pip install ./temp/mountainash-settings ./temp/mountainash-auth-client ".[duckdb,polars]" pytest==8.3.5
+          .fresh/bin/python -c "import duckdb, ibis; print('duckdb', duckdb.__version__, 'ibis', ibis.__version__)"
+
+      - name: Run Ibis backend tests
+        run: .fresh/bin/python -m pytest -o addopts="" tests/test_unit/backends/ibis
 
   optional-backend:
     name: Optional backend (${{ matrix.backend }})

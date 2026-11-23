@@ -1,7 +1,7 @@
 {
   "id": "mountainash_data.core.settings.adapters",
   "path": "src/mountainash_data/core/settings/adapters",
-  "summary": "Per-backend functions that shape driver kwargs. adapters/registry.py holds _AUTH_ADAPTERS, a (provider_type, AuthProfile class) \u2192 function table, and auth_adapter(), which resolves the most specific registered auth class along the MRO and raises TypeError for an ambiguous multiple-inheritance match. Auth adapters cover Trino (password/JWT/Kerberos), Snowflake (password/token/OAuth2/certificate), BigQuery (service account), Databricks, MSSQL (password/Windows/Azure AD), Redshift (password/IAM), MotherDuck (token), and a shared user/password adapter for ten SQL backends. Config-shaping adapters (mssql.host_fold, mysql.ssl_compose, snowflake.session_params) are attached to profiles through __adapters__.",
+  "summary": "Per-backend functions that shape driver kwargs. adapters/registry.py holds _AUTH_ADAPTERS, a (provider_type, AuthProfile class) → function table, and auth_adapter(), which resolves the most specific registered auth class along the MRO and raises TypeError for an ambiguous multiple-inheritance match. Auth adapters cover Trino (password/JWT/Kerberos), Snowflake (password/token/OAuth2/certificate), BigQuery (service account), Databricks, MSSQL (password/Windows/Azure AD), Redshift (password only; IAM removed), MotherDuck (token), and a shared user/password adapter for ten SQL backends. Config-shaping adapters (mssql.host_fold, mysql.ssl_compose, snowflake.session_params) are attached to profiles through __adapters__.",
   "role": "integration",
   "visibility": "internal",
   "stability": "evolving",
@@ -39,11 +39,11 @@
   ],
   "extension_points": [
     "Add an auth path by adding a (provider_type, AuthProfile class) entry to _AUTH_ADAPTERS.",
-    "Add config shaping by writing a (profile, base) \u2192 dict function and declaring it in a profile's __adapters__."
+    "Add config shaping by writing a (profile, base) → dict function and declaring it in a profile's __adapters__."
   ],
   "lifecycle_notes": [
     "Trino and BigQuery adapters import their driver packages lazily inside the function.",
-    "BigQuery service-account INFO parsing redacts the secret in error messages and suppresses exception chaining."
+    "Adapter failures surface through the factory's _safe_call as BackendConnectionError with only the exception class; no driver text or chain."
   ],
   "documentation_hooks": [
     "Auth matrix: which AuthProfile types map to which driver kwargs per backend",
@@ -115,7 +115,7 @@
       "detail": "adapter module"
     }
   ],
-  "source_hash": "17d9ed3ae77f05bc1eea90f14294f732fb26ea5e",
+  "source_hash": "092715ce8c80651363951f14bb8aa6f5db86a122",
   "manual": {
     "notes": "",
     "editorial_status": "",

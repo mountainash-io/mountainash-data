@@ -54,7 +54,7 @@
         "mountainash_data.core.protocol",
         "mountainash_data.core.constants",
         "mountainash_data.core._warn",
-        "mountainash_data.core._redact",
+        "mountainash_data.core._safe_errors",
         "mountainash_data.core.factories"
       ],
       "recommended_docs": [

@@ -51,7 +51,9 @@ class BackendSpec(ProfileSpec):
         default_port: Default TCP port if the backend listens on one.
         connection_string_scheme: URL scheme prefix (``"postgresql://"``) or
             ``None`` if the backend has no URL form.
-        ibis_dialect: Name of the Ibis backend if Ibis handles this backend.
+        ibis_dialect: The ``DIALECTS`` key (``IbisBackend`` dialect) for this
+            profile, if Ibis handles this backend. Riders (motherduck,
+            redshift) have their own key.
         rides_on: Name of another backend whose Ibis path this one routes
             through (e.g. ``motherduck`` -> ``duckdb``). Metadata only.
         supported_auth: Tuple of AuthProfile types this backend accepts.

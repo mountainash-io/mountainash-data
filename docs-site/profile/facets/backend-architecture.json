@@ -83,7 +83,7 @@
         "mountainash_data.core.settings.adapters",
         "mountainash_data.core.settings.backends",
         "mountainash_data.core.factories",
-        "mountainash_data.core._redact"
+        "mountainash_data.core._safe_errors"
       ],
       "recommended_docs": [
         "architecture: settings"

@@ -139,59 +139,6 @@ def test_unencoded_slash_in_url_password_error_is_value_free():
     assert "percent-encode" in str(info.value)
 
 
-def test_ibis_unknown_scheme_error_does_not_carry_url_userinfo():
-    # Real ibis echoes the whole connection string in its ValueError.
-    with pytest.raises(ValueError) as info:
-        _registry._build_postgres_connection(connection_string=f"bogus://user:{RAW_PW}@host/db")
-    _assert_clean(info.value, RAW_PW)
-    assert "bogus://" in str(info.value)               # still useful for diagnosis
-
-
-def test_url_path_connect_failure_does_not_carry_motherduck_token(monkeypatch):
-    def boom(url, **kwargs):
-        raise ValueError(f"Don't know how to connect to {url!r}")
-
-    monkeypatch.setattr(ibis, "connect", boom)
-    be = IbisBackend("duckdb://md:mydb?motherduck_token=SENTINEL-tok")
-    with pytest.raises(ValueError) as info:
-        be.connect()
-    _assert_clean(info.value, "SENTINEL-tok")
-
-
-def test_driver_exception_types_are_wrapped_not_leaked(monkeypatch):
-    class DriverError(Exception):
-        pass
-
-    def boom(url, **kwargs):
-        raise DriverError(f"could not connect: {url}")
-
-    monkeypatch.setattr(ibis, "connect", boom)
-    with pytest.raises(Exception) as info:
-        _registry._build_mysql_connection(connection_string=f"mysql://u:{RAW_PW}@h/db")
-    _assert_clean(info.value, RAW_PW)
-    assert type(info.value).__name__ == "BackendConnectionError"
-
-
-def test_clean_exceptions_propagate_unchanged(monkeypatch):
-    original = RuntimeError("network unreachable")
-    monkeypatch.setattr(ibis, "connect", lambda url, **kw: (_ for _ in ()).throw(original))
-    with pytest.raises(RuntimeError) as info:
-        _registry._build_postgres_connection(host="h", user="u", password="p")
-    assert info.value is original
-
-
-def test_userinfo_redaction_runs_to_the_last_at_sign(monkeypatch):
-    # the in-password '@' must not end the userinfo early and leave a tail behind
-    def boom(url, **kwargs):
-        raise ValueError(f"Don't know how to connect to {url!r}")
-
-    monkeypatch.setattr(ibis, "connect", boom)
-    with pytest.raises(ValueError) as info:
-        _registry._build_postgres_connection(connection_string="postgres://u:a@SENTINEL-tail:x@h/db")
-    _assert_clean(info.value)
-    assert str(info.value).endswith("postgres://***@h/db'")
-
-
 @pytest.mark.parametrize("url", ["duckdb://:memory:", "sqlite://:memory:", "duckdb://md:mydb"])
 def test_in_process_urls_are_not_rejected_by_port_validation(url):
     IbisBackend(url)

@@ -78,12 +78,12 @@ postgresql://db.example/app   -> postgres
 postgres://db.example/app     -> postgres
 duckdb://md:analytics         -> motherduck
 sqlite://                     -> sqlite
-ValueError: Cannot detect ibis dialect from URL scheme: 'redshift'
+ValueError: Unsupported connection string: expected a URL with one of the schemes ['bigquery', 'clickhouse', 'druid', 'duckdb', 'exasol', 'impala', 'materialize', 'mssql', 'mysql', 'oracle', 'postgres', 'postgresql', 'pyspark', 'risingwave', 'singlestoredb', 'snowflake', 'sqlite', 'trino'] (input not shown), or a dialect name
 ```
 
-`duckdb://md:` is special-cased to `motherduck` before the scheme lookup. Redshift has no URL scheme of its own in the registry (its spec declares `postgres://`), so the `redshift` entry is reachable only as `dialect="redshift"`.
+`duckdb://md:` is special-cased to `motherduck` before the scheme lookup. Redshift has no URL scheme Ibis accepts (`ibis.connect` rejects `redshift://`; its spec declares `postgres://`, which resolves to `postgres`), so the `redshift` entry is reachable as `dialect="redshift"` or from a settings profile.
 
-The settings path picks its key differently again: it reads `ibis_dialect` from the profile's `BackendSpec`. For the two rides-on backends that value is the base dialect, `"postgres"` for `RedshiftBackendProfile` and `"duckdb"` for `MotherDuckBackendProfile`, so a backend built from those settings uses the `postgres` or `duckdb` entry (builder, upsert style, index and transaction capabilities), not the `redshift` or `motherduck` one (`src/mountainash_data/backends/ibis/backend.py`, `_init_from_settings`). The consequences for MotherDuck are shown in [From settings to driver arguments](../15-from-settings-to-driver-arguments/index.md).
+The settings path picks its key differently again: it reads `ibis_dialect` from the profile's `BackendSpec`, which is the profile's own `DIALECTS` key. `RedshiftBackendProfile` resolves to `"redshift"` and `MotherDuckBackendProfile` to `"motherduck"` (`rides_on` stays `postgres` / `duckdb` as metadata), so a backend built from those settings uses their own builder, upsert style, index and transaction data (`src/mountainash_data/backends/ibis/backend.py`, `_init_from_settings`).
 
 ## Connection builders
 
@@ -98,7 +98,7 @@ The 20 builders in `_registry.py` fall into three shapes:
 | Backend `connect()` with kwargs | `clickhouse`, `databricks`, `singlestoredb`, `exasol`, `impala`, `materialize`, `risingwave`, `druid` | Calls `ibis.<backend>.connect(**kwargs)` directly with defaults filled in |
 | Bespoke | `sqlite`, `bigquery`, `pyspark` | `ibis.sqlite.connect(database)`; BigQuery builds service-account credentials or falls back to application default credentials; PySpark builds or reuses a `SparkSession` and applies static Spark options before session creation |
 
-The URL builders never put credentials in the URL. Ibis percent-decodes a URL password but not the user name, so a user name containing `@`, `:` or `/` would be corrupted in URL form; passing both as keyword arguments, which `ibis.connect` merges over the parsed URL, avoids that. Every `ibis.connect` call from a builder also goes through the package's credential-redaction wrapper, described in [Credential redaction](../15-from-settings-to-driver-arguments/index.md). Most builders pass unrecognised keys through to Ibis untouched, so driver options the builder does not know about still reach the driver; the SQLite and BigQuery builders are the exceptions and read only their own keys.
+The URL builders never put credentials in the URL. Ibis percent-decodes a URL password but not the user name, so a user name containing `@`, `:` or `/` would be corrupted in URL form; passing both as keyword arguments, which `ibis.connect` merges over the parsed URL, avoids that. Failures from a builder's `ibis.connect` call are reduced to a safe `BackendConnectionError` by `IbisBackend.connect()`, described in [Safe connection errors](../15-from-settings-to-driver-arguments/index.md#safe-connection-errors). Most builders pass unrecognised keys through to Ibis untouched, so driver options the builder does not know about still reach the driver; the SQLite builder forwards only `database` and `type_map`, and the BigQuery builder only the keys `ibis.bigquery.connect` accepts (translating `credentials_info` into `credentials`).
 
 <!-- concept:62 -->
 Per-dialect configuration is the set of defaults and adaptations a builder applies before Ibis sees the call. Most of it is ordinary default filling (`host="localhost"`, the engine's usual port: 5432, 3306, 1433, 1521, 8080, 9000, 21050, 6875, 8563), but several dialects carry real behaviour here:
@@ -106,7 +106,7 @@ Per-dialect configuration is the set of defaults and adaptations a builder appli
 | Dialect | Builder behaviour |
 |---|---|
 | `duckdb` | No `database` means in-memory with `read_only=False`; a path is prefixed with `duckdb://` unless it already has it |
-| `motherduck` | Builds `duckdb://md:<database>?motherduck_token=<token>` with the token percent-encoded, and registers the token as a secret for redaction |
+| `motherduck` | Builds `duckdb://md:<database>?motherduck_token=<token>` with the token percent-encoded, |
 | `snowflake`, `trino` | Accept either a full `connection_string` plus extra kwargs, or components (`account`/`database`/`schema` for Snowflake, `catalog`/`schema` for Trino) |
 | `oracle` | Wraps the result in the Oracle compatibility patch (see [Compatibility shims](#compatibility-shims)) |
 | `clickhouse` | Defaults `user="default"`, `password=""`, `database="default"` |

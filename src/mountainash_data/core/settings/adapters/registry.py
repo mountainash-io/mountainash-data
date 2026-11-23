@@ -4,7 +4,7 @@ import typing as t
 
 from mountainash_auth_client import (
     PasswordAuthProfile, JWTAuthProfile, KerberosAuthProfile,
-    ServiceAccountAuthProfile, IAMAuthProfile, TokenAuthProfile,
+    ServiceAccountAuthProfile, TokenAuthProfile,
     OAuth2AuthProfile, CertificateAuthProfile, WindowsAuthProfile, AzureADAuthProfile,
 )
 from mountainash_data.core.constants import CONST_DB_PROVIDER_TYPE as P
@@ -28,7 +28,6 @@ _AUTH_ADAPTERS: dict[tuple[t.Any, type], t.Callable[[t.Any, dict], dict]] = {
     (P.MSSQL,          WindowsAuthProfile):        _mssql.windows,
     (P.MSSQL,          AzureADAuthProfile):        _mssql.azure_ad,
     (P.REDSHIFT,       PasswordAuthProfile):       _rs.password,
-    (P.REDSHIFT,       IAMAuthProfile):            _rs.iam,
 }
 for _p in (P.POSTGRESQL, P.MYSQL, P.CLICKHOUSE, P.MATERIALIZE, P.RISINGWAVE,
            P.DRUID, P.SINGLESTOREDB, P.IMPALA, P.EXASOL, P.ORACLE):
