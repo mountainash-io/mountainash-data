@@ -73,6 +73,11 @@ jobs:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: mountainash-io
+          repositories: |
+            mountainash-auth-client
+            mountainash-settings
+            mountainash-transport
+            mountainash
 
       - name: Load Dependencies
         id: deps
@@ -173,6 +178,11 @@ jobs:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: mountainash-io
+          repositories: |
+            mountainash-auth-client
+            mountainash-settings
+            mountainash-transport
+            mountainash
 
       - name: Load Dependencies
         id: deps
@@ -245,6 +255,11 @@ jobs:
           app-id: ${{ secrets.CI_APP_ID }}
           private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
           owner: mountainash-io
+          repositories: |
+            mountainash-auth-client
+            mountainash-settings
+            mountainash-transport
+            mountainash
 
       - name: Load Dependencies
         id: deps
